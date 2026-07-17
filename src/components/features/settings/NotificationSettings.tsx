@@ -1,0 +1,138 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { Save } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+
+type Preferences = {
+  notificationMessages: boolean;
+  notificationComments: boolean;
+  notificationMarketplace: boolean;
+  notificationAnnouncements: boolean;
+  emailDigest: "NEVER" | "DAILY" | "WEEKLY";
+};
+
+const toggles = [
+  {
+    key: "notificationMessages" as const,
+    label: "Messages",
+    description: "Replies and new direct conversations.",
+  },
+  {
+    key: "notificationComments" as const,
+    label: "Comments and replies",
+    description: "Useful responses to your community and Q&A activity.",
+  },
+  {
+    key: "notificationMarketplace" as const,
+    label: "Marketplace",
+    description: "Relevant updates about your listings and contacts.",
+  },
+  {
+    key: "notificationAnnouncements" as const,
+    label: "Community announcements",
+    description: "Important updates from communities you joined.",
+  },
+];
+
+export function NotificationSettings({
+  preferences,
+}: {
+  preferences: Preferences;
+}) {
+  const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState("");
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const payload = {
+      notificationMessages: values.has("notificationMessages"),
+      notificationComments: values.has("notificationComments"),
+      notificationMarketplace: values.has("notificationMarketplace"),
+      notificationAnnouncements: values.has("notificationAnnouncements"),
+      emailDigest: values.get("emailDigest"),
+    };
+    setPending(true);
+    setFeedback("");
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? "Notification preferences were not saved.",
+        );
+      }
+      setFeedback("Notification preferences saved.");
+    } catch (error) {
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : "Notification preferences were not saved.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Card>
+      <form className="space-y-5" onSubmit={save}>
+        {toggles.map(({ key, label, description }) => (
+          <label
+            className="flex items-start gap-3 rounded-2xl border border-slate-200 p-4 dark:border-white/10"
+            key={key}
+          >
+            <input
+              className="mt-1 h-4 w-4 accent-emerald-700"
+              defaultChecked={preferences[key]}
+              name={key}
+              type="checkbox"
+            />
+            <span>
+              <span className="block font-bold text-kondo-ink dark:text-white">
+                {label}
+              </span>
+              <span className="mt-1 block text-sm text-slate-500 dark:text-slate-300">
+                {description}
+              </span>
+            </span>
+          </label>
+        ))}
+        <label className="block rounded-2xl bg-slate-50 p-4 dark:bg-white/5">
+          <span className="font-bold text-kondo-ink dark:text-white">
+            Email digest
+          </span>
+          <span className="mt-1 block text-sm text-slate-500 dark:text-slate-300">
+            Save your preferred summary frequency. Delivery is activated by the
+            notification service in Module 8.
+          </span>
+          <select
+            className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-kondo-green dark:border-white/10 dark:bg-[#14201d]"
+            defaultValue={preferences.emailDigest}
+            name="emailDigest"
+          >
+            <option value="NEVER">No email digest</option>
+            <option value="DAILY">Daily</option>
+            <option value="WEEKLY">Weekly</option>
+          </select>
+        </label>
+        {feedback ? (
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            {feedback}
+          </p>
+        ) : null}
+        <Button disabled={pending} type="submit">
+          <Save className="h-4 w-4" />
+          {pending ? "Saving…" : "Save notifications"}
+        </Button>
+      </form>
+    </Card>
+  );
+}

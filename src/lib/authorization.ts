@@ -1,0 +1,123 @@
+export const ROLES = ["MEMBER", "MODERATOR", "ADMIN", "SUPER_ADMIN"] as const;
+
+export type AppRole = (typeof ROLES)[number];
+
+export const ADMIN_PERMISSIONS = [
+  "ADMIN_ACCESS",
+  "ADMIN_VIEW_PLATFORM_OVERVIEW",
+  "REPORT_LIST",
+  "REPORT_VIEW",
+  "REPORT_CLAIM",
+  "REPORT_ADD_NOTE",
+  "REPORT_TRANSITION_ASSIGNED",
+  "REPORT_VIEW_EVIDENCE_REDACTED",
+  "REPORT_ASSIGN_ANY",
+  "REPORT_REOPEN",
+  "REPORT_VIEW_EVIDENCE_FULL",
+  "AUDIT_VIEW_CASE",
+  "AUDIT_VIEW_GLOBAL",
+  "AUDIT_VIEW_SECURITY_METADATA",
+  "REFERENCE_DATA_VIEW",
+  "REFERENCE_DATA_MANAGE",
+  "MEDIA_VIEW",
+  "MEDIA_MANAGE",
+  "USER_VIEW",
+  "ACCOUNT_REQUEST_MANAGE",
+  "NOTIFICATION_VIEW",
+  "NOTIFICATION_MANAGE",
+  "MESSAGE_SAFETY_VIEW",
+  "COMMUNITY_CMS_VIEW",
+  "COMMUNITY_CMS_MANAGE",
+  "MARKETPLACE_CMS_VIEW",
+  "MARKETPLACE_CMS_MANAGE",
+] as const;
+
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+
+const ROLE_PERMISSIONS: Record<AppRole, readonly AdminPermission[]> = {
+  MEMBER: [],
+  MODERATOR: [
+    "ADMIN_ACCESS",
+    "REPORT_LIST",
+    "REPORT_VIEW",
+    "REPORT_CLAIM",
+    "REPORT_ADD_NOTE",
+    "REPORT_TRANSITION_ASSIGNED",
+    "REPORT_VIEW_EVIDENCE_REDACTED",
+    "AUDIT_VIEW_CASE",
+  ],
+  ADMIN: [
+    "ADMIN_ACCESS",
+    "ADMIN_VIEW_PLATFORM_OVERVIEW",
+    "REPORT_LIST",
+    "REPORT_VIEW",
+    "REPORT_CLAIM",
+    "REPORT_ADD_NOTE",
+    "REPORT_TRANSITION_ASSIGNED",
+    "REPORT_VIEW_EVIDENCE_REDACTED",
+    "REPORT_ASSIGN_ANY",
+    "REPORT_REOPEN",
+    "REPORT_VIEW_EVIDENCE_FULL",
+    "AUDIT_VIEW_CASE",
+    "AUDIT_VIEW_GLOBAL",
+    "REFERENCE_DATA_VIEW",
+    "REFERENCE_DATA_MANAGE",
+    "MEDIA_VIEW",
+    "MEDIA_MANAGE",
+    "USER_VIEW",
+    "ACCOUNT_REQUEST_MANAGE",
+    "NOTIFICATION_VIEW",
+    "NOTIFICATION_MANAGE",
+    "MESSAGE_SAFETY_VIEW",
+    "COMMUNITY_CMS_VIEW",
+    "COMMUNITY_CMS_MANAGE",
+    "MARKETPLACE_CMS_VIEW",
+    "MARKETPLACE_CMS_MANAGE",
+  ],
+  SUPER_ADMIN: ADMIN_PERMISSIONS,
+};
+
+export function isAdminRole(role: AppRole | string | null | undefined) {
+  return role === "ADMIN" || role === "SUPER_ADMIN";
+}
+
+export function isModeratorRole(role: AppRole | string | null | undefined) {
+  return role === "MODERATOR" || isAdminRole(role);
+}
+
+export function isSuperAdminRole(role: AppRole | string | null | undefined) {
+  return role === "SUPER_ADMIN";
+}
+
+export function hasRole(
+  role: AppRole | string | null | undefined,
+  allowedRoles: readonly AppRole[],
+) {
+  return Boolean(role && allowedRoles.includes(role as AppRole));
+}
+
+export function canAccessAdmin(role: AppRole | string | null | undefined) {
+  return hasAdminPermission(role, "ADMIN_ACCESS");
+}
+
+export function canManageResource(args: {
+  role: AppRole | string | null | undefined;
+  userId: string;
+  ownerId: string;
+}) {
+  return isModeratorRole(args.role) || args.userId === args.ownerId;
+}
+
+export function permissionsForRole(
+  role: AppRole | string | null | undefined,
+): readonly AdminPermission[] {
+  if (!role || !ROLES.includes(role as AppRole)) return [];
+  return ROLE_PERMISSIONS[role as AppRole];
+}
+
+export function hasAdminPermission(
+  role: AppRole | string | null | undefined,
+  permission: AdminPermission,
+) {
+  return permissionsForRole(role).includes(permission);
+}

@@ -1,0 +1,1153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MEMBER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum StudyLevel {
+  LANGUAGE
+  BACHELORS
+  MASTERS
+  DOCTORATE
+  EXCHANGE
+  OTHER
+}
+
+enum ProfileAudience {
+  PUBLIC
+  MEMBERS
+  PRIVATE
+}
+
+enum ThemePreference {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum AppLanguage {
+  ENGLISH
+  FRENCH
+  CHINESE
+  ARABIC
+}
+
+enum NotificationDigest {
+  NEVER
+  DAILY
+  WEEKLY
+}
+
+enum AccountRequestType {
+  DATA_EXPORT
+  ACCOUNT_DELETION
+}
+
+enum AccountRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum CommunityType {
+  UNIVERSITY
+  COUNTRY
+  CITY
+  TOPIC
+}
+
+enum CommunityStatus {
+  PENDING_REVIEW
+  ACTIVE
+  ARCHIVED
+  REMOVED
+}
+
+enum CommunityJoinPolicy {
+  OPEN
+  REQUEST
+  INVITE_ONLY
+}
+
+enum CommunityAccessType {
+  JOIN_REQUEST
+  INVITATION
+}
+
+enum CommunityAccessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum MembershipRole {
+  MEMBER
+  MODERATOR
+  OWNER
+}
+
+enum PostType {
+  DISCUSSION
+  QUESTION
+  EVENT
+  ANNOUNCEMENT
+}
+
+enum ContentStatus {
+  PUBLISHED
+  PENDING_REVIEW
+  REMOVED
+}
+
+enum ReactionType {
+  LIKE
+  HELPFUL
+  CELEBRATE
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  RESERVED
+  SOLD
+  ARCHIVED
+  EXPIRED
+  REMOVED
+}
+
+enum GuideCategory {
+  BEFORE_DEPARTURE
+  ARRIVAL
+  RESIDENCY
+  DAILY_LIFE
+  MONEY
+  TRANSPORT
+  HEALTH
+  UNIVERSITY
+}
+
+enum HelpCategory {
+  VISA
+  HOUSING
+  BANK
+  UNIVERSITY
+  SCHOLARSHIP
+  TRAVEL
+  HEALTH
+}
+
+enum NotificationType {
+  MESSAGE
+  COMMENT
+  REPLY
+  MARKETPLACE_UPDATE
+  COMMUNITY_ANNOUNCEMENT
+  MODERATION_UPDATE
+}
+
+enum NotificationJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  SKIPPED
+  FAILED
+}
+
+enum NotificationAnnouncementStatus {
+  QUEUED
+  COMPLETED
+  CANCELLED
+}
+
+enum ConversationType {
+  DIRECT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+}
+
+enum BookmarkTargetType {
+  POST
+  LISTING
+  GUIDE
+  QUESTION
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  SCAM
+  INAPPROPRIATE
+  OTHER
+}
+
+enum ReportDecision {
+  VIOLATION_CONFIRMED
+  NO_VIOLATION
+  INSUFFICIENT_EVIDENCE
+  DUPLICATE
+  OUT_OF_SCOPE
+  ESCALATED
+  OTHER
+}
+
+enum ReportEvidenceKind {
+  CONVERSATION_SNAPSHOT
+  PROFILE_SNAPSHOT
+  COMMUNITY_CONTENT_SNAPSHOT
+  MARKETPLACE_LISTING_SNAPSHOT
+}
+
+enum MediaKind {
+  IMAGE
+  DOCUMENT
+}
+
+enum MediaPurpose {
+  PROFILE_AVATAR
+  COMMUNITY_COVER
+  POST_IMAGE
+  LISTING_IMAGE
+  GUIDE_COVER
+  MESSAGE_IMAGE
+  MESSAGE_DOCUMENT
+}
+
+enum MediaVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum MediaStatus {
+  PENDING
+  PROCESSING
+  ACTIVE
+  REJECTED
+  REMOVED
+}
+
+enum MediaScanStatus {
+  PENDING
+  CLEAN
+  FLAGGED
+  ERROR
+}
+
+enum MediaStorageProvider {
+  LOCAL
+  S3
+}
+
+enum AnalyticsEventName {
+  SESSION_STARTED
+  COMMUNITY_VIEWED
+  POST_CREATED
+  POST_REACTED
+  LISTING_VIEWED
+  LISTING_CONTACTED
+  GUIDE_STARTED
+  GUIDE_STEP_COMPLETED
+  SEARCH_PERFORMED
+}
+
+model User {
+  id                               String                     @id @default(cuid())
+  email                            String                     @unique
+  emailVerifiedAt                  DateTime?
+  passwordHash                     String?
+  firstName                        String
+  lastName                         String
+  username                         String?                    @unique
+  avatarKey                        String?
+  avatarMediaId                    String?                    @unique
+  avatarMedia                      MediaAsset?                @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  bio                              String?                    @db.VarChar(280)
+  phone                            String?
+  profileAudience                  ProfileAudience            @default(MEMBERS)
+  locationAudience                 ProfileAudience            @default(MEMBERS)
+  educationAudience                ProfileAudience            @default(MEMBERS)
+  languagesAudience                ProfileAudience            @default(MEMBERS)
+  communitiesAudience              ProfileAudience            @default(MEMBERS)
+  activityAudience                 ProfileAudience            @default(MEMBERS)
+  marketplaceAudience              ProfileAudience            @default(MEMBERS)
+  role                             Role                       @default(MEMBER)
+  status                           UserStatus                 @default(ACTIVE)
+  countryId                        String?
+  country                          Country?                   @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId                           String?
+  city                             City?                      @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  universityId                     String?
+  university                       University?                @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  degree                           String?
+  studyLevel                       StudyLevel?
+  studyYear                        Int?
+  arrivalDate                      DateTime?
+  languages                        String[]                   @default([])
+  interests                        String[]                   @default([])
+  onboardingCompletedAt            DateTime?
+  lastActiveAt                     DateTime?
+  createdCommunities               Community[]                @relation("CommunityCreator")
+  ownedCommunities                 Community[]                @relation("CommunityOwner")
+  communityMemberships             CommunityMember[]
+  communityAccessSubjects          CommunityAccessRequest[]   @relation("CommunityAccessSubject")
+  createdCommunityAccessRequests   CommunityAccessRequest[]   @relation("CommunityAccessCreator")
+  resolvedCommunityAccessRequests  CommunityAccessRequest[]   @relation("CommunityAccessResolver")
+  posts                            Post[]
+  comments                         Comment[]
+  reactions                        Reaction[]
+  marketplaceListings              MarketplaceListing[]
+  listingFavorites                 ListingFavorite[]
+  guideProgress                    GuideProgress[]
+  createdGuides                    Guide[]                    @relation("GuideAuthor")
+  questions                        Question[]
+  answers                          Answer[]
+  answerVotes                      AnswerVote[]
+  bookmarks                        Bookmark[]
+  notifications                    Notification[]             @relation("NotificationRecipient")
+  triggeredNotifications           Notification[]             @relation("NotificationActor")
+  notificationJobs                 NotificationJob[]          @relation("NotificationJobRecipient")
+  triggeredNotificationJobs        NotificationJob[]          @relation("NotificationJobActor")
+  updatedNotificationTemplates     NotificationTemplate[]     @relation("NotificationTemplateUpdater")
+  createdNotificationAnnouncements NotificationAnnouncement[] @relation("NotificationAnnouncementCreator")
+  conversationMemberships          ConversationParticipant[]
+  sentMessages                     Message[]                  @relation("MessageSender")
+  blockedUsers                     UserBlock[]                @relation("Blocker")
+  blockedByUsers                   UserBlock[]                @relation("BlockedUser")
+  reports                          Report[]                   @relation("ReportReporter")
+  reportedSubjects                 Report[]                   @relation("ReportSubject")
+  assignedReports                  Report[]                   @relation("ReportAssignee")
+  reportAssignments                Report[]                   @relation("ReportAssignedBy")
+  resolvedReports                  Report[]                   @relation("ReportResolvedBy")
+  reopenedReports                  Report[]                   @relation("ReportReopenedBy")
+  reportNotes                      ReportNote[]
+  reportEvidenceCaptures           ReportEvidence[]
+  ownedMedia                       MediaAsset[]               @relation("MediaOwner")
+  removedMedia                     MediaAsset[]               @relation("MediaRemovedBy")
+  accountRequests                  AccountRequest[]           @relation("AccountRequestOwner")
+  processedAccountRequests         AccountRequest[]           @relation("AccountRequestProcessor")
+  preference                       UserPreference?
+  auditLogs                        AuditLog[]                 @relation("AuditActor")
+  analyticsEvents                  AnalyticsEvent[]
+  accounts                         OAuthAccount[]
+  sessions                         Session[]
+  createdAt                        DateTime                   @default(now())
+  updatedAt                        DateTime                   @updatedAt
+
+  @@index([countryId])
+  @@index([cityId])
+  @@index([universityId])
+  @@index([status, lastActiveAt])
+  @@index([profileAudience, status])
+}
+
+model Country {
+  id           String       @id @default(cuid())
+  code         String       @unique @db.Char(2)
+  name         String       @unique
+  emoji        String?
+  isActive     Boolean      @default(true)
+  verified     Boolean      @default(false)
+  users        User[]
+  cities       City[]
+  universities University[]
+  communities  Community[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([isActive, name])
+}
+
+model UserPreference {
+  userId                    String             @id
+  user                      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme                     ThemePreference    @default(SYSTEM)
+  language                  AppLanguage        @default(ENGLISH)
+  notificationMessages      Boolean            @default(true)
+  notificationComments      Boolean            @default(true)
+  notificationMarketplace   Boolean            @default(true)
+  notificationAnnouncements Boolean            @default(true)
+  emailDigest               NotificationDigest @default(NEVER)
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+
+  @@index([emailDigest, updatedAt])
+}
+
+model City {
+  id           String               @id @default(cuid())
+  slug         String               @unique
+  name         String
+  province     String?
+  countryId    String
+  country      Country              @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  isActive     Boolean              @default(true)
+  verified     Boolean              @default(false)
+  users        User[]
+  universities University[]
+  communities  Community[]
+  listings     MarketplaceListing[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([countryId, name])
+  @@index([countryId])
+  @@index([countryId, isActive, name])
+}
+
+model University {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  name        String
+  shortName   String?
+  countryId   String
+  country     Country     @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId      String
+  city        City        @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  isActive    Boolean     @default(true)
+  verified    Boolean     @default(false)
+  users       User[]
+  communities Community[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([cityId, name])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([cityId, isActive, verified, name])
+}
+
+model Community {
+  id             String                   @id @default(cuid())
+  slug           String                   @unique
+  name           String
+  description    String                   @db.VarChar(500)
+  type           CommunityType
+  status         CommunityStatus          @default(ACTIVE)
+  joinPolicy     CommunityJoinPolicy      @default(OPEN)
+  icon           String?
+  coverImageKey  String?
+  coverMediaId   String?                  @unique
+  coverMedia     MediaAsset?              @relation("CommunityCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  isVerified     Boolean                  @default(false)
+  isPrivate      Boolean                  @default(false)
+  createdById    String
+  createdBy      User                     @relation("CommunityCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  ownerId        String
+  owner          User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  countryId      String?
+  country        Country?                 @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId         String?
+  city           City?                    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  universityId   String?
+  university     University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  members        CommunityMember[]
+  accessRequests CommunityAccessRequest[]
+  posts          Post[]
+  moderatedAt    DateTime?
+  removedAt      DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([status, isPrivate, createdAt])
+  @@index([type, isPrivate])
+  @@index([ownerId, status])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([universityId])
+  @@index([createdAt])
+}
+
+model CommunityMember {
+  id          String         @id @default(cuid())
+  communityId String
+  community   Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        MembershipRole @default(MEMBER)
+  joinedAt    DateTime       @default(now())
+
+  @@unique([communityId, userId])
+  @@index([userId])
+  @@index([communityId, role, joinedAt])
+}
+
+model CommunityAccessRequest {
+  id           String                @id @default(cuid())
+  communityId  String
+  community    Community             @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                  @relation("CommunityAccessSubject", fields: [userId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?                 @relation("CommunityAccessCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  resolvedById String?
+  resolvedBy   User?                 @relation("CommunityAccessResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  type         CommunityAccessType
+  status       CommunityAccessStatus @default(PENDING)
+  note         String?               @db.VarChar(500)
+  resolution   String?               @db.VarChar(500)
+  resolvedAt   DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@unique([communityId, userId, type])
+  @@index([communityId, status, createdAt])
+  @@index([userId, status, createdAt])
+}
+
+model Post {
+  id               String        @id @default(cuid())
+  communityId      String
+  community        Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  authorId         String
+  author           User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  type             PostType      @default(DISCUSSION)
+  status           ContentStatus @default(PUBLISHED)
+  title            String?       @db.VarChar(180)
+  content          String        @db.Text
+  imageKeys        String[]      @default([])
+  media            PostMedia[]
+  eventAt          DateTime?
+  eventEndsAt      DateTime?
+  eventCapacity    Int?
+  eventLocation    String?
+  eventValidatedAt DateTime?
+  pinnedAt         DateTime?
+  editedAt         DateTime?
+  removedAt        DateTime?
+  comments         Comment[]
+  reactions        Reaction[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([communityId, status, createdAt])
+  @@index([authorId, createdAt])
+  @@index([type, eventAt])
+  @@index([communityId, type, eventValidatedAt, eventAt])
+  @@index([pinnedAt])
+}
+
+model PostMedia {
+  id        String     @id @default(cuid())
+  postId    String
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaId   String     @unique
+  media     MediaAsset @relation("PostMedia", fields: [mediaId], references: [id], onDelete: Restrict)
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, order])
+  @@index([postId, order])
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  postId    String
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]     @relation("CommentReplies")
+  content   String        @db.Text
+  status    ContentStatus @default(PUBLISHED)
+  reactions Reaction[]
+  editedAt  DateTime?
+  removedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([postId, status, createdAt])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model Reaction {
+  id        String       @id @default(cuid())
+  type      ReactionType @default(LIKE)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String?
+  post      Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, postId, type])
+  @@unique([userId, commentId, type])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model MarketplaceCategory {
+  id          String               @id @default(cuid())
+  slug        String               @unique
+  name        String               @unique
+  description String?              @db.VarChar(300)
+  icon        String?
+  order       Int                  @default(0)
+  isActive    Boolean              @default(true)
+  listings    MarketplaceListing[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([isActive, order])
+}
+
+model MarketplaceListing {
+  id              String              @id @default(cuid())
+  slug            String              @unique
+  sellerId        String
+  seller          User                @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        MarketplaceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  cityId          String
+  city            City                @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  title           String              @db.VarChar(140)
+  description     String              @db.Text
+  priceFen        Int
+  isNegotiable    Boolean             @default(false)
+  status          ListingStatus       @default(ACTIVE)
+  images          ListingImage[]
+  favorites       ListingFavorite[]
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  reservedAt      DateTime?
+  soldAt          DateTime?
+  archivedAt      DateTime?
+  removedAt       DateTime?
+  moderatedAt     DateTime?
+  fraudScore      Int                 @default(0)
+  fraudFlags      String[]            @default([])
+  fraudReviewedAt DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([categoryId, status])
+  @@index([cityId, status])
+  @@index([sellerId, status])
+  @@index([priceFen])
+  @@index([status, expiresAt])
+  @@index([fraudScore, status, updatedAt])
+}
+
+model ListingImage {
+  id        String             @id @default(cuid())
+  listingId String
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  objectKey String?
+  mediaId   String?            @unique
+  media     MediaAsset?        @relation("ListingImageMedia", fields: [mediaId], references: [id], onDelete: Restrict)
+  altText   String?
+  width     Int?
+  height    Int?
+  order     Int                @default(0)
+  createdAt DateTime           @default(now())
+
+  @@unique([listingId, order])
+  @@index([listingId, order])
+}
+
+model ListingFavorite {
+  id        String             @id @default(cuid())
+  listingId String
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now())
+
+  @@unique([listingId, userId])
+  @@index([userId, createdAt])
+}
+
+model Guide {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  title            String
+  summary          String        @db.VarChar(500)
+  category         GuideCategory
+  coverImageKey    String?
+  estimatedMinutes Int
+  published        Boolean       @default(false)
+  featured         Boolean       @default(false)
+  createdById      String
+  createdBy        User          @relation("GuideAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  steps            GuideStep[]
+  publishedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([published, category])
+  @@index([featured, publishedAt])
+}
+
+model GuideStep {
+  id        String          @id @default(cuid())
+  guideId   String
+  guide     Guide           @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  order     Int
+  title     String
+  content   String          @db.Text
+  actionUrl String?
+  progress  GuideProgress[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([guideId, order])
+}
+
+model GuideProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stepId      String
+  step        GuideStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  completedAt DateTime  @default(now())
+
+  @@unique([userId, stepId])
+  @@index([userId, completedAt])
+}
+
+model Question {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  authorId     String
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category     HelpCategory
+  title        String        @db.VarChar(180)
+  body         String        @db.Text
+  status       ContentStatus @default(PUBLISHED)
+  bestAnswerId String?
+  answers      Answer[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([category, status, createdAt])
+  @@index([authorId])
+}
+
+model Answer {
+  id         String        @id @default(cuid())
+  questionId String
+  question   Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body       String        @db.Text
+  status     ContentStatus @default(PUBLISHED)
+  votes      AnswerVote[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([questionId, status, createdAt])
+  @@index([authorId])
+}
+
+model AnswerVote {
+  id        String   @id @default(cuid())
+  answerId  String
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  helpful   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([answerId, userId])
+  @@index([userId])
+}
+
+model Bookmark {
+  id         String             @id @default(cuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType BookmarkTargetType
+  targetId   String
+  createdAt  DateTime           @default(now())
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type        NotificationType
+  title       String
+  body        String?          @db.VarChar(280)
+  href        String?
+  templateKey String?          @db.VarChar(80)
+  dedupeKey   String?          @db.VarChar(160)
+  data        Json?
+  jobId       String?          @unique
+  job         NotificationJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  readAt      DateTime?
+  hiddenAt    DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, readAt, createdAt])
+  @@index([recipientId, hiddenAt, createdAt])
+  @@index([actorId])
+}
+
+model NotificationTemplate {
+  key           String            @id @db.VarChar(80)
+  type          NotificationType
+  titleTemplate String            @db.VarChar(160)
+  bodyTemplate  String?           @db.VarChar(280)
+  isActive      Boolean           @default(true)
+  version       Int               @default(1)
+  updatedById   String?
+  updatedBy     User?             @relation("NotificationTemplateUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  jobs          NotificationJob[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([type, isActive])
+}
+
+model NotificationAnnouncement {
+  id             String                         @id @default(cuid())
+  title          String                         @db.VarChar(160)
+  body           String                         @db.VarChar(280)
+  href           String?
+  status         NotificationAnnouncementStatus @default(QUEUED)
+  recipientCount Int                            @default(0)
+  createdById    String?
+  createdBy      User?                          @relation("NotificationAnnouncementCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  queuedAt       DateTime                       @default(now())
+  completedAt    DateTime?
+  jobs           NotificationJob[]
+  createdAt      DateTime                       @default(now())
+  updatedAt      DateTime                       @updatedAt
+
+  @@index([status, queuedAt])
+  @@index([createdById, createdAt])
+}
+
+model NotificationJob {
+  id             String                    @id @default(cuid())
+  recipientId    String
+  recipient      User                      @relation("NotificationJobRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId        String?
+  actor          User?                     @relation("NotificationJobActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type           NotificationType
+  templateKey    String                    @db.VarChar(80)
+  template       NotificationTemplate      @relation(fields: [templateKey], references: [key], onDelete: Restrict)
+  data           Json?
+  href           String?
+  dedupeKey      String                    @db.VarChar(160)
+  status         NotificationJobStatus     @default(PENDING)
+  attempts       Int                       @default(0)
+  availableAt    DateTime                  @default(now())
+  lockedAt       DateTime?
+  completedAt    DateTime?
+  lastErrorCode  String?                   @db.VarChar(80)
+  announcementId String?
+  announcement   NotificationAnnouncement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+  notification   Notification?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([recipientId, dedupeKey])
+  @@index([status, availableAt, createdAt])
+  @@index([recipientId, status, createdAt])
+  @@index([announcementId, status])
+}
+
+model Conversation {
+  id            String                    @id @default(cuid())
+  type          ConversationType          @default(DIRECT)
+  directKey     String?                   @unique
+  participants  ConversationParticipant[]
+  messages      Message[]
+  lastMessageAt DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+  archivedAt     DateTime?
+  clearedAt      DateTime?
+  deletedAt      DateTime?
+
+  @@id([conversationId, userId])
+  @@index([userId, conversationId])
+  @@index([userId, lastReadAt])
+  @@index([userId, deletedAt, archivedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  type           MessageType  @default(TEXT)
+  body           String?      @db.Text
+  attachmentKey  String?
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
+  mediaId        String?      @unique
+  media          MediaAsset?  @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  editedAt       DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+model UserBlock {
+  blockerId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Report {
+  id            String           @id @default(cuid())
+  reporterId    String?
+  reporter      User?            @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  subjectUserId String?
+  subjectUser   User?            @relation("ReportSubject", fields: [subjectUserId], references: [id], onDelete: SetNull)
+  assigneeId    String?
+  assignee      User?            @relation("ReportAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignedById  String?
+  assignedBy    User?            @relation("ReportAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt    DateTime?
+  targetType    String
+  targetId      String
+  reason        ReportReason
+  details       String?          @db.VarChar(1000)
+  status        ReportStatus     @default(OPEN)
+  decision      ReportDecision?
+  resolution    String?          @db.VarChar(2000)
+  resolvedAt    DateTime?
+  resolvedById  String?
+  resolvedBy    User?            @relation("ReportResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  reopenedAt    DateTime?
+  reopenedById  String?
+  reopenedBy    User?            @relation("ReportReopenedBy", fields: [reopenedById], references: [id], onDelete: SetNull)
+  version       Int              @default(1)
+  notes         ReportNote[]
+  evidence      ReportEvidence[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([targetType, targetId])
+  @@index([reporterId, createdAt])
+  @@index([subjectUserId, status])
+  @@index([assigneeId, status, updatedAt])
+}
+
+model ReportNote {
+  id        String   @id @default(cuid())
+  reportId  String
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body      String   @db.VarChar(2000)
+  createdAt DateTime @default(now())
+
+  @@index([reportId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model ReportEvidence {
+  id           String             @id @default(cuid())
+  reportId     String
+  report       Report             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  kind         ReportEvidenceKind
+  label        String             @db.VarChar(160)
+  snapshot     Json
+  sensitive    Boolean            @default(true)
+  capturedById String?
+  capturedBy   User?              @relation(fields: [capturedById], references: [id], onDelete: SetNull)
+  capturedAt   DateTime           @default(now())
+
+  @@index([reportId, capturedAt])
+  @@index([capturedById, capturedAt])
+}
+
+model MediaAsset {
+  id                   String               @id @default(cuid())
+  ownerId              String?
+  owner                User?                @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  objectKey            String               @unique
+  storageProvider      MediaStorageProvider
+  kind                 MediaKind
+  purpose              MediaPurpose
+  visibility           MediaVisibility
+  status               MediaStatus          @default(PENDING)
+  scanStatus           MediaScanStatus      @default(PENDING)
+  originalFileName     String               @db.VarChar(255)
+  extension            String               @db.VarChar(16)
+  declaredMime         String               @db.VarChar(120)
+  detectedMime         String?              @db.VarChar(120)
+  sizeBytes            Int
+  width                Int?
+  height               Int?
+  altText              String?              @db.VarChar(240)
+  checksumSha256       String?              @db.Char(64)
+  uploadExpiresAt      DateTime
+  uploadedAt           DateTime?
+  validatedAt          DateTime?
+  attachedAt           DateTime?
+  attachmentType       String?              @db.VarChar(80)
+  attachmentId         String?
+  replacesId           String?
+  replaces             MediaAsset?          @relation("MediaReplacement", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy           MediaAsset[]         @relation("MediaReplacement")
+  profileAvatarFor     User?                @relation("UserAvatar")
+  messageAttachment    Message?             @relation("MessageMedia")
+  communityCoverFor    Community?           @relation("CommunityCover")
+  postMedia            PostMedia?           @relation("PostMedia")
+  listingImageFor      ListingImage?        @relation("ListingImageMedia")
+  rejectionReason      String?              @db.VarChar(500)
+  retainedAt           DateTime?
+  retentionReason      String?              @db.VarChar(500)
+  removedAt            DateTime?
+  removedById          String?
+  removedBy            User?                @relation("MediaRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
+  storageDeletePending Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([ownerId, status, createdAt])
+  @@index([status, uploadExpiresAt])
+  @@index([status, attachedAt, createdAt])
+  @@index([purpose, status, createdAt])
+  @@index([scanStatus, status])
+  @@index([attachmentType, attachmentId])
+  @@index([replacesId])
+  @@index([retainedAt, status])
+}
+
+model AccountRequest {
+  id            String               @id @default(cuid())
+  userId        String
+  user          User                 @relation("AccountRequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+  type          AccountRequestType
+  status        AccountRequestStatus @default(PENDING)
+  reason        String?              @db.VarChar(1000)
+  responseNote  String?              @db.VarChar(2000)
+  version       Int                  @default(1)
+  processedById String?
+  processedBy   User?                @relation("AccountRequestProcessor", fields: [processedById], references: [id], onDelete: SetNull)
+  processedAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, type, createdAt])
+  @@index([processedById, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model AnalyticsEvent {
+  id         String             @id @default(cuid())
+  userId     String?
+  user       User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       AnalyticsEventName
+  properties Json?
+  sessionId  String?
+  createdAt  DateTime           @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId, createdAt])
+  @@index([sessionId])
+}
+
+model OAuthAccount {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
