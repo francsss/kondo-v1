@@ -100,16 +100,16 @@ function ThemeToggle() {
   );
 }
 
-function ThemePreferenceSync({
+export function ThemePreferenceSync({
   preference,
 }: {
   preference: "LIGHT" | "DARK" | "SYSTEM";
 }) {
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
   useEffect(() => {
     const preferredTheme = preference.toLowerCase();
-    if (theme !== preferredTheme) setTheme(preferredTheme);
-  }, [preference, setTheme, theme]);
+    setTheme(preferredTheme);
+  }, [preference, setTheme]);
   return null;
 }
 
