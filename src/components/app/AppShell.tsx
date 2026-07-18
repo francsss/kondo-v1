@@ -20,7 +20,15 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
 import { KondoLogo } from "@/components/KondoLogo";
@@ -29,13 +37,20 @@ import { Button } from "@/components/ui/Button";
 import { canAccessAdmin } from "@/lib/authorization";
 import { cn } from "@/lib/utils";
 
+type ThemePreference = "LIGHT" | "DARK" | "SYSTEM";
+type ThemePreferenceContextValue = {
+  preference: ThemePreference;
+  applyPreference: (nextPreference: ThemePreference) => Promise<void>;
+  syncPreferenceFromServer: (nextPreference: ThemePreference) => void;
+};
+
 type ShellUser = {
   firstName: string;
   lastName: string;
   role: string;
   avatarMediaId?: string | null;
   preference?: {
-    theme: "LIGHT" | "DARK" | "SYSTEM";
+    theme: ThemePreference;
     language: "ENGLISH" | "FRENCH" | "CHINESE" | "ARABIC";
   } | null;
   notificationUnreadCount?: number;
@@ -65,8 +80,124 @@ const navigation: NavigationItem[] = [
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
 
+const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null);
+
+function normalizeThemePreference(preference?: string | null): ThemePreference {
+  if (preference === "LIGHT" || preference === "DARK" || preference === "SYSTEM") {
+    return preference;
+  }
+  return "SYSTEM";
+}
+
+function toThemeMode(preference: ThemePreference) {
+  return preference.toLowerCase();
+}
+
+export function useThemePreference() {
+  const context = useContext(ThemePreferenceContext);
+  if (!context) {
+    throw new Error("useThemePreference must be used within ThemePreferenceProvider");
+  }
+  return context;
+}
+
+export function ThemePreferenceProvider({
+  initialPreference,
+  children,
+}: {
+  initialPreference: ThemePreference;
+  children: React.ReactNode;
+}) {
+  const { setTheme } = useTheme();
+  const [preference, setPreference] = useState<ThemePreference>(initialPreference);
+  const preferenceRef = useRef<ThemePreference>(initialPreference);
+  const lastServerPreferenceRef = useRef<ThemePreference>(initialPreference);
+  const pendingPreferenceRef = useRef<ThemePreference | null>(null);
+
+  useEffect(() => {
+    const normalizedPreference = normalizeThemePreference(initialPreference);
+    if (pendingPreferenceRef.current === null) {
+      lastServerPreferenceRef.current = normalizedPreference;
+      preferenceRef.current = normalizedPreference;
+      setPreference(normalizedPreference);
+    }
+  }, [initialPreference]);
+
+  const syncPreferenceFromServer = useCallback((nextPreference: ThemePreference) => {
+    const normalizedPreference = normalizeThemePreference(nextPreference);
+    if (pendingPreferenceRef.current) {
+      return;
+    }
+    if (normalizedPreference !== lastServerPreferenceRef.current) {
+      lastServerPreferenceRef.current = normalizedPreference;
+      setPreference(normalizedPreference);
+    }
+  }, []);
+
+  const applyPreference = useCallback(
+    async (nextPreference: ThemePreference) => {
+      const normalizedPreference = normalizeThemePreference(nextPreference);
+      const previousPreference = preferenceRef.current;
+      pendingPreferenceRef.current = normalizedPreference;
+      preferenceRef.current = normalizedPreference;
+      setPreference(normalizedPreference);
+      setTheme(toThemeMode(normalizedPreference));
+
+      try {
+        const response = await fetch("/api/settings", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ theme: normalizedPreference }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Theme was not saved.");
+        }
+
+        const serverPreference = normalizeThemePreference(
+          payload.preferences?.theme ?? normalizedPreference,
+        );
+        lastServerPreferenceRef.current = serverPreference;
+        preferenceRef.current = serverPreference;
+        pendingPreferenceRef.current = null;
+        setPreference(serverPreference);
+        setTheme(toThemeMode(serverPreference));
+      } catch (error) {
+        pendingPreferenceRef.current = null;
+        preferenceRef.current = previousPreference;
+        setPreference(previousPreference);
+        setTheme(toThemeMode(previousPreference));
+        throw error;
+      }
+    },
+    [preference, setTheme],
+  );
+
+  useEffect(() => {
+    preferenceRef.current = preference;
+  }, [preference]);
+
+  useEffect(() => {
+    setTheme(toThemeMode(preference));
+  }, [preference, setTheme]);
+
+  const value = {
+    preference,
+    applyPreference,
+    syncPreferenceFromServer,
+  };
+
+  return (
+    <ThemePreferenceContext.Provider value={value}>
+      {children}
+    </ThemePreferenceContext.Provider>
+  );
+}
+
 function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const { applyPreference, preference } = useThemePreference();
   const [displayTheme, setDisplayTheme] = useState<"light" | "dark">(
     resolvedTheme === "dark" ? "dark" : "light",
   );
@@ -82,20 +213,22 @@ function ThemeToggle() {
     }
   }, [resolvedTheme]);
 
+  useEffect(() => {
+    if (preference === "DARK") {
+      setDisplayTheme("dark");
+    } else if (preference === "LIGHT") {
+      setDisplayTheme("light");
+    }
+  }, [preference]);
+
   return (
     <Button
       aria-label="Toggle color theme"
       className="rounded-full"
       onClick={() => {
-        const nextTheme = displayTheme === "dark" ? "light" : "dark";
-        setDisplayTheme(nextTheme);
-        setTheme(nextTheme);
-        void fetch("/api/settings", {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ theme: nextTheme.toUpperCase() }),
-        });
+        const nextTheme = displayTheme === "dark" ? "LIGHT" : "DARK";
+        setDisplayTheme(nextTheme === "DARK" ? "dark" : "light");
+        void applyPreference(nextTheme as ThemePreference);
       }}
       size="icon"
       type="button"
@@ -113,13 +246,22 @@ function ThemeToggle() {
 export function ThemePreferenceSync({
   preference,
 }: {
-  preference: "LIGHT" | "DARK" | "SYSTEM";
+  preference?: ThemePreference;
 }) {
   const { setTheme } = useTheme();
+  const { preference: currentPreference, syncPreferenceFromServer } =
+    useThemePreference();
+
   useEffect(() => {
-    const preferredTheme = preference.toLowerCase();
-    setTheme(preferredTheme);
-  }, [preference, setTheme]);
+    if (preference) {
+      syncPreferenceFromServer(preference);
+    }
+  }, [preference, syncPreferenceFromServer]);
+
+  useEffect(() => {
+    setTheme(toThemeMode(currentPreference));
+  }, [currentPreference, setTheme]);
+
   return null;
 }
 
@@ -204,9 +346,14 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-kondo-sand dark:bg-[#0c1412]">
-      <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-slate-200/80 bg-white/90 px-4 py-6 backdrop-blur-xl dark:border-white/10 dark:bg-[#101a17]/90 lg:flex lg:flex-col">
+    <ThemePreferenceProvider
+      initialPreference={normalizeThemePreference(user.preference?.theme)}
+    >
+      <div className="min-h-screen bg-kondo-sand dark:bg-[#0c1412]">
+        <ThemePreferenceSync
+          preference={normalizeThemePreference(user.preference?.theme)}
+        />
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-slate-200/80 bg-white/90 px-4 py-6 backdrop-blur-xl dark:border-white/10 dark:bg-[#101a17]/90 lg:flex lg:flex-col">
         <div className="px-2">
           <KondoLogo href="/home" />
         </div>
@@ -440,6 +587,5 @@ export function AppShell({
           );
         })}
       </nav>
-    </div>
-  );
+    </div>    </ThemePreferenceProvider>  );
 }

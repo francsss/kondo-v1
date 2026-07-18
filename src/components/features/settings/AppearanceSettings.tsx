@@ -1,9 +1,9 @@
 "use client";
 
 import { Check, Laptop, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useThemePreference } from "@/components/app/AppShell";
 import { Card } from "@/components/ui/Card";
 
 type ThemePreference = "LIGHT" | "DARK" | "SYSTEM";
@@ -35,7 +35,7 @@ export function AppearanceSettings({
   initialTheme: ThemePreference;
 }) {
   const router = useRouter();
-  const { setTheme } = useTheme();
+  const { applyPreference } = useThemePreference();
   const [selected, setSelected] = useState(initialTheme);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -43,23 +43,14 @@ export function AppearanceSettings({
   async function choose(theme: ThemePreference) {
     const previous = selected;
     setSelected(theme);
-    setTheme(theme.toLowerCase());
     setPending(true);
     setFeedback("");
     try {
-      const response = await fetch("/api/settings", {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? "Theme was not saved.");
+      await applyPreference(theme);
       setFeedback("Appearance saved for your account.");
       router.refresh();
     } catch (error) {
       setSelected(previous);
-      setTheme(previous.toLowerCase());
       setFeedback(error instanceof Error ? error.message : "Theme was not saved.");
     } finally {
       setPending(false);
