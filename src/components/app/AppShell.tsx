@@ -67,18 +67,28 @@ const navigation: NavigationItem[] = [
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const [displayTheme, setDisplayTheme] = useState<"light" | "dark">(
+    resolvedTheme === "dark" ? "dark" : "light",
+  );
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
     () => false,
   );
 
+  useEffect(() => {
+    if (resolvedTheme === "dark" || resolvedTheme === "light") {
+      setDisplayTheme(resolvedTheme);
+    }
+  }, [resolvedTheme]);
+
   return (
     <Button
       aria-label="Toggle color theme"
       className="rounded-full"
       onClick={() => {
-        const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
+        const nextTheme = displayTheme === "dark" ? "light" : "dark";
+        setDisplayTheme(nextTheme);
         setTheme(nextTheme);
         void fetch("/api/settings", {
           method: "PATCH",
@@ -91,7 +101,7 @@ function ThemeToggle() {
       type="button"
       variant="ghost"
     >
-      {mounted && resolvedTheme === "dark" ? (
+      {mounted && displayTheme === "dark" ? (
         <Sun aria-hidden="true" className="h-[18px] w-[18px]" />
       ) : (
         <Moon aria-hidden="true" className="h-[18px] w-[18px]" />
