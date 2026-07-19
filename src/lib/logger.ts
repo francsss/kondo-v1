@@ -28,6 +28,8 @@ export function logServerError(
       level: "error",
       event,
       ...errorDescriptor(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
       ...context,
       timestamp: new Date().toISOString(),
     }),
