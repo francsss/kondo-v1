@@ -71,8 +71,19 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 
 ### Marketplace
 
-- `ListingCard`: category visual, price, city, seller, negotiation/favorite state, and listing detail link.
+- `ListingCard`: real Module 5 photo when available (category-icon fallback otherwise), price, city, seller, negotiation/favorite state, and listing detail link.
 - `ListingFavoriteButton`: persisted optimistic favorite state on active listing detail; the API revalidates active status before writing.
+- `ListingForm`: shared create/edit form that uploads up to 8 images through the Module 5 client pipeline, and supports draft/publish intents on create and save-in-place on edit.
+- `ListingReportButton`: reuses the shared content-report flow to create/reuse an active listing report.
+- `SellerListingActions`: seller-only lifecycle controls (publish/reserve/mark sold/archive/relist) on the seller dashboard, calling the status-transition endpoint.
+- The seller dashboard (`/marketplace/selling`) paginates a seller's own listings with status, price, favorite count, and edit/lifecycle actions.
+
+### Marketplace Admin
+
+- `MarketplaceAdminActions`: Admin/Super Admin status override, fraud-review acknowledgement, and mandatory moderation note, gated on `MARKETPLACE_CMS_MANAGE`.
+- `MarketplaceCategoryManager`: create/update/delete category workspace with dependency-safe deletion feedback.
+- `/admin/marketplace`: responsive, searchable, paginated, flagged-first listing inventory for Admin/Super Admin.
+- `/admin/marketplace/[id]`: full listing detail with fraud signals, legacy-image status, and moderation history.
 
 ### Guides
 

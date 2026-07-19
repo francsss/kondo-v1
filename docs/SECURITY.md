@@ -75,6 +75,17 @@
 - Prisma parameterizes database queries.
 - React escapes rendered user text; user-authored HTML is not accepted.
 
+### Marketplace trust and safety
+
+- A rule-based fraud scorer flags advance-payment, gift-card/crypto, off-platform-payment, pressure-language, external-link, multiple-contact-number, and zero-price signals in listing text; listings scoring 70+ are held in `DRAFT` and cannot self-publish until an Admin marks them fraud-reviewed.
+- The seller-facing lifecycle is a server-enforced state machine (`DRAFT → ACTIVE → RESERVED/SOLD/ARCHIVED`, `EXPIRED → ACTIVE/ARCHIVED`); only `MARKETPLACE_CMS_MANAGE` can bypass the transition graph.
+- `ACTIVE` requires at least one owned `ACTIVE/CLEAN` Module 5 image and an active category; a listing with zero images cannot publish or remain published.
+- A scheduled worker (`/api/internal/marketplace/expire`, secret-gated) transitions past-due `ACTIVE`/`RESERVED` listings to `EXPIRED` idempotently and notifies the seller and any users who favorited it.
+- Listing reports reuse an active case under concurrency, capture an immutable snapshot (title, description, price, seller identity, media IDs), and retain referenced clean media as report evidence; Moderator evidence hides seller identity and media IDs, Admin/Super Admin retain them.
+- Only Admin and Super Admin receive `MARKETPLACE_CMS_VIEW` and `MARKETPLACE_CMS_MANAGE`; Moderator and Member cannot browse the admin listing inventory or override lifecycle/fraud state.
+- Listing creation is rate limited to 10/day per member; listing reports are rate limited to 12/day per member.
+- Normal listing pages, Search results, profile counts/lists, favorites, bookmarks, and the Marketplace contact message producer accept only listings that are `ACTIVE`, unexpired, and in an active category.
+
 ### Data minimization
 
 - Profiles collect only student-relevant identity and study context.

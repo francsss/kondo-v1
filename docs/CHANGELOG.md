@@ -2909,3 +2909,85 @@ Completed Module 11 Communities, Posts, Comments, and Events with reviewed commu
 - Implement Module 12 Marketplace lifecycle and migrate listing media to Module 5.
 - Preserve Module 11 owner, evidence, notification, and visibility contracts in every dependent module.
 - Add browser E2E coverage for community creation, invitation acceptance, ownership transfer, event validation, and responsive Admin CMS.
+
+⸻
+
+# Version 0.14.0
+
+Date:
+2026-07-19
+
+## Summary
+
+Completed and closed out Module 12 Marketplace lifecycle. The listing state machine, Module 5 media migration, fraud scoring, seller dashboard, category CRUD, automated expiry, and Marketplace Admin CMS were already implemented against real PostgreSQL with a dedicated integration suite; this release fixes the stale fixtures/assertions that had not been updated for the module's own visibility rules, finishes migrating the demo seed off legacy image keys, and brings documentation and the package version in line with the shipped feature.
+
+## Features Added
+
+- None. Module 12's application features (lifecycle transitions, fraud holds, Module 5 media attachment, category CRUD, automated expiry, report evidence, Admin CMS) were already present in the codebase.
+
+## Features Modified
+
+- None.
+
+## Bugs Fixed
+
+- Corrected `tests/unit/protected-target-routes.test.ts` to expect the current `activeListingWhere()` shape (status, `expiresAt`, active category) instead of the pre-Module-12 status-only check, fixing five failing assertions.
+- Corrected the Module 6 profile and Module 8 notification integration-test listing fixtures to set `expiresAt`, matching every real application code path that creates an `ACTIVE` listing; this fixed a profile activity/count mismatch and a false "Marketplace listing not found" failure in the Marketplace contact message producer.
+- Migrated the demo seed's four Marketplace listings from legacy `objectKey`-only images to real Module 5 `MediaAsset` records with generated image bytes in local object storage, and gave them `expiresAt`, so seeded listings are visible under the current lifecycle rules and render real photos instead of a category-icon fallback.
+
+## Database Changes
+
+- No new tables, columns, indexes, or migrations. Module 12's schema (`ListingStatus.EXPIRED`, fraud fields, `ListingImage.mediaId`) and its backfill of `expiresAt` for pre-existing listings were already delivered by migrations `20260716230000_marketplace_enums` and `20260716231000_marketplace_operations`.
+
+## API Changes
+
+- None. `GET|POST /api/marketplace`, `PATCH /api/marketplace/:id`, `POST /api/marketplace/:id/status`, `POST|DELETE /api/marketplace/:id/favorites`, `POST /api/marketplace/:id/report`, `POST /api/internal/marketplace/expire`, and the `admin/marketplace` + `admin/marketplace/categories` routes were already implemented.
+
+## UI/UX Changes
+
+- None. `/marketplace`, `/marketplace/new`, `/marketplace/[slug]`, `/marketplace/[slug]/edit`, `/marketplace/selling`, and the Admin Marketplace CMS pages were already implemented.
+
+## Performance Improvements
+
+- None beyond what Module 12 already delivered.
+
+## Security Improvements
+
+- None beyond what Module 12 already delivered; fraud-score gating, evidence retention/redaction, and CMS permission separation were already enforced.
+
+## Files Created
+
+- None.
+
+## Files Modified
+
+- `tests/unit/protected-target-routes.test.ts`
+- `tests/integration/profiles-postgres.test.ts`
+- `tests/integration/notifications-postgres.test.ts`
+- `prisma/seed.ts`
+- `package.json`
+- `docs/ROADMAP.md`
+- `docs/API.md`
+- `docs/DATABASE.md`
+- `docs/COMPONENTS.md`
+- `docs/SECURITY.md`
+- `docs/CHANGELOG.md`
+
+## Files Removed
+
+- None.
+
+## Breaking Changes
+
+None. This release only corrects test fixtures, migrates seed data, and updates documentation.
+
+## Migration Notes
+
+- No new database migration is required; existing deployments already carry Module 12's schema and `expiresAt` backfill.
+- Re-run `npm run db:seed` in local/demo environments only if you want the seed's marketplace listings to carry real Module 5 images.
+
+## Next Recommended Tasks
+
+- Add cursor pagination and PostgreSQL full-text indexes; measure before adopting a dedicated search service.
+- Finish email verification, password reset, session/device management, and one first-party OAuth provider.
+- Replace in-memory rate limits with shared Redis-compatible limits.

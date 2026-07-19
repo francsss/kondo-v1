@@ -55,16 +55,26 @@ All domain mutations execute with their mandatory AuditLog in one transaction. C
 
 ## Marketplace
 
-| Method   | Endpoint                         | Auth   | Purpose                                                          |
-| -------- | -------------------------------- | ------ | ---------------------------------------------------------------- |
-| `GET`    | `/api/marketplace`               | Public | List active items with optional `category` and `city` slugs.     |
-| `POST`   | `/api/marketplace`               | Member | Publish a validated listing and image object keys. Rate limited. |
-| `POST`   | `/api/marketplace/:id/favorites` | Member | Save a listing idempotently.                                     |
-| `DELETE` | `/api/marketplace/:id/favorites` | Member | Remove a saved listing.                                          |
+| Method   | Endpoint                                 | Auth/permission           | Purpose                                                                  |
+| -------- | ----------------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| `GET`    | `/api/marketplace`                       | Public                     | Paginated active listings with `category`, `city`, price, `q`, and `sort` filters. |
+| `POST`   | `/api/marketplace`                       | Member                     | Create a listing with up to 8 validated Module 5 images. Fraud-scored; high-risk listings hold in `DRAFT` for review. Rate limited to 10/day. |
+| `PATCH`  | `/api/marketplace/:id`                   | Seller/Admin                | Edit title, description, price, category, city, images, or expiry.       |
+| `POST`   | `/api/marketplace/:id/status`            | Seller/Admin                | Transition lifecycle status (`DRAFT`/`ACTIVE`/`RESERVED`/`SOLD`/`ARCHIVED`) through the enforced seller state machine. |
+| `POST`   | `/api/marketplace/:id/favorites`         | Member                     | Save a listing idempotently.                                             |
+| `DELETE` | `/api/marketplace/:id/favorites`         | Member                     | Remove a saved listing.                                                  |
+| `POST`   | `/api/marketplace/:id/report`            | Member                     | Create/reuse an active listing report with immutable evidence and retained media. Rate limited to 12/day. |
+| `POST`   | `/api/internal/marketplace/expire`       | Worker secret               | Expire past-due `ACTIVE`/`RESERVED` listings and notify sellers. Intended for a scheduled invocation of `npm run marketplace:expire`. |
+| `GET`    | `/api/admin/marketplace`                 | `MARKETPLACE_CMS_VIEW`      | Paginated/searchable/flagged listing inventory for staff.                |
+| `GET`    | `/api/admin/marketplace/:id`             | `MARKETPLACE_CMS_VIEW`      | Full listing detail including fraud signals and legacy-image status.     |
+| `PATCH`  | `/api/admin/marketplace/:id`             | `MARKETPLACE_CMS_MANAGE`    | Override status, mark fraud reviewed, and record a moderation note. Atomic audit. |
+| `GET`    | `/api/admin/marketplace/categories`      | `MARKETPLACE_CMS_VIEW`      | List all categories including inactive ones.                             |
+| `POST`   | `/api/admin/marketplace/categories`      | `MARKETPLACE_CMS_MANAGE`    | Create or update a category. Atomic audit.                               |
+| `DELETE` | `/api/admin/marketplace/categories/:id`  | `MARKETPLACE_CMS_MANAGE`    | Delete an unused category; rejected while listings still reference it.   |
 
-Kondo does not accept, initiate, authorize, record, or settle a payment. Contact between buyer and seller is a separate product boundary.
+Kondo does not accept, initiate, authorize, record, or settle a payment. Contact between buyer and seller uses the Module 10 messaging boundary; a rule-based fraud scorer flags advance-payment, gift-card/crypto, off-platform-payment, pressure language, external links, and multiple-contact-number signals, holding listings scoring 70+ in `DRAFT` until reviewed.
 
-Normal listing pages, Search results, profile counts/lists, favorites, and bookmarks accept only `ACTIVE` listings. Other lifecycle states return `404` and remain reserved for future owner/admin workflows.
+A listing must carry at least one validated Module 5 image to become or remain `ACTIVE`. Normal listing pages, Search results, profile counts/lists, favorites, bookmarks, and the Marketplace contact message producer accept only listings that are `ACTIVE`, unexpired, and in an active category; other lifecycle states return `404` outside seller/Admin surfaces. A scheduled worker transitions past-due listings to `EXPIRED` and notifies the seller and any users who favorited it.
 
 ## Messages and safety
 
@@ -226,4 +236,4 @@ Question pages, previews, answers, bookmarks, and Search expose only `PUBLISHED`
 
 ## Planned endpoints
 
-The roadmap next prioritizes Module 12 Marketplace lifecycle/media completion, shared limits, cursor/full-text search, and later editorial CMS modules. These must follow the same validation, authorization, audit, evidence-retention, and rate-limit patterns.
+The roadmap next prioritizes shared rate limits, cursor/full-text search, and later editorial CMS modules. These must follow the same validation, authorization, audit, evidence-retention, and rate-limit patterns already established through Module 12.

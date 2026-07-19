@@ -2,7 +2,7 @@
 
 ## Platform
 
-Kondo uses PostgreSQL through Prisma. The canonical schema is `prisma/schema.prisma`. Migration `20260715060000_kondo_community_mvp` creates the community-platform database, `20260715190000_student_hub_messages` adds private messaging and blocking, and `20260716090000_operational_moderation` makes Admin report handling operational.
+Kondo uses PostgreSQL through Prisma. The canonical schema is `prisma/schema.prisma`. Migration `20260715060000_kondo_community_mvp` creates the community-platform database, `20260715190000_student_hub_messages` adds private messaging and blocking, `20260716090000_operational_moderation` makes Admin report handling operational, and `20260716230000_marketplace_enums`/`20260716231000_marketplace_operations` deliver the Module 12 Marketplace lifecycle.
 
 ## Domain groups
 
@@ -26,9 +26,9 @@ Kondo uses PostgreSQL through Prisma. The canonical schema is `prisma/schema.pri
 
 ### Marketplace
 
-- `MarketplaceCategory`: ordered category vocabulary.
-- `MarketplaceListing`: seller, location, price in CNY fen, negotiation flag, and lifecycle state.
-- `ListingImage`: storage object key, ordering, alt text, and dimensions.
+- `MarketplaceCategory`: ordered category vocabulary with a description, icon, and active/inactive lifecycle enforced dependency-safe on delete.
+- `MarketplaceListing`: seller, location, price in CNY fen, negotiation flag, lifecycle state (`DRAFT`/`ACTIVE`/`RESERVED`/`SOLD`/`ARCHIVED`/`EXPIRED`/`REMOVED`), publish/expiry/reserved/sold/archived/removed/moderated timestamps, and a rule-based fraud score/flags/review timestamp.
+- `ListingImage`: an ordered image slot with a legacy nullable storage object key retained for historical rows and a unique optional relation to one validated Module 5 `MediaAsset`; new listings publish exclusively through the `MediaAsset` relation.
 - `ListingFavorite`: user/listing join table.
 
 There are no transaction, payment, wallet, transfer, payout, or settlement tables in the MVP.
@@ -65,7 +65,8 @@ There are no transaction, payment, wallet, transfer, payout, or settlement table
 - Community status/privacy/time, owner/status, member role/time, and access-request community/user lifecycle.
 - Post community/status/time, author/time, event date, and pin state.
 - Post community/type/validated-event date and ordered unique post media.
-- Listing status/time, category/status, city/status, seller/status, and price.
+- Listing status/time, category/status, city/status, seller/status, price, status/expiry, and fraud-score/status/time.
+- MarketplaceCategory active/order.
 - Question category/status/time.
 - Notification recipient/read/time, recipient/hidden/time, actor, job, and recipient/deduplication identity.
 - Notification-template type/active state; notification-job status/availability, recipient/status, announcement/status, and dedupe identity.

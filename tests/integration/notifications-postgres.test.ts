@@ -423,6 +423,7 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
         priceFen: 5000,
         status: "ACTIVE",
         publishedAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 86_400_000),
       },
     });
     try {

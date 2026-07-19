@@ -92,7 +92,12 @@ describe("protected mutation targets", () => {
       expect(response.status).toBe(404);
       expect(mocks.listingFavoriteUpsert).not.toHaveBeenCalled();
       expect(mocks.listingFindFirst).toHaveBeenCalledWith({
-        where: { id: "listing-1", status: "ACTIVE" },
+        where: {
+          id: "listing-1",
+          status: "ACTIVE",
+          expiresAt: { gt: expect.any(Date) },
+          category: { isActive: true },
+        },
         select: { id: true },
       });
     },

@@ -1,9 +1,62 @@
+import { createHash, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import sharp from "sharp";
 import { assertDestructiveSeedAllowed } from "../src/lib/seed-safety";
+import { getObjectStorage } from "../src/lib/storage";
 
 const prisma = new PrismaClient();
 const password = "ChangeMe123!";
+
+async function createDemoListingImage(input: {
+  ownerId: string;
+  attachmentId: string;
+  title: string;
+  color: string;
+}) {
+  const width = 960;
+  const height = 720;
+  const bytes = await sharp({
+    create: {
+      width,
+      height,
+      channels: 3,
+      background: input.color,
+    },
+  })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+  const objectKey = `marketplace/demo/${randomUUID()}.jpg`;
+  await getObjectStorage().write(objectKey, bytes, "image/jpeg");
+  const media = await prisma.mediaAsset.create({
+    data: {
+      ownerId: input.ownerId,
+      objectKey,
+      storageProvider: "LOCAL",
+      kind: "IMAGE",
+      purpose: "LISTING_IMAGE",
+      visibility: "PUBLIC",
+      status: "ACTIVE",
+      scanStatus: "CLEAN",
+      originalFileName: "listing.jpg",
+      extension: "jpg",
+      declaredMime: "image/jpeg",
+      detectedMime: "image/jpeg",
+      sizeBytes: bytes.byteLength,
+      width,
+      height,
+      altText: input.title,
+      checksumSha256: createHash("sha256").update(bytes).digest("hex"),
+      uploadExpiresAt: new Date(Date.now() + 60_000),
+      uploadedAt: new Date(),
+      validatedAt: new Date(),
+      attachedAt: new Date(),
+      attachmentType: "MARKETPLACE_LISTING",
+      attachmentId: input.attachmentId,
+    },
+  });
+  return media;
+}
 
 async function clearDatabase() {
   await prisma.analyticsEvent.deleteMany();
@@ -499,7 +552,7 @@ async function main() {
         "Well-maintained, recently serviced, and perfect for campus. Includes lock and front light. Pickup near Wudaokou.",
       priceFen: 68000,
       isNegotiable: true,
-      objectKey: "marketplace/demo/giant-bike.webp",
+      color: "#3f6d5c",
     },
     {
       slug: "ikea-study-desk",
@@ -511,7 +564,7 @@ async function main() {
         "Clean white desk with two drawers. Selling because I am graduating. Collection only.",
       priceFen: 24000,
       isNegotiable: false,
-      objectKey: "marketplace/demo/study-desk.webp",
+      color: "#c9a570",
     },
     {
       slug: "macbook-air-m1",
@@ -523,7 +576,7 @@ async function main() {
         "Battery health 91%, includes original charger and protective sleeve. Can meet on campus to test.",
       priceFen: 360000,
       isNegotiable: true,
-      objectKey: "marketplace/demo/macbook.webp",
+      color: "#8c8c94",
     },
     {
       slug: "hsk-4-book-set",
@@ -535,22 +588,37 @@ async function main() {
         "Textbook, workbook, and vocabulary cards. Light notes in pencil; otherwise excellent condition.",
       priceFen: 7500,
       isNegotiable: false,
-      objectKey: "marketplace/demo/hsk-books.webp",
+      color: "#4a6fa5",
     },
   ];
   const listings = [];
   for (const item of listingData) {
-    const { objectKey, ...data } = item;
-    listings.push(
-      await prisma.marketplaceListing.create({
-        data: {
-          ...data,
-          status: "ACTIVE",
-          publishedAt: new Date(),
-          images: { create: { objectKey, altText: item.title, order: 0 } },
-        },
-      }),
-    );
+    const { color, ...data } = item;
+    const listing = await prisma.marketplaceListing.create({
+      data: {
+        ...data,
+        status: "ACTIVE",
+        publishedAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 86_400_000),
+      },
+    });
+    const media = await createDemoListingImage({
+      ownerId: item.sellerId,
+      attachmentId: listing.id,
+      title: item.title,
+      color,
+    });
+    await prisma.listingImage.create({
+      data: {
+        listingId: listing.id,
+        mediaId: media.id,
+        altText: item.title,
+        width: media.width,
+        height: media.height,
+        order: 0,
+      },
+    });
+    listings.push(listing);
   }
   await prisma.listingFavorite.create({
     data: { listingId: listings[0].id, userId: ama.id },

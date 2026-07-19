@@ -112,18 +112,26 @@ The north star is Weekly Active Users. Work is prioritized by whether it helps s
 - Add paginated discovery and a complete Admin/Super Admin Community CMS plus local owner/moderator operations.
 - Validate owner invariants, audit rollback, access lifecycles, content, media, notifications, report concurrency, redaction, and Admin permissions against real PostgreSQL.
 
+## Now — Module 12 Marketplace lifecycle (completed in 0.14.0)
+
+- Deliver the full listing lifecycle (DRAFT, ACTIVE, RESERVED, SOLD, ARCHIVED, EXPIRED, REMOVED) with an enforced seller state machine and Admin override.
+- Migrate listing publishing to validated Module 5 media assets; retire legacy object-key-only listing images from the live create/edit path and the demo seed.
+- Add rule-based fraud scoring that automatically holds high-risk listings for review before publication.
+- Add a seller dashboard, category CRUD, automated expiry (scheduled worker + `marketplace:expire` script), and a permission-separated Marketplace Admin CMS.
+- Preserve Module 11 report/evidence patterns: role-redacted evidence snapshots and reused active-report concurrency handling for listings.
+- Add a dedicated PostgreSQL integration suite covering fraud holds, lifecycle transitions, idempotent expiry, evidence redaction, CMS permissions, pagination, and audit rollback.
+
 ## Next — make every core loop fully operable
 
-1. Implement Module 12 Marketplace lifecycle and migrate listing publishing from legacy image keys to validated Module 5 assets.
-2. Add cursor pagination and PostgreSQL full-text indexes; measure before adopting a dedicated search service.
-3. Finish email verification, password reset, session/device management, and one first-party OAuth provider.
-4. Replace in-memory rate limits—including community/message/block/report buckets—with shared Redis-compatible limits.
-5. Connect email digest delivery to a reviewed email provider and consent policy when infrastructure is approved.
-6. Add Admin actions for user status/session control and guide publishing on top of the completed report/audit foundation.
-7. Add browser-driven end-to-end tests for onboarding, authorization, community ownership, posting, marketplace, guide progress, responsive Admin operations, and mobile navigation.
-8. Instrument WAU, cohort retention, community engagement, event approval, marketplace contacts, guide completion, Search success, and moderation queue health.
-9. Move city-hub content to a reviewed editorial source with partner verification, expiry states, and moderation for jobs and dated events.
-10. Add event RSVP only after the validated event lifecycle has production usage data.
+1. Add cursor pagination and PostgreSQL full-text indexes; measure before adopting a dedicated search service.
+2. Finish email verification, password reset, session/device management, and one first-party OAuth provider.
+3. Replace in-memory rate limits—including community/message/block/report buckets—with shared Redis-compatible limits.
+4. Connect email digest delivery to a reviewed email provider and consent policy when infrastructure is approved.
+5. Add Admin actions for user status/session control and guide publishing on top of the completed report/audit foundation.
+6. Add browser-driven end-to-end tests for onboarding, authorization, community ownership, posting, marketplace, guide progress, responsive Admin operations, and mobile navigation.
+7. Instrument WAU, cohort retention, community engagement, event approval, marketplace contacts, guide completion, Search success, and moderation queue health.
+8. Move city-hub content to a reviewed editorial source with partner verification, expiry states, and moderation for jobs and dated events.
+9. Add event RSVP only after the validated event lifecycle has production usage data.
 
 ## Then — trust and engagement depth
 
