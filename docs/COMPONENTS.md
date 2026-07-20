@@ -51,6 +51,12 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 - `NotificationItem`: click-to-read row with actor avatar, unread styling, validated internal navigation, optimistic read state, and soft-hide action.
 - The notifications page uses server pagination, real total/unread counts, safe DTOs, an empty state, and Previous/Next controls.
 
+### Search
+
+- `ResultCard`: shared presentational card reused by both the mixed-category preview and the single-category paginated view.
+- `CategoryResults`: client "load more" panel for `/search?type=`; cursor-paginates one category through `/api/search` and renders category-specific cards (or the student `Avatar` card for `users`).
+- `/search`: full-text preview across communities, listings, guides, questions, users, and posts, with a "View all" link per category once it reaches the 6-item preview cap; `?type=` switches the same route into the paginated single-category view.
+
 ### Profiles
 
 - `ProfileView`: stable responsive rendering for public/member/owner profile DTOs, including permitted study context, visible communities, activity, marketplace entries, and coherent counters.
@@ -91,6 +97,15 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 - `GuideChecklist`: expandable steps with optimistic completion and rollback on API failure; progress writes require a published parent guide.
 - The guide library can filter to saved guides, and guide detail uses the shared persisted bookmark control.
 
+### Guides Admin
+
+- `GuideCreateForm`: creates a draft guide with a server-generated unique slug.
+- `GuideEditForm`: edits title, summary, category, estimated minutes, and featured flag.
+- `GuidePublishActions`: publish (disabled with zero steps)/unpublish toggle and delete-draft control, gated on `GUIDE_CMS_MANAGE`.
+- `GuideStepManager`: add/edit/delete ordered steps inline; a step with recorded member progress cannot be deleted.
+- `/admin/guides`: responsive, searchable, paginated inventory with a published/draft filter, plus the create form.
+- `/admin/guides/[id]`: full guide workspace combining the above controls.
+
 ### Student Hub
 
 - `StudentHubPage`: composes the existing guide and help-center capabilities into one resource dashboard with arrival, resource, Q&A, checklist, tip, article, and event entry points.
@@ -122,6 +137,7 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 - `/admin/message-safety`: aggregate messaging operations view for Admin/Super Admin with safe report links and an explicit no-raw-conversation privacy boundary.
 - `/admin/users`: responsive, searchable, paginated operational user review for Admin and Super Admin.
 - `/admin/users/[id]`: safe profile/account review with audiences, account requests, and bounded audit history; secrets and raw Prisma objects are excluded.
+- `UserStatusActions`: Module 17 status control (`ACTIVE`/`SUSPENDED`/`DEACTIVATED` with a required reason) and an independent "revoke all sessions" action, gated on `USER_MANAGE` and hidden on the actor's own account.
 - The Admin route group includes responsive loading skeletons, a retryable generic error boundary, a non-disclosing not-found surface, and an explicit permission-denied page for authenticated operations staff.
 - The mobile drawer exposes the existing Admin destination to authorized staff without changing the five-item bottom navigation.
 

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, { params }: Context) {
   if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`comment:${user.id}`, 60, 60 * 60_000).allowed) {
+  if (!(await rateLimit(`comment:${user.id}`, 60, 60 * 60_000)).allowed) {
     return jsonError("Comment limit reached.", 429);
   }
   const parsed = createCommentSchema.safeParse(

@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`listing:${user.id}`, 10, 24 * 60 * 60_000).allowed) {
+  if (!(await rateLimit(`listing:${user.id}`, 10, 24 * 60 * 60_000)).allowed) {
     return jsonError("Daily listing limit reached.", 429);
   }
   const parsed = createListingSchema.safeParse(await request.json().catch(() => null));

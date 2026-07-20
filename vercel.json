@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/internal/notifications/process",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/internal/notifications/digest",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/internal/marketplace/expire",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/internal/media/cleanup",
+      "schedule": "15 * * * *"
+    }
+  ]
+}

@@ -22,11 +22,11 @@ export async function PATCH(
   const auth = await authorizeAdminApi("NOTIFICATION_MANAGE");
   if (!auth.authorized) return auth.error;
   if (
-    !rateLimit(
+    !(await rateLimit(
       `admin-notification-template:${auth.user.id}`,
       60,
       24 * 60 * 60_000,
-    ).allowed
+    )).allowed
   ) {
     return adminJson(
       { error: "Template update limit reached. Try again later." },

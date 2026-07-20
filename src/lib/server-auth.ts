@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 const currentUserSelect = {
   id: true,
   email: true,
+  emailVerifiedAt: true,
   firstName: true,
   lastName: true,
   username: true,

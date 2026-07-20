@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//usr/local/**)",
+      "Bash(mdfind \"kMDItemFSName == 'node'\")",
+      "Bash(brew list *)",
+      "Bash(curl -sI https://nodejs.org)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh -o /tmp/nvm_install.sh)",
+      "Read(//tmp/**)",
+      "Bash(bash /tmp/nvm_install.sh)",
+      "Bash(npm config *)"
+    ]
+  }
+}

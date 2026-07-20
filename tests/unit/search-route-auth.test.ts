@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
   rateLimit: vi.fn(),
   searchKondo: vi.fn(),
+  searchCategory: vi.fn(),
 }));
 
 vi.mock("@/lib/server-auth", () => ({
@@ -15,9 +16,14 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimit: mocks.rateLimit,
 }));
 
-vi.mock("@/lib/platform-queries", () => ({
-  searchKondo: mocks.searchKondo,
-}));
+vi.mock("@/lib/search", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/search")>();
+  return {
+    ...actual,
+    searchKondo: mocks.searchKondo,
+    searchCategory: mocks.searchCategory,
+  };
+});
 
 import { GET } from "../../app/api/search/route";
 
@@ -76,5 +82,45 @@ describe("search API authentication and caching", () => {
     expect(await response.json()).toEqual({
       error: "An unexpected server error occurred.",
     });
+  });
+
+  it("paginates a single category through searchCategory when type is set", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "viewer-1" });
+    mocks.rateLimit.mockReturnValue({ allowed: true });
+    mocks.searchCategory.mockResolvedValue({
+      items: [{ id: "listing-1" }],
+      nextCursor: "opaque-cursor",
+    });
+    const response = await GET(
+      new NextRequest(
+        "http://localhost:3000/api/search?q=jiaxing&type=listings&cursor=abc&limit=5",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.searchKondo).not.toHaveBeenCalled();
+    expect(mocks.searchCategory).toHaveBeenCalledWith(
+      "listings",
+      "jiaxing",
+      "viewer-1",
+      { cursor: "abc", limit: 5 },
+    );
+    expect(await response.json()).toEqual({
+      items: [{ id: "listing-1" }],
+      nextCursor: "opaque-cursor",
+    });
+  });
+
+  it("rejects an unknown search category", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "viewer-1" });
+    mocks.rateLimit.mockReturnValue({ allowed: true });
+    const response = await GET(
+      new NextRequest(
+        "http://localhost:3000/api/search?q=jiaxing&type=not-a-category",
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.searchCategory).not.toHaveBeenCalled();
   });
 });

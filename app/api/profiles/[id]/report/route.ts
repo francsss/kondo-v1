@@ -22,7 +22,7 @@ export async function POST(
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`profile-report:${user.id}`, 5, 24 * 60 * 60_000).allowed) {
+  if (!(await rateLimit(`profile-report:${user.id}`, 5, 24 * 60 * 60_000)).allowed) {
     return jsonError("Report limit reached. Try again later.", 429);
   }
   const parsed = profileReportSchema.safeParse(

@@ -24,6 +24,17 @@
 | `STORAGE_ENDPOINT`             | Provider dependent | Custom S3-compatible endpoint.                                                                      |
 | `STORAGE_ACCESS_KEY_ID`        | Media launch       | Least-privilege upload/read identity.                                                               |
 | `STORAGE_SECRET_ACCESS_KEY`    | Media launch       | Storage secret managed by Vercel.                                                                   |
+| `DIRECT_URL`                   | Yes                | Direct (non-pooled) PostgreSQL connection used only by `prisma migrate deploy`. Set equal to `DATABASE_URL` for a non-pooled/local database. |
+| `CRON_SECRET`                  | Yes (cron)         | Shared secret Vercel Cron sends as `Authorization: Bearer …` to every internal worker route.        |
+| `NOTIFICATION_WORKER_SECRET`   | Optional           | Alternate bearer secret for the notification process/digest routes (manual/non-Vercel triggers).    |
+| `MARKETPLACE_WORKER_SECRET`    | Optional           | Alternate bearer secret for the marketplace expiry route.                                            |
+| `MEDIA_WORKER_SECRET`          | Optional           | Alternate bearer secret for the media cleanup route.                                                 |
+| `EMAIL_PROVIDER`               | Optional           | `console` (dev no-op) or `resend`. Auto-selects `resend` once `RESEND_API_KEY` is set.              |
+| `RESEND_API_KEY`               | Email launch       | Resend API key. Without it, production email sends throw rather than silently dropping mail.         |
+| `EMAIL_FROM`                   | Email launch       | Sender address on a Resend-verified domain, e.g. `Kondo <no-reply@kondo.app>`.                       |
+| `UPSTASH_REDIS_REST_URL`       | Optional           | Upstash Redis REST URL for shared rate limits. Falls back to per-instance in-memory when unset.     |
+| `UPSTASH_REDIS_REST_TOKEN`     | Optional           | Upstash Redis REST token (paired with the URL).                                                      |
+| `CRON_SECRET`/worker secrets   | —                  | Generate each with `openssl rand -hex 32`; `JWT_SECRET` with `openssl rand -base64 48`.             |
 
 ## Vercel release process
 
@@ -42,6 +53,38 @@
 Do not run the demo seed in production. The seed refuses `NODE_ENV=production` and `VERCEL_ENV=production` unconditionally, and non-production runs still require the one-command opt-in `KONDO_ALLOW_DESTRUCTIVE_SEED=true`.
 
 Release 0.13.0 requires all three community migrations before serving the new UI. Back up production, confirm every existing community has a valid `createdById`, and deploy migrations before the application build. The migration normalizes the creator as owner, marks existing published events validated, and aborts rather than accepting broken foreign-key or owner state.
+
+## Scheduled jobs (cron)
+
+Background work runs through authenticated internal HTTP routes, scheduled by Vercel Cron (defined in `vercel.json`). Vercel Cron issues a `GET` with `Authorization: Bearer <CRON_SECRET>`; each route also accepts its own worker secret over `GET`/`POST` for manual or non-Vercel triggers.
+
+| Route                                   | Default schedule (`vercel.json`) | Purpose                                            | Secrets accepted                              |
+| --------------------------------------- | -------------------------------- | -------------------------------------------------- | --------------------------------------------- |
+| `/api/internal/notifications/process`   | `* * * * *` (every minute)       | Drains the notification outbox.                    | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
+| `/api/internal/notifications/digest`    | `0 8 * * *` (daily 08:00 UTC)    | Sends due email digests.                           | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
+| `/api/internal/marketplace/expire`      | `0 * * * *` (hourly)             | Expires stale marketplace listings.                | `CRON_SECRET` or `MARKETPLACE_WORKER_SECRET`  |
+| `/api/internal/media/cleanup`           | `15 * * * *` (hourly)           | Deletes orphaned media and retries provider deletes.| `CRON_SECRET` or `MEDIA_WORKER_SECRET`        |
+
+- Set `CRON_SECRET` in Vercel; the crons will not authenticate without it.
+- Cron frequency depends on the Vercel plan: sub-daily schedules (e.g. the per-minute notification worker) require a Pro plan. On Hobby, reduce the schedules or run the equivalent CLI scripts (`npm run notifications:process`, `notifications:digest`, `marketplace:expire`, `media:cleanup`) from an external scheduler with the same database and storage credentials.
+- The equivalent CLI scripts call the same library functions directly and remain available for local runs and non-Vercel hosts.
+
+## Health check
+
+`GET /api/health` is an unauthenticated readiness probe: it performs a trivial database round-trip and returns `{"status":"ok"}` (200) or `{"status":"degraded"}` (503). Use it for uptime monitoring and post-deploy smoke tests. It exposes no build, version, or schema detail.
+
+## Go-live runbook
+
+1. Provision infrastructure: PostgreSQL (pooled `DATABASE_URL` + direct `DIRECT_URL`), a private S3-compatible bucket (R2/S3) with CORS allowing `PUT` from the app origin, and — recommended — Upstash Redis and a Resend-verified sending domain.
+2. Generate secrets: `JWT_SECRET` (`openssl rand -base64 48`), and `CRON_SECRET` + any worker secrets (`openssl rand -hex 32`). Store them only in Vercel.
+3. In Vercel, set every required variable (see the table above) for Production and Preview. Do not upload a local `.env`.
+4. Point `NEXT_PUBLIC_APP_URL` at the canonical HTTPS origin and add the bucket CORS rule for that exact origin.
+5. Run the quality gate in CI against a disposable `TEST_DATABASE_URL`: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+6. Apply migrations as a controlled release step: `npx prisma migrate deploy` (uses `DIRECT_URL`).
+7. Deploy the immutable build. Confirm `vercel.json` crons appear in the Vercel dashboard and that `CRON_SECRET` is set.
+8. Smoke-test: `GET /api/health` returns `ok`; register/login; verification and password-reset email arrive (once Resend is configured); upload an avatar/marketplace image; create a community and post; run a search; open `/explore/jiaxing`; and exercise the Admin surfaces including `/admin/city-hubs` (draft → review → publish) and `/admin/guides`.
+9. Trigger each cron route once manually (with the `CRON_SECRET` bearer) and confirm a 200 and expected side effects.
+10. Configure monitoring/alerts per the Performance checklist below.
 
 ## Local-network testing
 

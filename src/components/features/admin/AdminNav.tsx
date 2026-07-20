@@ -1,11 +1,13 @@
 import Link from "next/link";
 import {
   BellRing,
+  BookOpenText,
   Building2,
   Database,
   FileSearch,
   Images,
   LayoutDashboard,
+  MapPin,
   MessageCircleWarning,
   ShoppingBag,
   ScrollText,
@@ -73,6 +75,18 @@ const items = [
     label: "Users",
     icon: Users,
     permission: "USER_VIEW" as const,
+  },
+  {
+    href: "/admin/guides",
+    label: "Guides",
+    icon: BookOpenText,
+    permission: "GUIDE_CMS_VIEW" as const,
+  },
+  {
+    href: "/admin/city-hubs",
+    label: "City hubs",
+    icon: MapPin,
+    permission: "CITY_CMS_VIEW" as const,
   },
 ];
 

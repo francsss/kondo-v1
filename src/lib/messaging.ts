@@ -1,4 +1,5 @@
 import { Prisma, type MediaPurpose } from "@prisma/client";
+import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import {
   hasAdminPermission,
@@ -339,7 +340,7 @@ export async function createDirectMessage(input: {
   const directKey = directConversationKey(input.senderId, input.recipientId);
   const now = new Date();
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const conversation = await tx.conversation.upsert({
         where: { directKey },
         create: {
@@ -372,6 +373,15 @@ export async function createDirectMessage(input: {
           : undefined,
       });
     });
+    await trackEvent({ name: "MESSAGE_SENT", userId: input.senderId });
+    if (listing) {
+      await trackEvent({
+        name: "LISTING_CONTACTED",
+        userId: input.senderId,
+        properties: { listingId: listing.id },
+      });
+    }
+    return result;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -428,7 +438,7 @@ export async function replyToConversation(input: {
   if (!sender) throw new MessagingError("Sender not found.", 404);
 
   try {
-    return await prisma.$transaction((tx) =>
+    const result = await prisma.$transaction((tx) =>
       persistMessage(tx, {
         conversationId: input.conversationId,
         senderId: input.senderId,
@@ -438,6 +448,8 @@ export async function replyToConversation(input: {
         senderName: `${sender.firstName} ${sender.lastName}`,
       }),
     );
+    await trackEvent({ name: "MESSAGE_SENT", userId: input.senderId });
+    return result;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

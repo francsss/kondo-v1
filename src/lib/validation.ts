@@ -582,3 +582,216 @@ export const reportTransitionSchema = z.object({
     .optional(),
   resolution: z.string().trim().min(10).max(2_000).optional(),
 });
+
+// --- Module 14: email verification & password reset ---
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().trim().email().toLowerCase(),
+});
+
+export const confirmPasswordResetSchema = z.object({
+  token: z.string().trim().min(20).max(200),
+  password: passwordSchema,
+});
+
+export const confirmEmailVerificationSchema = z.object({
+  token: z.string().trim().min(20).max(200),
+});
+
+// --- Module 17: Admin user status control ---
+
+export const adminUserStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "SUSPENDED", "DEACTIVATED"]),
+  reason: z.string().trim().min(5).max(500),
+});
+
+// --- Module 17: Guide CMS ---
+
+const guideCategorySchema = z.enum([
+  "BEFORE_DEPARTURE",
+  "ARRIVAL",
+  "RESIDENCY",
+  "DAILY_LIFE",
+  "MONEY",
+  "TRANSPORT",
+  "HEALTH",
+  "UNIVERSITY",
+]);
+
+export const createGuideSchema = z.object({
+  title: z.string().trim().min(3).max(160),
+  summary: z.string().trim().min(10).max(500),
+  category: guideCategorySchema,
+  estimatedMinutes: z.number().int().min(1).max(600),
+  featured: z.boolean().optional(),
+});
+
+export const updateGuideSchema = z
+  .object({
+    title: z.string().trim().min(3).max(160),
+    summary: z.string().trim().min(10).max(500),
+    category: guideCategorySchema,
+    estimatedMinutes: z.number().int().min(1).max(600),
+    featured: z.boolean(),
+  })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Provide at least one field to update.",
+  });
+
+export const guidePublishSchema = z.object({
+  published: z.boolean(),
+});
+
+export const guideStepSchema = z.object({
+  order: z.number().int().min(1).max(100),
+  title: z.string().trim().min(3).max(160),
+  content: z.string().trim().min(3).max(10_000),
+  actionUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(500)
+    .nullable()
+    .optional()
+    .or(z.literal("").transform(() => null)),
+});
+
+// --- Module 20: City Hub editorial workflow ---
+
+// Zod mirror of the ExploreCity type in src/features/explore/types.ts. This is
+// the integrity gate for editorial content: a draft can be saved and a hub can
+// be published only if its payload conforms to exactly this shape, so the
+// public explore pages can render DB content with the same guarantees as the
+// static registry.
+const exploreIconSchema = z.enum([
+  "companies",
+  "products",
+  "universities",
+  "jobs",
+  "events",
+  "services",
+  "about",
+]);
+
+const exploreAccentSchema = z.enum([
+  "emerald",
+  "amber",
+  "blue",
+  "violet",
+  "rose",
+  "cyan",
+  "slate",
+]);
+
+const exploreEntryTypeSchema = z.enum([
+  "company",
+  "product",
+  "university",
+  "opportunity",
+  "event",
+  "service",
+  "story",
+]);
+
+const exploreEntrySchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and dashes only."),
+  type: exploreEntryTypeSchema,
+  title: z.string().trim().min(1).max(160),
+  category: z.string().trim().min(1).max(120),
+  summary: z.string().trim().min(1).max(600),
+  location: z.string().trim().max(160).optional(),
+  status: z.string().trim().max(120).optional(),
+  tags: z.array(z.string().trim().min(1).max(60)).max(20),
+  details: z.array(z.string().trim().min(1).max(400)).max(20),
+  source: z
+    .object({
+      label: z.string().trim().min(1).max(120),
+      href: z.string().trim().url().max(500),
+    })
+    .optional(),
+});
+
+const exploreSectionSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and dashes only."),
+  title: z.string().trim().min(1).max(160),
+  shortTitle: z.string().trim().min(1).max(80),
+  eyebrow: z.string().trim().min(1).max(120),
+  summary: z.string().trim().min(1).max(600),
+  description: z.string().trim().min(1).max(1_200),
+  icon: exploreIconSchema,
+  accent: exploreAccentSchema,
+  signal: z.string().trim().min(1).max(160),
+  studentValue: z.string().trim().min(1).max(400),
+  cityValue: z.string().trim().min(1).max(400),
+  entries: z.array(exploreEntrySchema).max(50),
+});
+
+export const exploreCityPayloadSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and dashes only."),
+  name: z.string().trim().min(1).max(120),
+  province: z.string().trim().min(1).max(120),
+  country: z.string().trim().min(1).max(120),
+  eyebrow: z.string().trim().min(1).max(160),
+  title: z.string().trim().min(1).max(160),
+  tagline: z.string().trim().min(1).max(200),
+  summary: z.string().trim().min(1).max(600),
+  description: z.string().trim().min(1).max(1_200),
+  signals: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(80),
+        value: z.string().trim().min(1).max(160),
+      }),
+    )
+    .max(12),
+  impactPoints: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(120),
+        description: z.string().trim().min(1).max(400),
+      }),
+    )
+    .max(12),
+  sections: z.array(exploreSectionSchema).min(1).max(12),
+});
+
+export const cityHubCreateSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and dashes only."),
+  name: z.string().trim().min(1).max(120),
+  // When true and a static registry city matches the slug, the new hub's draft
+  // is seeded from that registry content instead of an empty scaffold.
+  seedFromRegistry: z.boolean().optional(),
+});
+
+export const cityHubUpdateSchema = z.object({
+  payload: exploreCityPayloadSchema,
+  expectedVersion: z.number().int().positive(),
+});
+
+export const cityHubStatusSchema = z.object({
+  status: z.enum(["DRAFT", "REVIEW", "PUBLISHED"]),
+  expectedVersion: z.number().int().positive(),
+});

@@ -7,3 +7,6 @@ dist
 *.log
 *.tsbuildinfo
 prisma/dev.db
+/playwright-report
+/test-results
+/blob-report

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`message:${user.id}`, 30, 60_000).allowed) {
+  if (!(await rateLimit(`message:${user.id}`, 30, 60_000)).allowed) {
     return jsonError("Message limit reached. Try again shortly.", 429);
   }
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   );
   if (
     !existing &&
-    !rateLimit(`new-conversation:${user.id}`, 8, 60 * 60_000).allowed
+    !(await rateLimit(`new-conversation:${user.id}`, 8, 60 * 60_000)).allowed
   ) {
     return jsonError("New conversation limit reached. Try again later.", 429);
   }

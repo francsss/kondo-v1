@@ -18,7 +18,7 @@ export async function POST(
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`media-complete:${user.id}`, 60, 60_000).allowed) {
+  if (!(await rateLimit(`media-complete:${user.id}`, 60, 60_000)).allowed) {
     return jsonError("Too many media requests. Try again shortly.", 429);
   }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  ArrowRight,
   BookOpenText,
   CircleHelp,
   MessageSquareText,
@@ -10,24 +11,62 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
+import { CategoryResults } from "@/components/features/search/CategoryResults";
+import { ResultCard } from "@/components/features/search/ResultCard";
 import { formatPrice } from "@/lib/presentation";
-import { searchKondo } from "@/lib/platform-queries";
+import { SEARCH_CATEGORIES, searchKondo, type SearchCategory } from "@/lib/search";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Search" };
 
+const CATEGORY_LABEL: Record<SearchCategory, string> = {
+  communities: "Communities",
+  listings: "Marketplace",
+  guides: "Guides",
+  questions: "Questions",
+  users: "Students",
+  posts: "Posts",
+};
+
+function isSearchCategory(value?: string): value is SearchCategory {
+  return (SEARCH_CATEGORIES as readonly string[]).includes(value ?? "");
+}
+
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; type?: string }>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", type } = await searchParams;
   const user = await requireUser();
+
+  if (q.length >= 2 && isSearchCategory(type)) {
+    return (
+      <div className="mx-auto max-w-[1040px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
+        <Link
+          className="inline-flex items-center gap-1 text-sm font-bold text-kondo-green"
+          href={`/search?q=${encodeURIComponent(q)}`}
+        >
+          ← Back to all results
+        </Link>
+        <h1 className="mt-3 text-2xl font-black text-kondo-ink dark:text-white">
+          {CATEGORY_LABEL[type]} matching “{q}”
+        </h1>
+        <div className="mt-6">
+          <CategoryResults category={type} key={`${type}:${q}`} query={q} />
+        </div>
+      </div>
+    );
+  }
+
   const results = await searchKondo(q, user.id);
   const total = Object.values(results).reduce(
     (count, items) => count + items.length,
     0,
   );
+  function viewAllHref(category: SearchCategory) {
+    return `/search?q=${encodeURIComponent(q)}&type=${category}`;
+  }
   return (
     <div className="mx-auto max-w-[1040px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
       <form
@@ -140,41 +179,22 @@ export default async function SearchPage({
               </Link>
             ))}
           </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {SEARCH_CATEGORIES.filter(
+              (category) => results[category].length === 6,
+            ).map((category) => (
+              <Link
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-xs font-bold text-kondo-green transition hover:border-kondo-green dark:border-white/10"
+                href={viewAllHref(category)}
+                key={category}
+              >
+                View all {CATEGORY_LABEL[category]}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ))}
+          </div>
         </>
       )}
     </div>
-  );
-}
-
-function ResultCard({
-  href,
-  icon,
-  label,
-  title,
-  detail,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <Link href={href}>
-      <Card className="flex h-full items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10 [&>svg]:h-5 [&>svg]:w-5">
-          {icon}
-        </span>
-        <span>
-          <span className="text-[10px] font-black uppercase tracking-wider text-kondo-green">
-            {label}
-          </span>
-          <span className="mt-1 block font-bold text-kondo-ink dark:text-white">
-            {title}
-          </span>
-          <span className="mt-1 block text-xs text-slate-400">{detail}</span>
-        </span>
-      </Card>
-    </Link>
   );
 }

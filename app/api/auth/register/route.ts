@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
@@ -19,7 +20,7 @@ import { registerSchema } from "@/lib/validation";
 export async function POST(request: NextRequest) {
   if (!hasTrustedOrigin(request))
     return jsonError("Invalid request origin.", 403);
-  const limit = rateLimit(`register:${requestIp(request)}`, 5, 60 * 60_000);
+  const limit = await rateLimit(`register:${requestIp(request)}`, 5, 60 * 60_000);
   if (!limit.allowed)
     return jsonError("Too many accounts created. Try again later.", 429);
 
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
       });
       return { user: createdUser, sessionId: createdSessionId };
     });
+    await trackEvent({ name: "USER_REGISTERED", userId: user.id, sessionId });
 
     const token = await createSessionToken({
       id: user.id,

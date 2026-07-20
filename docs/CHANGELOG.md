@@ -2991,3 +2991,437 @@ None. This release only corrects test fixtures, migrates seed data, and updates 
 - Add cursor pagination and PostgreSQL full-text indexes; measure before adopting a dedicated search service.
 - Finish email verification, password reset, session/device management, and one first-party OAuth provider.
 - Replace in-memory rate limits with shared Redis-compatible limits.
+
+⸻
+
+# Version 0.15.0
+
+Date:
+2026-07-19
+
+## Summary
+
+Implemented Module 13: PostgreSQL full-text search with cursor pagination, replacing substring (`ILIKE`) matching across all six searchable content types and adding a paginated single-category "view all" flow to the existing Search preview.
+
+## Features Added
+
+- Added a generated, field-weighted `tsvector` column with a GIN index to `Community`, `MarketplaceListing`, `Guide`, `Question`, `Post`, and `User`, ranking title/name matches above description/body-only matches.
+- Added `GET /api/search?type=&cursor=&limit=` for cursor-paginated single-category results alongside the existing mixed-category preview.
+- Added a "View all" link per category on `/search` once a category reaches the 6-item preview cap, and a client `CategoryResults` "Load more" panel backed by the new endpoint.
+
+## Features Modified
+
+- Rewrote `searchKondo`'s per-category matching from Prisma `contains`/`ILIKE` to `websearch_to_tsquery`/`ts_rank` full-text queries. Every full-text candidate is still re-checked through the existing typed content-visibility policies before it reaches a response, so full-text matching cannot surface anything normal visibility rules would hide.
+- Moved `searchKondo` out of `src/lib/platform-queries.ts` into a new `src/lib/search.ts` module boundary, matching the one-file-per-domain convention used by Marketplace, Messaging, and Communities.
+
+## Bugs Fixed
+
+- None; this is a new module.
+
+## Database Changes
+
+- Added migration `20260717000000_search_full_text`: one generated `tsvector` column and one GIN index per searchable model. No existing column was altered or removed.
+
+## API Changes
+
+- Added the `type`/`cursor`/`limit` query parameters to `GET /api/search`; omitting `type` preserves the exact existing preview response contract.
+
+## UI/UX Changes
+
+- Added "View all" links from the Search preview to a paginated single-category view, and a "Load more" control within it.
+- No existing route, layout, or navigation destination changed.
+
+## Performance Improvements
+
+- Replaced full-table `ILIKE` substring scans with GIN-indexed full-text lookups across all six searchable models.
+- Cursor pagination avoids the cost of large `OFFSET` scans on subsequent pages.
+
+## Security Improvements
+
+- Full-text search only ever returns candidate IDs and a rank; every candidate is re-verified against the same content-visibility policy used by every other read path (community membership, published state, active listing state) before it is serialized, on every page, not only the first.
+- Added a unit-test regression (`search-security.test.ts`) confirming raw Prisma objects, private user fields, and internal identifiers still never reach a search response.
+
+## Files Created
+
+- `prisma/migrations/20260717000000_search_full_text/migration.sql`
+- `src/lib/search.ts`
+- `src/components/features/search/ResultCard.tsx`
+- `src/components/features/search/CategoryResults.tsx`
+- `tests/integration/search-postgres.test.ts`
+
+## Files Modified
+
+- `src/lib/platform-queries.ts`
+- `app/api/search/route.ts`
+- `app/(platform)/search/page.tsx`
+- `prisma/schema.prisma`
+- `tests/unit/search-security.test.ts`
+- `tests/unit/search-route-auth.test.ts`
+- `package.json`
+- `docs/ARCHITECTURE.md`
+- `docs/API.md`
+- `docs/DATABASE.md`
+- `docs/COMPONENTS.md`
+- `docs/SECURITY.md`
+- `docs/ROADMAP.md`
+- `docs/CHANGELOG.md`
+
+## Files Removed
+
+- None.
+
+## Breaking Changes
+
+None. `GET /api/search?q=` without `type` returns the exact same response shape as before.
+
+## Migration Notes
+
+- Run `npx prisma migrate deploy` before deploying; the migration is additive (new column + index only) and safe to apply without downtime.
+- No seed or application-data backfill is required; generated columns compute automatically for existing rows.
+
+## Next Recommended Tasks
+
+- Finish email verification, password reset, session/device management, and one first-party OAuth provider.
+- Replace in-memory rate limits with shared Redis-compatible limits.
+- Connect email digest delivery to a reviewed email provider and consent policy when infrastructure is approved.
+
+⸻
+
+# Version 0.16.0
+
+Date:
+2026-07-19
+
+## Summary
+
+Implemented Module 14 email verification and password reset. Session/device management was already complete from Module 7 and needed no further work. Selecting and wiring a first-party OAuth provider is deliberately deferred: it requires a product decision on which provider to use and real client credentials, neither of which exist yet.
+
+## Features Added
+
+- Added `EmailVerificationToken` and `PasswordResetToken`: single-use, SHA-256-hashed, expiring tokens (24h / 1h), mirroring `Session`'s hash-only storage pattern.
+- Added `POST /api/auth/verify-email/request`, `POST /api/auth/verify-email/confirm`, `POST /api/auth/password-reset/request`, and `POST /api/auth/password-reset/confirm`.
+- Added `/forgot-password` (request a reset), `/reset-password` (confirm with a new password), and `/verify-email` (confirm a verification link) pages.
+- Added a resend-verification banner to Settings → Account, shown only when `emailVerifiedAt` is unset.
+- Added `src/lib/email.ts`, a provider-neutral transactional email boundary. Without a configured `EMAIL_PROVIDER` it no-ops outside production (the raw token is returned directly for local testing) and throws rather than pretending to deliver in production.
+
+## Features Modified
+
+- Added `emailVerifiedAt` to the shared authenticated-user select (`src/lib/server-auth.ts`) so any page can read verification state without an extra query.
+- Exported `passwordSchema` from `src/lib/validation.ts` for reuse by the new password-reset confirmation schema.
+- Added a "Forgot password?" link to the login form.
+
+## Bugs Fixed
+
+- None; this is a new module.
+
+## Database Changes
+
+- Added migration `20260717010000_auth_verification_reset`: two new tables (`EmailVerificationToken`, `PasswordResetToken`), each with a unique hashed-token index and a user/used-at index. No existing table was altered.
+
+## API Changes
+
+- Added the four `/api/auth/verify-email/*` and `/api/auth/password-reset/*` endpoints described above.
+
+## UI/UX Changes
+
+- Added the three new auth-adjacent pages and the Settings → Account verification banner. No existing route, layout, or navigation destination changed.
+
+## Performance Improvements
+
+- None material; token lookups use the new unique hashed-token indexes.
+
+## Security Improvements
+
+- Tokens are single-use: confirming one marks it used, and requesting a new one invalidates any unused prior token for that user.
+- Password-reset confirmation revokes every session for that user in the same transaction as the password change.
+- Password-reset requests always take a comparable path and return the same generic response whether or not the email matches an active account, and are rate limited per email, preventing account enumeration through this endpoint.
+- Verification-request and reset-request endpoints are rate limited (3/hour, 5/hour respectively) independent of the generic auth rate limits.
+- Raw tokens are never persisted or logged; only their SHA-256 hash is stored, and the raw value is returned in an API response only outside production, exclusively to keep the flow testable without a live email provider.
+
+## Files Created
+
+- `prisma/migrations/20260717010000_auth_verification_reset/migration.sql`
+- `src/lib/auth-tokens.ts`
+- `src/lib/email.ts`
+- `app/api/auth/verify-email/request/route.ts`
+- `app/api/auth/verify-email/confirm/route.ts`
+- `app/api/auth/password-reset/request/route.ts`
+- `app/api/auth/password-reset/confirm/route.ts`
+- `app/forgot-password/page.tsx`
+- `app/reset-password/page.tsx`
+- `app/verify-email/page.tsx`
+- `src/components/features/settings/EmailVerificationBanner.tsx`
+- `tests/integration/auth-tokens-postgres.test.ts`
+
+## Files Modified
+
+- `prisma/schema.prisma`
+- `src/lib/server-auth.ts`
+- `src/lib/validation.ts`
+- `app/login/page.tsx`
+- `app/(platform)/settings/account/page.tsx`
+- `.env.example`
+- `package.json`
+- `docs/ARCHITECTURE.md`
+- `docs/API.md`
+- `docs/DATABASE.md`
+- `docs/SECURITY.md`
+- `docs/ROADMAP.md`
+- `docs/CHANGELOG.md`
+
+## Files Removed
+
+- None.
+
+## Breaking Changes
+
+None. No existing endpoint, page, or response contract changed.
+
+## Migration Notes
+
+- Run `npx prisma migrate deploy` before deploying; the migration only adds two new tables.
+- Set `EMAIL_PROVIDER` before relying on this in production; without it, `sendTransactionalEmail` throws in production rather than silently no-op-ing, so verification/reset requests will fail loudly until a provider is connected.
+
+## Next Recommended Tasks
+
+- Select and wire one first-party OAuth provider once a provider decision and client credentials are available.
+- Replace in-memory rate limits with shared Redis-compatible limits.
+- Connect a reviewed email provider for verification, password reset, and digest delivery.
+
+⸻
+
+# Version 0.17.0
+
+Date:
+2026-07-19
+
+## Summary
+
+Implemented Module 17: Admin actions for user status/session control, and a guide publishing CMS. Both permission-gated to Admin/Super Admin, both fully audited, and both built on existing tables — no schema migration was needed for the guide CMS, and only a permission-enum addition (no new tables) for user management.
+
+## Features Added
+
+- Added `USER_MANAGE`: Admin/Super Admin can set a member's status (`ACTIVE`/`SUSPENDED`/`DEACTIVATED`) with a required reason, and independently force-revoke all of a user's sessions. Suspending or deactivating revokes every session for that user in the same transaction. Blocked against the actor's own account, and against a Super Admin target unless the actor is also Super Admin.
+- Added `GUIDE_CMS_VIEW`/`GUIDE_CMS_MANAGE`: Admin/Super Admin can create, edit, and publish/unpublish guides, and add/edit/delete their ordered steps. A guide cannot publish with zero steps. Deleting a guide is blocked while published or while any step has recorded member progress.
+- Added `/admin/guides` (searchable, paginated, published/draft filter, create form) and `/admin/guides/[id]` (edit details, publish/unpublish, delete draft, manage steps).
+- Added status/session controls to `/admin/users/[id]`.
+
+## Features Modified
+
+- None.
+
+## Bugs Fixed
+
+- None; this is a new module.
+
+## Database Changes
+
+- None. `USER_MANAGE`/`GUIDE_CMS_VIEW`/`GUIDE_CMS_MANAGE` are additions to the existing `AdminPermission` TypeScript union, not a schema change. Guide CMS operates on the existing `Guide`/`GuideStep` tables from the original schema.
+
+## API Changes
+
+- Added `PATCH /api/admin/users/:id/status` and `DELETE /api/admin/users/:id/sessions`.
+- Added `GET|POST /api/admin/guides`, `GET|PATCH|DELETE /api/admin/guides/:id`, `POST /api/admin/guides/:id/publish`, `POST /api/admin/guides/:id/steps`, and `PATCH|DELETE /api/admin/guides/:id/steps/:stepId`.
+
+## UI/UX Changes
+
+- Added a "Guides" entry to `AdminNav` and the two new guide CMS pages.
+- Added an account-control card to the existing `/admin/users/[id]` page, visible only to actors with `USER_MANAGE` and hidden on the actor's own profile.
+
+## Performance Improvements
+
+- None material.
+
+## Security Improvements
+
+- User status changes and session revocation require `USER_MANAGE`, are blocked against self-targeting, and are blocked against a Super Admin target unless the actor is also Super Admin — preventing a compromised or malicious Admin from disabling account-management oversight of itself or of Super Admins.
+- Every status change, session revocation, guide mutation, and step mutation writes a transactional AuditLog entry.
+- Guide CMS access requires `GUIDE_CMS_VIEW`/`GUIDE_CMS_MANAGE`; Moderator and Member have no guide-administration access.
+
+## Files Created
+
+- `src/lib/guides.ts`
+- `app/api/admin/users/[id]/status/route.ts`
+- `app/api/admin/users/[id]/sessions/route.ts`
+- `app/api/admin/guides/route.ts`
+- `app/api/admin/guides/[id]/route.ts`
+- `app/api/admin/guides/[id]/publish/route.ts`
+- `app/api/admin/guides/[id]/steps/route.ts`
+- `app/api/admin/guides/[id]/steps/[stepId]/route.ts`
+- `app/admin/guides/page.tsx`
+- `app/admin/guides/[id]/page.tsx`
+- `src/components/features/admin/UserStatusActions.tsx`
+- `src/components/features/admin/GuideCreateForm.tsx`
+- `src/components/features/admin/GuideEditForm.tsx`
+- `src/components/features/admin/GuidePublishActions.tsx`
+- `src/components/features/admin/GuideStepManager.tsx`
+- `tests/integration/admin-actions-postgres.test.ts`
+
+## Files Modified
+
+- `src/lib/authorization.ts`
+- `src/lib/profiles.ts`
+- `src/lib/validation.ts`
+- `src/components/features/admin/AdminNav.tsx`
+- `app/admin/users/[id]/page.tsx`
+- `tests/unit/authorization.test.ts`
+- `package.json`
+- `docs/ARCHITECTURE.md`
+- `docs/API.md`
+- `docs/DATABASE.md`
+- `docs/COMPONENTS.md`
+- `docs/SECURITY.md`
+- `docs/ROADMAP.md`
+- `docs/CHANGELOG.md`
+
+## Files Removed
+
+- None.
+
+## Breaking Changes
+
+None. No existing endpoint, page, permission, or response contract changed; both new permissions are additive.
+
+## Migration Notes
+
+- No database migration is required.
+
+## Next Recommended Tasks
+
+- Select and wire one first-party OAuth provider once a provider decision and client credentials are available.
+- Replace in-memory rate limits with shared Redis-compatible limits.
+- Connect a reviewed email provider for verification, password reset, and digest delivery.
+
+⸻
+
+# Version 0.18.0
+
+Date:
+2026-07-20
+
+## Summary
+
+Recovered an interrupted work-in-progress and completed the remaining infrastructure and content-operations modules. A prior session had left `src/lib/validation.ts` truncated to a placeholder, which broke the build across ~28 route handlers; it has been restored and the previously-drafted Modules 15 (Redis rate limiting), 16 (Resend email), 18 (Playwright E2E), and 19 (analytics) have been verified, wired end-to-end, and confirmed against the full quality gate. Module 20 (City Hub editorial workflow) is a new, database-backed Draft → Review → Published pipeline for the Explore-your-city hubs, with admin-only publishing and a static-registry fallback.
+
+## Features Added
+
+- **Module 20 — City Hub editorial workflow.** New `CityHub` model with a `CityHubStatus` (`DRAFT`/`REVIEW`/`PUBLISHED`) editorial state machine. City content is edited as a structured JSON payload validated against the `ExploreCity` shape, so a hub can only be saved or published when its content conforms. Publishing copies the working `draft` into a `published` snapshot; the public `/explore/[city]` pages serve that snapshot when present and fall back to the static typed registry otherwise, so revising a published hub (reverting it to draft) never takes the live page down. New `CITY_CMS_VIEW`/`CITY_CMS_MANAGE` permissions (Admin/Super Admin only) — publishing is therefore administrator-only. Admin CMS at `/admin/city-hubs` (list/filter/create, seed-from-registry) and `/admin/city-hubs/[id]` (edit draft, run transitions, preview live snapshot). Optimistic-concurrency `version` guard and transactional AuditLog entries on every mutation.
+- **Module 19 — Analytics instrumentation completed.** Added the missing `EXPLORE_CITY_VIEWED` event on the Explore-your-city page. All ten target events are now instrumented on the shared `AnalyticsEvent` model via `trackEvent`: registration, login, community creation, post creation, listing creation, marketplace contact, message sent, search, Student Hub, and Explore-city visits.
+
+## Features Modified
+
+- Restored `src/lib/validation.ts` (regenerated from the committed baseline plus the eight schemas the Module 14/17 routes require: `requestPasswordResetSchema`, `confirmPasswordResetSchema`, `confirmEmailVerificationSchema`, `adminUserStatusSchema`, `createGuideSchema`, `updateGuideSchema`, `guidePublishSchema`, `guideStepSchema`) and added the Module 20 payload/operation schemas.
+- Verified Modules 15, 16, and 18 (dependencies and scaffolding were present from the interrupted session): `rateLimit` is Upstash-backed with an in-memory fallback and is awaited by all ~30 callers; `sendTransactionalEmail` routes through Resend and is invoked by the verification, password-reset, and digest flows; Playwright is configured against `./e2e` with guest/authenticated/setup projects and does not collide with the Vitest suite.
+
+## Bugs Fixed
+
+- Fixed the build-breaking placeholder in `src/lib/validation.ts` that made the module fail to compile and cascaded `TS2306` errors into every route importing it.
+
+## Database Changes
+
+- Added enum `CityHubStatus` and model `CityHub` (`slug` unique, `status`, `draft` JSONB, `published` JSONB nullable, `version`, `publishedAt`, author/editor relations, `@@index([status, updatedAt])`). Migration `20260720000000_city_hub_editorial`. No existing table changed.
+
+## API Changes
+
+- Added `GET|POST /api/admin/city-hubs`, `GET|PATCH|DELETE /api/admin/city-hubs/:id`, and `POST /api/admin/city-hubs/:id/status`. All require `CITY_CMS_VIEW`/`CITY_CMS_MANAGE`, enforce trusted origin on writes, and use optimistic-concurrency versions.
+
+## UI/UX Changes
+
+- Added a "City hubs" entry to `AdminNav` (visible with `CITY_CMS_VIEW`) and the two new admin pages, plus a per-visit analytics call on the public Explore page.
+
+## Security Improvements
+
+- City hub publishing is gated to Admin/Super Admin, every mutation is transactional with a mandatory AuditLog record, and content is schema-validated before it can be published so malformed data can never reach the public page.
+
+## Files Created
+
+- `src/lib/city-hub.ts`
+- `app/api/admin/city-hubs/route.ts`, `app/api/admin/city-hubs/[id]/route.ts`, `app/api/admin/city-hubs/[id]/status/route.ts`
+- `app/admin/city-hubs/page.tsx`, `app/admin/city-hubs/[id]/page.tsx`
+- `src/components/features/admin/CityHubCreateForm.tsx`, `CityHubEditor.tsx`, `CityHubStatusActions.tsx`
+- `prisma/migrations/20260720000000_city_hub_editorial/migration.sql`
+- `tests/integration/city-hub-postgres.test.ts`
+
+## Files Modified
+
+- `src/lib/validation.ts`, `src/lib/authorization.ts`
+- `app/(platform)/explore/[city]/page.tsx`, `app/(platform)/explore/[city]/[section]/page.tsx`
+- `src/components/features/admin/AdminNav.tsx`
+- `prisma/schema.prisma`
+- `docs/ROADMAP.md`, `docs/DATABASE.md`, `docs/API.md`, `docs/CHANGELOG.md`
+
+## Breaking Changes
+
+None. All additions are additive; existing routes, permissions, and response contracts are unchanged.
+
+## Migration Notes
+
+- Apply migration `20260720000000_city_hub_editorial` (`npx prisma migrate deploy`).
+- Redis and email remain optional: with `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` unset the limiter uses the in-memory fallback, and with `RESEND_API_KEY`/`EMAIL_FROM` unset transactional email no-ops outside production. All four are documented in `.env.example`.
+- Environment note: if `node_modules` is transferred as an archive (e.g. via a chat client) macOS may quarantine the native Prisma/Next binaries; clear it with `xattr -dr com.apple.quarantine node_modules` or reinstall.
+
+## Next Recommended Tasks
+
+- Select and wire one first-party OAuth provider once a provider decision and client credentials are available.
+- Provision the real Upstash Redis and Resend credentials in the deployment environment to activate shared rate limits and live email.
+- Move the remaining city-hub content off the static registry as more cities adopt the editorial workflow, and add partner verification/expiry for jobs and dated events.
+
+⸻
+
+# Version 0.19.0
+
+Date:
+2026-07-20
+
+## Summary
+
+Production-hardening and deployment enablement that requires no external credentials. Makes background work runnable on Vercel Cron, prepares Prisma for managed serverless Postgres, adds a health probe, expands end-to-end coverage, and completes the environment documentation and go-live runbook.
+
+## Features Added
+
+- Cron-compatible internal worker routes: `/api/internal/notifications/process`, `/notifications/digest`, and `/marketplace/expire` now accept `GET` (for Vercel Cron) and `POST`, authorized by a shared `CRON_SECRET` or their per-worker secret via a new `src/lib/worker-auth.ts` helper.
+- New `/api/internal/media/cleanup` route exposing the previously CLI-only media cleanup so it can run on a schedule.
+- `vercel.json` with cron schedules for all four background jobs.
+- Unauthenticated `GET /api/health` readiness probe (database round-trip; 200/503) that leaks no build or schema detail.
+- Expanded Playwright suite: a super-admin auth setup and `admin` project, plus member-journey specs (Explore city hub, notifications, settings, profile edit, mobile bottom navigation) and admin-operations specs (overview, City Hub CMS, Guides CMS). 12 → 20 tests across 7 files.
+
+## Features Modified
+
+- Prisma datasource now declares `directUrl` (env `DIRECT_URL`) so `prisma migrate deploy` uses a direct connection while the app uses the pooled `DATABASE_URL`; `scripts/prepare-test-db.mjs` threads `DIRECT_URL` for the local/test database.
+
+## Database Changes
+
+- None. `DIRECT_URL` is a connection-configuration addition, not a schema change.
+
+## API Changes
+
+- Added `GET /api/health`. Added `GET` handlers to the three existing internal worker routes and a new `GET|POST /api/internal/media/cleanup`.
+
+## Security Improvements
+
+- Internal worker routes use constant-time secret comparison and are closed by default when no secret is configured. Health and worker routes are `no-store` and expose no sensitive detail.
+
+## Files Created
+
+- `src/lib/worker-auth.ts`, `app/api/internal/media/cleanup/route.ts`, `app/api/health/route.ts`
+- `vercel.json`
+- `e2e/admin.setup.ts`, `e2e/member-journeys.authenticated.spec.ts`, `e2e/admin-operations.admin.spec.ts`
+
+## Files Modified
+
+- `prisma/schema.prisma`, `scripts/prepare-test-db.mjs`
+- `app/api/internal/notifications/process/route.ts`, `app/api/internal/notifications/digest/route.ts`, `app/api/internal/marketplace/expire/route.ts`
+- `playwright.config.ts`, `.env.example`, `docs/DEPLOYMENT.md`, `docs/CHANGELOG.md`
+
+## Breaking Changes
+
+None. All additions are additive and backward-compatible; existing `POST` worker triggers continue to work with their worker secrets.
+
+## Migration Notes
+
+- Set `DIRECT_URL` in every environment (equal to `DATABASE_URL` for a non-pooled/local database). Set `CRON_SECRET` in Vercel to enable the scheduled jobs. Sub-daily cron frequencies require a Vercel Pro plan; otherwise run the equivalent CLI scripts from an external scheduler.
+
+## Next Recommended Tasks
+
+- Provide the production infrastructure credentials (PostgreSQL, object storage, optional Upstash/Resend) and configure Vercel.
+- Decide on and wire a first-party OAuth provider if desired.

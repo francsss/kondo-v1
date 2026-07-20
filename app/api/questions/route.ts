@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`question:${user.id}`, 8, 60 * 60_000).allowed) {
+  if (!(await rateLimit(`question:${user.id}`, 8, 60 * 60_000)).allowed) {
     return jsonError("Question limit reached. Try again later.", 429);
   }
   const parsed = createQuestionSchema.safeParse(

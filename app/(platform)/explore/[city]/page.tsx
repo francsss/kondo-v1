@@ -5,6 +5,9 @@ import {
   getExploreCity,
   getExploreCityParams,
 } from "@/features/explore/registry";
+import { trackEvent } from "@/lib/analytics";
+import { resolvePublishedCity } from "@/lib/city-hub";
+import { requireUser } from "@/lib/server-auth";
 
 type PageProps = { params: Promise<{ city: string }> };
 
@@ -14,7 +17,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city: citySlug } = await params;
-  const city = getExploreCity(citySlug);
+  const city = (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
   if (!city) return { title: "Explore your city" };
   return {
     title: `Explore ${city.name}`,
@@ -24,8 +27,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ExploreCityPage({ params }: PageProps) {
   const { city: citySlug } = await params;
-  const city = getExploreCity(citySlug);
+  const city = (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
   if (!city) notFound();
+
+  const user = await requireUser();
+  await trackEvent({
+    name: "EXPLORE_CITY_VIEWED",
+    userId: user.id,
+    properties: { city: city.slug },
+  });
 
   return <CityHubView city={city} />;
 }

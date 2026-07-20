@@ -29,6 +29,13 @@ async function ensureLocalTestDatabase() {
 
 await ensureLocalTestDatabase();
 execFileSync("npx", ["prisma", "migrate", "deploy"], {
-  env: { ...process.env, DATABASE_URL: testDatabaseUrl },
+  // The schema now declares a `directUrl` (env DIRECT_URL) for migrations. The
+  // local/test database is not pooled, so point DIRECT_URL at the same database
+  // as DATABASE_URL when it is not explicitly provided.
+  env: {
+    ...process.env,
+    DATABASE_URL: testDatabaseUrl,
+    DIRECT_URL: process.env.DIRECT_URL ?? testDatabaseUrl,
+  },
   stdio: "inherit",
 });

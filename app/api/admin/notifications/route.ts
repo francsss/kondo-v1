@@ -33,11 +33,11 @@ export async function POST(request: NextRequest) {
   const auth = await authorizeAdminApi("NOTIFICATION_MANAGE");
   if (!auth.authorized) return auth.error;
   if (
-    !rateLimit(
+    !(await rateLimit(
       `admin-notification-announcement:${auth.user.id}`,
       10,
       24 * 60 * 60_000,
-    ).allowed
+    )).allowed
   ) {
     return adminJson(
       { error: "Announcement limit reached. Try again later." },

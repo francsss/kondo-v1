@@ -1145,3 +1145,101 @@ export async function getAdminUser(actor: ProfileActor, userId: string) {
     reportedSubjects: undefined,
   };
 }
+
+export async function updateUserStatusAsAdmin(input: {
+  actor: ProfileActor;
+  userId: string;
+  status: "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+  reason: string;
+  meta?: RequestMeta;
+}) {
+  if (!hasAdminPermission(input.actor.role, "USER_MANAGE")) {
+    throw new ProfileError("Access denied.", 403);
+  }
+  if (input.actor.id === input.userId) {
+    throw new ProfileError("You cannot change your own account status.", 409);
+  }
+  return prisma.$transaction(async (tx) => {
+    const target = await tx.user.findUnique({
+      where: { id: input.userId },
+      select: { id: true, role: true, status: true },
+    });
+    if (!target) throw new ProfileError("Account not found.", 404);
+    if (
+      target.role === "SUPER_ADMIN" &&
+      input.actor.role !== "SUPER_ADMIN"
+    ) {
+      throw new ProfileError(
+        "Only a Super Admin can change another Super Admin's status.",
+        403,
+      );
+    }
+    const updated = await tx.user.update({
+      where: { id: target.id },
+      data: { status: input.status },
+      select: { id: true, status: true },
+    });
+    let sessionsRevoked = 0;
+    if (input.status !== "ACTIVE") {
+      const revoked = await tx.session.deleteMany({
+        where: { userId: target.id },
+      });
+      sessionsRevoked = revoked.count;
+    }
+    await writeAuditLogWithClient(tx, {
+      actorId: input.actor.id,
+      action: "USER_STATUS_UPDATED",
+      entityType: "User",
+      entityId: target.id,
+      oldValue: { status: target.status },
+      newValue: {
+        status: updated.status,
+        reason: input.reason,
+        sessionsRevoked,
+      },
+      ...input.meta,
+    });
+    return { status: updated.status, sessionsRevoked };
+  });
+}
+
+export async function revokeUserSessionsAsAdmin(input: {
+  actor: ProfileActor;
+  userId: string;
+  meta?: RequestMeta;
+}) {
+  if (!hasAdminPermission(input.actor.role, "USER_MANAGE")) {
+    throw new ProfileError("Access denied.", 403);
+  }
+  if (input.actor.id === input.userId) {
+    throw new ProfileError("You cannot revoke your own sessions here.", 409);
+  }
+  return prisma.$transaction(async (tx) => {
+    const target = await tx.user.findUnique({
+      where: { id: input.userId },
+      select: { id: true, role: true },
+    });
+    if (!target) throw new ProfileError("Account not found.", 404);
+    if (
+      target.role === "SUPER_ADMIN" &&
+      input.actor.role !== "SUPER_ADMIN"
+    ) {
+      throw new ProfileError(
+        "Only a Super Admin can revoke another Super Admin's sessions.",
+        403,
+      );
+    }
+    const revoked = await tx.session.deleteMany({
+      where: { userId: target.id },
+    });
+    await writeAuditLogWithClient(tx, {
+      actorId: input.actor.id,
+      action: "USER_SESSIONS_REVOKED_BY_ADMIN",
+      entityType: "User",
+      entityId: target.id,
+      newValue: { sessionsRevoked: revoked.count },
+      ...input.meta,
+    });
+    return { sessionsRevoked: revoked.count };
+  });
+}

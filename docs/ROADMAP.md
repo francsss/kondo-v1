@@ -121,17 +121,45 @@ The north star is Weekly Active Users. Work is prioritized by whether it helps s
 - Preserve Module 11 report/evidence patterns: role-redacted evidence snapshots and reused active-report concurrency handling for listings.
 - Add a dedicated PostgreSQL integration suite covering fraud holds, lifecycle transitions, idempotent expiry, evidence redaction, CMS permissions, pagination, and audit rollback.
 
+## Now — Module 13 search pagination and full-text indexing (completed in 0.15.0)
+
+- Give every searchable model (`Community`, `MarketplaceListing`, `Guide`, `Question`, `Post`, `User`) a generated, field-weighted PostgreSQL `tsvector` column with a GIN index; title/name matches rank above description/body-only matches.
+- Replace `ILIKE`-style substring matching with `websearch_to_tsquery`/`ts_rank` full-text queries, re-checked through the existing typed content-visibility policies so full-text can never surface a row normal visibility rules would hide.
+- Add cursor-paginated single-category results (`/api/search?type=&cursor=&limit=`) alongside the existing mixed-category preview, with a "View all" entry point from the `/search` page and a client "Load more" panel.
+- Measured before adopting a dedicated search service: PostgreSQL full-text plus a GIN index is sufficient at current data volume; `src/lib/search.ts` stays isolated so a future Typesense/Meilisearch/OpenSearch migration would not change page contracts.
+
+## Now — Module 14 email verification and password reset (completed in 0.16.0)
+
+- Add single-use, hashed, expiring email-verification and password-reset tokens (`EmailVerificationToken`, `PasswordResetToken`), mirroring `Session`'s hash-only storage.
+- Add `/api/auth/verify-email/*` and `/api/auth/password-reset/*`, a `/forgot-password` request page, a `/reset-password` confirmation page, a `/verify-email` confirmation page, and a resend-verification banner in Settings → Account.
+- Password-reset requests are rate limited and always return the same generic response regardless of whether the email matches an account, preventing enumeration; confirming a reset revokes every session for that user.
+- Add `src/lib/email.ts`, a provider-neutral transactional email boundary that safely no-ops in development without a configured provider and refuses to silently pretend delivery succeeded in production.
+- Session/device management was already delivered in Module 7 (Settings → Sessions & devices) and needed no further work here.
+- Deliberately deferred: selecting and wiring one first-party OAuth provider requires a product decision (which provider) and real client credentials neither of which exist yet; it stays in the list below.
+
+## Now — Module 17 Admin user status/session control and guide publishing (completed in 0.17.0)
+
+- Add `USER_MANAGE` (Admin/Super Admin only): suspend/reactivate/deactivate an account with a required reason, and revoke every session for a user independent of a status change. Both are blocked against the actor's own account, and blocked against a Super Admin target unless the actor is also Super Admin.
+- Suspending or deactivating an account revokes every session for it in the same transaction as the status change.
+- Add `GUIDE_CMS_VIEW`/`GUIDE_CMS_MANAGE` (Admin/Super Admin only): create/edit guides, manage ordered steps, and publish/unpublish. No schema change was needed — `Guide`/`GuideStep` already existed but had no Admin surface. A guide cannot publish with zero steps, and cannot be deleted while published or while any step has recorded member progress.
+- Add `/admin/guides` and `/admin/guides/[id]`, and status/session controls on `/admin/users/[id]`.
+
+## Now — Modules 15/16/18/19/20 infrastructure and content operations (completed in 0.18.0)
+
+- Module 15: Upstash Redis-backed shared rate limits (`@upstash/ratelimit`), env-var driven, with an automatic in-memory fallback when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are unset or Redis is unreachable. All rate-limited endpoints await the shared limiter.
+- Module 16: Resend transactional email boundary (`src/lib/email.ts`), env-var driven (`RESEND_API_KEY`/`EMAIL_FROM`), wired to verification, password-reset, and digest flows; safely no-ops outside production and refuses to pretend delivery in production.
+- Module 18: Playwright E2E suite under `./e2e` (guest/authenticated/setup projects, production web server) covering landing/auth, sign-out, and authenticated critical journeys; isolated from the Vitest unit/integration suite.
+- Module 19: analytics instrumentation on the existing `AnalyticsEvent` model for all ten core events, including the newly-added `EXPLORE_CITY_VIEWED`.
+- Module 20: database-backed City Hub editorial workflow (`CityHub`, `CityHubStatus`) with a Draft → Review → Published state machine, admin-only publishing (`CITY_CMS_VIEW`/`CITY_CMS_MANAGE`), schema-validated JSON content, versioned optimistic concurrency, transactional audit, and a static-registry fallback so existing city pages keep working.
+
 ## Next — make every core loop fully operable
 
-1. Add cursor pagination and PostgreSQL full-text indexes; measure before adopting a dedicated search service.
-2. Finish email verification, password reset, session/device management, and one first-party OAuth provider.
-3. Replace in-memory rate limits—including community/message/block/report buckets—with shared Redis-compatible limits.
-4. Connect email digest delivery to a reviewed email provider and consent policy when infrastructure is approved.
-5. Add Admin actions for user status/session control and guide publishing on top of the completed report/audit foundation.
-6. Add browser-driven end-to-end tests for onboarding, authorization, community ownership, posting, marketplace, guide progress, responsive Admin operations, and mobile navigation.
-7. Instrument WAU, cohort retention, community engagement, event approval, marketplace contacts, guide completion, Search success, and moderation queue health.
-8. Move city-hub content to a reviewed editorial source with partner verification, expiry states, and moderation for jobs and dated events.
-9. Add event RSVP only after the validated event lifecycle has production usage data.
+1. Select and wire one first-party OAuth provider (needs a product decision on provider plus real client credentials before implementation).
+2. Provision real Upstash Redis and Resend credentials in the deployment environment to activate shared rate limits and live transactional email (both integrations are implemented and dormant until the env vars exist).
+3. Expand the browser-driven E2E suite to onboarding, community ownership, posting, marketplace, guide progress, responsive Admin operations, and mobile navigation.
+4. Instrument the remaining WAU/retention/queue-health dashboards on top of the now-populated analytics events.
+5. Migrate more city-hub content off the static registry as cities adopt the editorial workflow, and add partner verification, expiry states, and moderation for jobs and dated events.
+6. Add event RSVP only after the validated event lifecycle has production usage data.
 
 ## Then — trust and engagement depth
 

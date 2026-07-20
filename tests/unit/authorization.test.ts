@@ -65,12 +65,17 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("ADMIN", "COMMUNITY_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("ADMIN", "MARKETPLACE_CMS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "MARKETPLACE_CMS_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "USER_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "GUIDE_CMS_VIEW")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "GUIDE_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("MODERATOR", "REFERENCE_DATA_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "MEDIA_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "USER_VIEW")).toBe(false);
+    expect(hasAdminPermission("MODERATOR", "USER_MANAGE")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "NOTIFICATION_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "COMMUNITY_CMS_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "MARKETPLACE_CMS_VIEW")).toBe(false);
+    expect(hasAdminPermission("MODERATOR", "GUIDE_CMS_VIEW")).toBe(false);
 
     expect(
       hasAdminPermission("SUPER_ADMIN", "AUDIT_VIEW_SECURITY_METADATA"),

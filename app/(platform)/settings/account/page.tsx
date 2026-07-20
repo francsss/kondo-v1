@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AccountRequestPanel } from "@/components/features/profile/AccountRequestPanel";
+import { EmailVerificationBanner } from "@/components/features/settings/EmailVerificationBanner";
 import { LogoutButton } from "@/components/features/settings/LogoutButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -29,6 +30,9 @@ export default async function AccountSettingsPage() {
         />
       </div>
       <div className="mt-7 space-y-6">
+        {!user.emailVerifiedAt ? (
+          <EmailVerificationBanner email={user.email} />
+        ) : null}
         <Card>
           <h2 className="font-black text-kondo-ink dark:text-white">
             Sign out

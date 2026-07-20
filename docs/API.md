@@ -12,8 +12,14 @@ All state-changing browser requests require an authenticated database session wh
 | `GET`   | `/api/auth/me`       | Session | Return the safe current-user projection.                            |
 | `PATCH` | `/api/onboarding`    | Session | Save a validated resumable onboarding draft without completing it.  |
 | `PUT`   | `/api/onboarding`    | Session | Complete or update student context atomically with its audit event. |
+| `POST`  | `/api/auth/verify-email/request` | Session | Issue a new single-use email verification token; invalidates any unused prior token. Rate limited to 3/hour. |
+| `POST`  | `/api/auth/verify-email/confirm` | Public | Consume a verification token and set `emailVerifiedAt`. |
+| `POST`  | `/api/auth/password-reset/request` | Public | Issue a password-reset token if the email matches an active account. Always returns the same generic `200` response regardless of match, to prevent account enumeration. Rate limited to 5/hour per email. |
+| `POST`  | `/api/auth/password-reset/confirm` | Public | Consume a reset token, set a new password, and revoke every session for that user. |
 
-Authentication cookies are host-only, HTTP-only, `SameSite=Lax`, scoped to `/`, and expire after seven days. `Secure` is enabled only for production HTTPS requests, including Vercel's forwarded HTTPS protocol, and omitted for local HTTP through `localhost` or a LAN IP. Creation and deletion share the same name, path, SameSite, and transport policy. Password hashes use bcrypt cost 12. OAuth providers can be added through `OAuthAccount` without changing `User` identity.
+Authentication cookies are host-only, HTTP-only, `SameSite=Lax`, scoped to `/`, and expire after seven days. `Secure` is enabled only for production HTTPS requests, including Vercel's forwarded HTTPS protocol, and omitted for local HTTP through `localhost` or a LAN IP. Creation and deletion share the same name, path, SameSite, and transport policy. Password hashes use bcrypt cost 12. OAuth providers can be added through `OAuthAccount` without changing `User` identity; no OAuth provider is wired yet and selecting one (client credentials, consent scope) is a pending product decision.
+
+Email verification and password-reset tokens are single-use and stored only as a SHA-256 hash, mirroring `Session`. Requesting a new token invalidates any unused prior token for that user. `src/lib/email.ts` is the transactional email boundary; without a configured `EMAIL_PROVIDER` it no-ops in development (the raw token is returned in the API response only outside production, for local testing) and throws rather than silently dropping the message in production. Connecting a real provider is a pending infrastructure decision, consistent with the existing email-digest roadmap item.
 
 Session authorization always uses the current PostgreSQL user role and status. Suspended or deactivated accounts, expired sessions, and revoked session rows receive `401`; an outdated role stored in the signed token cannot retain an old Admin permission. Successful login persists its session and audit event atomically, while registration persists user, session, and audit atomically.
 
@@ -161,6 +167,23 @@ All Admin endpoints require an active session and an exact server-side permissio
 | `DELETE` | `/api/admin/media/:id`                | `MEDIA_MANAGE`               | Remove delivery with a required reason and atomic AuditLog entry.                     |
 | `GET`    | `/api/admin/users`                    | `USER_VIEW`                  | Paginated safe user review with account/profile filters and explicit DTOs.            |
 | `GET`    | `/api/admin/users/:id`                | `USER_VIEW`                  | Safe operational user detail, profile audiences, account requests, and bounded audit. |
+| `PATCH`  | `/api/admin/users/:id/status`         | `USER_MANAGE`                 | Set `ACTIVE`/`SUSPENDED`/`DEACTIVATED` with a required reason; suspending or deactivating revokes every session for that user. Blocked against the actor's own account and, unless the actor is Super Admin, against a Super Admin target. |
+| `DELETE` | `/api/admin/users/:id/sessions`       | `USER_MANAGE`                 | Force-revoke every session for a user independent of a status change. Same self/Super-Admin guards as above. |
+| `GET`    | `/api/admin/guides`                   | `GUIDE_CMS_VIEW`              | Paginated guide inventory with title/slug search and a published filter.             |
+| `POST`   | `/api/admin/guides`                   | `GUIDE_CMS_MANAGE`            | Create a draft guide with a server-generated unique slug.                             |
+| `GET`    | `/api/admin/guides/:id`               | `GUIDE_CMS_VIEW`              | Full guide detail including ordered steps and per-step completion counts.             |
+| `PATCH`  | `/api/admin/guides/:id`               | `GUIDE_CMS_MANAGE`            | Update title, summary, category, estimated minutes, or featured flag.                 |
+| `DELETE` | `/api/admin/guides/:id`               | `GUIDE_CMS_MANAGE`            | Delete a guide; rejected while published or while any step has recorded progress.     |
+| `POST`   | `/api/admin/guides/:id/publish`       | `GUIDE_CMS_MANAGE`            | Publish (rejected with zero steps) or unpublish a guide.                              |
+| `POST`   | `/api/admin/guides/:id/steps`         | `GUIDE_CMS_MANAGE`            | Add a step; a duplicate `order` within the guide returns `409`.                       |
+| `PATCH`  | `/api/admin/guides/:id/steps/:stepId` | `GUIDE_CMS_MANAGE`            | Update a step's order, title, content, or action link.                                |
+| `DELETE` | `/api/admin/guides/:id/steps/:stepId` | `GUIDE_CMS_MANAGE`            | Remove a step.                                                                         |
+| `GET`    | `/api/admin/city-hubs`                | `CITY_CMS_VIEW`              | Paginated city-hub inventory with name/slug search and a status filter.               |
+| `POST`   | `/api/admin/city-hubs`                | `CITY_CMS_MANAGE`            | Create a draft city hub; can seed the draft from the matching registry city.          |
+| `GET`    | `/api/admin/city-hubs/:id`            | `CITY_CMS_VIEW`              | Full city-hub detail including draft and published payloads.                           |
+| `PATCH`  | `/api/admin/city-hubs/:id`            | `CITY_CMS_MANAGE`            | Replace the draft payload (schema-validated); allowed only while in `DRAFT`. Versioned.|
+| `DELETE` | `/api/admin/city-hubs/:id`            | `CITY_CMS_MANAGE`            | Delete a city hub; rejected while published.                                           |
+| `POST`   | `/api/admin/city-hubs/:id/status`     | `CITY_CMS_MANAGE`            | Run an editorial transition (`DRAFT`/`REVIEW`/`PUBLISHED`). Publishing is admin-only. Versioned.|
 | `PATCH`  | `/api/admin/account-requests/:id`     | `ACCOUNT_REQUEST_MANAGE`     | Version-guarded processing, completion, or rejection with mandatory resolution.       |
 | `GET`    | `/api/admin/notifications`            | `NOTIFICATION_VIEW`          | Template, announcement, queue, delivery, skip, retry, and failure diagnostics.         |
 | `POST`   | `/api/admin/notifications`            | `NOTIFICATION_MANAGE`        | Queue one audited in-app product announcement for active members.                     |
@@ -178,6 +201,12 @@ Media viewing and management are also restricted to `ADMIN` and `SUPER_ADMIN`. A
 
 User review and account-request processing are restricted to `ADMIN` and `SUPER_ADMIN`; Moderators do not receive profile-private fields or account-request operations. Admin responses exclude password hashes, sessions, OAuth secrets, raw media records, and provider object keys.
 
+User status control and session revocation are also `ADMIN`/`SUPER_ADMIN` only via `USER_MANAGE`. An Admin cannot change their own status, and cannot act on a Super Admin's status or sessions — only another Super Admin can.
+
+Guide CMS access is `ADMIN`/`SUPER_ADMIN` only via `GUIDE_CMS_VIEW`/`GUIDE_CMS_MANAGE`; Moderators have no guide-administration access. New guides are always created unpublished; publishing requires at least one step.
+
+City Hub CMS access is `ADMIN`/`SUPER_ADMIN` only via `CITY_CMS_VIEW`/`CITY_CMS_MANAGE`; Moderators have no access. Hubs follow a `DRAFT → REVIEW → PUBLISHED` state machine — direct `DRAFT → PUBLISHED` is rejected, and only administrators can publish. Draft content is editable only in the `DRAFT` state; publishing validates the payload against the `ExploreCity` schema and copies it into the live public snapshot. Every write is guarded by an optimistic-concurrency `expectedVersion` and writes a transactional AuditLog entry.
+
 Notification administration is Admin/Super Admin only. Template keys/types and allowed variables are fixed; safety-result notifications cannot be disabled, announcements are rate limited, and diagnostics omit recipients, payload data, email addresses, and raw worker errors.
 
 Message safety administration is Admin/Super Admin only. It exposes aggregate direct-thread, recent-volume, attachment, block, report, archive, and clear counts plus safe report references. It intentionally offers no raw-conversation browser; message evidence remains available only through a member-created report and its role-redacted case view.
@@ -190,9 +219,10 @@ Assignment and transition payloads include `expectedVersion`. A stale version, c
 | -------- | ------------------------------ | ------ | ------------------------------------------------------------------------- |
 | `PUT`    | `/api/guides/progress/:stepId` | Member | Complete a step only when its parent guide is published.                  |
 | `DELETE` | `/api/guides/progress/:stepId` | Member | Clear progress only when its parent guide is published.                   |
-| `GET`    | `/api/search?q=`               | Member | Search visible content with safe DTOs. Rate limited and private/no-store. |
+| `GET`    | `/api/search?q=`               | Member | Preview: top 6 full-text-ranked matches per category (communities, listings, guides, questions, users, posts) with safe DTOs. Rate limited and private/no-store. |
+| `GET`    | `/api/search?q=&type=&cursor=&limit=` | Member | Cursor-paginated full-text results for one category (`type` is one of the six above). Returns `{ items, nextCursor }`; `nextCursor` is `null` on the last page. `limit` is clamped to 5–30. |
 
-Search uses explicit Prisma selections and stable response DTOs. Public user and post-author projections contain only `id`, `username`, `firstName`, and `lastName`; the user result adds only the non-sensitive country emoji and current affiliation required by the existing interface. Inactive users, inaccessible private communities/posts, non-active listings, unpublished guides, and unpublished questions are excluded.
+Search matches PostgreSQL full-text (`tsvector`/`websearch_to_tsquery`) against a generated, field-weighted vector column per model (title/name weighted above description/body), ranked by `ts_rank`. Matching still runs through explicit Prisma selections and stable response DTOs after the full-text step. Public user and post-author projections contain only `id`, `username`, `firstName`, and `lastName`; the user result adds only the non-sensitive country emoji and current affiliation required by the existing interface. Inactive users, inaccessible private communities/posts, non-active listings, unpublished guides, and unpublished questions are excluded from both the preview and the paginated category endpoint.
 
 ## Bookmarks and notifications
 

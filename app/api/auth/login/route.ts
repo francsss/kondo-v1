@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import {
   writeAuditLog,
   writeAuditLogWithClient,
@@ -25,7 +26,7 @@ import { loginSchema } from "@/lib/validation";
 export async function POST(request: NextRequest) {
   if (!hasTrustedOrigin(request))
     return jsonError("Invalid request origin.", 403);
-  const limit = rateLimit(`login:${requestIp(request)}`, 8, 10 * 60_000);
+  const limit = await rateLimit(`login:${requestIp(request)}`, 8, 10 * 60_000);
   if (!limit.allowed)
     return jsonError("Too many attempts. Try again later.", 429);
 
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       });
       return createdSessionId;
     });
+    await trackEvent({ name: "USER_LOGGED_IN", userId: user.id, sessionId });
 
     const token = await createSessionToken({
       id: user.id,

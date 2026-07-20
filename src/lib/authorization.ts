@@ -22,6 +22,7 @@ export const ADMIN_PERMISSIONS = [
   "MEDIA_VIEW",
   "MEDIA_MANAGE",
   "USER_VIEW",
+  "USER_MANAGE",
   "ACCOUNT_REQUEST_MANAGE",
   "NOTIFICATION_VIEW",
   "NOTIFICATION_MANAGE",
@@ -30,6 +31,10 @@ export const ADMIN_PERMISSIONS = [
   "COMMUNITY_CMS_MANAGE",
   "MARKETPLACE_CMS_VIEW",
   "MARKETPLACE_CMS_MANAGE",
+  "GUIDE_CMS_VIEW",
+  "GUIDE_CMS_MANAGE",
+  "CITY_CMS_VIEW",
+  "CITY_CMS_MANAGE",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -65,6 +70,7 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly AdminPermission[]> = {
     "MEDIA_VIEW",
     "MEDIA_MANAGE",
     "USER_VIEW",
+    "USER_MANAGE",
     "ACCOUNT_REQUEST_MANAGE",
     "NOTIFICATION_VIEW",
     "NOTIFICATION_MANAGE",
@@ -73,6 +79,10 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly AdminPermission[]> = {
     "COMMUNITY_CMS_MANAGE",
     "MARKETPLACE_CMS_VIEW",
     "MARKETPLACE_CMS_MANAGE",
+    "GUIDE_CMS_VIEW",
+    "GUIDE_CMS_MANAGE",
+    "CITY_CMS_VIEW",
+    "CITY_CMS_MANAGE",
   ],
   SUPER_ADMIN: ADMIN_PERMISSIONS,
 };

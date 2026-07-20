@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`settings:${user.id}`, 60, 60 * 60_000).allowed) {
+  if (!(await rateLimit(`settings:${user.id}`, 60, 60 * 60_000)).allowed) {
     return jsonError("Settings update limit reached. Try again later.", 429);
   }
   const parsed = settingsPreferencesSchema.safeParse(

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { AccountRequestActions } from "@/components/features/admin/AccountRequestActions";
 import { AdminNav } from "@/components/features/admin/AdminNav";
+import { UserStatusActions } from "@/components/features/admin/UserStatusActions";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -200,6 +201,10 @@ export default async function AdminUserDetailPage({
         </div>
 
         <div className="space-y-6">
+          {hasAdminPermission(actor.role, "USER_MANAGE") &&
+          actor.id !== user.id ? (
+            <UserStatusActions initialStatus={user.status} userId={user.id} />
+          ) : null}
           <Card>
             <div className="flex items-center gap-3">
               <LockKeyhole className="h-5 w-5 text-kondo-green" />

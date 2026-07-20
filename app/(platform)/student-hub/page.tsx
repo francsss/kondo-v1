@@ -13,6 +13,7 @@ import {
 import { GuideCard } from "@/components/features/guides/GuideCard";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { trackEvent } from "@/lib/analytics";
 import { publishedPostVisibilityWhere } from "@/lib/content-visibility";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatRelativeDate } from "@/lib/presentation";
@@ -73,6 +74,7 @@ const resources = [
 
 export default async function StudentHubPage() {
   const user = await requireUser();
+  await trackEvent({ name: "STUDENT_HUB_VIEWED", userId: user.id });
   const [guides, questions, events] = await Promise.all([
     getGuideLibrary(user.id),
     getHelpQuestions(),

@@ -4,7 +4,14 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Pooled connection used by the application at runtime (e.g. Neon/PgBouncer).
   url      = env("DATABASE_URL")
+  // Direct (non-pooled) connection used only by Prisma Migrate/introspection.
+  // On managed serverless Postgres, running migrations through a transaction
+  // pooler is unreliable; `directUrl` lets `prisma migrate deploy` use a direct
+  // connection while the app keeps using the pooled one. Set it to the same
+  // value as DATABASE_URL for a non-pooled/local database.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -277,6 +284,13 @@ enum AnalyticsEventName {
   GUIDE_STARTED
   GUIDE_STEP_COMPLETED
   SEARCH_PERFORMED
+  USER_REGISTERED
+  USER_LOGGED_IN
+  COMMUNITY_CREATED
+  LISTING_CREATED
+  MESSAGE_SENT
+  STUDENT_HUB_VIEWED
+  EXPLORE_CITY_VIEWED
 }
 
 model User {
@@ -328,6 +342,8 @@ model User {
   listingFavorites                 ListingFavorite[]
   guideProgress                    GuideProgress[]
   createdGuides                    Guide[]                    @relation("GuideAuthor")
+  createdCityHubs                  CityHub[]                  @relation("CityHubAuthor")
+  updatedCityHubs                  CityHub[]                  @relation("CityHubEditor")
   questions                        Question[]
   answers                          Answer[]
   answerVotes                      AnswerVote[]
@@ -359,8 +375,11 @@ model User {
   analyticsEvents                  AnalyticsEvent[]
   accounts                         OAuthAccount[]
   sessions                         Session[]
+  emailVerificationTokens          EmailVerificationToken[]
+  passwordResetTokens              PasswordResetToken[]
   createdAt                        DateTime                   @default(now())
   updatedAt                        DateTime                   @updatedAt
+  searchVector                     Unsupported("tsvector")?
 
   @@index([countryId])
   @@index([cityId])
@@ -396,10 +415,11 @@ model UserPreference {
   notificationMarketplace   Boolean            @default(true)
   notificationAnnouncements Boolean            @default(true)
   emailDigest               NotificationDigest @default(NEVER)
+  lastDigestSentAt          DateTime?
   createdAt                 DateTime           @default(now())
   updatedAt                 DateTime           @updatedAt
 
-  @@index([emailDigest, updatedAt])
+  @@index([emailDigest, lastDigestSentAt])
 }
 
 model City {
@@ -476,6 +496,7 @@ model Community {
   removedAt      DateTime?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
+  searchVector   Unsupported("tsvector")?
 
   @@index([status, isPrivate, createdAt])
   @@index([type, isPrivate])
@@ -547,6 +568,7 @@ model Post {
   reactions        Reaction[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  searchVector     Unsupported("tsvector")?
 
   @@index([communityId, status, createdAt])
   @@index([authorId, createdAt])
@@ -650,6 +672,7 @@ model MarketplaceListing {
   fraudReviewedAt DateTime?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+  searchVector    Unsupported("tsvector")?
 
   @@index([status, publishedAt])
   @@index([categoryId, status])
@@ -705,6 +728,7 @@ model Guide {
   publishedAt      DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  searchVector     Unsupported("tsvector")?
 
   @@index([published, category])
   @@index([featured, publishedAt])
@@ -737,6 +761,39 @@ model GuideProgress {
   @@index([userId, completedAt])
 }
 
+enum CityHubStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+}
+
+// Editorial record for an "Explore your city" hub. Content is edited as a
+// structured JSON payload (validated against the ExploreCity shape in
+// src/lib/validation.ts) and moves through DRAFT -> REVIEW -> PUBLISHED.
+// `draft` always holds the working copy; `published` holds the live public
+// snapshot and is only overwritten on publish, so the public site keeps
+// serving the last published version while a revision is in progress. Cities
+// with no CityHub row (or no published snapshot) fall back to the static
+// typed registry in src/features/explore.
+model CityHub {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  status      CityHubStatus @default(DRAFT)
+  draft       Json
+  published   Json?
+  version     Int           @default(1)
+  publishedAt DateTime?
+  createdById String
+  createdBy   User          @relation("CityHubAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String?
+  updatedBy   User?         @relation("CityHubEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, updatedAt])
+}
+
 model Question {
   id           String        @id @default(cuid())
   slug         String        @unique
@@ -750,6 +807,7 @@ model Question {
   answers      Answer[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  searchVector Unsupported("tsvector")?
 
   @@index([category, status, createdAt])
   @@index([authorId])
@@ -1149,5 +1207,31 @@ model Session {
   updatedAt DateTime @updatedAt
 
   @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
   @@index([expiresAt])
 }

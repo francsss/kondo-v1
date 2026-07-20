@@ -16,7 +16,10 @@
 - Settings can revoke one owned session, every other session, or every session. Current/all-session revocation also clears the session cookie; ownership is rechecked from the authenticated database user.
 - Next.js development assets allow the private `192.168.x.x` range required for LAN testing. The application remains protected by the host firewall, same-origin mutation checks, and the development-only scope of `allowedDevOrigins`.
 - Authentication forms declare explicit POST actions, preventing passwords from falling back to URL query parameters if client hydration is unavailable.
-- The `OAuthAccount` model supports provider linking without changing user authorization.
+- The `OAuthAccount` model supports provider linking without changing user authorization; no provider is wired yet.
+- Email-verification and password-reset tokens are cryptographically random (32 bytes), single-use, expiring (24h/1h), and stored only as a SHA-256 hash — the raw token exists only in the outbound email and, outside production, in the API response for local testing. Requesting a new token invalidates any unused prior token for the same user.
+- Password-reset confirmation revokes every session for that user in the same transaction as the password change, so a stolen session cannot survive a reset.
+- Password-reset requests always return the same generic response and take a comparable code path whether or not the email matches an account, and are rate limited per email (5/hour), so the endpoint cannot be used to enumerate registered addresses.
 
 ### Authorization and moderation
 
@@ -27,6 +30,9 @@
 - Only Admin and Super Admin receive `REFERENCE_DATA_VIEW` and `REFERENCE_DATA_MANAGE`; Moderator and Member cannot read or mutate operational reference data.
 - Only Admin and Super Admin receive `MEDIA_VIEW` and `MEDIA_MANAGE`; Moderator and Member cannot inspect the global media inventory or perform administrative removal.
 - Only Admin and Super Admin receive `COMMUNITY_CMS_VIEW` and `COMMUNITY_CMS_MANAGE`. Community OWNER/MODERATOR capabilities are separate local roles and are rechecked server-side for every scoped mutation.
+- Only Admin and Super Admin receive `USER_MANAGE`. An Admin cannot change their own account status or revoke their own sessions through this control, and cannot act on a Super Admin's status or sessions at all — only another Super Admin can, preventing a compromised or malicious Admin account from disabling account-management oversight of itself or of Super Admins.
+- Suspending or deactivating an account revokes every one of its sessions in the same transaction as the status change, so a live session cannot outlive a suspension.
+- Only Admin and Super Admin receive `GUIDE_CMS_VIEW` and `GUIDE_CMS_MANAGE`; Moderator and Member cannot create, edit, or publish guide content. A guide cannot publish with zero steps, and cannot be deleted while published or while any step has recorded member progress.
 - PostgreSQL enforces one community owner membership, a required owner/member reference, and synchronous protection against removing or demoting the currently referenced owner. Ownership transfer is atomic and audited.
 - Typed content-visibility policies enforce public-or-member access for private communities and their posts/comments. Ordinary directories and Search never use the moderation override; direct private-community access may use the already-existing global moderation capability.
 - Normal user surfaces expose only `PUBLISHED` posts, questions, answers, and guides, and only `ACTIVE` marketplace listings. Hidden or unavailable resources return `404` to avoid confirming existence.
@@ -92,6 +98,7 @@
 - Profile audience preferences default to member visibility; anonymous public exposure requires an explicit `PUBLIC` selection. The whole-profile audience is checked before any section-specific audience.
 - Search is authenticated and returns stable explicit DTOs rather than Prisma objects. Its public user serializer allows only `id`, `username`, `firstName`, and `lastName`; user search adds only the country emoji and affiliation needed by the existing UI.
 - Search never exposes password hashes, email, phone, roles, statuses, verification/account lifecycle fields, sessions, OAuth metadata, or internal timestamps, and excludes inactive users.
+- Full-text search only ever supplies candidate row IDs and a relevance score. Every candidate is re-checked through the same typed content-visibility policy used elsewhere (community membership, published state, active listing state) before its safe DTO is built; a full-text match by itself can never surface a row that policy would otherwise hide. Cursor pagination for Search reuses this same policy on every page, not just the first.
 - Bookmark visibility never grants a global moderator implicit access to a private-community post; membership is required on member-facing bookmark routes.
 - Media records store provider-neutral object keys.
 - Kondo has no payment, wallet, transfer, bank-integration, KYC, or settlement data in the MVP.
@@ -112,6 +119,7 @@
 - Links are checked against an internal-route allowlist at enqueue and serialization. External, protocol-relative, Admin, traversal, backslash, and control-character links are rejected or hidden.
 - Member DTOs exclude template data, dedupe keys, jobs, recipient metadata, raw errors, IP addresses, and worker locks.
 - The worker endpoint uses a separate secret with timing-safe comparison. Jobs retry three times, recover stale locks, and store bounded error codes.
+- The Module 16 digest worker (`/api/internal/notifications/digest`) reuses that same worker-secret, timing-safe-comparison pattern. Digest emails contain only an unread count and a link back to `/notifications`; suspended/deactivated accounts are skipped even if their digest interval has elapsed.
 - Template and announcement mutations require exact Admin permissions, trusted origin, validation, rate limits, and transactional AuditLog.
 - Add browser-driven end-to-end coverage for responsive Admin interactions; PostgreSQL integration and API-level report-to-resolution coverage are implemented.
 - Move message, new-conversation, block, and report limits to the shared Redis-compatible store before multi-instance messaging traffic.

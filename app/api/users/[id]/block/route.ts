@@ -30,7 +30,7 @@ export async function POST(
   const auth = await authorize(request, id);
   if (auth.error) return auth.error;
   const user = auth.user!;
-  if (!rateLimit(`block:${user.id}`, 20, 24 * 60 * 60_000).allowed) {
+  if (!(await rateLimit(`block:${user.id}`, 20, 24 * 60 * 60_000)).allowed) {
     return jsonError("Block limit reached. Try again later.", 429);
   }
 

@@ -3,6 +3,7 @@ import {
   type ListingStatus,
   type ReportReason,
 } from "@prisma/client";
+import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { attachMediaAsset, MediaError } from "@/lib/media";
@@ -223,7 +224,7 @@ export async function createMarketplaceListing(input: {
   ]);
   const requiresReview = fraud.score >= 70;
   const publish = input.data.publish && !requiresReview;
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const listing = await tx.marketplaceListing.create({
       data: {
         slug,
@@ -295,6 +296,16 @@ export async function createMarketplaceListing(input: {
       requiresReview,
     };
   });
+  await trackEvent({
+    name: "LISTING_CREATED",
+    userId: input.actor.id,
+    properties: {
+      listingId: result.listing.id,
+      categoryId: input.data.categoryId,
+      published: publish,
+    },
+  });
+  return result;
 }
 
 export async function updateMarketplaceListing(input: {

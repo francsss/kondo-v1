@@ -9,6 +9,7 @@ import {
   type ReactionType,
   type ReportReason,
 } from "@prisma/client";
+import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import {
   hasAdminPermission,
@@ -280,7 +281,7 @@ export async function createCommunity(input: {
     resolveCommunityLocation(input.data),
   ]);
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const community = await tx.community.create({
         data: {
           slug,
@@ -343,6 +344,12 @@ export async function createCommunity(input: {
         }),
       };
     });
+    await trackEvent({
+      name: "COMMUNITY_CREATED",
+      userId: input.actor.id,
+      properties: { communityId: result.community.id, type: input.data.type },
+    });
+    return result;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1096,7 +1103,7 @@ export async function createCommunityPost(input: {
       ? ("PENDING_REVIEW" as const)
       : ("PUBLISHED" as const);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const post = await tx.post.create({
       data: {
         communityId: input.data.communityId,
@@ -1184,6 +1191,15 @@ export async function createCommunityPost(input: {
       },
     };
   });
+  await trackEvent({
+    name: "POST_CREATED",
+    userId: input.actor.id,
+    properties: {
+      communityId: input.data.communityId,
+      type: input.data.type,
+    },
+  });
+  return result;
 }
 
 export async function updateCommunityPost(input: {

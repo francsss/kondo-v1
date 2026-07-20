@@ -14,7 +14,7 @@ export async function POST(
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!rateLimit(`message:${user.id}`, 30, 60_000).allowed) {
+  if (!(await rateLimit(`message:${user.id}`, 30, 60_000)).allowed) {
     return jsonError("Message limit reached. Try again shortly.", 429);
   }
 

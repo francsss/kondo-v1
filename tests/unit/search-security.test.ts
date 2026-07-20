@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   postFindMany: vi.fn(),
   questionFindMany: vi.fn(),
   userFindMany: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -17,8 +18,19 @@ vi.mock("@/lib/prisma", () => ({
     post: { findMany: mocks.postFindMany },
     question: { findMany: mocks.questionFindMany },
     user: { findMany: mocks.userFindMany },
+    $queryRaw: mocks.queryRaw,
   },
 }));
+
+// Full-text ranking runs before each model's findMany; resolve one ranked-ID
+// batch per category in the same order searchKondo issues them.
+function mockRankedIds(idsByCategory: string[][]) {
+  for (const ids of idsByCategory) {
+    mocks.queryRaw.mockImplementationOnce(async () =>
+      ids.map((id, index) => ({ id, rank: 1 - index * 0.01 })),
+    );
+  }
+}
 
 describe("search result minimization", () => {
   afterEach(() => {
@@ -87,7 +99,15 @@ describe("search result minimization", () => {
       },
     ]);
 
-    const { searchKondo } = await import("@/lib/platform-queries");
+    mockRankedIds([
+      ["community-1"],
+      ["listing-1"],
+      [],
+      ["question-1"],
+      ["user-1"],
+      ["post-1"],
+    ]);
+    const { searchKondo } = await import("@/lib/search");
     const result = await searchKondo("jia", "viewer-1");
 
     expect(result.users[0]).toEqual({

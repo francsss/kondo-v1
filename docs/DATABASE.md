@@ -2,7 +2,7 @@
 
 ## Platform
 
-Kondo uses PostgreSQL through Prisma. The canonical schema is `prisma/schema.prisma`. Migration `20260715060000_kondo_community_mvp` creates the community-platform database, `20260715190000_student_hub_messages` adds private messaging and blocking, `20260716090000_operational_moderation` makes Admin report handling operational, and `20260716230000_marketplace_enums`/`20260716231000_marketplace_operations` deliver the Module 12 Marketplace lifecycle.
+Kondo uses PostgreSQL through Prisma. The canonical schema is `prisma/schema.prisma`. Migration `20260715060000_kondo_community_mvp` creates the community-platform database, `20260715190000_student_hub_messages` adds private messaging and blocking, `20260716090000_operational_moderation` makes Admin report handling operational, `20260716230000_marketplace_enums`/`20260716231000_marketplace_operations` deliver the Module 12 Marketplace lifecycle, `20260717000000_search_full_text` adds the Module 13 full-text search vectors and indexes, and `20260717010000_auth_verification_reset` adds the Module 14 email-verification and password-reset token tables.
 
 ## Domain groups
 
@@ -11,6 +11,7 @@ Kondo uses PostgreSQL through Prisma. The canonical schema is `prisma/schema.pri
 - `User`: identity, profile, role, status, education, languages, interests, onboarding, and activity timestamps.
 - `Country`, `City`, `University`: normalized location and campus data used by onboarding, communities, profiles, marketplace filters, and search. Every record has an active lifecycle; each reference can be marked verified. University retains its existing `verified` field and now also has `isActive`.
 - `Session`: hashed revocable session identifiers with expiry and request metadata.
+- `EmailVerificationToken`, `PasswordResetToken`: hashed, single-use, expiring tokens for Module 14 email verification and password reset. Requesting a new token invalidates any unused prior token for that user.
 - `UserPreference`: one-to-one persisted appearance, language, notification-category, and email-digest preferences.
 - `OAuthAccount`: provider-neutral identity link table for future OAuth providers.
 
@@ -35,7 +36,8 @@ There are no transaction, payment, wallet, transfer, payout, or settlement table
 
 ### Knowledge and guidance
 
-- `Guide`, `GuideStep`, `GuideProgress`: editorial checklists and user completion.
+- `Guide`, `GuideStep`, `GuideProgress`: editorial checklists and user completion. Module 17 added an Admin CMS over these existing tables (create/edit/publish guides, add/edit/delete steps); no schema change was required.
+- `CityHub` (`CityHubStatus`): Module 20 editorial record for the "Explore your city" hubs. One row per city `slug` holds the working `draft` payload (JSONB, validated against the `ExploreCity` shape) and, once published, a `published` JSONB snapshot. A `DRAFT → REVIEW → PUBLISHED` state machine with a `version` column for optimistic concurrency; publishing copies `draft` into `published` and stamps `publishedAt`. Public `/explore/[city]` pages read the `published` snapshot when present and otherwise fall back to the static typed registry in `src/features/explore`.
 - `Question`, `Answer`, `AnswerVote`: searchable help-center knowledge with a selected best answer.
 - `Bookmark`: a constrained polymorphic bookmark for posts, listings, guides, and questions.
 
@@ -85,6 +87,8 @@ There are no transaction, payment, wallet, transfer, payout, or settlement table
 - A migration-managed partial unique index permits only one active profile report per reporter and reported profile.
 - A migration-managed partial unique index permits only one `OPEN` or `REVIEWING` conversation report per reporter and conversation. Prisma does not express this partial-index predicate in the schema DSL.
 - Analytics name/time, user/time, and session.
+- `Community`, `MarketplaceListing`, `Guide`, `Question`, `Post`, and `User` each carry a generated, field-weighted `searchVector` (`tsvector`) column with a GIN index, backing Module 13 full-text search. Prisma expresses these as `Unsupported("tsvector")`; the generation expression and index live only in the migration.
+- `EmailVerificationToken`/`PasswordResetToken` user/used-at and expiry.
 
 ## Data rules
 

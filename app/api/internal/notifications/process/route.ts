@@ -1,19 +1,12 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
 import { processNotificationJobs } from "@/lib/notifications";
 import { internalApiError, jsonError } from "@/lib/request";
+import { isAuthorizedWorkerRequest } from "@/lib/worker-auth";
 
-export async function POST(request: NextRequest) {
-  const secret = process.env.NOTIFICATION_WORKER_SECRET;
-  const authorization = request.headers.get("authorization");
-  const expected = secret ? Buffer.from(`Bearer ${secret}`) : null;
-  const received = authorization ? Buffer.from(authorization) : null;
-  if (
-    !expected ||
-    !received ||
-    expected.length !== received.length ||
-    !timingSafeEqual(expected, received)
-  ) {
+export const dynamic = "force-dynamic";
+
+async function handle(request: NextRequest) {
+  if (!isAuthorizedWorkerRequest(request, "NOTIFICATION_WORKER_SECRET")) {
     return jsonError("Authentication required.", 401);
   }
   try {
@@ -24,3 +17,8 @@ export async function POST(request: NextRequest) {
     return internalApiError("notifications.worker", error);
   }
 }
+
+// GET is used by Vercel Cron (which sends `Authorization: Bearer <CRON_SECRET>`);
+// POST remains available for manual triggers and non-Vercel schedulers.
+export const GET = handle;
+export const POST = handle;
