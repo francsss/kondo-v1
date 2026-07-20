@@ -5,7 +5,10 @@ import {
   removeOwnedMedia,
   updateMediaAltText,
 } from "@/lib/media";
-import { getObjectStorageForProvider } from "@/lib/storage";
+import {
+  getObjectStorageForProvider,
+  isStorageObjectNotFound,
+} from "@/lib/storage";
 import {
   getRequestMeta,
   hasTrustedOrigin,
@@ -22,24 +25,50 @@ export async function GET(
   try {
     const user = await getCurrentUser();
     const media = await getMediaForDelivery((await params).id, user);
-    const bytes = await getObjectStorageForProvider(media.storageProvider).read(
-      media.objectKey,
-    );
+    const storage = getObjectStorageForProvider(media.storageProvider);
     const isPublic = media.visibility === "PUBLIC";
     const disposition = media.kind === "IMAGE" ? "inline" : "attachment";
+    const contentType = media.detectedMime ?? "application/octet-stream";
+    const contentDisposition = `${disposition}; filename*=UTF-8''${encodeURIComponent(media.originalFileName)}`;
+    const readTarget = await storage.createReadTarget({
+      objectKey: media.objectKey,
+      contentType,
+      contentDisposition,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    if (readTarget) {
+      return new Response(null, {
+        status: 307,
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          Location: readTarget.url,
+          "Referrer-Policy": "no-referrer",
+          Vary: "Cookie",
+        },
+      });
+    }
+    let bytes: Uint8Array;
+    try {
+      bytes = await storage.read(media.objectKey);
+    } catch (error) {
+      if (isStorageObjectNotFound(error)) {
+        throw new MediaError("Media not found.", 404);
+      }
+      throw error;
+    }
     const body = Uint8Array.from(bytes).buffer;
     return new Response(body, {
       headers: {
         "Cache-Control": isPublic
           ? "public, max-age=300, stale-while-revalidate=60"
           : "private, no-store, max-age=0",
-        "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(media.originalFileName)}`,
+        "Content-Disposition": contentDisposition,
         "Content-Length": String(bytes.byteLength),
         "Content-Security-Policy":
           media.kind === "DOCUMENT"
             ? "sandbox; default-src 'none'"
             : "default-src 'none'",
-        "Content-Type": media.detectedMime ?? "application/octet-stream",
+        "Content-Type": contentType,
         "X-Content-Type-Options": "nosniff",
         Vary: "Cookie",
       },

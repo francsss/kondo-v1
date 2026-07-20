@@ -117,9 +117,7 @@ function encodeCursor(cursor: Cursor): string {
 
 function decodeCursor(value: string): Cursor {
   try {
-    const parsed = JSON.parse(
-      Buffer.from(value, "base64url").toString("utf8"),
-    );
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
     if (
       typeof parsed === "object" &&
       parsed !== null &&
@@ -350,7 +348,10 @@ export async function searchCategory(
       exhausted = true;
       break;
     }
-    cursor = { rank: ranked[ranked.length - 1]!.rank, id: ranked[ranked.length - 1]!.id };
+    cursor = {
+      rank: ranked[ranked.length - 1]!.rank,
+      id: ranked[ranked.length - 1]!.id,
+    };
     const items = await fetchCategoryItems(category, userId, ranked);
     const ordered = orderByRank(items, ranked);
     for (const item of ordered) {

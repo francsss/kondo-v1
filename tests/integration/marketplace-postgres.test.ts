@@ -1,12 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { activeListingWhere } from "@/lib/content-visibility";
 import {
   assessListingFraud,
@@ -69,10 +62,7 @@ async function cleanup() {
   });
   await prisma.notificationJob.deleteMany({
     where: {
-      OR: [
-        { recipientId: { in: userIds } },
-        { actorId: { in: userIds } },
-      ],
+      OR: [{ recipientId: { in: userIds } }, { actorId: { in: userIds } }],
     },
   });
   await prisma.auditLog.deleteMany({
@@ -203,13 +193,15 @@ async function createListingImage(ownerId = fixture.seller.id) {
   });
 }
 
-async function createListing(input: {
-  publish?: boolean;
-  image?: boolean;
-  title?: string;
-  description?: string;
-  priceFen?: number;
-} = {}) {
+async function createListing(
+  input: {
+    publish?: boolean;
+    image?: boolean;
+    title?: string;
+    description?: string;
+    priceFen?: number;
+  } = {},
+) {
   const media =
     input.image === false ? null : await createListingImage(fixture.seller.id);
   const result = await createMarketplaceListing({
@@ -444,9 +436,9 @@ postgresDescribe("Module 12 PostgreSQL Marketplace", () => {
 
   it("separates Marketplace CMS permissions and protects category dependencies", async () => {
     const active = await createListing();
-    await expect(
-      listAdminListings(fixture.moderator),
-    ).rejects.toMatchObject({ status: 403 });
+    await expect(listAdminListings(fixture.moderator)).rejects.toMatchObject({
+      status: 403,
+    });
     await expect(
       updateListingAsAdmin({
         actor: fixture.moderator,

@@ -53,7 +53,7 @@ export function GuideEditForm({
     });
     const data = await response.json().catch(() => null);
     setPending(false);
-    setMessage(response.ok ? "Saved." : data?.error ?? "Could not save.");
+    setMessage(response.ok ? "Saved." : (data?.error ?? "Could not save."));
     if (response.ok) router.refresh();
   }
 

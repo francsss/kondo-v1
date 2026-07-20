@@ -29,7 +29,8 @@ function slugBase(value: string) {
 async function uniqueGuideSlug(title: string) {
   const base = slugBase(title) || "guide";
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const slug = attempt === 0 ? base : `${base}-${crypto.randomUUID().slice(0, 8)}`;
+    const slug =
+      attempt === 0 ? base : `${base}-${crypto.randomUUID().slice(0, 8)}`;
     const existing = await prisma.guide.findUnique({
       where: { slug },
       select: { id: true },
@@ -228,7 +229,11 @@ export async function setGuidePublished(input: {
   return prisma.$transaction(async (tx) => {
     const guide = await tx.guide.findUnique({
       where: { id: input.guideId },
-      select: { id: true, published: true, _count: { select: { steps: true } } },
+      select: {
+        id: true,
+        published: true,
+        _count: { select: { steps: true } },
+      },
     });
     if (!guide) throw new GuideError("Guide not found.", 404);
     if (input.published && guide._count.steps === 0) {

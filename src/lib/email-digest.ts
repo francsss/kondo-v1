@@ -1,15 +1,19 @@
 import type { NotificationDigest } from "@prisma/client";
 import { sendTransactionalEmail } from "@/lib/email";
+import { getAppUrl } from "@/lib/app-url";
 import { getUnreadNotificationCount } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
-const DIGEST_INTERVAL_MS: Record<Exclude<NotificationDigest, "NEVER">, number> = {
+const DIGEST_INTERVAL_MS: Record<
+  Exclude<NotificationDigest, "NEVER">,
+  number
+> = {
   DAILY: 24 * 60 * 60_000,
   WEEKLY: 7 * 24 * 60 * 60_000,
 };
 
 function appUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return getAppUrl();
 }
 
 /**
@@ -27,11 +31,17 @@ export async function sendDueEmailDigests(now = new Date()) {
       OR: [
         {
           emailDigest: "DAILY",
-          OR: [{ lastDigestSentAt: null }, { lastDigestSentAt: { lte: dueDaily } }],
+          OR: [
+            { lastDigestSentAt: null },
+            { lastDigestSentAt: { lte: dueDaily } },
+          ],
         },
         {
           emailDigest: "WEEKLY",
-          OR: [{ lastDigestSentAt: null }, { lastDigestSentAt: { lte: dueWeekly } }],
+          OR: [
+            { lastDigestSentAt: null },
+            { lastDigestSentAt: { lte: dueWeekly } },
+          ],
         },
       ],
     },

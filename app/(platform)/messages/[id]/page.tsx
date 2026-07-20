@@ -217,8 +217,7 @@ export default async function ConversationPage({
                             <Download className="h-4 w-4 shrink-0" />
                           </a>
                         ) : null}
-                        {message.attachment &&
-                        !message.attachment.available ? (
+                        {message.attachment && !message.attachment.available ? (
                           <p className="flex items-center gap-2 text-xs opacity-70">
                             <ImageOff className="h-4 w-4" />
                             Attachment unavailable

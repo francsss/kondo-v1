@@ -54,13 +54,16 @@ export function AppearanceSettings({
         body: JSON.stringify({ theme }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? "Theme was not saved.");
+      if (!response.ok)
+        throw new Error(payload.error ?? "Theme was not saved.");
       setFeedback("Appearance saved for your account.");
       router.refresh();
     } catch (error) {
       setSelected(previous);
       setTheme(previous.toLowerCase());
-      setFeedback(error instanceof Error ? error.message : "Theme was not saved.");
+      setFeedback(
+        error instanceof Error ? error.message : "Theme was not saved.",
+      );
     } finally {
       setPending(false);
     }

@@ -16,15 +16,19 @@ import { updatePostSchema } from "@/lib/validation";
 type Context = { params: Promise<{ id: string }> };
 
 function failure(event: string, error: unknown) {
-  if (error instanceof CommunityError) return jsonError(error.message, error.status);
+  if (error instanceof CommunityError)
+    return jsonError(error.message, error.status);
   return internalApiError(event, error);
 }
 
 export async function PATCH(request: NextRequest, { params }: Context) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  const parsed = updatePostSchema.safeParse(await request.json().catch(() => null));
+  const parsed = updatePostSchema.safeParse(
+    await request.json().catch(() => null),
+  );
   if (!parsed.success) {
     return jsonError(parsed.error.issues[0]?.message ?? "Invalid post.");
   }
@@ -43,7 +47,8 @@ export async function PATCH(request: NextRequest, { params }: Context) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Context) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
   try {

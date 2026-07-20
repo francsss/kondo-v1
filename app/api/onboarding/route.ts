@@ -1,11 +1,6 @@
 import { NextRequest } from "next/server";
-import {
-  completeOnboarding,
-  saveOnboardingDraft,
-} from "@/lib/onboarding";
-import {
-  ReferenceDataError,
-} from "@/lib/reference-data";
+import { completeOnboarding, saveOnboardingDraft } from "@/lib/onboarding";
+import { ReferenceDataError } from "@/lib/reference-data";
 import {
   getRequestMeta,
   hasTrustedOrigin,
@@ -13,10 +8,7 @@ import {
   jsonError,
 } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
-import {
-  onboardingDraftSchema,
-  onboardingSchema,
-} from "@/lib/validation";
+import { onboardingDraftSchema, onboardingSchema } from "@/lib/validation";
 
 export async function PUT(request: NextRequest) {
   if (!hasTrustedOrigin(request))

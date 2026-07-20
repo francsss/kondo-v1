@@ -98,7 +98,9 @@ export default async function AdminCityHubsPage({
                   <h2 className="font-black text-kondo-ink dark:text-white">
                     {hub.name}
                   </h2>
-                  <span className={STATUS_STYLES[hub.status]}>{hub.status}</span>
+                  <span className={STATUS_STYLES[hub.status]}>
+                    {hub.status}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">/{hub.slug}</p>
               </div>
@@ -131,7 +133,10 @@ export default async function AdminCityHubsPage({
           </Button>
           <Button asChild size="sm" variant="secondary">
             <Link
-              href={href(linkInput, Math.min(result.pageCount, result.page + 1))}
+              href={href(
+                linkInput,
+                Math.min(result.pageCount, result.page + 1),
+              )}
             >
               Next <ChevronRight className="h-4 w-4" />
             </Link>

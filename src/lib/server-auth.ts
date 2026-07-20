@@ -55,15 +55,18 @@ export function hashSecurityIdentifier(value: string) {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
 }
 
-export async function createDatabaseSession({
-  userId,
-  ipAddress,
-  userAgent,
-}: {
-  userId: string;
-  ipAddress?: string | null;
-  userAgent?: string | null;
-}, client: SessionClient = prisma) {
+export async function createDatabaseSession(
+  {
+    userId,
+    ipAddress,
+    userAgent,
+  }: {
+    userId: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  },
+  client: SessionClient = prisma,
+) {
   const sessionId = randomBytes(32).toString("base64url");
   await client.session.create({
     data: {

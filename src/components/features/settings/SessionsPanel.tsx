@@ -1,6 +1,12 @@
 "use client";
 
-import { Laptop, LogOut, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
+import {
+  Laptop,
+  LogOut,
+  RefreshCw,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";

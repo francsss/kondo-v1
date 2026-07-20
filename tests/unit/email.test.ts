@@ -35,9 +35,8 @@ describe("sendTransactionalEmail", () => {
 
   it("throws in production when no provider is configured", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    const { sendTransactionalEmail, EmailDeliveryError } = await import(
-      "@/lib/email"
-    );
+    const { sendTransactionalEmail, EmailDeliveryError } =
+      await import("@/lib/email");
     await expect(
       sendTransactionalEmail({ to: "a@example.com", subject: "s", text: "t" }),
     ).rejects.toBeInstanceOf(EmailDeliveryError);
@@ -71,9 +70,8 @@ describe("sendTransactionalEmail", () => {
       data: null,
       error: { message: "Invalid from address" },
     });
-    const { sendTransactionalEmail, EmailDeliveryError } = await import(
-      "@/lib/email"
-    );
+    const { sendTransactionalEmail, EmailDeliveryError } =
+      await import("@/lib/email");
 
     await expect(
       sendTransactionalEmail({ to: "a@example.com", subject: "s", text: "t" }),
@@ -82,9 +80,8 @@ describe("sendTransactionalEmail", () => {
 
   it("requires EMAIL_FROM even when RESEND_API_KEY is set", async () => {
     process.env.RESEND_API_KEY = "re_test_key";
-    const { sendTransactionalEmail, EmailDeliveryError } = await import(
-      "@/lib/email"
-    );
+    const { sendTransactionalEmail, EmailDeliveryError } =
+      await import("@/lib/email");
     await expect(
       sendTransactionalEmail({ to: "a@example.com", subject: "s", text: "t" }),
     ).rejects.toBeInstanceOf(EmailDeliveryError);
@@ -92,9 +89,8 @@ describe("sendTransactionalEmail", () => {
   });
 
   it("rejects a missing recipient before checking the provider", async () => {
-    const { sendTransactionalEmail, EmailDeliveryError } = await import(
-      "@/lib/email"
-    );
+    const { sendTransactionalEmail, EmailDeliveryError } =
+      await import("@/lib/email");
     await expect(
       sendTransactionalEmail({ to: "", subject: "s", text: "t" }),
     ).rejects.toBeInstanceOf(EmailDeliveryError);

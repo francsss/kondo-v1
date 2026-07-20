@@ -19,7 +19,10 @@ test("can sign out and lose access to the authenticated shell", async ({
   await expect(page).toHaveURL(/\/(home|onboarding)/);
 
   await page.goto("/home");
-  await page.getByRole("button", { name: /sign out/i }).first().click();
+  await page
+    .getByRole("button", { name: /sign out/i })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/login/);
   await page.goto("/home");
   await expect(page).toHaveURL(/\/login/);

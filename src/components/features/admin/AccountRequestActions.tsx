@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 type RequestStatus =
-  | "PENDING"
-  | "PROCESSING"
-  | "COMPLETED"
-  | "REJECTED"
-  | "CANCELLED";
+  "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED" | "CANCELLED";
 
 export function AccountRequestActions({
   requestId,
@@ -32,19 +28,16 @@ export function AccountRequestActions({
     setPending(true);
     setFeedback("");
     try {
-      const response = await fetch(
-        `/api/admin/account-requests/${requestId}`,
-        {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: values.get("status"),
-            responseNote: values.get("responseNote") || undefined,
-            expectedVersion: version,
-          }),
-        },
-      );
+      const response = await fetch(`/api/admin/account-requests/${requestId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: values.get("status"),
+          responseNote: values.get("responseNote") || undefined,
+          expectedVersion: version,
+        }),
+      });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         setFeedback(payload.error ?? "Request could not be updated.");

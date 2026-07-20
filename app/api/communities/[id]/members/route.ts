@@ -24,10 +24,13 @@ function failure(event: string, error: unknown) {
 }
 
 export async function POST(request: NextRequest, { params }: Context) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!(await rateLimit(`community-access:${user.id}`, 20, 60 * 60_000)).allowed) {
+  if (
+    !(await rateLimit(`community-access:${user.id}`, 20, 60 * 60_000)).allowed
+  ) {
     return jsonError("Too many community access attempts.", 429);
   }
   const parsed = communityAccessCreateSchema
@@ -50,7 +53,8 @@ export async function POST(request: NextRequest, { params }: Context) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Context) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
   try {

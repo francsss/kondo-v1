@@ -3,21 +3,6 @@ type OperationalContext = Record<
   boolean | number | string | null | undefined
 >;
 
-function redactSensitiveErrorText(value: string | undefined) {
-  if (!value) return undefined;
-
-  return value
-    .replace(
-      /((?:"|')?(?:password|passwd|pwd|secret|token|api[_-]?key|authorization|cookie|session(?:id)?|database_url)(?:"|')?\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
-      "$1[REDACTED]",
-    )
-    .replace(/\b(Bearer\s+)[A-Za-z0-9._~+/-]+=*/gi, "$1[REDACTED]")
-    .replace(
-      /\b([a-z][a-z0-9+.-]*:\/\/[^:\s/@]+:)[^@\s/]+@/gi,
-      "$1[REDACTED]@",
-    );
-}
-
 function errorDescriptor(error: unknown) {
   if (!(error instanceof Error)) {
     return { errorType: "UnknownError" };
@@ -43,12 +28,6 @@ export function logServerError(
       level: "error",
       event,
       ...errorDescriptor(error),
-      errorMessage: redactSensitiveErrorText(
-        error instanceof Error ? error.message : String(error),
-      ),
-      errorStack: redactSensitiveErrorText(
-        error instanceof Error ? error.stack : undefined,
-      ),
       ...context,
       timestamp: new Date().toISOString(),
     }),

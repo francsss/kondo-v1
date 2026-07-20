@@ -1,8 +1,4 @@
-import {
-  Prisma,
-  type ListingStatus,
-  type ReportReason,
-} from "@prisma/client";
+import { Prisma, type ListingStatus, type ReportReason } from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
@@ -216,7 +212,9 @@ export async function createMarketplaceListing(input: {
 }) {
   await validateReferences(input.data.categoryId, input.data.cityId);
   if (input.data.publish && !input.data.imageIds.length) {
-    throw new MarketplaceError("Published listings require at least one image.");
+    throw new MarketplaceError(
+      "Published listings require at least one image.",
+    );
   }
   const [slug, fraud] = await Promise.all([
     uniqueListingSlug(input.data.title),
@@ -423,7 +421,10 @@ export async function updateMarketplaceListing(input: {
       },
       ...input.meta,
     });
-    return { listing: safeListingDto(updated), requiresReview: fraud.score >= 70 };
+    return {
+      listing: safeListingDto(updated),
+      requiresReview: fraud.score >= 70,
+    };
   });
 }
 
@@ -462,9 +463,15 @@ export async function transitionMarketplaceListing(input: {
       },
     });
     if (!listing) throw new MarketplaceError("Listing not found.", 404);
-    const admin = hasAdminPermission(input.actor.role, "MARKETPLACE_CMS_MANAGE");
+    const admin = hasAdminPermission(
+      input.actor.role,
+      "MARKETPLACE_CMS_MANAGE",
+    );
     if (listing.sellerId !== input.actor.id && !admin) {
-      throw new MarketplaceError("Only the seller can change listing status.", 403);
+      throw new MarketplaceError(
+        "Only the seller can change listing status.",
+        403,
+      );
     }
     if (!SELLER_TRANSITIONS[listing.status].includes(input.status) && !admin) {
       throw new MarketplaceError("Invalid listing status transition.", 409);
@@ -488,15 +495,23 @@ export async function transitionMarketplaceListing(input: {
         publishedAt: input.status === "ACTIVE" ? now : undefined,
         expiresAt:
           input.status === "ACTIVE"
-            ? new Date(
-                now.getTime() + (input.expiresInDays ?? 30) * 86_400_000,
-              )
+            ? new Date(now.getTime() + (input.expiresInDays ?? 30) * 86_400_000)
             : input.status === "DRAFT"
               ? null
               : undefined,
-        reservedAt: input.status === "RESERVED" ? now : input.status === "ACTIVE" ? null : undefined,
+        reservedAt:
+          input.status === "RESERVED"
+            ? now
+            : input.status === "ACTIVE"
+              ? null
+              : undefined,
         soldAt: input.status === "SOLD" ? now : undefined,
-        archivedAt: input.status === "ARCHIVED" ? now : input.status === "ACTIVE" ? null : undefined,
+        archivedAt:
+          input.status === "ARCHIVED"
+            ? now
+            : input.status === "ACTIVE"
+              ? null
+              : undefined,
       },
       select: {
         id: true,
@@ -883,7 +898,13 @@ export async function getAdminListing(actor: Actor, listingId: string) {
       city: { select: { id: true, name: true } },
       images: {
         orderBy: { order: "asc" },
-        select: { id: true, mediaId: true, objectKey: true, altText: true, order: true },
+        select: {
+          id: true,
+          mediaId: true,
+          objectKey: true,
+          altText: true,
+          order: true,
+        },
       },
       _count: { select: { favorites: true } },
     },
@@ -987,11 +1008,7 @@ export async function updateListingAsAdmin(input: {
             ? new Date(now.getTime() + 30 * 86_400_000)
             : undefined,
         removedAt:
-          input.status === "REMOVED"
-            ? now
-            : input.status
-              ? null
-              : undefined,
+          input.status === "REMOVED" ? now : input.status ? null : undefined,
         archivedAt: input.status === "ARCHIVED" ? now : undefined,
       },
       select: {

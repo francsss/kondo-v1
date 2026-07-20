@@ -1,0 +1,88 @@
+name: Release checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kondo
+          POSTGRES_PASSWORD: kondo_password
+          POSTGRES_DB: kondo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kondo -d kondo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://kondo:kondo_password@localhost:5432/kondo
+      DIRECT_URL: postgresql://kondo:kondo_password@localhost:5432/kondo
+      TEST_DATABASE_URL: postgresql://kondo:kondo_password@localhost:5432/kondo_module3_test
+      JWT_SECRET: ci-only-jwt-secret-that-is-at-least-thirty-two-characters
+      NEXT_PUBLIC_APP_URL: http://localhost:3100
+      STORAGE_DRIVER: local
+      EMAIL_PROVIDER: console
+      CRON_SECRET: ci-only-cron-secret-that-is-at-least-thirty-two-characters
+      NOTIFICATION_WORKER_SECRET: ci-only-notification-worker-secret-over-32-chars
+      MARKETPLACE_WORKER_SECRET: ci-only-marketplace-worker-secret-over-32-chars
+      MEDIA_WORKER_SECRET: ci-only-media-worker-secret-over-32-chars
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Create test database
+        run: createdb --host=localhost --username=kondo kondo_module3_test
+        env:
+          PGPASSWORD: kondo_password
+
+      - name: Apply application migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed deterministic E2E data
+        run: npm run db:seed
+        env:
+          KONDO_ALLOW_DESTRUCTIVE_SEED: "true"
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run static, unit, integration, and build checks
+        run: npm run check
+
+      - name: Run browser journeys
+        run: npm run e2e
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

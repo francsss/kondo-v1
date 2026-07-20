@@ -17,8 +17,8 @@ function secretMatches(
  * Authorizes an internal worker/cron request.
  *
  * Accepts an `Authorization: Bearer <secret>` header matching either:
- * - `CRON_SECRET` — the shared secret Vercel Cron sends automatically on its
- *   scheduled GET requests, used for every internal route; or
+ * - `CRON_SECRET` — the shared secret used by GitHub Actions (and sent
+ *   automatically by Vercel Cron, when enabled), for every internal route; or
  * - the route-specific worker secret (e.g. `NOTIFICATION_WORKER_SECRET`) — used
  *   by manual POST triggers and non-Vercel schedulers.
  *
@@ -34,5 +34,7 @@ export function isAuthorizedWorkerRequest(
   const workerSecret = workerSecretEnv
     ? process.env[workerSecretEnv]
     : undefined;
-  return secretMatches(header, cronSecret) || secretMatches(header, workerSecret);
+  return (
+    secretMatches(header, cronSecret) || secretMatches(header, workerSecret)
+  );
 }

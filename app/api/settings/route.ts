@@ -6,10 +6,7 @@ import {
   internalApiError,
   jsonError,
 } from "@/lib/request";
-import {
-  getUserPreferences,
-  updateUserPreferences,
-} from "@/lib/settings";
+import { getUserPreferences, updateUserPreferences } from "@/lib/settings";
 import { getCurrentUser } from "@/lib/server-auth";
 import { settingsPreferencesSchema } from "@/lib/validation";
 

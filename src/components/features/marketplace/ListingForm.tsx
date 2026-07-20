@@ -89,7 +89,9 @@ export function ListingForm({
       router.refresh();
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Could not save the listing.",
+        caught instanceof Error
+          ? caught.message
+          : "Could not save the listing.",
       );
     } finally {
       setPending(false);
@@ -100,7 +102,9 @@ export function ListingForm({
     const selected = Array.from(files ?? []).slice(0, 8);
     setImages(selected);
     setError(
-      (files?.length ?? 0) > 8 ? "A listing can contain up to eight images." : "",
+      (files?.length ?? 0) > 8
+        ? "A listing can contain up to eight images."
+        : "",
     );
   }
 

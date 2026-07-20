@@ -17,9 +17,7 @@ export default async function PlatformLayout({
   ]);
 
   return (
-    <AppShell
-      user={{ ...user, notificationUnreadCount, messageUnreadCount }}
-    >
+    <AppShell user={{ ...user, notificationUnreadCount, messageUnreadCount }}>
       {children}
     </AppShell>
   );

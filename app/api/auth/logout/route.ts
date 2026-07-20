@@ -4,11 +4,7 @@ import {
   clearSessionCookie,
   verifySessionToken,
 } from "@/lib/auth";
-import {
-  hasTrustedOrigin,
-  internalApiError,
-  jsonError,
-} from "@/lib/request";
+import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
 import { revokeDatabaseSession } from "@/lib/server-auth";
 
 export async function POST(request: NextRequest) {

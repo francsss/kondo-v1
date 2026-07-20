@@ -18,10 +18,7 @@ function stringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function pageHref(
-  input: Record<string, string | undefined>,
-  page: number,
-) {
+function pageHref(input: Record<string, string | undefined>, page: number) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(input)) {
     if (value) params.set(key, value);
@@ -137,12 +134,7 @@ export default async function AdminUsersPage({
             </Button>
           ) : (
             <Button asChild size="sm" variant="secondary">
-              <Link
-                href={pageHref(
-                  { q: query, status },
-                  result.page - 1,
-                )}
-              >
+              <Link href={pageHref({ q: query, status }, result.page - 1)}>
                 <ChevronLeft className="h-4 w-4" /> Previous
               </Link>
             </Button>
@@ -153,12 +145,7 @@ export default async function AdminUsersPage({
             </Button>
           ) : (
             <Button asChild size="sm" variant="secondary">
-              <Link
-                href={pageHref(
-                  { q: query, status },
-                  result.page + 1,
-                )}
-              >
+              <Link href={pageHref({ q: query, status }, result.page + 1)}>
                 Next <ChevronRight className="h-4 w-4" />
               </Link>
             </Button>

@@ -200,9 +200,7 @@ export function ReferenceDataManager({
             {type === "countries" ? (
               <>
                 <TextField
-                  defaultValue={
-                    editing?.type === "country" ? editing.code : ""
-                  }
+                  defaultValue={editing?.type === "country" ? editing.code : ""}
                   label="ISO code"
                   maxLength={2}
                   name="code"
@@ -226,9 +224,7 @@ export function ReferenceDataManager({
             {type === "cities" ? (
               <>
                 <TextField
-                  defaultValue={
-                    editing?.type === "city" ? editing.slug : ""
-                  }
+                  defaultValue={editing?.type === "city" ? editing.slug : ""}
                   label="Slug"
                   name="slug"
                   required

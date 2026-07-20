@@ -33,11 +33,13 @@ export async function POST(request: NextRequest) {
   const auth = await authorizeAdminApi("NOTIFICATION_MANAGE");
   if (!auth.authorized) return auth.error;
   if (
-    !(await rateLimit(
-      `admin-notification-announcement:${auth.user.id}`,
-      10,
-      24 * 60 * 60_000,
-    )).allowed
+    !(
+      await rateLimit(
+        `admin-notification-announcement:${auth.user.id}`,
+        10,
+        24 * 60 * 60_000,
+      )
+    ).allowed
   ) {
     return adminJson(
       { error: "Announcement limit reached. Try again later." },
@@ -50,8 +52,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return adminJson(
       {
-        error:
-          parsed.error.issues[0]?.message ?? "Invalid announcement.",
+        error: parsed.error.issues[0]?.message ?? "Invalid announcement.",
       },
       { status: 400 },
     );

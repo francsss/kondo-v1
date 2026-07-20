@@ -8,13 +8,7 @@ export type ExploreIconName =
   | "about";
 
 export type ExploreAccent =
-  | "emerald"
-  | "amber"
-  | "blue"
-  | "violet"
-  | "rose"
-  | "cyan"
-  | "slate";
+  "emerald" | "amber" | "blue" | "violet" | "rose" | "cyan" | "slate";
 
 export type ExploreEntryType =
   | "company"

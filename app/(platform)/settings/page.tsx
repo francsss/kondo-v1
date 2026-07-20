@@ -39,7 +39,8 @@ const settings = [
   {
     href: "/settings/notifications",
     title: "Notification preferences",
-    description: "Choose useful message, reply, marketplace, and digest updates.",
+    description:
+      "Choose useful message, reply, marketplace, and digest updates.",
     icon: BellRing,
   },
   {

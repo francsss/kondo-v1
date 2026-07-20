@@ -58,7 +58,7 @@ export class SettingsError extends Error {
 function preferenceDto(
   preference:
     | (typeof defaultPreferences & { updatedAt?: Date | null })
-    | (Prisma.UserPreferenceGetPayload<{ select: typeof preferenceSelect }>),
+    | Prisma.UserPreferenceGetPayload<{ select: typeof preferenceSelect }>,
 ) {
   return {
     theme: preference.theme,
@@ -239,9 +239,7 @@ export async function revokeUserSessions(
   return prisma.$transaction(async (tx) => {
     const where: Prisma.SessionWhereInput = {
       userId,
-      ...(scope === "OTHERS"
-        ? { tokenHash: { not: currentTokenHash } }
-        : {}),
+      ...(scope === "OTHERS" ? { tokenHash: { not: currentTokenHash } } : {}),
     };
     const sessions = await tx.session.findMany({
       where,
@@ -251,9 +249,7 @@ export async function revokeUserSessions(
     await writeAuditLogWithClient(tx, {
       actorId: userId,
       action:
-        scope === "ALL"
-          ? "ALL_SESSIONS_REVOKED"
-          : "OTHER_SESSIONS_REVOKED",
+        scope === "ALL" ? "ALL_SESSIONS_REVOKED" : "OTHER_SESSIONS_REVOKED",
       entityType: "User",
       entityId: userId,
       newValue: {

@@ -48,10 +48,7 @@ async function cleanup() {
   });
   const reports = await prisma.report.findMany({
     where: {
-      OR: [
-        { reporterId: { in: userIds } },
-        { subjectUserId: { in: userIds } },
-      ],
+      OR: [{ reporterId: { in: userIds } }, { subjectUserId: { in: userIds } }],
     },
     select: { id: true },
   });
@@ -394,20 +391,14 @@ postgresDescribe("Module 6 PostgreSQL profiles", () => {
       communities: null,
     });
 
-    const member = await getPublicProfile(
-      fixture.subject.id,
-      fixture.viewer,
-    );
+    const member = await getPublicProfile(fixture.subject.id, fixture.viewer);
     expect(member.counts.posts).toBe(1);
     expect(member.counts.questions).toBe(1);
     expect(member.counts.listings).toBeNull();
     expect(member.communities).toHaveLength(1);
     expect(member.activity?.some(({ type }) => type === "QUESTION")).toBe(true);
 
-    const owner = await getPublicProfile(
-      fixture.subject.id,
-      fixture.subject,
-    );
+    const owner = await getPublicProfile(fixture.subject.id, fixture.subject);
     expect(owner.counts.posts).toBe(2);
     expect(owner.counts.listings).toBe(1);
     expect(owner.communities).toHaveLength(2);
@@ -639,15 +630,13 @@ postgresDescribe("Module 6 PostgreSQL profiles", () => {
     await prisma.$executeRawUnsafe(
       'DROP TRIGGER "module6_fail_audit_trigger" ON "AuditLog"',
     );
-    await prisma.$executeRawUnsafe(
-      'DROP FUNCTION "module6_fail_audit"()',
-    );
+    await prisma.$executeRawUnsafe('DROP FUNCTION "module6_fail_audit"()');
   });
 
   it("provides Admin review DTOs without credential material", async () => {
-    await expect(
-      listAdminUsers(fixture.moderator),
-    ).rejects.toMatchObject({ status: 403 });
+    await expect(listAdminUsers(fixture.moderator)).rejects.toMatchObject({
+      status: 403,
+    });
     const list = await listAdminUsers(fixture.admin, {
       query: fixture.subject.email,
     });

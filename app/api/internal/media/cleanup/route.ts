@@ -6,9 +6,9 @@ import { isAuthorizedWorkerRequest } from "@/lib/worker-auth";
 export const dynamic = "force-dynamic";
 
 // Deletes orphaned/expired media assets and retries pending provider deletions.
-// Previously only available as the `media:cleanup` CLI script; exposed here so
-// it can run on Vercel Cron. Authorized via CRON_SECRET (Vercel Cron) or
-// MEDIA_WORKER_SECRET (manual/other schedulers).
+// Previously only available as the `media:cleanup` CLI script; exposed here
+// for the GitHub scheduler and remains compatible with Vercel Cron. Authorized
+// via CRON_SECRET or MEDIA_WORKER_SECRET.
 async function handle(request: NextRequest) {
   if (!isAuthorizedWorkerRequest(request, "MEDIA_WORKER_SECRET")) {
     return jsonError("Authentication required.", 401);

@@ -1,8 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  markConversationRead,
-  MessagingError,
-} from "@/lib/messaging";
+import { markConversationRead, MessagingError } from "@/lib/messaging";
 import { hasTrustedOrigin, jsonError } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
 import { conversationReadSchema } from "@/lib/validation";

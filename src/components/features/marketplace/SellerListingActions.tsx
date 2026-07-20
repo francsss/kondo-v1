@@ -47,22 +47,22 @@ export function SellerListingActions({
             ["ACTIVE", "Renew"],
             ["ARCHIVED", "Archive"],
           ]
-      : status === "ACTIVE"
-        ? [
-            ["RESERVED", "Reserve"],
-            ["SOLD", "Mark sold"],
-            ["ARCHIVED", "Archive"],
-          ]
-        : status === "RESERVED"
+        : status === "ACTIVE"
           ? [
-              ["ACTIVE", "Make active"],
+              ["RESERVED", "Reserve"],
               ["SOLD", "Mark sold"],
               ["ARCHIVED", "Archive"],
             ]
-          : status === "SOLD"
-            ? [["ARCHIVED", "Archive"]]
-            : status === "ARCHIVED"
-              ? [["ACTIVE", "Republish"]]
+          : status === "RESERVED"
+            ? [
+                ["ACTIVE", "Make active"],
+                ["SOLD", "Mark sold"],
+                ["ARCHIVED", "Archive"],
+              ]
+            : status === "SOLD"
+              ? [["ARCHIVED", "Archive"]]
+              : status === "ARCHIVED"
+                ? [["ACTIVE", "Republish"]]
                 : [];
 
   return (

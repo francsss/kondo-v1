@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
-import { adminInternalError, adminJson, authorizeAdminApi } from "@/lib/admin-auth";
+import {
+  adminInternalError,
+  adminJson,
+  authorizeAdminApi,
+} from "@/lib/admin-auth";
 import { ProfileError, updateUserStatusAsAdmin } from "@/lib/profiles";
 import { getRequestMeta, hasTrustedOrigin } from "@/lib/request";
 import { adminUserStatusSchema } from "@/lib/validation";

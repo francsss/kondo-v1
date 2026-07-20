@@ -11,10 +11,7 @@ import {
 } from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
-import {
-  hasAdminPermission,
-  type AppRole,
-} from "@/lib/authorization";
+import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import {
   communityVisibilityWhere,
   publishedPostVisibilityWhere,
@@ -568,7 +565,10 @@ export async function archiveOwnedCommunity(input: {
     });
     if (!community) throw new CommunityError("Community not found.", 404);
     if (!canOwnCommunity(input.actor, community.members[0]?.role)) {
-      throw new CommunityError("Only the owner can archive this community.", 403);
+      throw new CommunityError(
+        "Only the owner can archive this community.",
+        403,
+      );
     }
     if (community.status !== "ARCHIVED") {
       await tx.community.update({
@@ -619,7 +619,10 @@ export async function updateCommunityMemberRole(input: {
       throw new CommunityError("Only the owner can change member roles.", 403);
     }
     if (target.role === "OWNER") {
-      throw new CommunityError("Transfer ownership before changing this role.", 409);
+      throw new CommunityError(
+        "Transfer ownership before changing this role.",
+        409,
+      );
     }
     const updated = await tx.communityMember.update({
       where: { id: target.id },
@@ -668,7 +671,10 @@ export async function removeCommunityMember(input: {
       throw new CommunityError("Community staff permission required.", 403);
     }
     if (target.role === "OWNER") {
-      throw new CommunityError("Transfer ownership before removing the owner.", 409);
+      throw new CommunityError(
+        "Transfer ownership before removing the owner.",
+        409,
+      );
     }
     if (
       actorMembership?.role === "MODERATOR" &&
@@ -1097,7 +1103,8 @@ export async function createCommunityPost(input: {
   if (input.data.type === "EVENT" && input.data.eventAt! <= new Date()) {
     throw new CommunityError("Event start time must be in the future.");
   }
-  const eventValidated = input.data.type === "EVENT" && localStaff(membership.role);
+  const eventValidated =
+    input.data.type === "EVENT" && localStaff(membership.role);
   const status =
     input.data.type === "EVENT" && !eventValidated
       ? ("PENDING_REVIEW" as const)
@@ -1366,13 +1373,7 @@ export async function removeCommunityPost(input: {
 export async function moderateCommunityPost(input: {
   actor: CommunityActor;
   postId: string;
-  action:
-    | "PIN"
-    | "UNPIN"
-    | "PUBLISH"
-    | "VALIDATE_EVENT"
-    | "REMOVE"
-    | "RESTORE";
+  action: "PIN" | "UNPIN" | "PUBLISH" | "VALIDATE_EVENT" | "REMOVE" | "RESTORE";
   meta?: RequestMeta;
 }) {
   return prisma.$transaction(async (tx) => {
@@ -1400,7 +1401,10 @@ export async function moderateCommunityPost(input: {
     });
     if (!post) throw new CommunityError("Post not found.", 404);
     if (!canManageCommunity(input.actor, post.community.members[0]?.role)) {
-      throw new CommunityError("Community moderation permission required.", 403);
+      throw new CommunityError(
+        "Community moderation permission required.",
+        403,
+      );
     }
     const now = new Date();
     let data: Prisma.PostUpdateInput;
@@ -1422,7 +1426,10 @@ export async function moderateCommunityPost(input: {
         break;
       case "PUBLISH":
         if (post.type === "EVENT") {
-          throw new CommunityError("Validate the event before publishing.", 409);
+          throw new CommunityError(
+            "Validate the event before publishing.",
+            409,
+          );
         }
         data = { status: "PUBLISHED", removedAt: null };
         break;
@@ -1446,10 +1453,7 @@ export async function moderateCommunityPost(input: {
         eventValidatedAt: true,
       },
     });
-    if (
-      input.action === "VALIDATE_EVENT" &&
-      post.authorId !== input.actor.id
-    ) {
+    if (input.action === "VALIDATE_EVENT" && post.authorId !== input.actor.id) {
       await enqueueNotificationJobWithClient(tx, {
         recipientId: post.authorId,
         actorId: input.actor.id,
@@ -1552,8 +1556,8 @@ export async function createPostComment(input: {
       },
     });
     const recipients = new Set(
-      [post.authorId, parent?.authorId].filter(
-        (id): id is string => Boolean(id && id !== input.actor.id),
+      [post.authorId, parent?.authorId].filter((id): id is string =>
+        Boolean(id && id !== input.actor.id),
       ),
     );
     for (const recipientId of recipients) {
@@ -1649,10 +1653,7 @@ export async function removePostComment(input: {
     if (!comment) throw new CommunityError("Comment not found.", 404);
     if (
       comment.authorId !== input.actor.id &&
-      !canManageCommunity(
-        input.actor,
-        comment.post.community.members[0]?.role,
-      )
+      !canManageCommunity(input.actor, comment.post.community.members[0]?.role)
     ) {
       throw new CommunityError("Comment removal permission required.", 403);
     }

@@ -198,7 +198,10 @@ export default async function CommunityPage({
                 {community.name}
               </h1>
               {community.isVerified ? (
-                <BadgeCheck aria-label="Verified" className="h-6 w-6 text-kondo-lime" />
+                <BadgeCheck
+                  aria-label="Verified"
+                  className="h-6 w-6 text-kondo-lime"
+                />
               ) : null}
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
@@ -291,12 +294,16 @@ export default async function CommunityPage({
               </p>
               <div className="flex gap-2">
                 <Button asChild size="sm" variant="secondary">
-                  <Link href={`/communities/${slug}?page=${Math.max(1, page - 1)}`}>
+                  <Link
+                    href={`/communities/${slug}?page=${Math.max(1, page - 1)}`}
+                  >
                     <ChevronLeft className="h-4 w-4" /> Previous
                   </Link>
                 </Button>
                 <Button asChild size="sm" variant="secondary">
-                  <Link href={`/communities/${slug}?page=${Math.min(pageCount, page + 1)}`}>
+                  <Link
+                    href={`/communities/${slug}?page=${Math.min(pageCount, page + 1)}`}
+                  >
                     Next <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -309,7 +316,8 @@ export default async function CommunityPage({
                 Post conversation
               </p>
               <h2 className="mt-1 text-lg font-black text-kondo-ink dark:text-white">
-                {comments.length} {comments.length === 1 ? "comment" : "comments"}
+                {comments.length}{" "}
+                {comments.length === 1 ? "comment" : "comments"}
               </h2>
               <CommentThread
                 canComment={joined}

@@ -28,7 +28,9 @@ function VerifyEmailBody() {
       const data = await response.json().catch(() => null);
       if (cancelled) return;
       if (!response.ok) {
-        setError(data?.error ?? "This verification link is invalid or has expired.");
+        setError(
+          data?.error ?? "This verification link is invalid or has expired.",
+        );
         setStatus("error");
         return;
       }

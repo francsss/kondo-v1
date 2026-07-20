@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  AUTH_COOKIE_NAME,
-  clearSessionCookie,
-} from "@/lib/auth";
+import { AUTH_COOKIE_NAME, clearSessionCookie } from "@/lib/auth";
 import {
   getRequestMeta,
   hasTrustedOrigin,

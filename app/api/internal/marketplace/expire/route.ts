@@ -18,6 +18,7 @@ async function handle(request: NextRequest) {
   }
 }
 
-// GET is used by Vercel Cron; POST remains for manual triggers.
+// POST is used by the GitHub scheduler; GET remains compatible with Vercel
+// Cron and manual health checks.
 export const GET = handle;
 export const POST = handle;

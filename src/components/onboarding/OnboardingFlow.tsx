@@ -18,12 +18,7 @@ type Option = { id: string; name: string; secondary?: string };
 type CityOption = Option & { countryId: string };
 type UniversityOption = Option & { cityId: string; countryId: string };
 type StudyLevel =
-  | "LANGUAGE"
-  | "BACHELORS"
-  | "MASTERS"
-  | "DOCTORATE"
-  | "EXCHANGE"
-  | "OTHER";
+  "LANGUAGE" | "BACHELORS" | "MASTERS" | "DOCTORATE" | "EXCHANGE" | "OTHER";
 type InitialValues = {
   countryId: string | null;
   cityId: string | null;
@@ -101,9 +96,7 @@ export function OnboardingFlow({
   });
   const availableUniversities = useMemo(
     () =>
-      universities.filter(
-        (university) => university.cityId === form.cityId,
-      ),
+      universities.filter((university) => university.cityId === form.cityId),
     [form.cityId, universities],
   );
 

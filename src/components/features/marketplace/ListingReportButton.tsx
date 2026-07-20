@@ -25,16 +25,27 @@ export function ListingReportButton({ listingId }: { listingId: string }) {
         ? payload?.reused
           ? "Report already open."
           : "Report submitted."
-        : payload?.error ?? "Could not submit report.",
+        : (payload?.error ?? "Could not submit report."),
     );
   }
 
   return (
     <div className="text-center">
-      <Button disabled={pending} onClick={report} size="sm" type="button" variant="ghost">
-        <Flag className="h-4 w-4" /> {pending ? "Submitting…" : "Report listing"}
+      <Button
+        disabled={pending}
+        onClick={report}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        <Flag className="h-4 w-4" />{" "}
+        {pending ? "Submitting…" : "Report listing"}
       </Button>
-      {message ? <p className="mt-1 text-xs text-slate-400" role="status">{message}</p> : null}
+      {message ? (
+        <p className="mt-1 text-xs text-slate-400" role="status">
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -57,8 +57,8 @@ export function LanguageSettings({
         <Languages className="mt-0.5 h-5 w-5 text-kondo-green" />
         <p className="text-sm leading-6 text-kondo-forest dark:text-emerald-200">
           Your preference is saved now. English remains the complete product
-          language until each translation is reviewed across navigation,
-          safety, content, and moderation.
+          language until each translation is reviewed across navigation, safety,
+          content, and moderation.
         </p>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -82,9 +82,7 @@ export function LanguageSettings({
                   <p className="font-black text-kondo-ink dark:text-white">
                     {language.nativeName}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {language.name}
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">{language.name}</p>
                 </div>
                 {active ? (
                   <span className="grid h-7 w-7 place-items-center rounded-full bg-kondo-green text-white">

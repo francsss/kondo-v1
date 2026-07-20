@@ -35,7 +35,7 @@ export function CommunityAdminActions({
     setMessage(
       response?.ok
         ? "Moderation state saved."
-        : payload?.error ?? "Could not update the community.",
+        : (payload?.error ?? "Could not update the community."),
     );
     if (response?.ok) router.refresh();
   }
@@ -62,10 +62,7 @@ export function CommunityAdminActions({
           onChange={(event) =>
             setStatus(
               event.target.value as
-                | "PENDING_REVIEW"
-                | "ACTIVE"
-                | "ARCHIVED"
-                | "REMOVED",
+                "PENDING_REVIEW" | "ACTIVE" | "ARCHIVED" | "REMOVED",
             )
           }
           value={status}

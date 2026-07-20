@@ -1,12 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getMediaForDelivery } from "@/lib/media";
 import {
   clearConversationForUser,
@@ -52,10 +45,7 @@ async function cleanup() {
   });
   await prisma.report.deleteMany({
     where: {
-      OR: [
-        { reporterId: { in: userIds } },
-        { subjectUserId: { in: userIds } },
-      ],
+      OR: [{ reporterId: { in: userIds } }, { subjectUserId: { in: userIds } }],
     },
   });
   await prisma.notification.deleteMany({
@@ -63,10 +53,7 @@ async function cleanup() {
   });
   await prisma.notificationJob.deleteMany({
     where: {
-      OR: [
-        { recipientId: { in: userIds } },
-        { actorId: { in: userIds } },
-      ],
+      OR: [{ recipientId: { in: userIds } }, { actorId: { in: userIds } }],
     },
   });
   await prisma.auditLog.deleteMany({
@@ -196,10 +183,7 @@ postgresDescribe("Module 10 PostgreSQL messaging and safety", () => {
         select: { directKey: true },
       }),
     ).resolves.toEqual({
-      directKey: directConversationKey(
-        fixture.sender.id,
-        fixture.recipient.id,
-      ),
+      directKey: directConversationKey(fixture.sender.id, fixture.recipient.id),
     });
 
     await expect(
@@ -236,10 +220,7 @@ postgresDescribe("Module 10 PostgreSQL messaging and safety", () => {
           directKey: directConversationKey(fixture.recipient.id, partner.id),
           lastMessageAt: createdAt,
           participants: {
-            create: [
-              { userId: fixture.recipient.id },
-              { userId: partner.id },
-            ],
+            create: [{ userId: fixture.recipient.id }, { userId: partner.id }],
           },
           messages: {
             create: {
@@ -263,9 +244,7 @@ postgresDescribe("Module 10 PostgreSQL messaging and safety", () => {
     expect(first).toMatchObject({ page: 1, pageCount: 2, total: 3 });
     expect(first.conversations).toHaveLength(2);
     expect(second.conversations).toHaveLength(1);
-    expect(first.conversations[0]?.otherParticipant?.firstName).toBe(
-      "Jiaxing",
-    );
+    expect(first.conversations[0]?.otherParticipant?.firstName).toBe("Jiaxing");
 
     const search = await getInbox(fixture.recipient.id, {
       query: "Shanghai",
@@ -430,9 +409,7 @@ postgresDescribe("Module 10 PostgreSQL messaging and safety", () => {
     expect(safety.privacy.rawConversationAccess).toBe(false);
     expect(safety.metrics.attachmentMessages).toBeGreaterThanOrEqual(1);
     expect(safety.recentReports[0]).not.toHaveProperty("messages");
-    expect(JSON.stringify(safety)).not.toContain(
-      "suspicious payment request",
-    );
+    expect(JSON.stringify(safety)).not.toContain("suspicious payment request");
   });
 
   it("deletes a DIRECT thread as one unit when a participant is physically removed", async () => {

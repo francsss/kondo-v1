@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { jwtVerify, SignJWT } from "jose";
+import { getJwtSecret } from "@/lib/runtime-secrets";
 
 type UploadTokenInput = {
   assetId: string;
@@ -10,14 +11,8 @@ type UploadTokenInput = {
 };
 
 function mediaSecret() {
-  const secret =
-    process.env.JWT_SECRET ??
-    (process.env.NODE_ENV === "production"
-      ? null
-      : "dev-only-kondo-secret-change-me-before-launch");
-  if (!secret) throw new Error("JWT_SECRET is required for media signing.");
   return new Uint8Array(
-    createHash("sha256").update(`kondo-media:${secret}`).digest(),
+    createHash("sha256").update(`kondo-media:${getJwtSecret()}`).digest(),
   );
 }
 

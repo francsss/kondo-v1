@@ -1,8 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  CommunityError,
-  createCommunity,
-} from "@/lib/communities";
+import { CommunityError, createCommunity } from "@/lib/communities";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import {
@@ -100,7 +97,10 @@ export async function POST(request: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!(await rateLimit(`community-create:${user.id}`, 3, 24 * 60 * 60_000)).allowed) {
+  if (
+    !(await rateLimit(`community-create:${user.id}`, 3, 24 * 60 * 60_000))
+      .allowed
+  ) {
     return jsonError("Community creation limit reached.", 429);
   }
   const parsed = createCommunitySchema.safeParse(

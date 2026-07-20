@@ -8,10 +8,7 @@ import {
   PartyPopper,
   ShoppingBag,
 } from "lucide-react";
-import type {
-  ExploreAccent,
-  ExploreIconName,
-} from "@/features/explore/types";
+import type { ExploreAccent, ExploreIconName } from "@/features/explore/types";
 
 const icons: Record<ExploreIconName, LucideIcon> = {
   companies: Building2,

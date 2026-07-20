@@ -56,9 +56,7 @@ export function NotificationItem({
   const content = (
     <div
       className={`relative flex gap-4 p-5 pr-12 transition hover:bg-slate-50 dark:hover:bg-white/5 ${
-        read
-          ? ""
-          : "bg-emerald-50/50 dark:bg-emerald-400/5"
+        read ? "" : "bg-emerald-50/50 dark:bg-emerald-400/5"
       }`}
     >
       <div className="relative">

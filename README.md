@@ -11,11 +11,12 @@ Kondo is the digital home for African students studying in China. The MVP combin
 - Database-backed sessions with signed, HTTP-only cookies
 - Zod validation, permission-based Admin authorization, transactional audit logs, rate limits, and security headers
 - Vitest unit tests plus disposable PostgreSQL integration and API E2E coverage
-- Vercel deployment target and S3-compatible object-storage contract
+- Vercel on Node.js 24 LTS, Neon PostgreSQL, private Cloudflare R2, Upstash
+  Redis, Resend, and GitHub-scheduled background workers
 
 ## Local development
 
-Requires Node.js 20.9 or newer and PostgreSQL.
+Requires Node.js 24 and PostgreSQL.
 
 ```bash
 cp .env.example .env
@@ -47,9 +48,15 @@ All seeded accounts use `ChangeMe123!`.
 
 ```bash
 npm run lint
+npm run format:check
 npm run typecheck
 npm test
 npm run build
+npm run e2e
 ```
 
-Project decisions, operating guidance, and the complete change history live in [`docs`](./docs).
+Release operators should start with the
+[Production Readiness Report](./docs/PRODUCTION_READINESS.md),
+[Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md), and
+[Environment Variable Checklist](./docs/ENVIRONMENT_VARIABLES.md). Project
+decisions and the complete change history live in [`docs`](./docs).

@@ -16,9 +16,7 @@ export default async function AdminLayout({
     getUnreadMessageCount(user.id),
   ]);
   return (
-    <AppShell
-      user={{ ...user, notificationUnreadCount, messageUnreadCount }}
-    >
+    <AppShell user={{ ...user, notificationUnreadCount, messageUnreadCount }}>
       {children}
     </AppShell>
   );

@@ -51,7 +51,9 @@ export function AccountRequestPanel({
 
   async function requestDeletion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const reason = String(new FormData(event.currentTarget).get("reason") ?? "");
+    const reason = String(
+      new FormData(event.currentTarget).get("reason") ?? "",
+    );
     await create("ACCOUNT_DELETION", reason);
   }
 

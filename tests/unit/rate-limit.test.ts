@@ -52,6 +52,15 @@ describe("rateLimit", () => {
     expect(mocks.RatelimitCtor).not.toHaveBeenCalled();
   });
 
+  it("rejects a partially configured Redis integration", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    const { rateLimit } = await import("@/lib/rate-limit");
+
+    await expect(rateLimit("partial-config")).rejects.toThrow(
+      "must be configured together",
+    );
+  });
+
   it("resets the in-memory window after it elapses", async () => {
     vi.useFakeTimers();
     const { rateLimit } = await import("@/lib/rate-limit");
@@ -72,7 +81,11 @@ describe("rateLimit", () => {
   it("uses Upstash Redis when configured and reuses one limiter per limit/window pair", async () => {
     process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
     process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
-    mocks.limit.mockResolvedValue({ success: true, remaining: 4, reset: 12345 });
+    mocks.limit.mockResolvedValue({
+      success: true,
+      remaining: 4,
+      reset: 12345,
+    });
     const { rateLimit } = await import("@/lib/rate-limit");
 
     await expect(rateLimit("redis-key-a", 5, 60_000)).resolves.toEqual({

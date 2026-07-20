@@ -183,8 +183,8 @@ postgresDescribe("Module 14 PostgreSQL auth tokens", () => {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       await requestPasswordReset({ email });
     }
-    await expect(
-      requestPasswordReset({ email }),
-    ).rejects.toMatchObject({ status: 429 });
+    await expect(requestPasswordReset({ email })).rejects.toMatchObject({
+      status: 429,
+    });
   });
 });

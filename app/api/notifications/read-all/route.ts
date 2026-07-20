@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
 import { markAllNotificationsRead } from "@/lib/notifications";
-import {
-  hasTrustedOrigin,
-  internalApiError,
-  jsonError,
-} from "@/lib/request";
+import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
 
 export async function PATCH(request: NextRequest) {

@@ -10,10 +10,7 @@ import {
   revokeUserSessions,
   updateUserPreferences,
 } from "@/lib/settings";
-import {
-  createDatabaseSession,
-  hashSessionId,
-} from "@/lib/server-auth";
+import { createDatabaseSession, hashSessionId } from "@/lib/server-auth";
 
 const isIsolatedPostgres =
   process.env.DATABASE_URL?.includes("/kondo_module3_test") ?? false;
@@ -175,11 +172,7 @@ postgresDescribe("Module 7 PostgreSQL settings and sessions", () => {
       where: { tokenHash: hashSessionId(foreignId) },
     });
     await expect(
-      revokeUserSession(
-        fixture.user.id,
-        foreign.id,
-        currentHash,
-      ),
+      revokeUserSession(fixture.user.id, foreign.id, currentHash),
     ).rejects.toMatchObject({ status: 404 });
     await expect(
       revokeUserSession(fixture.user.id, other.id, currentHash),

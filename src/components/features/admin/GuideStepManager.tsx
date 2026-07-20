@@ -231,7 +231,9 @@ export function GuideStepManager({
         </p>
         <StepForm
           guideId={guideId}
-          nextOrder={steps.length ? Math.max(...steps.map((s) => s.order)) + 1 : 0}
+          nextOrder={
+            steps.length ? Math.max(...steps.map((s) => s.order)) + 1 : 0
+          }
           onSaved={() => router.refresh()}
         />
       </div>

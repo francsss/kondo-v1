@@ -18,7 +18,7 @@ async function handle(request: NextRequest) {
   }
 }
 
-// GET is used by Vercel Cron (which sends `Authorization: Bearer <CRON_SECRET>`);
-// POST remains available for manual triggers and non-Vercel schedulers.
+// POST is used by the GitHub scheduler. GET remains compatible with Vercel
+// Cron, which sends `Authorization: Bearer <CRON_SECRET>`.
 export const GET = handle;
 export const POST = handle;

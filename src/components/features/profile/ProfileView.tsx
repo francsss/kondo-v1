@@ -228,11 +228,7 @@ function Tab({
   );
 }
 
-function ActivityList({
-  items,
-}: {
-  items: ActivityItem[];
-}) {
+function ActivityList({ items }: { items: ActivityItem[] }) {
   return (
     <div className="space-y-4">
       {items.map((item) => (

@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, CheckCircle2, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+} from "lucide-react";
 import { FormEvent, Suspense, useState } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
@@ -61,8 +67,7 @@ function ResetPasswordForm() {
           Password updated
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Every device was signed out for your security. Redirecting to
-          sign in…
+          Every device was signed out for your security. Redirecting to sign in…
         </p>
       </div>
     );
@@ -150,8 +155,8 @@ export default function ResetPasswordPage() {
           </Suspense>
         </div>
         <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-slate-400">
-          <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built
-          for students.
+          <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built for
+          students.
         </p>
       </div>
     </main>

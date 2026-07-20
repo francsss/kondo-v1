@@ -1,9 +1,9 @@
 {
   "name": "kondo-v1-clean",
-  "version": "0.19.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "engines": {
-    "node": ">=20.9"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev --webpack",
@@ -14,8 +14,8 @@
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node scripts/prepare-test-db.mjs && vitest run",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
+    "e2e": "env -u NO_COLOR playwright test",
+    "e2e:ui": "env -u NO_COLOR playwright test --ui",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -23,7 +23,8 @@
     "media:cleanup": "tsx scripts/cleanup-media.ts",
     "notifications:process": "tsx scripts/process-notifications.ts",
     "notifications:digest": "tsx scripts/send-email-digests.ts",
-    "marketplace:expire": "tsx scripts/expire-listings.ts"
+    "marketplace:expire": "tsx scripts/expire-listings.ts",
+    "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1088.0",

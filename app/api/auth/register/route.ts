@@ -20,7 +20,11 @@ import { registerSchema } from "@/lib/validation";
 export async function POST(request: NextRequest) {
   if (!hasTrustedOrigin(request))
     return jsonError("Invalid request origin.", 403);
-  const limit = await rateLimit(`register:${requestIp(request)}`, 5, 60 * 60_000);
+  const limit = await rateLimit(
+    `register:${requestIp(request)}`,
+    5,
+    60 * 60_000,
+  );
   if (!limit.allowed)
     return jsonError("Too many accounts created. Try again later.", 429);
 

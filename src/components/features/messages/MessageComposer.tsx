@@ -1,22 +1,10 @@
 "use client";
 
-import {
-  ChangeEvent,
-  FormEvent,
-  KeyboardEvent,
-  useRef,
-  useState,
-} from "react";
+import { ChangeEvent, FormEvent, KeyboardEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  FileText,
-  Loader2,
-  Paperclip,
-  Send,
-  SmilePlus,
-  X,
-} from "lucide-react";
+import { FileText, Loader2, Paperclip, Send, SmilePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { uploadMediaFile } from "@/lib/client-media";
 
 const emojis = ["😊", "👍", "🎉", "🙏", "❤️", "😂", "👋", "✨"];
 const supportedMimeTypes = new Set([
@@ -25,15 +13,6 @@ const supportedMimeTypes = new Set([
   "image/webp",
   "application/pdf",
 ]);
-
-type UploadIntent = {
-  media: { id: string };
-  upload: {
-    url: string;
-    method: "PUT";
-    headers: Record<string, string>;
-  };
-};
 
 export function MessageComposer({
   conversationId,
@@ -88,76 +67,24 @@ export function MessageComposer({
     }
     setAttachment(file);
     setAltText(
-      file.type.startsWith("image/")
-        ? `Message image: ${file.name}`
-        : "",
+      file.type.startsWith("image/") ? `Message image: ${file.name}` : "",
     );
   }
 
   async function uploadAttachment(file: File) {
     const purpose =
-      file.type === "application/pdf"
-        ? "MESSAGE_DOCUMENT"
-        : "MESSAGE_IMAGE";
-    const intentResponse = await fetch("/api/media/uploads", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        purpose,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        ...(purpose === "MESSAGE_IMAGE" ? { altText } : {}),
-      }),
+      file.type === "application/pdf" ? "MESSAGE_DOCUMENT" : "MESSAGE_IMAGE";
+    return uploadMediaFile(file, {
+      purpose,
+      ...(purpose === "MESSAGE_IMAGE" ? { altText } : {}),
     });
-    const intent = (await intentResponse.json().catch(() => null)) as
-      | UploadIntent
-      | { error?: string }
-      | null;
-    if (!intentResponse.ok || !intent || !("upload" in intent)) {
-      throw new Error(
-        intent && "error" in intent && intent.error
-          ? intent.error
-          : "Could not authorize the attachment.",
-      );
-    }
-
-    const uploadResponse = await fetch(intent.upload.url, {
-      method: intent.upload.method,
-      credentials: intent.upload.url.startsWith("/") ? "include" : "omit",
-      headers: intent.upload.headers,
-      body: file,
-    });
-    if (!uploadResponse.ok) {
-      const payload = await uploadResponse.json().catch(() => null);
-      throw new Error(payload?.error ?? "Could not upload the attachment.");
-    }
-
-    const completeResponse = await fetch(
-      `/api/media/uploads/${intent.media.id}/complete`,
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
-    const completed = await completeResponse.json().catch(() => null);
-    if (!completeResponse.ok) {
-      throw new Error(
-        completed?.error ?? "Could not validate the attachment.",
-      );
-    }
-    return intent.media.id;
   }
 
   async function submit(event?: FormEvent) {
     event?.preventDefault();
     const message = body.trim();
     if ((!message && !attachment) || pending || disabled) return;
-    if (
-      attachment?.type.startsWith("image/") &&
-      altText.trim().length < 2
-    ) {
+    if (attachment?.type.startsWith("image/") && altText.trim().length < 2) {
       setError("Describe the image before sending it.");
       return;
     }

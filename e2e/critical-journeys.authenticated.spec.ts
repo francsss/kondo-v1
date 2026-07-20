@@ -26,10 +26,14 @@ test.describe("authenticated critical journeys", () => {
     page,
   }) => {
     await page.goto("/communities");
-    await expect(page.getByRole("heading", { name: /communities/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /communities/i }).first(),
+    ).toBeVisible();
 
     await page.goto("/marketplace");
-    await expect(page.getByRole("heading", { name: /marketplace/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /marketplace/i }).first(),
+    ).toBeVisible();
 
     await page.goto("/student-hub");
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
@@ -46,7 +50,9 @@ test.describe("authenticated critical journeys", () => {
     await page.goto("/marketplace");
     await page.getByRole("link", { name: /sell an item/i }).click();
     await expect(page).toHaveURL(/\/marketplace\/new/);
-    await expect(page.getByRole("button", { name: /publish listing/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /publish listing/i }),
+    ).toBeVisible();
   });
 
   test("can open the messages inbox", async ({ page }) => {

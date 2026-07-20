@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { ProfileView } from "@/components/features/profile/ProfileView";
-import {
-  getPublicProfile,
-  getSavedContent,
-} from "@/lib/profiles";
+import { getPublicProfile, getSavedContent } from "@/lib/profiles";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Profile" };

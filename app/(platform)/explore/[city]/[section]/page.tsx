@@ -16,9 +16,12 @@ export function generateStaticParams() {
   return getExploreSectionParams();
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { city: citySlug, section: sectionSlug } = await params;
-  const city = (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
+  const city =
+    (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
   const section = city ? getExploreSection(city, sectionSlug) : undefined;
   if (!city || !section) return { title: "Explore your city" };
   return {
@@ -29,7 +32,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ExploreCitySectionPage({ params }: PageProps) {
   const { city: citySlug, section: sectionSlug } = await params;
-  const city = (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
+  const city =
+    (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
   const section = city ? getExploreSection(city, sectionSlug) : undefined;
   if (!city || !section) notFound();
 

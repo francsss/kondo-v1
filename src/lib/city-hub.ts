@@ -73,7 +73,12 @@ function scaffoldDraft(slug: string, name: string): ExploreCity {
 
 export async function listAdminCityHubs(
   actor: Actor,
-  input: { page?: number; pageSize?: number; query?: string; status?: CityHubStatus } = {},
+  input: {
+    page?: number;
+    pageSize?: number;
+    query?: string;
+    status?: CityHubStatus;
+  } = {},
 ) {
   if (!hasAdminPermission(actor.role, "CITY_CMS_VIEW")) {
     throw new CityHubError("Access denied.", 403);
@@ -201,7 +206,10 @@ export async function createCityHub(input: {
       action: "CITY_HUB_CREATED",
       entityType: "CityHub",
       entityId: hub.id,
-      newValue: { slug: hub.slug, seeded: Boolean(input.data.seedFromRegistry) },
+      newValue: {
+        slug: hub.slug,
+        seeded: Boolean(input.data.seedFromRegistry),
+      },
       ...input.meta,
     });
     return { hub };

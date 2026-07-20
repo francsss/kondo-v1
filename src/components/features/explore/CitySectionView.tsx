@@ -11,10 +11,7 @@ import {
   ExploreIcon,
   exploreAccentStyles,
 } from "@/components/features/explore/ExploreIcon";
-import type {
-  ExploreCity,
-  ExploreSection,
-} from "@/features/explore/types";
+import type { ExploreCity, ExploreSection } from "@/features/explore/types";
 
 export function CitySectionView({
   city,
@@ -99,8 +96,13 @@ export function CitySectionView({
                   {entry.title}
                 </h2>
               </div>
-              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${styles.icon}`}>
-                <ExploreIcon className="h-[18px] w-[18px]" name={section.icon} />
+              <span
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${styles.icon}`}
+              >
+                <ExploreIcon
+                  className="h-[18px] w-[18px]"
+                  name={section.icon}
+                />
               </span>
             </div>
 
@@ -185,7 +187,8 @@ export function CitySectionView({
           <div>
             <p className="font-black">Keep exploring {city.name}</p>
             <p className="mt-1 max-w-xl text-sm leading-6 text-white/60">
-              Move between city life, industry, education, and opportunity from one connected guide.
+              Move between city life, industry, education, and opportunity from
+              one connected guide.
             </p>
           </div>
         </div>

@@ -103,14 +103,19 @@
 - Media records store provider-neutral object keys.
 - Kondo has no payment, wallet, transfer, bank-integration, KYC, or settlement data in the MVP.
 
-## Production launch gates
+## Operational launch gates
 
-- Replace the in-memory rate limiter with a shared Redis-compatible implementation before multi-instance traffic.
-- Encrypt OAuth tokens at rest or avoid storing provider access tokens when they are unnecessary.
-- Add verified email delivery, password reset, device/session management, and suspicious-login alerts.
+- Configure Upstash so the implemented shared limiter is used by every
+  production instance.
+- Do not add OAuth credentials until a complete provider linking flow exists;
+  no OAuth access tokens are stored by this release.
+- Configure Resend and verify the sending domain for the implemented
+  verification, password-reset, and digest flows.
 - Connect a managed malware-scanning service before enabling document types beyond the current constrained PDF policy or broad external document sharing.
-- Schedule `npm run media:cleanup` in every deployed environment and alert on repeated `storageDeletePending` failures.
-- Add automated dependency, secret, SAST, and container scanning in CI.
+- Configure the committed GitHub scheduler and alert on repeated
+  `storageDeletePending` failures.
+- Enable GitHub secret scanning and review Dependabot, CodeQL, release-check,
+  and production dependency-audit results.
 - Connect CSP reporting, application errors, audit anomalies, and database metrics to monitoring.
 - Define privacy, retention, deletion, child-safety, moderation escalation, and law-enforcement request policies with counsel.
 - Connect the account-request workflow to verified export generation, identity reauthentication, legal retention checks, and irreversible deletion execution before treating completion as automated.
@@ -121,8 +126,10 @@
 - The worker endpoint uses a separate secret with timing-safe comparison. Jobs retry three times, recover stale locks, and store bounded error codes.
 - The Module 16 digest worker (`/api/internal/notifications/digest`) reuses that same worker-secret, timing-safe-comparison pattern. Digest emails contain only an unread count and a link back to `/notifications`; suspended/deactivated accounts are skipped even if their digest interval has elapsed.
 - Template and announcement mutations require exact Admin permissions, trusted origin, validation, rate limits, and transactional AuditLog.
-- Add browser-driven end-to-end coverage for responsive Admin interactions; PostgreSQL integration and API-level report-to-resolution coverage are implemented.
-- Move message, new-conversation, block, and report limits to the shared Redis-compatible store before multi-instance messaging traffic.
+- Browser-driven Admin journeys and PostgreSQL report-to-resolution coverage
+  are enforced by the release workflow.
+- Message, new-conversation, block, and report limits automatically use the
+  shared Upstash store once its required production credentials are set.
 
 ## Known dependency advisory
 

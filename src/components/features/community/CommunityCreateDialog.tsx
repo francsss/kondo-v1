@@ -138,7 +138,9 @@ export function CommunityCreateDialog({
                 </label>
               </div>
               <label className="block">
-                <span className="mb-2 block text-sm font-bold">Description</span>
+                <span className="mb-2 block text-sm font-bold">
+                  Description
+                </span>
                 <textarea
                   className="min-h-28 w-full rounded-2xl border border-slate-200 bg-transparent p-4 text-sm leading-6 outline-none focus:border-kondo-green dark:border-white/10"
                   maxLength={1000}
@@ -202,7 +204,9 @@ export function CommunityCreateDialog({
                 <input
                   accept="image/jpeg,image/png,image/webp"
                   className="sr-only"
-                  onChange={(event) => setCover(event.target.files?.[0] ?? null)}
+                  onChange={(event) =>
+                    setCover(event.target.files?.[0] ?? null)
+                  }
                   type="file"
                 />
               </label>

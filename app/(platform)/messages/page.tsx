@@ -54,20 +54,12 @@ export default async function MessagesPage({
       />
 
       <div className="mt-7 flex flex-wrap items-center gap-2">
-        <Button
-          asChild
-          size="sm"
-          variant={archived ? "secondary" : "primary"}
-        >
+        <Button asChild size="sm" variant={archived ? "secondary" : "primary"}>
           <Link href={inboxHref({ query: q })}>
             <Inbox className="h-4 w-4" /> Inbox
           </Link>
         </Button>
-        <Button
-          asChild
-          size="sm"
-          variant={archived ? "primary" : "secondary"}
-        >
+        <Button asChild size="sm" variant={archived ? "primary" : "secondary"}>
           <Link href={inboxHref({ query: q, archived: true })}>
             <Archive className="h-4 w-4" /> Archived
           </Link>

@@ -17,12 +17,7 @@ import { formatPrice } from "@/lib/presentation";
 import { ResultCard } from "./ResultCard";
 
 type Category =
-  | "communities"
-  | "listings"
-  | "guides"
-  | "questions"
-  | "users"
-  | "posts";
+  "communities" | "listings" | "guides" | "questions" | "users" | "posts";
 
 const CATEGORY_ICON: Record<Category, React.ReactNode> = {
   communities: <Users />,
@@ -89,7 +84,10 @@ function renderItem(category: Category, item: Record<string, unknown>) {
           icon={CATEGORY_ICON.posts}
           key={item.id as string}
           label="Post"
-          title={(item.title as string | null) ?? (item.content as string).slice(0, 80)}
+          title={
+            (item.title as string | null) ??
+            (item.content as string).slice(0, 80)
+          }
         />
       );
     }
@@ -146,7 +144,11 @@ export function CategoryResults({
     setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({ q: query, type: category, limit: "12" });
+      const params = new URLSearchParams({
+        q: query,
+        type: category,
+        limit: "12",
+      });
       if (after) params.set("cursor", after);
       const response = await fetch(`/api/search?${params.toString()}`, {
         credentials: "include",
@@ -156,7 +158,9 @@ export function CategoryResults({
         items: Record<string, unknown>[];
         nextCursor: string | null;
       };
-      setItems((current) => (replace ? data.items : [...current, ...data.items]));
+      setItems((current) =>
+        replace ? data.items : [...current, ...data.items],
+      );
       setCursor(data.nextCursor);
     } catch {
       setError("Could not load more results.");

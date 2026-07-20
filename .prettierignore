@@ -1,6 +1,12 @@
 .next
 node_modules
 coverage
+.claude
+.data
+e2e/.auth
+playwright-report
+test-results
+*.tsbuildinfo
 package-lock.json
 public
 prisma/migrations

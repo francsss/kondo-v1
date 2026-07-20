@@ -3,11 +3,7 @@ import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
-export const REFERENCE_TYPES = [
-  "countries",
-  "cities",
-  "universities",
-] as const;
+export const REFERENCE_TYPES = ["countries", "cities", "universities"] as const;
 
 export type ReferenceType = (typeof REFERENCE_TYPES)[number];
 type ReferenceActor = { id: string; role: string };
@@ -549,8 +545,7 @@ export async function updateReferenceData(
             verified: true,
           },
         });
-        if (!existing)
-          throw new ReferenceDataError("Country not found.", 404);
+        if (!existing) throw new ReferenceDataError("Country not found.", 404);
         const updated = await tx.country.update({
           where: { id },
           data: {
@@ -649,8 +644,7 @@ export async function updateReferenceData(
           verified: true,
         },
       });
-      if (!existing)
-        throw new ReferenceDataError("University not found.", 404);
+      if (!existing) throw new ReferenceDataError("University not found.", 404);
       const targetCityId = data.cityId ?? existing.cityId;
       const city = await tx.city.findUnique({
         where: { id: targetCityId },
@@ -822,8 +816,7 @@ export async function deleteReferenceData(
         _count: { select: { users: true, communities: true } },
       },
     });
-    if (!existing)
-      throw new ReferenceDataError("University not found.", 404);
+    if (!existing) throw new ReferenceDataError("University not found.", 404);
     if (Object.values(existing._count).some(Boolean)) {
       throw new ReferenceDataError(
         "Deactivate this university instead; dependent records still use it.",

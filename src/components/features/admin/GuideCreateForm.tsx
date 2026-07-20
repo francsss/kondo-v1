@@ -48,9 +48,7 @@ export function GuideCreateForm() {
 
   return (
     <Card className="mt-6">
-      <h2 className="font-black text-kondo-ink dark:text-white">
-        New guide
-      </h2>
+      <h2 className="font-black text-kondo-ink dark:text-white">New guide</h2>
       <form className="mt-4 space-y-4" onSubmit={submit}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">

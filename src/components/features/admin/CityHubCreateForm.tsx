@@ -43,7 +43,9 @@ export function CityHubCreateForm({
 
   return (
     <Card className="mt-6">
-      <h2 className="font-black text-kondo-ink dark:text-white">New city hub</h2>
+      <h2 className="font-black text-kondo-ink dark:text-white">
+        New city hub
+      </h2>
       <p className="mt-1 text-xs text-slate-400">
         Seed from an existing registry city to start with its full content, or
         create an empty draft to build from scratch.

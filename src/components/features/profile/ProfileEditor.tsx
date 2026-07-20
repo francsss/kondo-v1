@@ -7,6 +7,7 @@ import { AccountRequestPanel } from "@/components/features/profile/AccountReques
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { uploadMediaFile } from "@/lib/client-media";
 
 type Audience = "PUBLIC" | "MEMBERS" | "PRIVATE";
 type ProfileSettings = {
@@ -28,12 +29,7 @@ type ProfileSettings = {
   accountRequests: Array<{
     id: string;
     type: "DATA_EXPORT" | "ACCOUNT_DELETION";
-    status:
-      | "PENDING"
-      | "PROCESSING"
-      | "COMPLETED"
-      | "REJECTED"
-      | "CANCELLED";
+    status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED" | "CANCELLED";
     reason: string | null;
     responseNote: string | null;
     version: number;
@@ -48,52 +44,6 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState("");
 
-  async function uploadAvatar(
-    fileToUpload: File,
-    altText: string,
-  ): Promise<string> {
-    const intentResponse = await fetch("/api/media/uploads", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        purpose: "PROFILE_AVATAR",
-        fileName: fileToUpload.name,
-        mimeType: fileToUpload.type,
-        sizeBytes: fileToUpload.size,
-        altText,
-        replacesId: profile.avatarMediaId ?? undefined,
-      }),
-    });
-    const intent = await intentResponse.json().catch(() => ({}));
-    if (!intentResponse.ok) {
-      throw new Error(intent.error ?? "Avatar upload could not be authorized.");
-    }
-    const targetUrl = new URL(intent.upload.url, window.location.origin);
-    const sameOrigin = targetUrl.origin === window.location.origin;
-    const uploadResponse = await fetch(targetUrl, {
-      method: intent.upload.method,
-      credentials: sameOrigin ? "include" : "omit",
-      headers: intent.upload.headers,
-      body: fileToUpload,
-    });
-    if (!uploadResponse.ok) {
-      throw new Error("Avatar bytes could not be uploaded.");
-    }
-    const completeResponse = await fetch(
-      `/api/media/uploads/${intent.media.id}/complete`,
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
-    const completed = await completeResponse.json().catch(() => ({}));
-    if (!completeResponse.ok) {
-      throw new Error(completed.error ?? "Avatar could not be validated.");
-    }
-    return completed.media.id;
-  }
-
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
@@ -103,10 +53,11 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
       let avatarMediaId: string | null | undefined;
       if (removeAvatar) avatarMediaId = null;
       if (file) {
-        avatarMediaId = await uploadAvatar(
-          file,
-          String(values.get("avatarAlt") ?? "").trim(),
-        );
+        avatarMediaId = await uploadMediaFile(file, {
+          purpose: "PROFILE_AVATAR",
+          altText: String(values.get("avatarAlt") ?? "").trim(),
+          replacesId: profile.avatarMediaId ?? undefined,
+        });
       }
       const payload = {
         firstName: values.get("firstName"),

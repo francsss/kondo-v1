@@ -1,8 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  createAccountRequest,
-  listOwnAccountRequests,
-} from "@/lib/profiles";
+import { createAccountRequest, listOwnAccountRequests } from "@/lib/profiles";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   getRequestMeta,
@@ -37,7 +34,10 @@ export async function POST(request: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!(await rateLimit(`account-request:${user.id}`, 5, 24 * 60 * 60_000)).allowed) {
+  if (
+    !(await rateLimit(`account-request:${user.id}`, 5, 24 * 60 * 60_000))
+      .allowed
+  ) {
     return jsonError("Account request limit reached. Try again later.", 429);
   }
   const parsed = accountRequestCreateSchema.safeParse(

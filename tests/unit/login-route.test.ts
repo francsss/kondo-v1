@@ -131,4 +131,31 @@ describe("login route session delivery", () => {
       }),
     });
   });
+
+  it("runs bcrypt even when the account does not exist", async () => {
+    mocks.passwordCompare.mockResolvedValue(false);
+    mocks.auditCreate.mockResolvedValue({ id: "audit-3" });
+    mocks.userFindUnique.mockResolvedValue(null);
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          host: "localhost:3000",
+          origin: "http://localhost:3000",
+        },
+        body: JSON.stringify({
+          email: "unknown@example.com",
+          password: "NotARealPassword123!",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(mocks.passwordCompare).toHaveBeenCalledWith(
+      "NotARealPassword123!",
+      expect.stringMatching(/^\$2a\$12\$/),
+    );
+  });
 });

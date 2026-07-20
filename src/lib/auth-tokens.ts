@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { sendTransactionalEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import { getAppUrl } from "@/lib/app-url";
 import { rateLimit } from "@/lib/rate-limit";
 
 export class AuthTokenError extends Error {
@@ -30,7 +31,7 @@ function hashToken(token: string) {
 }
 
 function appUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return getAppUrl();
 }
 
 // Only surfaced outside production so the flow is fully testable without a
@@ -160,19 +161,26 @@ export async function confirmPasswordReset(input: {
   meta?: RequestMeta;
 }) {
   const tokenHash = hashToken(input.token);
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    select: { id: true, userId: true, expiresAt: true, usedAt: true },
+  });
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    throw new AuthTokenError("This reset link is invalid or has expired.");
+  }
   const passwordHash = await bcrypt.hash(input.newPassword, 12);
   return prisma.$transaction(async (tx) => {
-    const record = await tx.passwordResetToken.findUnique({
-      where: { tokenHash },
-      select: { id: true, userId: true, expiresAt: true, usedAt: true },
-    });
-    if (!record || record.usedAt || record.expiresAt < new Date()) {
-      throw new AuthTokenError("This reset link is invalid or has expired.");
-    }
-    await tx.passwordResetToken.update({
-      where: { id: record.id },
+    const claimed = await tx.passwordResetToken.updateMany({
+      where: {
+        id: record.id,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       data: { usedAt: new Date() },
     });
+    if (claimed.count !== 1) {
+      throw new AuthTokenError("This reset link is invalid or has expired.");
+    }
     await tx.user.update({
       where: { id: record.userId },
       data: { passwordHash },

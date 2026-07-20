@@ -34,14 +34,18 @@ export function ContentReportButton({
         ? payload?.reused
           ? "Report already open"
           : "Report submitted"
-        : payload?.error ?? "Could not submit report",
+        : (payload?.error ?? "Could not submit report"),
     );
   }
 
   return (
     <div>
       <Button
-        className={inverse ? "text-white/70 hover:bg-white/10 hover:text-white" : undefined}
+        className={
+          inverse
+            ? "text-white/70 hover:bg-white/10 hover:text-white"
+            : undefined
+        }
         disabled={pending}
         onClick={report}
         size="sm"
@@ -50,7 +54,11 @@ export function ContentReportButton({
       >
         <Flag className="h-4 w-4" /> {pending ? "Submitting…" : label}
       </Button>
-      {message ? <span className="sr-only" role="status">{message}</span> : null}
+      {message ? (
+        <span className="sr-only" role="status">
+          {message}
+        </span>
+      ) : null}
     </div>
   );
 }

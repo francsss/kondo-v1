@@ -3,10 +3,7 @@ import {
   adminJson,
   authorizeAdminApi,
 } from "@/lib/admin-auth";
-import {
-  getAdminUser,
-  ProfileError,
-} from "@/lib/profiles";
+import { getAdminUser, ProfileError } from "@/lib/profiles";
 
 export async function GET(
   _: Request,

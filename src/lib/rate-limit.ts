@@ -43,6 +43,11 @@ function getRedisClient(): Redis | null {
   if (redisClient !== undefined) return redisClient;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (Boolean(url) !== Boolean(token)) {
+    throw new Error(
+      "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be configured together.",
+    );
+  }
   redisClient = url && token ? new Redis({ url, token }) : null;
   return redisClient;
 }

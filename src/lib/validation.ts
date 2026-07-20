@@ -181,7 +181,8 @@ export const accountRequestCreateSchema = z
     ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Please provide at least 10 characters for a deletion request.",
+        message:
+          "Please provide at least 10 characters for a deletion request.",
         path: ["reason"],
       });
     }
@@ -346,11 +347,7 @@ function validatePostFields(
         message: "Events require a location.",
       });
     }
-    if (
-      data.eventAt &&
-      data.eventEndsAt &&
-      data.eventEndsAt < data.eventAt
-    ) {
+    if (data.eventAt && data.eventEndsAt && data.eventEndsAt < data.eventAt) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["eventEndsAt"],
@@ -471,7 +468,17 @@ export const marketplaceCategorySchema = z.object({
 });
 
 export const adminListingUpdateSchema = z.object({
-  status: z.enum(["DRAFT", "ACTIVE", "RESERVED", "SOLD", "ARCHIVED", "EXPIRED", "REMOVED"]).optional(),
+  status: z
+    .enum([
+      "DRAFT",
+      "ACTIVE",
+      "RESERVED",
+      "SOLD",
+      "ARCHIVED",
+      "EXPIRED",
+      "REMOVED",
+    ])
+    .optional(),
   fraudReviewed: z.boolean().optional(),
   moderationNote: z.string().trim().min(10).max(1_000).optional(),
 });

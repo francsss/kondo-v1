@@ -1,8 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  cancelAccountRequest,
-  ProfileError,
-} from "@/lib/profiles";
+import { cancelAccountRequest, ProfileError } from "@/lib/profiles";
 import {
   getRequestMeta,
   hasTrustedOrigin,

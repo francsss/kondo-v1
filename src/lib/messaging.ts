@@ -1,14 +1,8 @@
 import { Prisma, type MediaPurpose } from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
-import {
-  hasAdminPermission,
-  type AppRole,
-} from "@/lib/authorization";
-import {
-  attachMediaAsset,
-  MediaError,
-} from "@/lib/media";
+import { hasAdminPermission, type AppRole } from "@/lib/authorization";
+import { attachMediaAsset, MediaError } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
@@ -220,7 +214,10 @@ async function prepareMessageMedia(
 }
 
 function messagePreview(body: string | undefined, mediaName?: string | null) {
-  return body?.slice(0, 280) || (mediaName ? `Attachment: ${mediaName}` : "Attachment");
+  return (
+    body?.slice(0, 280) ||
+    (mediaName ? `Attachment: ${mediaName}` : "Attachment")
+  );
 }
 
 async function persistMessage(
@@ -290,11 +287,10 @@ async function persistMessage(
     actorId: input.senderId,
     type: input.notificationType ?? "MESSAGE",
     templateKey: input.templateKey ?? "MESSAGE_NEW",
-    data:
-      input.notificationData ?? {
-        actorName: input.senderName,
-        preview: messagePreview(input.body, media?.attachmentName),
-      },
+    data: input.notificationData ?? {
+      actorName: input.senderName,
+      preview: messagePreview(input.body, media?.attachmentName),
+    },
     href: `/messages/${input.conversationId}`,
     dedupeKey: `message:${message.id}`,
   });
@@ -543,11 +539,15 @@ export async function getInbox(
     }),
   ]);
 
-  const conversationIds = memberships.map(({ conversationId }) => conversationId);
+  const conversationIds = memberships.map(
+    ({ conversationId }) => conversationId,
+  );
   const unreadRows =
     conversationIds.length === 0
       ? []
-      : await prisma.$queryRaw<Array<{ conversationId: string; count: bigint }>>(
+      : await prisma.$queryRaw<
+          Array<{ conversationId: string; count: bigint }>
+        >(
           Prisma.sql`
             SELECT
               cp."conversationId" AS "conversationId",
@@ -642,9 +642,7 @@ export async function getConversationForUser(
 
   const messageWhere: Prisma.MessageWhereInput = {
     conversationId,
-    createdAt: membership.clearedAt
-      ? { gt: membership.clearedAt }
-      : undefined,
+    createdAt: membership.clearedAt ? { gt: membership.clearedAt } : undefined,
   };
   const [total, messages] = await Promise.all([
     prisma.message.count({ where: messageWhere }),

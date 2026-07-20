@@ -14,6 +14,18 @@ export const metadata: Metadata = { title: "Home" };
 
 export default async function HomePage() {
   const user = await requireUser();
+  const now = new Date();
+  const chinaDate = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Shanghai",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(now);
+  const chinaTime = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Shanghai",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(now);
   const { posts, communities, listings, guides, upcomingEvents } =
     await getHomeData(user.id);
   const firstGuide = guides[0];
@@ -27,9 +39,7 @@ export default async function HomePage() {
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">
       <section className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-kondo-green">
-            Tuesday, July 14
-          </p>
+          <p className="text-sm font-semibold text-kondo-green">{chinaDate}</p>
           <h1 className="mt-1 text-3xl font-black tracking-[-0.045em] text-kondo-ink dark:text-white sm:text-4xl">
             Welcome back, {user.firstName} <span aria-hidden="true">👋🏾</span>
           </h1>
@@ -166,21 +176,21 @@ export default async function HomePage() {
                   {user.city?.name ?? "Beijing"}
                 </h2>
               </div>
-              <span className="text-3xl" aria-label="Partly cloudy">
-                🌤️
+              <span className="text-3xl" aria-label="China">
+                🇨🇳
               </span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
                 <p className="text-xs text-slate-400">Local time</p>
                 <p className="mt-1 font-black text-kondo-ink dark:text-white">
-                  1:36 PM
+                  {chinaTime}
                 </p>
               </div>
               <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
-                <p className="text-xs text-slate-400">Air quality</p>
-                <p className="mt-1 font-black text-emerald-600 dark:text-emerald-300">
-                  Good · 42
+                <p className="text-xs text-slate-400">Time zone</p>
+                <p className="mt-1 font-black text-kondo-ink dark:text-white">
+                  China · UTC+8
                 </p>
               </div>
             </div>

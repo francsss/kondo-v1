@@ -1,12 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createCommunity,
   createCommunityPost,
@@ -57,10 +50,7 @@ async function cleanup() {
   );
   await prisma.report.deleteMany({
     where: {
-      OR: [
-        { reporterId: { in: userIds } },
-        { subjectUserId: { in: userIds } },
-      ],
+      OR: [{ reporterId: { in: userIds } }, { subjectUserId: { in: userIds } }],
     },
   });
   await prisma.notification.deleteMany({
@@ -68,10 +58,7 @@ async function cleanup() {
   });
   await prisma.notificationJob.deleteMany({
     where: {
-      OR: [
-        { recipientId: { in: userIds } },
-        { actorId: { in: userIds } },
-      ],
+      OR: [{ recipientId: { in: userIds } }, { actorId: { in: userIds } }],
     },
   });
   await prisma.auditLog.deleteMany({
@@ -147,7 +134,10 @@ async function createFixture() {
 
 async function createActiveCommunity(
   suffix: string,
-  input: { joinPolicy?: "OPEN" | "REQUEST" | "INVITE_ONLY"; isPrivate?: boolean } = {},
+  input: {
+    joinPolicy?: "OPEN" | "REQUEST" | "INVITE_ONLY";
+    isPrivate?: boolean;
+  } = {},
 ) {
   return prisma.community.create({
     data: {
@@ -551,9 +541,9 @@ postgresDescribe("Module 11 PostgreSQL communities", () => {
 
   it("provides paginated Admin CMS while denying global moderators", async () => {
     const community = await createActiveCommunity("admin");
-    await expect(
-      listAdminCommunities(fixture.moderator),
-    ).rejects.toMatchObject({ status: 403 });
+    await expect(listAdminCommunities(fixture.moderator)).rejects.toMatchObject(
+      { status: 403 },
+    );
     const result = await listAdminCommunities(fixture.admin, {
       page: 1,
       pageSize: 5,
@@ -571,7 +561,9 @@ postgresDescribe("Module 11 PostgreSQL communities", () => {
     expect(detail).toMatchObject({
       status: "ARCHIVED",
       isVerified: true,
-      owner: { fullName: `${fixture.owner.firstName} ${fixture.owner.lastName}` },
+      owner: {
+        fullName: `${fixture.owner.firstName} ${fixture.owner.lastName}`,
+      },
     });
   });
 

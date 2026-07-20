@@ -7,20 +7,14 @@ import {
   type ReportStatus,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
-import {
-  hasAdminPermission,
-  type AppRole,
-} from "@/lib/authorization";
+import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import {
   activeListingWhere,
   communityVisibilityWhere,
   publishedPostVisibilityWhere,
   publishedQuestionWhere,
 } from "@/lib/content-visibility";
-import {
-  attachMediaAsset,
-  finalizeMediaStorageDeletion,
-} from "@/lib/media";
+import { attachMediaAsset, finalizeMediaStorageDeletion } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 
 type ProfileActor = {
@@ -132,10 +126,7 @@ export async function getPublicProfile(
     },
     select: profileBaseSelect,
   });
-  if (
-    !user ||
-    !audienceAllows(user.profileAudience, user.id, viewer)
-  ) {
+  if (!user || !audienceAllows(user.profileAudience, user.id, viewer)) {
     throw new ProfileError("Profile not found.", 404);
   }
 
@@ -443,7 +434,10 @@ export async function updateProfile(
           media.status !== "ACTIVE" ||
           media.scanStatus !== "CLEAN"
         ) {
-          throw new ProfileError("Validated profile avatar was not found.", 400);
+          throw new ProfileError(
+            "Validated profile avatar was not found.",
+            400,
+          );
         }
         if (
           current.avatarMediaId &&
@@ -463,7 +457,11 @@ export async function updateProfile(
         });
       }
 
-      if (hasAvatarField && input.avatarMediaId === null && current.avatarMediaId) {
+      if (
+        hasAvatarField &&
+        input.avatarMediaId === null &&
+        current.avatarMediaId
+      ) {
         const oldMedia = await tx.mediaAsset.findUnique({
           where: { id: current.avatarMediaId },
         });
@@ -659,9 +657,7 @@ export async function getSavedContent(userId: string) {
   }
   return bookmarks.flatMap((bookmark) => {
     const item = items.get(`${bookmark.targetType}:${bookmark.targetId}`);
-    return item
-      ? [{ ...item, savedAt: bookmark.createdAt.toISOString() }]
-      : [];
+    return item ? [{ ...item, savedAt: bookmark.createdAt.toISOString() }] : [];
   });
 }
 
@@ -1131,8 +1127,7 @@ export async function getAdminUser(actor: ProfileActor, userId: string) {
   return {
     ...user,
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
-    onboardingCompletedAt:
-      user.onboardingCompletedAt?.toISOString() ?? null,
+    onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
     lastActiveAt: user.lastActiveAt?.toISOString() ?? null,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
@@ -1165,10 +1160,7 @@ export async function updateUserStatusAsAdmin(input: {
       select: { id: true, role: true, status: true },
     });
     if (!target) throw new ProfileError("Account not found.", 404);
-    if (
-      target.role === "SUPER_ADMIN" &&
-      input.actor.role !== "SUPER_ADMIN"
-    ) {
+    if (target.role === "SUPER_ADMIN" && input.actor.role !== "SUPER_ADMIN") {
       throw new ProfileError(
         "Only a Super Admin can change another Super Admin's status.",
         403,
@@ -1220,10 +1212,7 @@ export async function revokeUserSessionsAsAdmin(input: {
       select: { id: true, role: true },
     });
     if (!target) throw new ProfileError("Account not found.", 404);
-    if (
-      target.role === "SUPER_ADMIN" &&
-      input.actor.role !== "SUPER_ADMIN"
-    ) {
+    if (target.role === "SUPER_ADMIN" && input.actor.role !== "SUPER_ADMIN") {
       throw new ProfileError(
         "Only a Super Admin can revoke another Super Admin's sessions.",
         403,

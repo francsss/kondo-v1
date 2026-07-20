@@ -24,13 +24,17 @@ async function cleanup() {
     where: { sellerId: { in: userIds } },
   });
   await prisma.post.deleteMany({ where: { authorId: { in: userIds } } });
-  await prisma.community.deleteMany({ where: { createdById: { in: userIds } } });
+  await prisma.community.deleteMany({
+    where: { createdById: { in: userIds } },
+  });
   await prisma.question.deleteMany({ where: { authorId: { in: userIds } } });
   await prisma.guide.deleteMany({ where: { createdById: { in: userIds } } });
   await prisma.marketplaceCategory.deleteMany({
     where: { name: { startsWith: "Module 13" } },
   });
-  await prisma.city.deleteMany({ where: { name: { startsWith: "Module 13" } } });
+  await prisma.city.deleteMany({
+    where: { name: { startsWith: "Module 13" } },
+  });
   await prisma.country.deleteMany({
     where: { name: { startsWith: "Module 13" } },
   });
@@ -152,9 +156,7 @@ postgresDescribe("Module 13 PostgreSQL full-text search", () => {
     const active = await createListing({ title: `${token} active item` });
 
     const results = await searchKondo(token, fixture.viewer.id);
-    expect(results.listings.map((listing) => listing.id)).toEqual([
-      active.id,
-    ]);
+    expect(results.listings.map((listing) => listing.id)).toEqual([active.id]);
   });
 
   it("hides a private community's posts from a non-member and shows them to a member", async () => {
@@ -198,21 +200,17 @@ postgresDescribe("Module 13 PostgreSQL full-text search", () => {
   it("paginates a single category by cursor without skipping or repeating results", async () => {
     const listings = [];
     for (let index = 0; index < 12; index += 1) {
-      listings.push(
-        await createListing({ title: `${token} item ${index}` }),
-      );
+      listings.push(await createListing({ title: `${token} item ${index}` }));
     }
 
     const seen = new Set<string>();
     let cursor: string | undefined;
     let pages = 0;
     for (let guard = 0; guard < 10; guard += 1) {
-      const page = await searchCategory(
-        "listings",
-        token,
-        fixture.viewer.id,
-        { cursor, limit: 5 },
-      );
+      const page = await searchCategory("listings", token, fixture.viewer.id, {
+        cursor,
+        limit: 5,
+      });
       pages += 1;
       expect(page.items.length).toBeLessThanOrEqual(5);
       for (const item of page.items) {

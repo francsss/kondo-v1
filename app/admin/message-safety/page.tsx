@@ -116,10 +116,7 @@ export default async function MessageSafetyPage() {
         </div>
         <div className="divide-y divide-slate-100 dark:divide-white/10">
           {overview.recentReports.map((report) => (
-            <div
-              className="flex items-center gap-4 px-5 py-4"
-              key={report.id}
-            >
+            <div className="flex items-center gap-4 px-5 py-4" key={report.id}>
               <FileWarning className="h-5 w-5 text-orange-500" />
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-kondo-ink dark:text-white">

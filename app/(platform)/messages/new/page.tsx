@@ -22,11 +22,7 @@ export default async function NewMessagePage({
   }>;
 }) {
   const user = await requireUser();
-  const {
-    recipient: recipientId,
-    sourceType,
-    sourceId,
-  } = await searchParams;
+  const { recipient: recipientId, sourceType, sourceId } = await searchParams;
   if (!recipientId || recipientId === user.id) redirect("/messages");
 
   const [recipient, existing] = await Promise.all([
@@ -91,7 +87,9 @@ export default async function NewMessagePage({
         <div className="p-4 sm:p-5">
           <MessageComposer
             recipientId={recipient.id}
-            sourceId={sourceType === "MARKETPLACE_LISTING" ? sourceId : undefined}
+            sourceId={
+              sourceType === "MARKETPLACE_LISTING" ? sourceId : undefined
+            }
             sourceType={
               sourceType === "MARKETPLACE_LISTING"
                 ? "MARKETPLACE_LISTING"

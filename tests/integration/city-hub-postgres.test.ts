@@ -86,7 +86,9 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
     const hub = await getAdminCityHub(fixture.admin, hubId);
     expect(hub?.status).toBe("DRAFT");
     expect((hub?.draft as unknown as ExploreCity).slug).toBe(CITY_SLUG);
-    expect((hub?.draft as unknown as ExploreCity).sections.length).toBeGreaterThan(0);
+    expect(
+      (hub?.draft as unknown as ExploreCity).sections.length,
+    ).toBeGreaterThan(0);
     await expect(
       prisma.auditLog.count({
         where: { action: "CITY_HUB_CREATED", entityId: hubId },
@@ -189,7 +191,9 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
       },
     });
     const afterEdit = await getAdminCityHub(fixture.admin, hubId);
-    expect((afterEdit!.draft as unknown as ExploreCity).tagline).toBe("Revised tagline");
+    expect((afterEdit!.draft as unknown as ExploreCity).tagline).toBe(
+      "Revised tagline",
+    );
     // Public still shows the previously published tagline until re-publish.
     const live = await resolvePublishedCity(CITY_SLUG);
     expect(live?.tagline).toBe(payload.tagline);

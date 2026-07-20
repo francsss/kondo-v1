@@ -43,11 +43,10 @@ export async function PATCH(
   if (!parsed.success || Object.keys(parsed.data).length === 0) {
     return adminJson(
       {
-        error:
-          parsed.success
-            ? "Provide at least one field to update."
-            : (parsed.error.issues[0]?.message ??
-              "Invalid reference-data update."),
+        error: parsed.success
+          ? "Provide at least one field to update."
+          : (parsed.error.issues[0]?.message ??
+            "Invalid reference-data update."),
       },
       { status: 400 },
     );

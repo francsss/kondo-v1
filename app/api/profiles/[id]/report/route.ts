@@ -1,8 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  createOrReuseProfileReport,
-  ProfileError,
-} from "@/lib/profiles";
+import { createOrReuseProfileReport, ProfileError } from "@/lib/profiles";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   getRequestMeta,
@@ -22,7 +19,9 @@ export async function POST(
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!(await rateLimit(`profile-report:${user.id}`, 5, 24 * 60 * 60_000)).allowed) {
+  if (
+    !(await rateLimit(`profile-report:${user.id}`, 5, 24 * 60 * 60_000)).allowed
+  ) {
     return jsonError("Report limit reached. Try again later.", 429);
   }
   const parsed = profileReportSchema.safeParse(

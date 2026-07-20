@@ -155,7 +155,9 @@ export function PostComposer({
             <form className="mt-6 space-y-4" onSubmit={submit}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label>
-                  <span className="mb-2 block text-sm font-bold">Community</span>
+                  <span className="mb-2 block text-sm font-bold">
+                    Community
+                  </span>
                   <select
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
                     name="communityId"
@@ -170,7 +172,9 @@ export function PostComposer({
                   </select>
                 </label>
                 <label>
-                  <span className="mb-2 block text-sm font-bold">Post type</span>
+                  <span className="mb-2 block text-sm font-bold">
+                    Post type
+                  </span>
                   <select
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
                     name="type"
@@ -205,10 +209,23 @@ export function PostComposer({
               </label>
               {type === "EVENT" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Starts" name="eventAt" required type="datetime-local" />
-                  <Field label="Ends (optional)" name="eventEndsAt" type="datetime-local" />
+                  <Field
+                    label="Starts"
+                    name="eventAt"
+                    required
+                    type="datetime-local"
+                  />
+                  <Field
+                    label="Ends (optional)"
+                    name="eventEndsAt"
+                    type="datetime-local"
+                  />
                   <Field label="Location" name="eventLocation" required />
-                  <Field label="Capacity (optional)" name="eventCapacity" type="number" />
+                  <Field
+                    label="Capacity (optional)"
+                    name="eventCapacity"
+                    type="number"
+                  />
                 </div>
               ) : null}
               <label className="block">

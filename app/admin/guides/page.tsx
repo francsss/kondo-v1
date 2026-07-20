@@ -33,7 +33,11 @@ export default async function AdminGuidesPage({
   const query = one(params.q)?.trim() || undefined;
   const publishedParam = one(params.published);
   const published =
-    publishedParam === "true" ? true : publishedParam === "false" ? false : undefined;
+    publishedParam === "true"
+      ? true
+      : publishedParam === "false"
+        ? false
+        : undefined;
   const result = await listAdminGuides(user, {
     page: Number(one(params.page) ?? 1),
     query,
@@ -96,8 +100,8 @@ export default async function AdminGuidesPage({
                   ) : null}
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  {guide.category.replaceAll("_", " ")} ·{" "}
-                  {guide._count.steps} step
+                  {guide.category.replaceAll("_", " ")} · {guide._count.steps}{" "}
+                  step
                   {guide._count.steps === 1 ? "" : "s"}
                 </p>
               </div>
@@ -128,7 +132,10 @@ export default async function AdminGuidesPage({
           </Button>
           <Button asChild size="sm" variant="secondary">
             <Link
-              href={href(linkInput, Math.min(result.pageCount, result.page + 1))}
+              href={href(
+                linkInput,
+                Math.min(result.pageCount, result.page + 1),
+              )}
             >
               Next <ChevronRight className="h-4 w-4" />
             </Link>

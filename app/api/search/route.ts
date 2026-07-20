@@ -17,7 +17,10 @@ function isSearchCategory(value: string | null): value is SearchCategoryType {
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!(await rateLimit(`search:${user.id}:${requestIp(request)}`, 60, 60_000)).allowed)
+  if (
+    !(await rateLimit(`search:${user.id}:${requestIp(request)}`, 60, 60_000))
+      .allowed
+  )
     return jsonError("Search limit reached.", 429);
   const params = request.nextUrl.searchParams;
   const query = params.get("q")?.trim() ?? "";
@@ -42,7 +45,8 @@ export async function GET(request: NextRequest) {
     }
     return Response.json(await searchKondo(query, user.id), { headers });
   } catch (error) {
-    if (error instanceof SearchError) return jsonError(error.message, error.status);
+    if (error instanceof SearchError)
+      return jsonError(error.message, error.status);
     return internalApiError("search.query", error);
   }
 }

@@ -28,7 +28,10 @@ export default async function AdminCommunityPage({
         eyebrow="Community CMS"
         title={community.name}
       />
-      <AdminNav currentPath={`/admin/communities/${community.id}`} role={user.role} />
+      <AdminNav
+        currentPath={`/admin/communities/${community.id}`}
+        role={user.role}
+      />
       <div className="mt-6 flex flex-wrap gap-2">
         <Button asChild size="sm" variant="secondary">
           <Link href="/admin/communities">
@@ -69,7 +72,10 @@ export default async function AdminCommunityPage({
                 label="Pending access"
                 value={community.accessRequests.length}
               />
-              <Stat label="Private" value={community.isPrivate ? "Yes" : "No"} />
+              <Stat
+                label="Private"
+                value={community.isPrivate ? "Yes" : "No"}
+              />
             </dl>
           </Card>
         </div>
@@ -105,7 +111,9 @@ export default async function AdminCommunityPage({
                     <p className="text-sm font-bold text-kondo-ink dark:text-white">
                       {member.user.fullName}
                     </p>
-                    <p className="text-xs text-slate-400">{member.user.email}</p>
+                    <p className="text-xs text-slate-400">
+                      {member.user.email}
+                    </p>
                   </div>
                   <span className="text-[10px] font-black text-kondo-green">
                     {member.role}
@@ -149,7 +157,9 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-3 dark:bg-white/5">
       <dt className="text-xs text-slate-400">{label}</dt>
-      <dd className="mt-1 font-black text-kondo-ink dark:text-white">{value}</dd>
+      <dd className="mt-1 font-black text-kondo-ink dark:text-white">
+        {value}
+      </dd>
     </div>
   );
 }

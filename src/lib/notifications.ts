@@ -4,10 +4,7 @@ import {
   type NotificationType,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
-import {
-  hasAdminPermission,
-  type AppRole,
-} from "@/lib/authorization";
+import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
 export const NOTIFICATION_TEMPLATE_KEYS = [
@@ -201,14 +198,12 @@ export function enqueuePostCommentNotification(
 
 function preferenceAllows(
   type: NotificationType,
-  preference:
-    | {
-        notificationMessages: boolean;
-        notificationComments: boolean;
-        notificationMarketplace: boolean;
-        notificationAnnouncements: boolean;
-      }
-    | null,
+  preference: {
+    notificationMessages: boolean;
+    notificationComments: boolean;
+    notificationMarketplace: boolean;
+    notificationAnnouncements: boolean;
+  } | null,
 ) {
   if (type === "MODERATION_UPDATE") return true;
   if (!preference) return true;
@@ -314,7 +309,10 @@ async function deliverClaimedJob(jobId: string) {
       return "SKIPPED" as const;
     }
     const data = notificationData(job.data);
-    const title = renderTemplate(job.template.titleTemplate, data).slice(0, 160);
+    const title = renderTemplate(job.template.titleTemplate, data).slice(
+      0,
+      160,
+    );
     const body = job.template.bodyTemplate
       ? renderTemplate(job.template.bodyTemplate, data).slice(0, 280)
       : null;
@@ -580,7 +578,9 @@ export async function updateNotificationTemplate(
   if (!hasAdminPermission(actor.role, "NOTIFICATION_MANAGE")) {
     throw new NotificationError("Access denied.", 403);
   }
-  if (!NOTIFICATION_TEMPLATE_KEYS.includes(input.key as NotificationTemplateKey)) {
+  if (
+    !NOTIFICATION_TEMPLATE_KEYS.includes(input.key as NotificationTemplateKey)
+  ) {
     throw new NotificationError("Notification template not found.", 404);
   }
   const key = input.key as NotificationTemplateKey;

@@ -17,6 +17,11 @@ export type UploadTarget = {
   expiresAt: string;
 };
 
+export type ReadTarget = {
+  url: string;
+  expiresAt: string;
+};
+
 export interface ObjectStorage {
   readonly provider: MediaStorageProvider;
   createUploadTarget(input: {
@@ -27,6 +32,12 @@ export interface ObjectStorage {
     uploadToken: string;
     expiresAt: Date;
   }): Promise<UploadTarget>;
+  createReadTarget(input: {
+    objectKey: string;
+    contentType: string;
+    contentDisposition: string;
+    expiresAt: Date;
+  }): Promise<ReadTarget | null>;
   read(objectKey: string): Promise<Uint8Array>;
   write(
     objectKey: string,
@@ -88,6 +99,10 @@ class LocalObjectStorage implements ObjectStorage {
     };
   }
 
+  async createReadTarget(): Promise<null> {
+    return null;
+  }
+
   async read(objectKey: string) {
     return new Uint8Array(await readFile(localPath(objectKey)));
   }
@@ -123,6 +138,10 @@ function getS3Client() {
     endpoint: process.env.STORAGE_ENDPOINT || undefined,
     forcePathStyle: Boolean(process.env.STORAGE_ENDPOINT),
     credentials: { accessKeyId, secretAccessKey },
+    // Flexible checksums are enabled by default in recent AWS SDK releases.
+    // A presigned browser PUT has no body when it is signed, so that default
+    // produces a CRC32 for an empty object. R2 then rejects the real file.
+    requestChecksumCalculation: "WHEN_REQUIRED",
   });
   return s3Client;
 }
@@ -161,6 +180,30 @@ class S3ObjectStorage implements ObjectStorage {
       headers: { "Content-Type": input.contentType },
       expiresAt: input.expiresAt.toISOString(),
     };
+  }
+
+  async createReadTarget(input: {
+    objectKey: string;
+    contentType: string;
+    contentDisposition: string;
+    expiresAt: Date;
+  }): Promise<ReadTarget> {
+    const expiresIn = Math.max(
+      1,
+      Math.floor((input.expiresAt.getTime() - Date.now()) / 1000),
+    );
+    const url = await getSignedUrl(
+      getS3Client(),
+      new GetObjectCommand({
+        Bucket: storageBucket(),
+        Key: input.objectKey,
+        ResponseCacheControl: "private, no-store",
+        ResponseContentDisposition: input.contentDisposition,
+        ResponseContentType: input.contentType,
+      }),
+      { expiresIn },
+    );
+    return { url, expiresAt: input.expiresAt.toISOString() };
   }
 
   async read(objectKey: string) {
@@ -211,4 +254,19 @@ export function getObjectStorageForProvider(
   provider: MediaStorageProvider,
 ): ObjectStorage {
   return provider === "S3" ? s3Storage : localStorage;
+}
+
+export function isStorageObjectNotFound(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const coded = error as Error & {
+    code?: string;
+    name: string;
+    $metadata?: { httpStatusCode?: number };
+  };
+  return (
+    coded.code === "ENOENT" ||
+    coded.name === "NoSuchKey" ||
+    coded.name === "NotFound" ||
+    coded.$metadata?.httpStatusCode === 404
+  );
 }

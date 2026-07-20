@@ -56,7 +56,7 @@ export function UserStatusActions({
     setMessage(
       response?.ok
         ? `${payload.sessionsRevoked} session(s) revoked.`
-        : payload?.error ?? "Could not revoke sessions.",
+        : (payload?.error ?? "Could not revoke sessions."),
     );
     if (response?.ok) router.refresh();
   }
@@ -88,8 +88,8 @@ export function UserStatusActions({
         value={reason}
       />
       <p className="mt-2 text-xs text-slate-400">
-        Suspending or deactivating this account immediately revokes all of
-        its active sessions.
+        Suspending or deactivating this account immediately revokes all of its
+        active sessions.
       </p>
       {message ? (
         <p className="mt-3 text-xs text-slate-400" role="status">

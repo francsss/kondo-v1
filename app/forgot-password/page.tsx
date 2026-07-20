@@ -43,8 +43,8 @@ export default function ForgotPasswordPage() {
                 Check your email
               </h1>
               <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                If that address has a Kondo account, a reset link is on its
-                way. It expires in one hour.
+                If that address has a Kondo account, a reset link is on its way.
+                It expires in one hour.
               </p>
               <Link
                 className="mt-6 inline-block font-black text-kondo-green hover:underline"
@@ -109,8 +109,8 @@ export default function ForgotPasswordPage() {
           )}
         </div>
         <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-slate-400">
-          <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built
-          for students.
+          <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built for
+          students.
         </p>
       </div>
     </main>

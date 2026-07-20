@@ -44,11 +44,7 @@ export default async function NotificationsPage({
   return (
     <div className="mx-auto max-w-[920px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <PageHeader
-        action={
-          <MarkAllReadButton
-            unreadCount={result.unreadCount}
-          />
-        }
+        action={<MarkAllReadButton unreadCount={result.unreadCount} />}
         description="Only the updates that help you respond, connect, or act."
         title="Notifications"
       />
@@ -62,9 +58,7 @@ export default async function NotificationsPage({
                 icon={<Icon className="h-4 w-4" />}
                 key={notification.id}
                 notification={notification}
-                timestamp={formatRelativeDate(
-                  new Date(notification.createdAt),
-                )}
+                timestamp={formatRelativeDate(new Date(notification.createdAt))}
               />
             );
           })

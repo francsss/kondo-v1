@@ -4,10 +4,7 @@ import {
   adminJson,
   authorizeAdminApi,
 } from "@/lib/admin-auth";
-import {
-  listAdminUsers,
-  ProfileError,
-} from "@/lib/profiles";
+import { listAdminUsers, ProfileError } from "@/lib/profiles";
 
 const STATUSES = ["ACTIVE", "SUSPENDED", "DEACTIVATED"] as const;
 

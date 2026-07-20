@@ -17,10 +17,7 @@ import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Marketplace" };
 
-function href(
-  input: Record<string, string | undefined>,
-  page?: number,
-) {
+function href(input: Record<string, string | undefined>, page?: number) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(input)) {
     if (value) params.set(key, value);
@@ -57,7 +54,9 @@ export default async function MarketplacePage({
       ? {
           OR: [
             { title: { contains: params.q, mode: "insensitive" as const } },
-            { description: { contains: params.q, mode: "insensitive" as const } },
+            {
+              description: { contains: params.q, mode: "insensitive" as const },
+            },
           ],
         }
       : {}),
@@ -156,47 +155,123 @@ export default async function MarketplacePage({
               placeholder="Search items"
             />
           </label>
-          <select className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink" defaultValue={params.city ?? ""} name="city">
+          <select
+            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
+            defaultValue={params.city ?? ""}
+            name="city"
+          >
             <option value="">All cities</option>
-            {cities.map((city) => <option key={city.id} value={city.slug}>{city.name}</option>)}
+            {cities.map((city) => (
+              <option key={city.id} value={city.slug}>
+                {city.name}
+              </option>
+            ))}
           </select>
-          <input className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink" defaultValue={params.min} min={0} name="min" placeholder="Min ¥" type="number" />
-          <input className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink" defaultValue={params.max} min={0} name="max" placeholder="Max ¥" type="number" />
-          <select className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink" defaultValue={params.sort ?? "latest"} name="sort">
+          <input
+            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
+            defaultValue={params.min}
+            min={0}
+            name="min"
+            placeholder="Min ¥"
+            type="number"
+          />
+          <input
+            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
+            defaultValue={params.max}
+            min={0}
+            name="max"
+            placeholder="Max ¥"
+            type="number"
+          />
+          <select
+            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
+            defaultValue={params.sort ?? "latest"}
+            name="sort"
+          >
             <option value="latest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="price-asc">Price low to high</option>
             <option value="price-desc">Price high to low</option>
           </select>
-          {params.category ? <input name="category" type="hidden" value={params.category} /> : null}
-          <Button className="bg-white text-kondo-forest hover:bg-kondo-lime" type="submit">Filter</Button>
+          {params.category ? (
+            <input name="category" type="hidden" value={params.category} />
+          ) : null}
+          <Button
+            className="bg-white text-kondo-forest hover:bg-kondo-lime"
+            type="submit"
+          >
+            Filter
+          </Button>
         </form>
       </Card>
 
       <section className="scrollbar-none mt-7 flex gap-3 overflow-x-auto pb-2">
-        <Link className={!params.category ? "grid min-w-24 place-items-center rounded-3xl bg-kondo-ink p-4 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink" : "grid min-w-24 place-items-center rounded-3xl border border-slate-200 bg-white p-4 text-center dark:border-white/10 dark:bg-white/5"} href={href({ ...hrefInput, category: undefined })}>
-          <span className="text-2xl">✨</span><span className="mt-2 text-xs font-black">All</span>
+        <Link
+          className={
+            !params.category
+              ? "grid min-w-24 place-items-center rounded-3xl bg-kondo-ink p-4 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
+              : "grid min-w-24 place-items-center rounded-3xl border border-slate-200 bg-white p-4 text-center dark:border-white/10 dark:bg-white/5"
+          }
+          href={href({ ...hrefInput, category: undefined })}
+        >
+          <span className="text-2xl">✨</span>
+          <span className="mt-2 text-xs font-black">All</span>
         </Link>
         {categories.map((category) => (
-          <Link className={params.category === category.slug ? "grid min-w-24 place-items-center rounded-3xl bg-kondo-ink p-4 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink" : "grid min-w-24 place-items-center rounded-3xl border border-slate-200 bg-white p-4 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"} href={href({ ...hrefInput, category: category.slug })} key={category.id}>
-            <span className="text-2xl">{category.icon}</span><span className="mt-2 text-xs font-black">{category.name}</span><span className="mt-0.5 text-[10px] text-slate-400">{category._count.listings}</span>
+          <Link
+            className={
+              params.category === category.slug
+                ? "grid min-w-24 place-items-center rounded-3xl bg-kondo-ink p-4 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
+                : "grid min-w-24 place-items-center rounded-3xl border border-slate-200 bg-white p-4 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"
+            }
+            href={href({ ...hrefInput, category: category.slug })}
+            key={category.id}
+          >
+            <span className="text-2xl">{category.icon}</span>
+            <span className="mt-2 text-xs font-black">{category.name}</span>
+            <span className="mt-0.5 text-[10px] text-slate-400">
+              {category._count.listings}
+            </span>
           </Link>
         ))}
       </section>
 
       <div className="mt-8 flex items-center justify-between">
-        <div><h2 className="text-xl font-black text-kondo-ink dark:text-white">Available nearby</h2><p className="mt-1 text-xs text-slate-400">{total} active listings</p></div>
-        <div className="hidden items-center gap-1.5 text-xs font-bold text-kondo-green sm:flex"><ShieldCheck className="h-4 w-4" /> No deposits or in-app payments</div>
+        <div>
+          <h2 className="text-xl font-black text-kondo-ink dark:text-white">
+            Available nearby
+          </h2>
+          <p className="mt-1 text-xs text-slate-400">{total} active listings</p>
+        </div>
+        <div className="hidden items-center gap-1.5 text-xs font-bold text-kondo-green sm:flex">
+          <ShieldCheck className="h-4 w-4" /> No deposits or in-app payments
+        </div>
       </div>
       <section className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {listings.map((listing) => <ListingCard key={listing.id} listing={listing} />)}
+        {listings.map((listing) => (
+          <ListingCard key={listing.id} listing={listing} />
+        ))}
       </section>
-      {!listings.length ? <Card className="mt-5 py-16 text-center text-sm text-slate-400">No active listings match these filters.</Card> : null}
+      {!listings.length ? (
+        <Card className="mt-5 py-16 text-center text-sm text-slate-400">
+          No active listings match these filters.
+        </Card>
+      ) : null}
       <div className="mt-7 flex items-center justify-between">
-        <p className="text-xs text-slate-400">Page {page} of {pageCount} · {total} listings</p>
+        <p className="text-xs text-slate-400">
+          Page {page} of {pageCount} · {total} listings
+        </p>
         <div className="flex gap-2">
-          <Button asChild size="sm" variant="secondary"><Link href={href(hrefInput, Math.max(1, page - 1))}><ChevronLeft className="h-4 w-4" /> Previous</Link></Button>
-          <Button asChild size="sm" variant="secondary"><Link href={href(hrefInput, Math.min(pageCount, page + 1))}>Next <ChevronRight className="h-4 w-4" /></Link></Button>
+          <Button asChild size="sm" variant="secondary">
+            <Link href={href(hrefInput, Math.max(1, page - 1))}>
+              <ChevronLeft className="h-4 w-4" /> Previous
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="secondary">
+            <Link href={href(hrefInput, Math.min(pageCount, page + 1))}>
+              Next <ChevronRight className="h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

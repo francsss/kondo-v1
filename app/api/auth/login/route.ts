@@ -2,10 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
-import {
-  writeAuditLog,
-  writeAuditLogWithClient,
-} from "@/lib/audit";
+import { writeAuditLog, writeAuditLogWithClient } from "@/lib/audit";
 import { logServerError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
@@ -22,6 +19,11 @@ import {
   hashSecurityIdentifier,
 } from "@/lib/server-auth";
 import { loginSchema } from "@/lib/validation";
+
+// A valid cost-12 bcrypt hash used only to keep unknown-account login attempts
+// on the same expensive comparison path as known accounts.
+const DUMMY_PASSWORD_HASH =
+  "$2a$12$kkhthC9rXqBLSoLcXKra3.nUOqRDIap0tp6AYLzn0r8trmQNgzDjW";
 
 export async function POST(request: NextRequest) {
   if (!hasTrustedOrigin(request))
@@ -42,9 +44,10 @@ export async function POST(request: NextRequest) {
       where: { email: parsed.data.email },
     });
 
-    const passwordOk = user?.passwordHash
-      ? await bcrypt.compare(parsed.data.password, user.passwordHash)
-      : false;
+    const passwordOk = await bcrypt.compare(
+      parsed.data.password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
 
     if (!user || !passwordOk || user.status !== "ACTIVE") {
       try {

@@ -5,9 +5,13 @@ test.describe("public landing and authentication", () => {
     page,
   }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /join kondo|create your free account/i }).first(),
+      page.getByRole("link", { name: "Sign in" }).first(),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("link", { name: /join kondo|create your free account/i })
+        .first(),
     ).toBeVisible();
   });
 
@@ -33,7 +37,9 @@ test.describe("public landing and authentication", () => {
     page,
   }) => {
     await page.goto("/login");
-    await page.getByPlaceholder("you@university.edu").fill("nobody@example.com");
+    await page
+      .getByPlaceholder("you@university.edu")
+      .fill("nobody@example.com");
     await page.locator('input[name="password"]').fill("WrongPassword123");
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page.getByRole("alert")).toBeVisible();

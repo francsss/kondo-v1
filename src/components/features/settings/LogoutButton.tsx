@@ -26,7 +26,12 @@ export function LogoutButton() {
 
   return (
     <div>
-      <Button disabled={pending} onClick={logout} type="button" variant="danger">
+      <Button
+        disabled={pending}
+        onClick={logout}
+        type="button"
+        variant="danger"
+      >
         <LogOut className="h-4 w-4" />
         {pending ? "Signing out…" : "Sign out of this device"}
       </Button>

@@ -1,8 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  CommunityError,
-  createCommunityPost,
-} from "@/lib/communities";
+import { CommunityError, createCommunityPost } from "@/lib/communities";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   getRequestMeta,
@@ -14,7 +11,8 @@ import { getCurrentUser } from "@/lib/server-auth";
 import { createPostSchema } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
   if (!(await rateLimit(`post:${user.id}`, 12, 60 * 60_000)).allowed) {

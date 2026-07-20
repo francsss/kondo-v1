@@ -125,8 +125,8 @@ export default async function AdminCommunitiesPage({
                 </p>
               </div>
               <div className="text-xs text-slate-400">
-                {community._count.members} members · {community._count.posts} posts
-                · {community._count.accessRequests} pending
+                {community._count.members} members · {community._count.posts}{" "}
+                posts · {community._count.accessRequests} pending
               </div>
               <p className="text-xs text-slate-400">
                 {formatRelativeDate(new Date(community.updatedAt))}

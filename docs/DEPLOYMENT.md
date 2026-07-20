@@ -2,53 +2,33 @@
 
 ## Target architecture
 
-- Application: Vercel, Node.js runtime, Next.js App Router.
-- Database: managed PostgreSQL with connection pooling suitable for serverless workloads.
-- Media: S3-compatible object storage with a CDN/image transformation layer.
-- Shared limits and ephemeral coordination: Redis-compatible managed service before multi-instance launch.
-- Monitoring: Vercel Web Analytics/Speed Insights plus an error and log provider.
+- Application: Vercel, Node.js 24 LTS, Next.js App Router.
+- Database: Neon PostgreSQL with pooled runtime and direct migration URLs.
+- Media: private Cloudflare R2 through its S3-compatible API.
+- Shared limits: Upstash Redis REST.
+- Transactional email: Resend with a verified sending domain.
+- Recurring workers: GitHub Actions calling secret-gated Vercel routes.
 
 ## Required environment variables
 
-| Variable                       | Required           | Description                                                                                         |
-| ------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                 | Yes                | Pooled PostgreSQL connection string used by the application and Prisma.                             |
-| `TEST_DATABASE_URL`            | CI/test only       | Disposable PostgreSQL database used by migration-backed integration and API E2E tests.              |
-| `JWT_SECRET`                   | Yes                | Random secret of at least 32 bytes for signed session cookies.                                      |
-| `NEXT_PUBLIC_APP_URL`          | Yes                | Canonical HTTPS origin used by metadata and absolute URLs.                                          |
-| `KONDO_ALLOW_DESTRUCTIVE_SEED` | Local reset only   | Must be exactly `true` for an intentional non-production demo reset. Never configure in production. |
-| `STORAGE_DRIVER`               | Yes                | `local` for development/test; `s3` for production. Local is rejected in production.                 |
-| `STORAGE_LOCAL_ROOT`           | Local/test only    | Private filesystem root used by the local driver. Defaults to `.data/media`.                        |
-| `STORAGE_BUCKET`               | Production media   | Private S3-compatible object-storage bucket name.                                                   |
-| `STORAGE_REGION`               | Production media   | Region or `auto` for compatible providers.                                                          |
-| `STORAGE_ENDPOINT`             | Provider dependent | Custom S3-compatible endpoint.                                                                      |
-| `STORAGE_ACCESS_KEY_ID`        | Media launch       | Least-privilege upload/read identity.                                                               |
-| `STORAGE_SECRET_ACCESS_KEY`    | Media launch       | Storage secret managed by Vercel.                                                                   |
-| `DIRECT_URL`                   | Yes                | Direct (non-pooled) PostgreSQL connection used only by `prisma migrate deploy`. Set equal to `DATABASE_URL` for a non-pooled/local database. |
-| `CRON_SECRET`                  | Yes (cron)         | Shared secret Vercel Cron sends as `Authorization: Bearer …` to every internal worker route.        |
-| `NOTIFICATION_WORKER_SECRET`   | Optional           | Alternate bearer secret for the notification process/digest routes (manual/non-Vercel triggers).    |
-| `MARKETPLACE_WORKER_SECRET`    | Optional           | Alternate bearer secret for the marketplace expiry route.                                            |
-| `MEDIA_WORKER_SECRET`          | Optional           | Alternate bearer secret for the media cleanup route.                                                 |
-| `EMAIL_PROVIDER`               | Optional           | `console` (dev no-op) or `resend`. Auto-selects `resend` once `RESEND_API_KEY` is set.              |
-| `RESEND_API_KEY`               | Email launch       | Resend API key. Without it, production email sends throw rather than silently dropping mail.         |
-| `EMAIL_FROM`                   | Email launch       | Sender address on a Resend-verified domain, e.g. `Kondo <no-reply@kondo.app>`.                       |
-| `UPSTASH_REDIS_REST_URL`       | Optional           | Upstash Redis REST URL for shared rate limits. Falls back to per-instance in-memory when unset.     |
-| `UPSTASH_REDIS_REST_TOKEN`     | Optional           | Upstash Redis REST token (paired with the URL).                                                      |
-| `CRON_SECRET`/worker secrets   | —                  | Generate each with `openssl rand -hex 32`; `JWT_SECRET` with `openssl rand -base64 48`.             |
+The authoritative, service-by-service list is
+[`docs/ENVIRONMENT_VARIABLES.md`](./ENVIRONMENT_VARIABLES.md). Production
+startup validates every mandatory runtime value, requires Neon pooled/direct
+URL shapes, rejects local storage and console email, checks credential
+strength, and refuses placeholder values.
 
 ## Vercel release process
 
-1. Create separate preview and production PostgreSQL databases.
-2. Configure environment variables in Vercel; never upload a local `.env`.
-3. Run `npm ci` and `npm run db:generate` in CI.
-4. Apply reviewed migrations with `npx prisma migrate deploy` as a controlled release step.
-5. Provision an isolated disposable PostgreSQL test database through `TEST_DATABASE_URL`, then run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`. `npm test` applies all Prisma migrations before Vitest.
-6. Configure the private bucket CORS policy for presigned `PUT` from the exact application origins and keep public bucket access disabled.
-7. Schedule `npm run media:cleanup` at least hourly with the same database and storage credentials.
-8. Configure `NOTIFICATION_WORKER_SECRET` and schedule the notification worker at least once per minute, or run `npm run notifications:process`.
-9. Deploy the immutable build.
-10. Smoke-test enqueue/delivery, preferences, links, read/hide/pagination, real badge count, message archive/clear/read positions, private image/PDF delivery, community creation/review, open/request/invite access, owner transfer, event validation, post/comment images, content reports, Community CMS, templates, announcements, diagnostics, plus all previously listed product and Admin paths.
-11. Monitor error rate, p95 latency, database connections, Web Vitals, notification queue age/failures, sign-in failures, rejected uploads, and pending storage deletions.
+1. Complete [`docs/DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md).
+2. Configure isolated Preview and Production services; never upload a local
+   `.env` or expose production credentials to Preview.
+3. Let GitHub Release checks verify formatting, lint, types, unit/integration
+   tests, the production build, Playwright journeys, and dependency severity.
+4. Back up production and apply reviewed migrations with
+   `npx prisma migrate deploy` through `DIRECT_URL`.
+5. Deploy the exact green `main` commit to Vercel.
+6. Run the product, Admin, upload, email, rate-limit, and worker smoke tests
+   from the checklist, then monitor the release.
 
 Do not run the demo seed in production. The seed refuses `NODE_ENV=production` and `VERCEL_ENV=production` unconditionally, and non-production runs still require the one-command opt-in `KONDO_ALLOW_DESTRUCTIVE_SEED=true`.
 
@@ -56,17 +36,22 @@ Release 0.13.0 requires all three community migrations before serving the new UI
 
 ## Scheduled jobs (cron)
 
-Background work runs through authenticated internal HTTP routes, scheduled by Vercel Cron (defined in `vercel.json`). Vercel Cron issues a `GET` with `Authorization: Bearer <CRON_SECRET>`; each route also accepts its own worker secret over `GET`/`POST` for manual or non-Vercel triggers.
+Background work runs through authenticated internal HTTP routes scheduled by
+`.github/workflows/scheduled-workers.yml`. GitHub sends
+`Authorization: Bearer <CRON_SECRET>` over `POST`; each route also accepts its
+route-specific worker secret and remains compatible with Vercel Cron `GET`.
 
-| Route                                   | Default schedule (`vercel.json`) | Purpose                                            | Secrets accepted                              |
-| --------------------------------------- | -------------------------------- | -------------------------------------------------- | --------------------------------------------- |
-| `/api/internal/notifications/process`   | `* * * * *` (every minute)       | Drains the notification outbox.                    | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
-| `/api/internal/notifications/digest`    | `0 8 * * *` (daily 08:00 UTC)    | Sends due email digests.                           | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
-| `/api/internal/marketplace/expire`      | `0 * * * *` (hourly)             | Expires stale marketplace listings.                | `CRON_SECRET` or `MARKETPLACE_WORKER_SECRET`  |
-| `/api/internal/media/cleanup`           | `15 * * * *` (hourly)           | Deletes orphaned media and retries provider deletes.| `CRON_SECRET` or `MEDIA_WORKER_SECRET`        |
+| Route                                 | GitHub schedule    | Purpose                                              | Secrets accepted                              |
+| ------------------------------------- | ------------------ | ---------------------------------------------------- | --------------------------------------------- |
+| `/api/internal/notifications/process` | Every five minutes | Drains the notification outbox.                      | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
+| `/api/internal/notifications/digest`  | Daily, 08:13 UTC   | Sends due email digests.                             | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
+| `/api/internal/marketplace/expire`    | Hourly, minute 17  | Expires stale marketplace listings.                  | `CRON_SECRET` or `MARKETPLACE_WORKER_SECRET`  |
+| `/api/internal/media/cleanup`         | Hourly, minute 37  | Deletes orphaned media and retries provider deletes. | `CRON_SECRET` or `MEDIA_WORKER_SECRET`        |
 
-- Set `CRON_SECRET` in Vercel; the crons will not authenticate without it.
-- Cron frequency depends on the Vercel plan: sub-daily schedules (e.g. the per-minute notification worker) require a Pro plan. On Hobby, reduce the schedules or run the equivalent CLI scripts (`npm run notifications:process`, `notifications:digest`, `marketplace:expire`, `media:cleanup`) from an external scheduler with the same database and storage credentials.
+- Set the same `CRON_SECRET` in Vercel Production and GitHub Actions secrets.
+- Set GitHub Actions variable `PRODUCTION_APP_URL` to the canonical origin.
+- Scheduling outside `vercel.json` keeps Vercel Hobby deployments valid; Hobby
+  rejects cron expressions that run more than once per day.
 - The equivalent CLI scripts call the same library functions directly and remain available for local runs and non-Vercel hosts.
 
 ## Health check
@@ -75,16 +60,9 @@ Background work runs through authenticated internal HTTP routes, scheduled by Ve
 
 ## Go-live runbook
 
-1. Provision infrastructure: PostgreSQL (pooled `DATABASE_URL` + direct `DIRECT_URL`), a private S3-compatible bucket (R2/S3) with CORS allowing `PUT` from the app origin, and — recommended — Upstash Redis and a Resend-verified sending domain.
-2. Generate secrets: `JWT_SECRET` (`openssl rand -base64 48`), and `CRON_SECRET` + any worker secrets (`openssl rand -hex 32`). Store them only in Vercel.
-3. In Vercel, set every required variable (see the table above) for Production and Preview. Do not upload a local `.env`.
-4. Point `NEXT_PUBLIC_APP_URL` at the canonical HTTPS origin and add the bucket CORS rule for that exact origin.
-5. Run the quality gate in CI against a disposable `TEST_DATABASE_URL`: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
-6. Apply migrations as a controlled release step: `npx prisma migrate deploy` (uses `DIRECT_URL`).
-7. Deploy the immutable build. Confirm `vercel.json` crons appear in the Vercel dashboard and that `CRON_SECRET` is set.
-8. Smoke-test: `GET /api/health` returns `ok`; register/login; verification and password-reset email arrive (once Resend is configured); upload an avatar/marketplace image; create a community and post; run a search; open `/explore/jiaxing`; and exercise the Admin surfaces including `/admin/city-hubs` (draft → review → publish) and `/admin/guides`.
-9. Trigger each cron route once manually (with the `CRON_SECRET` bearer) and confirm a 200 and expected side effects.
-10. Configure monitoring/alerts per the Performance checklist below.
+Follow [`docs/DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md) from service
+provisioning through smoke tests and rollback preparation. It is the release
+runbook and includes first-Super-Admin bootstrap.
 
 ## Local-network testing
 

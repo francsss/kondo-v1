@@ -660,9 +660,9 @@ export async function getMediaForDelivery(
   const asset = await prisma.mediaAsset.findUnique({ where: { id: assetId } });
   const retainedAdminAccess = Boolean(
     asset?.retainedAt &&
-      asset.scanStatus === "CLEAN" &&
-      viewer &&
-      hasAdminPermission(viewer.role, "MEDIA_VIEW"),
+    asset.scanStatus === "CLEAN" &&
+    viewer &&
+    hasAdminPermission(viewer.role, "MEDIA_VIEW"),
   );
   if (
     !asset ||
@@ -692,8 +692,8 @@ export async function getMediaForDelivery(
     });
     authorized = Boolean(
       profile &&
-        (profile.profileAudience === "PUBLIC" ||
-          (profile.profileAudience === "MEMBERS" && viewer)),
+      (profile.profileAudience === "PUBLIC" ||
+        (profile.profileAudience === "MEMBERS" && viewer)),
     );
   }
   if (

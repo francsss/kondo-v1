@@ -14,7 +14,11 @@ import { Card } from "@/components/ui/Card";
 import { CategoryResults } from "@/components/features/search/CategoryResults";
 import { ResultCard } from "@/components/features/search/ResultCard";
 import { formatPrice } from "@/lib/presentation";
-import { SEARCH_CATEGORIES, searchKondo, type SearchCategory } from "@/lib/search";
+import {
+  SEARCH_CATEGORIES,
+  searchKondo,
+  type SearchCategory,
+} from "@/lib/search";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Search" };

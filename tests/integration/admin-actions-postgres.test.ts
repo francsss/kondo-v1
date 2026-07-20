@@ -187,7 +187,11 @@ postgresDescribe("Module 17 PostgreSQL admin actions", () => {
     const step = await upsertGuideStep({
       actor: fixture.admin,
       guideId: created.guide.id,
-      data: { order: 0, title: "Register with police", content: "Visit the local station within 24 hours." },
+      data: {
+        order: 0,
+        title: "Register with police",
+        content: "Visit the local station within 24 hours.",
+      },
     });
 
     const published = await setGuidePublished({
@@ -220,13 +224,21 @@ postgresDescribe("Module 17 PostgreSQL admin actions", () => {
     await upsertGuideStep({
       actor: fixture.admin,
       guideId: created.guide.id,
-      data: { order: 0, title: "Open a bank account", content: "Bring your passport and enrollment letter." },
+      data: {
+        order: 0,
+        title: "Open a bank account",
+        content: "Bring your passport and enrollment letter.",
+      },
     });
     await expect(
       upsertGuideStep({
         actor: fixture.admin,
         guideId: created.guide.id,
-        data: { order: 0, title: "Duplicate order", content: "This should collide on the unique index." },
+        data: {
+          order: 0,
+          title: "Duplicate order",
+          content: "This should collide on the unique index.",
+        },
       }),
     ).rejects.toMatchObject({ status: 409 });
 
@@ -247,7 +259,9 @@ postgresDescribe("Module 17 PostgreSQL admin actions", () => {
     await expect(
       deleteGuide({ actor: fixture.admin, guideId: created.guide.id }),
     ).resolves.toEqual({ deleted: true });
-    await expect(getAdminGuide(fixture.admin, created.guide.id)).resolves.toBeNull();
+    await expect(
+      getAdminGuide(fixture.admin, created.guide.id),
+    ).resolves.toBeNull();
   });
 
   it("blocks Moderators from the guide CMS and user management", async () => {

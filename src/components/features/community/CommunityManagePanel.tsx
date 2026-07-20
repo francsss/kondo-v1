@@ -165,7 +165,9 @@ export function CommunityManagePanel({
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label>
-                <span className="mb-2 block text-sm font-bold">Join policy</span>
+                <span className="mb-2 block text-sm font-bold">
+                  Join policy
+                </span>
                 <select
                   className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
                   defaultValue={community.joinPolicy}
@@ -495,13 +497,7 @@ export function CommunityManagePanel({
   );
 }
 
-function Action({
-  action,
-  label,
-}: {
-  action: () => void;
-  label: string;
-}) {
+function Action({ action, label }: { action: () => void; label: string }) {
   return (
     <button
       className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold transition hover:border-kondo-green hover:text-kondo-green dark:border-white/10"

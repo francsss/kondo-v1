@@ -16,10 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { hasAdminPermission } from "@/lib/authorization";
-import {
-  getAdminUser,
-  ProfileError,
-} from "@/lib/profiles";
+import { getAdminUser, ProfileError } from "@/lib/profiles";
 import { formatRelativeDate } from "@/lib/presentation";
 import { requireAdminPermission } from "@/lib/server-auth";
 
@@ -73,12 +70,7 @@ export default async function AdminUserDetailPage({
                   {user.username ? `@${user.username} · ` : ""}
                   {user.role} · {user.status}
                 </p>
-                <Button
-                  asChild
-                  className="mt-3"
-                  size="sm"
-                  variant="secondary"
-                >
+                <Button asChild className="mt-3" size="sm" variant="secondary">
                   <Link href={`/profile/${user.username ?? user.id}`}>
                     Open member view
                   </Link>
@@ -148,10 +140,7 @@ export default async function AdminUserDetailPage({
                       {request.responseNote}
                     </p>
                   ) : null}
-                  {hasAdminPermission(
-                    actor.role,
-                    "ACCOUNT_REQUEST_MANAGE",
-                  ) ? (
+                  {hasAdminPermission(actor.role, "ACCOUNT_REQUEST_MANAGE") ? (
                     <AccountRequestActions
                       requestId={request.id}
                       status={request.status}
@@ -161,9 +150,7 @@ export default async function AdminUserDetailPage({
                 </div>
               ))}
               {!user.accountRequests.length ? (
-                <p className="text-sm text-slate-400">
-                  No account requests.
-                </p>
+                <p className="text-sm text-slate-400">No account requests.</p>
               ) : null}
             </div>
           </Card>

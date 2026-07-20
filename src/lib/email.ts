@@ -18,7 +18,10 @@ type TransactionalEmail = {
 // so the integration activates as soon as the required env vars are added
 // without a separate provider-selection step.
 function resolveProvider(): string {
-  return process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? "resend" : "console");
+  return (
+    process.env.EMAIL_PROVIDER ||
+    (process.env.RESEND_API_KEY ? "resend" : "console")
+  );
 }
 
 let resendClient: Resend | null | undefined;

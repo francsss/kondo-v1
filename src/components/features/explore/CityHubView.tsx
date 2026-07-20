@@ -7,7 +7,9 @@ import {
 import type { ExploreCity } from "@/features/explore/types";
 
 export function CityHubView({ city }: { city: ExploreCity }) {
-  const aboutSection = city.sections.find((section) => section.slug === "about");
+  const aboutSection = city.sections.find(
+    (section) => section.slug === "about",
+  );
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
@@ -137,7 +139,9 @@ export function CityHubView({ city }: { city: ExploreCity }) {
                     <span className="font-bold text-slate-400">
                       {section.signal}
                     </span>
-                    <span className="font-black text-kondo-green">Open guide</span>
+                    <span className="font-black text-kondo-green">
+                      Open guide
+                    </span>
                   </div>
                 </div>
               </Link>

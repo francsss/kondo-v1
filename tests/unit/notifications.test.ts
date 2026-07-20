@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  NotificationError,
-  safeNotificationHref,
-} from "@/lib/notifications";
+import { NotificationError, safeNotificationHref } from "@/lib/notifications";
 
 describe("notification link safety", () => {
   it("keeps normalized internal product links", () => {

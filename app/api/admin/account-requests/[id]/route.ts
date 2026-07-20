@@ -4,10 +4,7 @@ import {
   adminJson,
   authorizeAdminApi,
 } from "@/lib/admin-auth";
-import {
-  ProfileError,
-  transitionAccountRequest,
-} from "@/lib/profiles";
+import { ProfileError, transitionAccountRequest } from "@/lib/profiles";
 import { getRequestMeta, hasTrustedOrigin } from "@/lib/request";
 import { accountRequestAdminSchema } from "@/lib/validation";
 

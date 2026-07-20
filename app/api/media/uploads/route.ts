@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
-  if (!(await rateLimit(`media-upload:${user.id}`, 30, 24 * 60 * 60_000)).allowed) {
+  if (
+    !(await rateLimit(`media-upload:${user.id}`, 30, 24 * 60 * 60_000)).allowed
+  ) {
     return jsonError("Media upload limit reached. Try again later.", 429);
   }
   const parsed = mediaUploadIntentSchema.safeParse(

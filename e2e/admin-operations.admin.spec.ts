@@ -7,7 +7,9 @@ test.describe("admin operations", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 
-  test("can open the City Hub CMS and see the create form", async ({ page }) => {
+  test("can open the City Hub CMS and see the create form", async ({
+    page,
+  }) => {
     await page.goto("/admin/city-hubs");
     await expect(page).toHaveURL(/\/admin\/city-hubs/);
     await expect(

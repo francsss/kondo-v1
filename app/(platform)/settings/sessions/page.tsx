@@ -6,10 +6,7 @@ import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { SessionsPanel } from "@/components/features/settings/SessionsPanel";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
-import {
-  getSessionCredential,
-  listUserSessions,
-} from "@/lib/settings";
+import { getSessionCredential, listUserSessions } from "@/lib/settings";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Sessions and devices" };

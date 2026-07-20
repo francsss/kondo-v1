@@ -36,8 +36,8 @@ export function EmailVerificationBanner({ email }: { email: string }) {
             Verify your email
           </h2>
           <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            We haven&apos;t confirmed <span className="font-semibold">{email}</span>{" "}
-            yet.
+            We haven&apos;t confirmed{" "}
+            <span className="font-semibold">{email}</span> yet.
           </p>
           {status === "sent" ? (
             <p className="mt-3 text-sm font-semibold text-kondo-forest dark:text-emerald-300">

@@ -56,9 +56,7 @@ export function GuidePublishActions({
 
   return (
     <Card>
-      <h2 className="font-black text-kondo-ink dark:text-white">
-        Publishing
-      </h2>
+      <h2 className="font-black text-kondo-ink dark:text-white">Publishing</h2>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
         {published
           ? "Live in the Student Hub guide library."
@@ -81,7 +79,12 @@ export function GuidePublishActions({
           {pending ? "Saving…" : published ? "Unpublish" : "Publish"}
         </Button>
         {!published ? (
-          <Button disabled={pending} onClick={remove} type="button" variant="danger">
+          <Button
+            disabled={pending}
+            onClick={remove}
+            type="button"
+            variant="danger"
+          >
             Delete draft
           </Button>
         ) : null}

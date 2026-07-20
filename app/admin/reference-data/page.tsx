@@ -20,11 +20,7 @@ function stringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function pageHref(
-  type: string,
-  query: string | undefined,
-  page: number,
-) {
+function pageHref(type: string, query: string | undefined, page: number) {
   const params = new URLSearchParams({ type, page: String(page) });
   if (query) params.set("q", query);
   return `/admin/reference-data?${params.toString()}`;
@@ -37,7 +33,8 @@ export default async function AdminReferenceDataPage({
 }) {
   const user = await requireAdminPermission("REFERENCE_DATA_VIEW");
   const params = await searchParams;
-  const type = parseReferenceType(stringParam(params.type) ?? "") ?? "countries";
+  const type =
+    parseReferenceType(stringParam(params.type) ?? "") ?? "countries";
   const query = stringParam(params.q)?.trim() || undefined;
   const [result, options] = await Promise.all([
     listReferenceData(user, type, {

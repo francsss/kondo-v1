@@ -77,7 +77,9 @@ describe("database-backed session resolution", () => {
       });
       mocks.sessionFindUnique.mockResolvedValue(databaseSession(status));
 
-      await expect(resolveAuthenticatedUser("signed-token")).resolves.toBeNull();
+      await expect(
+        resolveAuthenticatedUser("signed-token"),
+      ).resolves.toBeNull();
     },
   );
 

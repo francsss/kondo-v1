@@ -430,9 +430,7 @@ function parseConversationSnapshot(
   return value as unknown as ConversationSnapshot;
 }
 
-function parseProfileSnapshot(
-  value: Prisma.JsonValue,
-): ProfileSnapshot | null {
+function parseProfileSnapshot(value: Prisma.JsonValue): ProfileSnapshot | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const snapshot = value as Record<string, Prisma.JsonValue>;
   if (

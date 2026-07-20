@@ -16,12 +16,14 @@ import { communityAccessResolutionSchema } from "@/lib/validation";
 type Context = { params: Promise<{ id: string; requestId: string }> };
 
 function failure(event: string, error: unknown) {
-  if (error instanceof CommunityError) return jsonError(error.message, error.status);
+  if (error instanceof CommunityError)
+    return jsonError(error.message, error.status);
   return internalApiError(event, error);
 }
 
 export async function PATCH(request: NextRequest, { params }: Context) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
   const parsed = communityAccessResolutionSchema.safeParse(
@@ -45,7 +47,8 @@ export async function PATCH(request: NextRequest, { params }: Context) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Context) {
-  if (!hasTrustedOrigin(request)) return jsonError("Invalid request origin.", 403);
+  if (!hasTrustedOrigin(request))
+    return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
   const route = await params;

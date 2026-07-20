@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  completeOnboarding,
-  saveOnboardingDraft,
-} from "@/lib/onboarding";
+import { completeOnboarding, saveOnboardingDraft } from "@/lib/onboarding";
 import { prisma } from "@/lib/prisma";
 import {
   createReferenceData,
@@ -30,8 +27,7 @@ async function unusedCountryCode() {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   for (let attempt = 0; attempt < 676; attempt += 1) {
     const value = Math.floor(Math.random() * 676);
-    const code =
-      alphabet[Math.floor(value / 26)] + alphabet[value % 26];
+    const code = alphabet[Math.floor(value / 26)] + alphabet[value % 26];
     const existing = await prisma.country.findUnique({
       where: { code },
       select: { id: true },
@@ -117,17 +113,13 @@ async function createFixture() {
       status: "ACTIVE",
     },
   });
-  const origin = await createReferenceData(
-    admin,
-    "countries",
-    {
-      code: await unusedCountryCode(),
-      name: `${namePrefix} Origin ${suffix}`,
-      emoji: "🌍",
-      isActive: true,
-      verified: true,
-    },
-  );
+  const origin = await createReferenceData(admin, "countries", {
+    code: await unusedCountryCode(),
+    name: `${namePrefix} Origin ${suffix}`,
+    emoji: "🌍",
+    isActive: true,
+    verified: true,
+  });
   const cityA = await createReferenceData(admin, "cities", {
     slug: `module4-city-a-${suffix}`,
     name: `${namePrefix} City A ${suffix}`,
@@ -325,11 +317,9 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
   });
 
   it("lists safe lifecycle data and protects referenced deletion", async () => {
-    const listed = await listReferenceData(
-      fixture.admin,
-      "universities",
-      { query: fixture.suffix },
-    );
+    const listed = await listReferenceData(fixture.admin, "universities", {
+      query: fixture.suffix,
+    });
     expect(listed.records.length).toBeGreaterThanOrEqual(2);
     expect(JSON.stringify(listed)).not.toContain("passwordHash");
 
@@ -380,11 +370,7 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
     await updateReferenceData(fixture.admin, "countries", country.id, {
       verified: true,
     });
-    await deleteReferenceData(
-      fixture.admin,
-      "universities",
-      university.id,
-    );
+    await deleteReferenceData(fixture.admin, "universities", university.id);
     await deleteReferenceData(fixture.admin, "cities", city.id);
     await deleteReferenceData(fixture.admin, "countries", country.id);
 

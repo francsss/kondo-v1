@@ -1,9 +1,6 @@
 import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/features/profile/ProfileView";
-import {
-  getPublicProfile,
-  ProfileError,
-} from "@/lib/profiles";
+import { getPublicProfile, ProfileError } from "@/lib/profiles";
 import { requireUser } from "@/lib/server-auth";
 
 export default async function MemberProfilePage({

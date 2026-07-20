@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import type { NextRequest, NextResponse } from "next/server";
 import type { AppRole } from "@/lib/authorization";
+import { getJwtSecret } from "@/lib/runtime-secrets";
 
 export const AUTH_COOKIE_NAME = "kondo_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -11,15 +12,6 @@ export type SessionUser = {
   role: AppRole;
   sessionId: string;
 };
-
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
-  if (secret) return secret;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET is required in production.");
-  }
-  return "dev-only-kondo-secret-change-me-before-launch";
-}
 
 function secretKey() {
   return new TextEncoder().encode(getJwtSecret());

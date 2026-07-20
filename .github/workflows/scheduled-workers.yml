@@ -1,0 +1,73 @@
+name: Production workers
+
+on:
+  schedule:
+    - cron: "3/5 * * * *"
+    - cron: "17 * * * *"
+    - cron: "37 * * * *"
+    - cron: "13 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-workers-${{ github.event.schedule || 'manual' }}
+  cancel-in-progress: false
+
+env:
+  PRODUCTION_APP_URL: ${{ vars.PRODUCTION_APP_URL }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+jobs:
+  notifications:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '3/5 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Process notification jobs
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/notifications/process"
+
+  marketplace:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Expire old marketplace listings
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/marketplace/expire"
+
+  media:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '37 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Clean orphaned media
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/media/cleanup"
+
+  digest:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '13 8 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Send due email digests
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/notifications/digest"
