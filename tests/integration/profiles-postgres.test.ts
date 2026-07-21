@@ -22,6 +22,7 @@ import {
   ProfileError,
   transitionAccountRequest,
   updateProfile,
+  updateUserRoleAsAdmin,
 } from "@/lib/profiles";
 
 const isIsolatedPostgres =
@@ -168,6 +169,15 @@ async function createFixture() {
       status: "ACTIVE",
     },
   });
+  const superAdmin = await prisma.user.create({
+    data: {
+      email: `super-admin-${suffix}@${testDomain}`,
+      firstName: "Module6",
+      lastName: "SuperAdmin",
+      role: "SUPER_ADMIN",
+      status: "ACTIVE",
+    },
+  });
   const publicCommunity = await prisma.community.create({
     data: {
       slug: `module6-public-${suffix}`,
@@ -304,6 +314,7 @@ async function createFixture() {
     viewer,
     admin,
     moderator,
+    superAdmin,
     publicCommunity,
     privateCommunity,
     publicPost,
@@ -649,5 +660,55 @@ postgresDescribe("Module 6 PostgreSQL profiles", () => {
     });
     expect(detail).not.toHaveProperty("passwordHash");
     expect(detail).not.toHaveProperty("sessions");
+  });
+
+  it("limits administrator role changes to Super Admins and revokes target sessions", async () => {
+    await expect(
+      updateUserRoleAsAdmin({
+        actor: fixture.admin,
+        userId: fixture.subject.id,
+        role: "ADMIN",
+        reason: "Attempted role escalation by a regular administrator.",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+
+    await prisma.session.create({
+      data: {
+        tokenHash: randomUUID().replaceAll("-", "").repeat(2),
+        userId: fixture.subject.id,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    await expect(
+      updateUserRoleAsAdmin({
+        actor: fixture.superAdmin,
+        userId: fixture.subject.id,
+        role: "ADMIN",
+        reason: "Approved operational administrator assignment.",
+      }),
+    ).resolves.toEqual({ role: "ADMIN", sessionsRevoked: 1 });
+    await expect(
+      prisma.user.findUniqueOrThrow({
+        where: { id: fixture.subject.id },
+        select: { role: true },
+      }),
+    ).resolves.toEqual({ role: "ADMIN" });
+    await expect(
+      prisma.auditLog.findFirst({
+        where: {
+          action: "USER_ROLE_UPDATED",
+          entityId: fixture.subject.id,
+          actorId: fixture.superAdmin.id,
+        },
+      }),
+    ).resolves.toBeTruthy();
+    await expect(
+      updateUserRoleAsAdmin({
+        actor: fixture.superAdmin,
+        userId: fixture.superAdmin.id,
+        role: "MEMBER",
+        reason: "Self-demotion must be rejected.",
+      }),
+    ).rejects.toMatchObject({ status: 409 });
   });
 });

@@ -4,6 +4,7 @@ import {
   createCommunity,
   createCommunityPost,
   createOrReuseCommunityContentReport,
+  createOfficialCommunity,
   createPostComment,
   getAdminCommunity,
   inviteCommunityMember,
@@ -565,6 +566,71 @@ postgresDescribe("Module 11 PostgreSQL communities", () => {
         fullName: `${fixture.owner.firstName} ${fixture.owner.lastName}`,
       },
     });
+  });
+
+  it("creates and edits official communities without rewriting user-created metadata", async () => {
+    await expect(
+      createOfficialCommunity({
+        actor: fixture.moderator,
+        data: {
+          name: "Unauthorized official community",
+          description: "Moderators cannot create official platform spaces.",
+          type: "TOPIC",
+          isPrivate: false,
+          joinPolicy: "OPEN",
+        },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+
+    const created = await createOfficialCommunity({
+      actor: fixture.admin,
+      data: {
+        name: `Module 11 Official ${randomUUID()}`,
+        description: "An official Kondo community managed by administrators.",
+        type: "TOPIC",
+        icon: "🏛️",
+        isPrivate: false,
+        joinPolicy: "OPEN",
+      },
+    });
+    expect(created.community).toMatchObject({
+      status: "ACTIVE",
+      isOfficial: true,
+    });
+    await expect(
+      listAdminCommunities(fixture.admin, { official: true }),
+    ).resolves.toMatchObject({
+      records: expect.arrayContaining([
+        expect.objectContaining({ id: created.community.id, isOfficial: true }),
+      ]),
+    });
+    await expect(
+      updateCommunityAsAdmin({
+        actor: fixture.admin,
+        communityId: created.community.id,
+        name: "Module 11 Official Updated",
+        description:
+          "Updated official metadata remains auditable and persisted.",
+      }),
+    ).resolves.toMatchObject({
+      community: { name: "Module 11 Official Updated", isOfficial: true },
+    });
+
+    const userCreated = await createActiveCommunity("owned-metadata");
+    await expect(
+      updateCommunityAsAdmin({
+        actor: fixture.admin,
+        communityId: userCreated.id,
+        name: "Admin rewrite attempt",
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      updateCommunity({
+        actor: fixture.admin,
+        communityId: userCreated.id,
+        data: { name: "Operational rewrite attempt" },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
   });
 
   it("rolls back a community mutation when its mandatory audit write fails", async () => {

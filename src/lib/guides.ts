@@ -1,6 +1,7 @@
 import { Prisma, type GuideCategory } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
+import { attachMediaAsset, MediaError } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 
 type Actor = { id: string; role: AppRole | string };
@@ -38,6 +39,46 @@ async function uniqueGuideSlug(title: string) {
     if (!existing) return slug;
   }
   throw new GuideError("Could not create a unique guide URL.", 409);
+}
+
+async function attachGuideCover(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorId: string;
+    guideId: string;
+    mediaId: string;
+    previousMediaId?: string | null;
+  },
+) {
+  try {
+    await attachMediaAsset(tx, {
+      ownerId: input.actorId,
+      assetId: input.mediaId,
+      purpose: "GUIDE_COVER",
+      attachmentType: "GUIDE",
+      attachmentId: input.guideId,
+    });
+  } catch (error) {
+    if (error instanceof MediaError) {
+      throw new GuideError(error.message, error.status);
+    }
+    throw error;
+  }
+  await tx.guide.update({
+    where: { id: input.guideId },
+    data: { coverMediaId: input.mediaId },
+  });
+  if (input.previousMediaId && input.previousMediaId !== input.mediaId) {
+    await tx.mediaAsset.updateMany({
+      where: {
+        id: input.previousMediaId,
+        attachmentType: "GUIDE",
+        attachmentId: input.guideId,
+        retainedAt: null,
+      },
+      data: { attachedAt: null, attachmentType: null, attachmentId: null },
+    });
+  }
 }
 
 export async function listAdminGuides(
@@ -108,6 +149,7 @@ export async function getAdminGuide(actor: Actor, guideId: string) {
       slug: true,
       title: true,
       summary: true,
+      coverMediaId: true,
       category: true,
       estimatedMinutes: true,
       published: true,
@@ -146,6 +188,7 @@ export async function createGuide(input: {
     category: GuideCategory;
     estimatedMinutes: number;
     featured?: boolean;
+    coverMediaId?: string | null;
   };
   meta?: RequestMeta;
 }) {
@@ -167,6 +210,13 @@ export async function createGuide(input: {
       },
       select: { id: true, slug: true, title: true, published: true },
     });
+    if (input.data.coverMediaId) {
+      await attachGuideCover(tx, {
+        actorId: input.actor.id,
+        guideId: guide.id,
+        mediaId: input.data.coverMediaId,
+      });
+    }
     await writeAuditLogWithClient(tx, {
       actorId: input.actor.id,
       action: "GUIDE_CREATED",
@@ -188,6 +238,7 @@ export async function updateGuide(input: {
     category?: GuideCategory;
     estimatedMinutes?: number;
     featured?: boolean;
+    coverMediaId?: string | null;
   };
   meta?: RequestMeta;
 }) {
@@ -197,14 +248,38 @@ export async function updateGuide(input: {
   return prisma.$transaction(async (tx) => {
     const current = await tx.guide.findUnique({
       where: { id: input.guideId },
-      select: { id: true },
+      select: { id: true, coverMediaId: true },
     });
     if (!current) throw new GuideError("Guide not found.", 404);
+    const { coverMediaId, ...fields } = input.data;
     const updated = await tx.guide.update({
       where: { id: current.id },
-      data: input.data,
+      data: fields,
       select: { id: true, slug: true, title: true, published: true },
     });
+    if (coverMediaId && coverMediaId !== current.coverMediaId) {
+      await attachGuideCover(tx, {
+        actorId: input.actor.id,
+        guideId: current.id,
+        mediaId: coverMediaId,
+        previousMediaId: current.coverMediaId,
+      });
+    }
+    if (coverMediaId === null && current.coverMediaId) {
+      await tx.guide.update({
+        where: { id: current.id },
+        data: { coverMediaId: null },
+      });
+      await tx.mediaAsset.updateMany({
+        where: {
+          id: current.coverMediaId,
+          attachmentType: "GUIDE",
+          attachmentId: current.id,
+          retainedAt: null,
+        },
+        data: { attachedAt: null, attachmentType: null, attachmentId: null },
+      });
+    }
     await writeAuditLogWithClient(tx, {
       actorId: input.actor.id,
       action: "GUIDE_UPDATED",
@@ -283,6 +358,7 @@ export async function deleteGuide(input: {
         id: true,
         title: true,
         published: true,
+        coverMediaId: true,
         steps: { select: { _count: { select: { progress: true } } } },
       },
     });
@@ -298,6 +374,17 @@ export async function deleteGuide(input: {
       );
     }
     await tx.guide.delete({ where: { id: guide.id } });
+    if (guide.coverMediaId) {
+      await tx.mediaAsset.updateMany({
+        where: {
+          id: guide.coverMediaId,
+          attachmentType: "GUIDE",
+          attachmentId: guide.id,
+          retainedAt: null,
+        },
+        data: { attachedAt: null, attachmentType: null, attachmentId: null },
+      });
+    }
     await writeAuditLogWithClient(tx, {
       actorId: input.actor.id,
       action: "GUIDE_DELETED",

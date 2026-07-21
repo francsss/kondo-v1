@@ -66,6 +66,9 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("ADMIN", "MARKETPLACE_CMS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "MARKETPLACE_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("ADMIN", "USER_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "USER_ROLE_MANAGE")).toBe(false);
+    expect(hasAdminPermission("ADMIN", "ANALYTICS_VIEW")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "PLATFORM_SETTINGS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "GUIDE_CMS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "GUIDE_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("MODERATOR", "REFERENCE_DATA_VIEW")).toBe(false);
@@ -80,5 +83,6 @@ describe("role authorization helpers", () => {
     expect(
       hasAdminPermission("SUPER_ADMIN", "AUDIT_VIEW_SECURITY_METADATA"),
     ).toBe(true);
+    expect(hasAdminPermission("SUPER_ADMIN", "USER_ROLE_MANAGE")).toBe(true);
   });
 });

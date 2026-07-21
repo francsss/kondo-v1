@@ -30,6 +30,7 @@ type Diagnostics = {
     title: string;
     status: string;
     recipientCount: number;
+    audience: unknown;
     queuedAt: string;
   }>;
   recentJobs: Array<{
@@ -43,12 +44,25 @@ type Diagnostics = {
   }>;
 };
 
+function announcementAudienceLabel(value: unknown) {
+  if (!value || typeof value !== "object") return "All users";
+  const audience = value as { label?: unknown; type?: unknown };
+  if (typeof audience.label === "string") return audience.label;
+  return typeof audience.type === "string" ? audience.type : "All users";
+}
+
 export function NotificationAdminPanel({
   diagnostics,
   canManage,
+  audienceOptions,
 }: {
   diagnostics: Diagnostics;
   canManage: boolean;
+  audienceOptions: {
+    cities: Array<{ id: string; name: string }>;
+    communities: Array<{ id: string; name: string }>;
+    universities: Array<{ id: string; name: string }>;
+  };
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -58,6 +72,15 @@ export function NotificationAdminPanel({
     event.preventDefault();
     const form = event.currentTarget;
     const values = new FormData(form);
+    const audienceValue = String(values.get("audience") ?? "ALL");
+    const [audienceType, audienceId] = audienceValue.split(":", 2);
+    const audience =
+      audienceType === "ALL"
+        ? { type: "ALL" }
+        : { type: audienceType, id: audienceId };
+    if (!window.confirm("Queue this announcement for the selected audience?")) {
+      return;
+    }
     setPending(true);
     setFeedback("");
     const response = await fetch("/api/admin/notifications", {
@@ -68,6 +91,7 @@ export function NotificationAdminPanel({
         title: values.get("title"),
         body: values.get("body"),
         href: String(values.get("href") ?? "").trim() || null,
+        audience,
       }),
     }).catch(() => null);
     const result = await response?.json().catch(() => ({}));
@@ -168,6 +192,37 @@ export function NotificationAdminPanel({
               placeholder="Useful announcement"
               required
             />
+            <label className="text-xs font-bold text-slate-500">
+              Audience
+              <select
+                className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
+                defaultValue="ALL"
+                name="audience"
+              >
+                <option value="ALL">All active users</option>
+                {audienceOptions.cities.map((city) => (
+                  <option key={`city-${city.id}`} value={`CITY:${city.id}`}>
+                    City · {city.name}
+                  </option>
+                ))}
+                {audienceOptions.communities.map((community) => (
+                  <option
+                    key={`community-${community.id}`}
+                    value={`COMMUNITY:${community.id}`}
+                  >
+                    Community · {community.name}
+                  </option>
+                ))}
+                {audienceOptions.universities.map((university) => (
+                  <option
+                    key={`university-${university.id}`}
+                    value={`UNIVERSITY:${university.id}`}
+                  >
+                    University · {university.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <input
               className="rounded-2xl border border-slate-200 bg-transparent px-4 py-3 text-sm outline-none focus:border-kondo-green dark:border-white/10"
               maxLength={500}
@@ -279,6 +334,7 @@ export function NotificationAdminPanel({
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   {announcement.status} · {announcement.recipientCount} targets
+                  · {announcementAudienceLabel(announcement.audience)}
                 </p>
               </div>
             ))}

@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("authenticated critical journeys", () => {
+  test("does not expose administrator pages to a standard member", async ({
+    page,
+  }) => {
+    await page.goto("/admin/analytics");
+    await expect(page).toHaveURL(/\/home/);
+    await expect(page).not.toHaveURL(/\/admin/);
+  });
+
   test("lands on home with the five primary navigation destinations", async ({
     page,
   }) => {

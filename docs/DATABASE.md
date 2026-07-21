@@ -154,3 +154,14 @@ Release 0.10.0 adds migrations `20260716185000_notification_type_moderation` and
 Release 0.12.0 adds migration `20260716210000_messages_safety`. It adds participant-local clear/delete timestamps, a unique message-media relation, inbox-state and media indexes, message-content integrity, and DIRECT cardinality/canonical-identity triggers. The migration removes only legacy DIRECT shells with zero participants and zero messages; any other invalid legacy DIRECT row stops deployment for manual review.
 
 Release 0.13.0 adds migrations `20260716220000_report_evidence_community`, `20260716221000_community_operations`, and `20260716222000_community_owner_trigger_fix`. They add community/access lifecycles, required ownership, cover/post media, event validation, removal timestamps, content evidence, active-report uniqueness, relational indexes/checks, creator-owner normalization, and PostgreSQL owner invariants. Existing published events are marked validated; existing creators become the operational owner.
+
+Release 1.0.0-rc.2 adds migrations
+`20260721100000_notification_announcement_audience` and
+`20260721103000_official_communities`, plus
+`20260721110000_guide_cover_media`. Announcements now persist their resolved
+audience selector as JSON for diagnostics and auditability. Communities now
+have an indexed `isOfficial` marker, separate from `isVerified`, so
+administrator-created spaces can be distinguished from user-created spaces.
+Guides now reference one validated `MediaAsset` cover through `coverMediaId`;
+the legacy raw key remains untouched for compatibility but is not used by the
+new CMS. All three migrations are additive and require no data rewrite.

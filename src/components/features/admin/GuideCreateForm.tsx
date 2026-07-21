@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { uploadPublicImage } from "@/lib/client-media";
 
 const categories = [
   "BEFORE_DEPARTURE",
@@ -20,30 +22,44 @@ export function GuideCreateForm() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [cover, setCover] = useState<File | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/guides", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: form.get("title"),
-        summary: form.get("summary"),
-        category: form.get("category"),
-        estimatedMinutes: Number(form.get("estimatedMinutes")),
-      }),
-    });
-    const data = await response.json().catch(() => null);
-    setPending(false);
-    if (!response.ok) {
-      setError(data?.error ?? "Could not create the guide.");
-      return;
+    try {
+      const title = String(form.get("title") ?? "");
+      const coverMediaId = cover
+        ? await uploadPublicImage(cover, "GUIDE_COVER", `${title} guide cover`)
+        : null;
+      const response = await fetch("/api/admin/guides", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          summary: form.get("summary"),
+          category: form.get("category"),
+          estimatedMinutes: Number(form.get("estimatedMinutes")),
+          coverMediaId,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Could not create the guide.");
+      }
+      router.push(`/admin/guides/${data.guide.id}`);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not create the guide.",
+      );
+    } finally {
+      setPending(false);
     }
-    router.push(`/admin/guides/${data.guide.id}`);
   }
 
   return (
@@ -98,6 +114,18 @@ export function GuideCreateForm() {
             name="estimatedMinutes"
             required
             type="number"
+          />
+        </label>
+        <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-sm dark:border-white/15">
+          <ImagePlus className="h-5 w-5 text-kondo-green" />
+          <span className="min-w-0 flex-1 truncate">
+            {cover?.name ?? "Add an optional R2-backed cover image"}
+          </span>
+          <input
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(event) => setCover(event.target.files?.[0] ?? null)}
+            type="file"
           />
         </label>
         {error ? (

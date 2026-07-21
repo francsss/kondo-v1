@@ -114,6 +114,9 @@ async function cleanup() {
     where: { id: { in: announcements.map(({ id }) => id) } },
   });
   await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+  await prisma.community.deleteMany({
+    where: { createdById: { in: userIds } },
+  });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 }
 
@@ -527,6 +530,54 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
     });
     expect(diagnostics.recentJobs[0]).not.toHaveProperty("recipientId");
     expect(JSON.stringify(diagnostics)).not.toContain(fixture.recipient.email);
+  });
+
+  it("targets announcements to persisted community membership", async () => {
+    const community = await prisma.community.create({
+      data: {
+        slug: `module8-announcement-${randomUUID()}`,
+        name: "Module 8 announcement audience",
+        description: "A persisted community audience for announcement tests.",
+        type: "TOPIC",
+        createdById: fixture.actor.id,
+        ownerId: fixture.actor.id,
+        members: {
+          create: [
+            { userId: fixture.actor.id, role: "OWNER" },
+            { userId: fixture.recipient.id, role: "MEMBER" },
+          ],
+        },
+      },
+    });
+    const announcement = await createNotificationAnnouncement(fixture.admin, {
+      title: "Community update",
+      body: "This announcement is only for members of one community.",
+      audience: { type: "COMMUNITY", id: community.id },
+    });
+    expect(announcement.recipientCount).toBe(2);
+    await expect(
+      prisma.notificationAnnouncement.findUniqueOrThrow({
+        where: { id: announcement.id },
+        select: { audience: true },
+      }),
+    ).resolves.toMatchObject({
+      audience: {
+        type: "COMMUNITY",
+        id: community.id,
+        label: community.name,
+      },
+    });
+    await expect(
+      prisma.notificationJob.findMany({
+        where: { announcementId: announcement.id },
+        select: { recipientId: true },
+        orderBy: { recipientId: "asc" },
+      }),
+    ).resolves.toEqual(
+      [fixture.actor.id, fixture.recipient.id]
+        .sort()
+        .map((recipientId) => ({ recipientId })),
+    );
   });
 
   it("retries bounded worker failures and recovers stale processing locks", async () => {

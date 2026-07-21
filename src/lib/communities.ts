@@ -380,6 +380,7 @@ export async function updateCommunity(input: {
       id: true,
       type: true,
       ownerId: true,
+      isOfficial: true,
       coverMediaId: true,
       countryId: true,
       cityId: true,
@@ -391,7 +392,11 @@ export async function updateCommunity(input: {
     },
   });
   if (!current) throw new CommunityError("Community not found.", 404);
-  if (!canOwnCommunity(input.actor, current.members[0]?.role)) {
+  const actorOwnsCommunity = current.members[0]?.role === "OWNER";
+  const actorManagesOfficialCommunity =
+    current.isOfficial &&
+    hasAdminPermission(input.actor.role, "COMMUNITY_CMS_MANAGE");
+  if (!actorOwnsCommunity && !actorManagesOfficialCommunity) {
     throw new CommunityError("Only the owner can edit this community.", 403);
   }
   const location = await resolveCommunityLocation({
@@ -1946,6 +1951,7 @@ export async function listAdminCommunities(
     query?: string;
     status?: CommunityStatus;
     type?: CommunityType;
+    official?: boolean;
   } = {},
 ) {
   if (!hasAdminPermission(actor.role, "COMMUNITY_CMS_VIEW")) {
@@ -1957,6 +1963,7 @@ export async function listAdminCommunities(
   const where: Prisma.CommunityWhereInput = {
     status: input.status,
     type: input.type,
+    isOfficial: input.official,
     ...(query
       ? {
           OR: [
@@ -1980,6 +1987,7 @@ export async function listAdminCommunities(
         joinPolicy: true,
         isPrivate: true,
         isVerified: true,
+        isOfficial: true,
         updatedAt: true,
         owner: {
           select: { id: true, firstName: true, lastName: true },
@@ -2033,6 +2041,7 @@ export async function getAdminCommunity(
       icon: true,
       coverMediaId: true,
       isVerified: true,
+      isOfficial: true,
       isPrivate: true,
       createdAt: true,
       updatedAt: true,
@@ -2139,25 +2148,65 @@ export async function updateCommunityAsAdmin(input: {
   communityId: string;
   status?: CommunityStatus;
   isVerified?: boolean;
+  name?: string;
+  description?: string;
+  icon?: string | null;
+  joinPolicy?: CommunityJoinPolicy;
+  isPrivate?: boolean;
   meta?: RequestMeta;
 }) {
   if (!hasAdminPermission(input.actor.role, "COMMUNITY_CMS_MANAGE")) {
     throw new CommunityError("Access denied.", 403);
   }
-  if (input.status === undefined && input.isVerified === undefined) {
+  if (
+    input.status === undefined &&
+    input.isVerified === undefined &&
+    input.name === undefined &&
+    input.description === undefined &&
+    input.icon === undefined &&
+    input.joinPolicy === undefined &&
+    input.isPrivate === undefined
+  ) {
     throw new CommunityError("No community changes were provided.");
   }
   return prisma.$transaction(async (tx) => {
     const current = await tx.community.findUnique({
       where: { id: input.communityId },
-      select: { id: true, status: true, isVerified: true },
+      select: {
+        id: true,
+        status: true,
+        isVerified: true,
+        isOfficial: true,
+        name: true,
+        description: true,
+        icon: true,
+        joinPolicy: true,
+        isPrivate: true,
+      },
     });
     if (!current) throw new CommunityError("Community not found.", 404);
+    const metadataChange =
+      input.name !== undefined ||
+      input.description !== undefined ||
+      input.icon !== undefined ||
+      input.joinPolicy !== undefined ||
+      input.isPrivate !== undefined;
+    if (metadataChange && !current.isOfficial) {
+      throw new CommunityError(
+        "Administrators moderate user-created communities but do not rewrite their metadata.",
+        409,
+      );
+    }
     const updated = await tx.community.update({
       where: { id: current.id },
       data: {
         status: input.status,
         isVerified: input.isVerified,
+        name: input.name,
+        description: input.description,
+        icon: input.icon,
+        joinPolicy: input.joinPolicy,
+        isPrivate: input.isPrivate,
         moderatedAt: new Date(),
         removedAt:
           input.status === "REMOVED"
@@ -2166,7 +2215,18 @@ export async function updateCommunityAsAdmin(input: {
               ? null
               : undefined,
       },
-      select: { id: true, status: true, isVerified: true, updatedAt: true },
+      select: {
+        id: true,
+        status: true,
+        isVerified: true,
+        isOfficial: true,
+        name: true,
+        description: true,
+        icon: true,
+        joinPolicy: true,
+        isPrivate: true,
+        updatedAt: true,
+      },
     });
     await writeAuditLogWithClient(tx, {
       actorId: input.actor.id,
@@ -2184,4 +2244,81 @@ export async function updateCommunityAsAdmin(input: {
       },
     };
   });
+}
+
+export async function createOfficialCommunity(input: {
+  actor: CommunityActor;
+  data: {
+    name: string;
+    description: string;
+    type: CommunityType;
+    icon?: string | null;
+    isPrivate: boolean;
+    joinPolicy: CommunityJoinPolicy;
+    countryId?: string | null;
+    cityId?: string | null;
+    universityId?: string | null;
+    coverMediaId?: string | null;
+  };
+  meta?: RequestMeta;
+}) {
+  if (!hasAdminPermission(input.actor.role, "COMMUNITY_CMS_MANAGE")) {
+    throw new CommunityError("Access denied.", 403);
+  }
+  const [slug, location] = await Promise.all([
+    uniqueCommunitySlug(input.data.name),
+    resolveCommunityLocation(input.data),
+  ]);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const community = await tx.community.create({
+        data: {
+          slug,
+          name: input.data.name,
+          description: input.data.description,
+          type: input.data.type,
+          status: "ACTIVE",
+          joinPolicy: input.data.joinPolicy,
+          icon: input.data.icon ?? null,
+          isPrivate: input.data.isPrivate,
+          isVerified: true,
+          isOfficial: true,
+          createdById: input.actor.id,
+          ownerId: input.actor.id,
+          ...location,
+          members: { create: { userId: input.actor.id, role: "OWNER" } },
+        },
+        select: { id: true, slug: true, status: true, isOfficial: true },
+      });
+      if (input.data.coverMediaId) {
+        await attachCommunityCover(tx, {
+          actorId: input.actor.id,
+          communityId: community.id,
+          mediaId: input.data.coverMediaId,
+        });
+      }
+      await writeAuditLogWithClient(tx, {
+        actorId: input.actor.id,
+        action: "OFFICIAL_COMMUNITY_CREATED",
+        entityType: "Community",
+        entityId: community.id,
+        newValue: {
+          name: input.data.name,
+          type: input.data.type,
+          status: community.status,
+          isOfficial: true,
+        },
+        ...input.meta,
+      });
+      return { community };
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new CommunityError("A community with this identity exists.", 409);
+    }
+    throw error;
+  }
 }

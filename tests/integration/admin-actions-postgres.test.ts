@@ -35,6 +35,7 @@ async function cleanup() {
   const userIds = users.map(({ id }) => id);
   await prisma.guideProgress.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.guide.deleteMany({ where: { createdById: { in: userIds } } });
+  await prisma.mediaAsset.deleteMany({ where: { ownerId: { in: userIds } } });
   await prisma.session.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -306,6 +307,71 @@ postgresDescribe("Module 17 PostgreSQL admin actions", () => {
       title: "Module 17 partial update guide",
       featured: true,
       category: "TRANSPORT",
+    });
+  });
+
+  it("persists, attaches, and removes a validated guide cover", async () => {
+    const cover = await prisma.mediaAsset.create({
+      data: {
+        ownerId: fixture.admin.id,
+        objectKey: `guides/${randomUUID()}.jpg`,
+        storageProvider: "LOCAL",
+        kind: "IMAGE",
+        purpose: "GUIDE_COVER",
+        visibility: "PUBLIC",
+        status: "ACTIVE",
+        scanStatus: "CLEAN",
+        originalFileName: "guide-cover.jpg",
+        extension: "jpg",
+        declaredMime: "image/jpeg",
+        detectedMime: "image/jpeg",
+        sizeBytes: 42_000,
+        width: 640,
+        height: 320,
+        altText: "Arrival guide cover",
+        checksumSha256: "a".repeat(64),
+        uploadExpiresAt: new Date(Date.now() + 60_000),
+        uploadedAt: new Date(),
+        validatedAt: new Date(),
+      },
+    });
+    const created = await createGuide({
+      actor: fixture.admin,
+      data: {
+        title: "Module 17 covered guide",
+        summary: "A guide used to verify secure cover media persistence.",
+        category: "ARRIVAL",
+        estimatedMinutes: 12,
+        coverMediaId: cover.id,
+      },
+    });
+    await expect(
+      getAdminGuide(fixture.admin, created.guide.id),
+    ).resolves.toMatchObject({ coverMediaId: cover.id });
+    await expect(
+      prisma.mediaAsset.findUniqueOrThrow({
+        where: { id: cover.id },
+        select: { attachmentType: true, attachmentId: true },
+      }),
+    ).resolves.toEqual({
+      attachmentType: "GUIDE",
+      attachmentId: created.guide.id,
+    });
+
+    await updateGuide({
+      actor: fixture.admin,
+      guideId: created.guide.id,
+      data: { coverMediaId: null },
+    });
+    await expect(
+      prisma.mediaAsset.findUniqueOrThrow({
+        where: { id: cover.id },
+        select: { attachedAt: true, attachmentType: true, attachmentId: true },
+      }),
+    ).resolves.toEqual({
+      attachedAt: null,
+      attachmentType: null,
+      attachmentId: null,
     });
   });
 });

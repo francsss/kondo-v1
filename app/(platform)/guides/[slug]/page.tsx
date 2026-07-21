@@ -5,6 +5,7 @@ import { BookmarkButton } from "@/components/features/bookmarks/BookmarkButton";
 import { GuideChecklist } from "@/components/features/guides/GuideChecklist";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { publishedGuideWhere } from "@/lib/content-visibility";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
@@ -57,33 +58,49 @@ export default async function GuideDetailPage({
           targetType="GUIDE"
         />
       </div>
-      <header className="noise mt-5 overflow-hidden rounded-4xl bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#238164] p-7 text-white shadow-lift sm:p-10">
-        <span className="inline-flex rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-kondo-lime">
-          {guide.category.replaceAll("_", " ")}
-        </span>
-        <h1 className="mt-5 max-w-3xl text-balance text-3xl font-black tracking-[-0.045em] sm:text-5xl">
-          {guide.title}
-        </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-white/70">
-          {guide.summary}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-4 text-xs font-bold text-white/60">
-          <span className="inline-flex items-center gap-1.5">
-            <Clock3 className="h-4 w-4" /> {guide.estimatedMinutes} minutes
+      <header className="noise relative mt-5 overflow-hidden rounded-4xl bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#238164] p-7 text-white shadow-lift sm:p-10">
+        {guide.coverMediaId ? (
+          <>
+            <MediaImage
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              height={720}
+              mediaId={guide.coverMediaId}
+              priority
+              sizes="(min-width: 1024px) 1000px, 100vw"
+              width={1400}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-kondo-navy/95 via-kondo-forest/85 to-kondo-forest/45" />
+          </>
+        ) : null}
+        <div className="relative z-10">
+          <span className="inline-flex rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-kondo-lime">
+            {guide.category.replaceAll("_", " ")}
           </span>
-        </div>
-        <div className="mt-8 max-w-xl">
-          <div className="flex justify-between text-xs font-bold">
-            <span>Your progress</span>
-            <span>
-              {completed}/{guide.steps.length}
+          <h1 className="mt-5 max-w-3xl text-balance text-3xl font-black tracking-[-0.045em] sm:text-5xl">
+            {guide.title}
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-white/70">
+            {guide.summary}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-4 text-xs font-bold text-white/60">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 className="h-4 w-4" /> {guide.estimatedMinutes} minutes
             </span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
-            <div
-              className="h-full rounded-full bg-kondo-lime"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="mt-8 max-w-xl">
+            <div className="flex justify-between text-xs font-bold">
+              <span>Your progress</span>
+              <span>
+                {completed}/{guide.steps.length}
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-kondo-lime"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
         </div>
       </header>

@@ -30,6 +30,9 @@ strength, and refuses placeholder values.
 6. Run the product, Admin, upload, email, rate-limit, and worker smoke tests
    from the checklist, then monitor the release.
 
+The Admin architecture, routes, permissions, first-operator bootstrap, and CMS
+workflows are documented in [`docs/ADMIN.md`](./ADMIN.md).
+
 Do not run the demo seed in production. The seed refuses `NODE_ENV=production` and `VERCEL_ENV=production` unconditionally, and non-production runs still require the one-command opt-in `KONDO_ALLOW_DESTRUCTIVE_SEED=true`.
 
 Release 0.13.0 requires all three community migrations before serving the new UI. Back up production, confirm every existing community has a valid `createdById`, and deploy migrations before the application build. The migration normalizes the creator as owner, marks existing published events validated, and aborts rather than accepting broken foreign-key or owner state.
@@ -101,6 +104,16 @@ Release 0.10.0 requires migrations `20260716185000_notification_type_moderation`
 Release 0.11.0 has no migration. Smoke-test real shell badges, Command/Ctrl+K, desktop/mobile logout, Escape-close navigation, role changes, and platform loading/error/not-found states.
 
 Release 0.12.0 requires migration `20260716210000_messages_safety`. Before deployment, query DIRECT conversations for exactly two participants and a sorted `directKey`. The migration safely removes only empty/no-message legacy shells and aborts on any non-empty invalid thread. After deployment, test inbox/history pagination, explicit read positions, archive/restore, delete-for-me, block/report reuse, image/PDF sending, participant-only delivery, asynchronous notification jobs, and `/admin/message-safety`.
+
+Release 1.0.0-rc.2 requires additive migrations
+`20260721100000_notification_announcement_audience` and
+`20260721103000_official_communities`, followed by
+`20260721110000_guide_cover_media`. Deploy all three before the application.
+They store non-secret announcement audience metadata, add the explicit
+official-community ownership marker/index, and add the secure Guide-to-
+MediaAsset cover relation. No backfill is required: existing communities remain
+user-created and existing guides continue without a cover until an Admin adds
+one through the validated R2 workflow.
 
 For an intentional local/demo reset only:
 

@@ -1,16 +1,19 @@
 import Link from "next/link";
 import {
   BellRing,
+  BarChart3,
   BookOpenText,
   Building2,
   Database,
   FileSearch,
+  Files,
   Images,
   LayoutDashboard,
   MapPin,
   MessageCircleWarning,
   ShoppingBag,
   ScrollText,
+  Settings2,
   Users,
 } from "lucide-react";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
@@ -83,10 +86,28 @@ const items = [
     permission: "GUIDE_CMS_VIEW" as const,
   },
   {
+    href: "/admin/content",
+    label: "Content",
+    icon: Files,
+    permission: "GUIDE_CMS_VIEW" as const,
+  },
+  {
     href: "/admin/city-hubs",
     label: "City hubs",
     icon: MapPin,
     permission: "CITY_CMS_VIEW" as const,
+  },
+  {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    permission: "ANALYTICS_VIEW" as const,
+  },
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    icon: Settings2,
+    permission: "PLATFORM_SETTINGS_VIEW" as const,
   },
 ];
 

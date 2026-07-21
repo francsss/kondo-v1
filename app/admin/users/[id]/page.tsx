@@ -11,6 +11,7 @@ import {
 import { AccountRequestActions } from "@/components/features/admin/AccountRequestActions";
 import { AdminNav } from "@/components/features/admin/AdminNav";
 import { UserStatusActions } from "@/components/features/admin/UserStatusActions";
+import { UserRoleActions } from "@/components/features/admin/UserRoleActions";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -185,9 +186,52 @@ export default async function AdminUserDetailPage({
               ) : null}
             </div>
           </Card>
+
+          <Card>
+            <h2 className="font-black text-kondo-ink dark:text-white">
+              Public content summary
+            </h2>
+            <p className="mt-2 text-xs text-slate-400">
+              Public posts, active Marketplace listings, and public community
+              memberships only. Private conversations are never shown here.
+            </p>
+            <div className="mt-5 grid gap-5 lg:grid-cols-3">
+              <ContentLinks
+                empty="No public posts."
+                items={user.posts.map((post) => ({
+                  href: `/communities/${post.community.slug}`,
+                  label: post.title ?? post.content.slice(0, 70),
+                  meta: post.community.name,
+                }))}
+                title="Posts"
+              />
+              <ContentLinks
+                empty="No active listings."
+                items={user.marketplaceListings.map((listing) => ({
+                  href: `/marketplace/${listing.slug}`,
+                  label: listing.title,
+                  meta: listing.status,
+                }))}
+                title="Marketplace"
+              />
+              <ContentLinks
+                empty="No public communities."
+                items={user.communityMemberships.map((membership) => ({
+                  href: `/communities/${membership.community.slug}`,
+                  label: membership.community.name,
+                  meta: membership.role,
+                }))}
+                title="Communities"
+              />
+            </div>
+          </Card>
         </div>
 
         <div className="space-y-6">
+          {hasAdminPermission(actor.role, "USER_ROLE_MANAGE") &&
+          actor.id !== user.id ? (
+            <UserRoleActions initialRole={user.role} userId={user.id} />
+          ) : null}
           {hasAdminPermission(actor.role, "USER_MANAGE") &&
           actor.id !== user.id ? (
             <UserStatusActions initialStatus={user.status} userId={user.id} />
@@ -266,6 +310,43 @@ function Visibility({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 dark:border-white/10">
       <dt className="text-sm text-slate-500 dark:text-slate-300">{label}</dt>
       <dd className="text-xs font-black text-kondo-green">{value}</dd>
+    </div>
+  );
+}
+
+function ContentLinks({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: Array<{ href: string; label: string; meta: string }>;
+  empty: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+        {title}
+      </h3>
+      <div className="mt-3 space-y-2">
+        {items.map((item) => (
+          <Link
+            className="block rounded-xl bg-slate-50 p-3 text-sm transition hover:text-kondo-green dark:bg-white/5"
+            href={item.href}
+            key={`${item.href}-${item.label}`}
+          >
+            <span className="block font-bold text-kondo-ink dark:text-white">
+              {item.label}
+            </span>
+            <span className="mt-1 block text-xs text-slate-400">
+              {item.meta}
+            </span>
+          </Link>
+        ))}
+        {!items.length ? (
+          <p className="text-sm text-slate-400">{empty}</p>
+        ) : null}
+      </div>
     </div>
   );
 }

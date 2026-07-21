@@ -27,4 +27,20 @@ test.describe("admin operations", () => {
       page.getByRole("heading", { name: /guides/i }).first(),
     ).toBeVisible();
   });
+
+  test("can open analytics, content, and safe platform settings", async ({
+    page,
+  }) => {
+    for (const [href, heading] of [
+      ["/admin/analytics", /analytics/i],
+      ["/admin/content", /content/i],
+      ["/admin/settings", /platform settings/i],
+    ] as const) {
+      await page.goto(href);
+      await expect(page).toHaveURL(new RegExp(href));
+      await expect(
+        page.getByRole("heading", { name: heading }).first(),
+      ).toBeVisible();
+    }
+  });
 });

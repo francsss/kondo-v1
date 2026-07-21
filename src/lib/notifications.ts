@@ -24,6 +24,12 @@ type NotificationActor = {
   role: AppRole | string;
 };
 
+export type NotificationAudience =
+  | { type: "ALL" }
+  | { type: "CITY"; id: string }
+  | { type: "COMMUNITY"; id: string }
+  | { type: "UNIVERSITY"; id: string };
+
 type RequestMeta = {
   ipAddress?: string | null;
   userAgent?: string | null;
@@ -642,7 +648,12 @@ export async function updateNotificationTemplate(
 
 export async function createNotificationAnnouncement(
   actor: NotificationActor,
-  input: { title: string; body: string; href?: string | null },
+  input: {
+    title: string;
+    body: string;
+    href?: string | null;
+    audience?: NotificationAudience;
+  },
   meta: RequestMeta = {},
 ) {
   if (!hasAdminPermission(actor.role, "NOTIFICATION_MANAGE")) {
@@ -650,8 +661,50 @@ export async function createNotificationAnnouncement(
   }
   const href = safeNotificationHref(input.href);
   return prisma.$transaction(async (tx) => {
+    const requestedAudience = input.audience ?? { type: "ALL" as const };
+    let audience: Prisma.InputJsonObject = { type: "ALL", label: "All users" };
+    const recipientWhere: Prisma.UserWhereInput = { status: "ACTIVE" };
+    if (requestedAudience.type === "CITY") {
+      const city = await tx.city.findUnique({
+        where: { id: requestedAudience.id },
+        select: { id: true, name: true, isActive: true },
+      });
+      if (!city?.isActive) throw new NotificationError("City not found.", 404);
+      recipientWhere.cityId = city.id;
+      audience = { type: "CITY", id: city.id, label: city.name };
+    } else if (requestedAudience.type === "UNIVERSITY") {
+      const university = await tx.university.findUnique({
+        where: { id: requestedAudience.id },
+        select: { id: true, name: true, isActive: true },
+      });
+      if (!university?.isActive) {
+        throw new NotificationError("University not found.", 404);
+      }
+      recipientWhere.universityId = university.id;
+      audience = {
+        type: "UNIVERSITY",
+        id: university.id,
+        label: university.name,
+      };
+    } else if (requestedAudience.type === "COMMUNITY") {
+      const community = await tx.community.findUnique({
+        where: { id: requestedAudience.id },
+        select: { id: true, name: true, status: true },
+      });
+      if (!community || community.status === "REMOVED") {
+        throw new NotificationError("Community not found.", 404);
+      }
+      recipientWhere.communityMemberships = {
+        some: { communityId: community.id },
+      };
+      audience = {
+        type: "COMMUNITY",
+        id: community.id,
+        label: community.name,
+      };
+    }
     const recipients = await tx.user.findMany({
-      where: { status: "ACTIVE" },
+      where: recipientWhere,
       select: { id: true },
     });
     const announcement = await tx.notificationAnnouncement.create({
@@ -659,6 +712,7 @@ export async function createNotificationAnnouncement(
         title: input.title,
         body: input.body,
         href,
+        audience,
         createdById: actor.id,
         recipientCount: recipients.length,
       },
@@ -690,6 +744,7 @@ export async function createNotificationAnnouncement(
       newValue: {
         recipientCount: recipients.length,
         href,
+        audience,
       },
       ...meta,
     });
@@ -700,6 +755,34 @@ export async function createNotificationAnnouncement(
       queuedAt: announcement.queuedAt.toISOString(),
     };
   });
+}
+
+export async function listNotificationAudienceOptions(
+  actor: NotificationActor,
+) {
+  if (!hasAdminPermission(actor.role, "NOTIFICATION_VIEW")) {
+    throw new NotificationError("Access denied.", 403);
+  }
+  const [cities, communities, universities] = await Promise.all([
+    prisma.city.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.community.findMany({
+      where: { status: { not: "REMOVED" } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+      take: 200,
+    }),
+    prisma.university.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+      take: 200,
+    }),
+  ]);
+  return { cities, communities, universities };
 }
 
 export async function getNotificationDiagnostics(actor: NotificationActor) {
@@ -728,6 +811,7 @@ export async function getNotificationDiagnostics(actor: NotificationActor) {
         title: true,
         status: true,
         recipientCount: true,
+        audience: true,
         queuedAt: true,
         completedAt: true,
         createdBy: {

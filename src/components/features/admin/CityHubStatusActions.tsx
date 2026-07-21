@@ -25,16 +25,24 @@ export function CityHubStatusActions({
   hubId,
   status,
   version,
+  hasPublishedSnapshot,
 }: {
   hubId: string;
   status: Status;
   version: number;
+  hasPublishedSnapshot: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<Status | null>(null);
   const [error, setError] = useState("");
 
   async function transition(target: Status) {
+    if (
+      target === "PUBLISHED" &&
+      !window.confirm("Publish this draft to the public City Hub now?")
+    ) {
+      return;
+    }
     setError("");
     setPending(target);
     const response = await fetch(`/api/admin/city-hubs/${hubId}/status`, {
@@ -47,6 +55,49 @@ export function CityHubStatusActions({
     setPending(null);
     if (!response.ok) {
       setError(data?.error ?? "Could not change the status.");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function remove() {
+    if (!window.confirm("Permanently delete this draft city hub?")) return;
+    setError("");
+    setPending("DRAFT");
+    const response = await fetch(`/api/admin/city-hubs/${hubId}`, {
+      method: "DELETE",
+      credentials: "include",
+    }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    setPending(null);
+    if (!response?.ok) {
+      setError(data?.error ?? "Could not delete the city hub.");
+      return;
+    }
+    router.push("/admin/city-hubs");
+    router.refresh();
+  }
+
+  async function unpublish() {
+    if (
+      !window.confirm(
+        "Unpublish this city hub? Its public pages will stop serving the CMS snapshot.",
+      )
+    ) {
+      return;
+    }
+    setError("");
+    setPending("DRAFT");
+    const response = await fetch(`/api/admin/city-hubs/${hubId}/unpublish`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedVersion: version }),
+    }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    setPending(null);
+    if (!response?.ok) {
+      setError(data?.error ?? "Could not unpublish the city hub.");
       return;
     }
     router.refresh();
@@ -87,6 +138,26 @@ export function CityHubStatusActions({
             {pending === action.target ? "Working…" : action.label}
           </Button>
         ))}
+        {status === "DRAFT" && !hasPublishedSnapshot ? (
+          <Button
+            disabled={pending !== null}
+            onClick={remove}
+            type="button"
+            variant="secondary"
+          >
+            Delete draft
+          </Button>
+        ) : null}
+        {hasPublishedSnapshot ? (
+          <Button
+            disabled={pending !== null}
+            onClick={unpublish}
+            type="button"
+            variant="secondary"
+          >
+            Unpublish
+          </Button>
+        ) : null}
       </div>
       {error ? (
         <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300">

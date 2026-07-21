@@ -92,16 +92,17 @@ The common pipeline is:
 | Message PDFs          | `MESSAGE_DOCUMENT` | Moved to the corrected shared pipeline        |
 | Student Hub documents | Not applicable     | No Student Hub document-upload surface exists |
 
-`GUIDE_COVER` has a server-side media policy, but the current Admin guide UI
-does not expose a guide-cover upload control.
+`GUIDE_COVER` now uses the same validated two-phase upload pipeline. Admin guide
+create/edit forms support upload, preview, replacement, and removal through the
+relational `Guide.coverMediaId`; legacy `coverImageKey` is not exposed.
 
 The corrected local pipeline was exercised through the real Home UI: intent,
 local `PUT`, completion/validation, post attachment, optimized image render
-with non-zero natural dimensions, and cleanup all succeeded. The full quality
-gate passed on Node.js 24 with 43 Vitest files/221 tests, a production Next.js
-build generating 56 static pages plus all dynamic routes, and 20 Playwright
-journeys. A clean disposable database also applied all 21 migrations from
-zero. Every Admin CMS index was opened in the in-app browser. Real R2
+with non-zero natural dimensions, and cleanup all succeeded. The latest full
+quality gate passed on Node.js 24 with 44 Vitest files/232 tests, a production
+Next.js build generating 56 static pages plus all dynamic routes, and 22
+Playwright journeys. The disposable PostgreSQL database is current through all
+25 migrations. Every Admin CMS index was exercised by Playwright. Real R2
 verification remains blocked until the credentials and CORS configuration are
 supplied.
 

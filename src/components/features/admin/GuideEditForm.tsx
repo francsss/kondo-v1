@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { MediaImage } from "@/components/ui/MediaImage";
+import { uploadPublicImage } from "@/lib/client-media";
 
 const categories = [
   "BEFORE_DEPARTURE",
@@ -27,34 +30,52 @@ export function GuideEditForm({
     category: string;
     estimatedMinutes: number;
     featured: boolean;
+    coverMediaId: string | null;
   };
 }) {
   const router = useRouter();
   const [featured, setFeatured] = useState(initial.featured);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [cover, setCover] = useState<File | null>(null);
+  const [removeCover, setRemoveCover] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setMessage("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch(`/api/admin/guides/${guideId}`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: form.get("title"),
-        summary: form.get("summary"),
-        category: form.get("category"),
-        estimatedMinutes: Number(form.get("estimatedMinutes")),
-        featured,
-      }),
-    });
-    const data = await response.json().catch(() => null);
-    setPending(false);
-    setMessage(response.ok ? "Saved." : (data?.error ?? "Could not save."));
-    if (response.ok) router.refresh();
+    try {
+      const title = String(form.get("title") ?? "");
+      const coverMediaId = cover
+        ? await uploadPublicImage(cover, "GUIDE_COVER", `${title} guide cover`)
+        : removeCover
+          ? null
+          : undefined;
+      const response = await fetch(`/api/admin/guides/${guideId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          summary: form.get("summary"),
+          category: form.get("category"),
+          estimatedMinutes: Number(form.get("estimatedMinutes")),
+          featured,
+          coverMediaId,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error ?? "Could not save.");
+      setMessage("Saved.");
+      setCover(null);
+      setRemoveCover(false);
+      router.refresh();
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Could not save.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -124,6 +145,46 @@ export function GuideEditForm({
             Featured
           </label>
         </div>
+        {initial.coverMediaId && !removeCover ? (
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
+            <MediaImage
+              alt={`${initial.title} guide cover`}
+              className="h-40 w-full object-cover"
+              height={320}
+              mediaId={initial.coverMediaId}
+              sizes="(min-width: 1024px) 800px, 90vw"
+              width={800}
+            />
+            <Button
+              aria-label="Remove guide cover"
+              className="absolute right-3 top-3"
+              onClick={() => setRemoveCover(true)}
+              size="icon"
+              type="button"
+              variant="secondary"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
+        <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-sm dark:border-white/15">
+          <ImagePlus className="h-5 w-5 text-kondo-green" />
+          <span className="min-w-0 flex-1 truncate">
+            {cover?.name ??
+              (initial.coverMediaId
+                ? "Replace guide cover"
+                : "Add guide cover")}
+          </span>
+          <input
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(event) => {
+              setCover(event.target.files?.[0] ?? null);
+              setRemoveCover(false);
+            }}
+            type="file"
+          />
+        </label>
         {message ? (
           <p className="text-xs text-slate-400" role="status">
             {message}

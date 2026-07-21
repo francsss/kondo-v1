@@ -27,6 +27,7 @@ export default async function ManageCommunityPage({
       description: true,
       joinPolicy: true,
       isPrivate: true,
+      isOfficial: true,
       coverMediaId: true,
       ownerId: true,
       members: {
@@ -111,6 +112,9 @@ export default async function ManageCommunityPage({
       <CommunityManagePanel
         canArchive={globalManager || membershipRole === "OWNER"}
         canChangeRoles={globalManager || membershipRole === "OWNER"}
+        canEditSettings={
+          membershipRole === "OWNER" || (globalManager && community.isOfficial)
+        }
         community={{
           id: community.id,
           name: community.name,

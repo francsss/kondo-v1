@@ -203,6 +203,11 @@ export default async function CommunityPage({
                   className="h-6 w-6 text-kondo-lime"
                 />
               ) : null}
+              {community.isOfficial ? (
+                <span className="rounded-full bg-kondo-lime/15 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-kondo-lime">
+                  Official
+                </span>
+              ) : null}
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
               {community.description}

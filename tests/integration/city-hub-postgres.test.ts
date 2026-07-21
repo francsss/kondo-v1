@@ -7,6 +7,7 @@ import {
   getAdminCityHub,
   resolvePublishedCity,
   setCityHubStatus,
+  unpublishCityHub,
   updateCityHubDraft,
 } from "@/lib/city-hub";
 import { prisma } from "@/lib/prisma";
@@ -140,6 +141,45 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
+  it("unpublishes the public snapshot without deleting the editable draft", async () => {
+    const hubId = await createDraftHub();
+    const reviewed = await setCityHubStatus({
+      actor: fixture.admin,
+      hubId,
+      status: "REVIEW",
+      expectedVersion: 1,
+    });
+    const published = await setCityHubStatus({
+      actor: fixture.admin,
+      hubId,
+      status: "PUBLISHED",
+      expectedVersion: reviewed.hub.version,
+    });
+    await expect(
+      unpublishCityHub({
+        actor: fixture.admin,
+        hubId,
+        expectedVersion: published.hub.version,
+      }),
+    ).resolves.toMatchObject({ status: "DRAFT" });
+    await expect(resolvePublishedCity(CITY_SLUG)).resolves.toBeNull();
+    await expect(
+      prisma.cityHub.findUniqueOrThrow({
+        where: { id: hubId },
+        select: { draft: true, published: true, publishedAt: true },
+      }),
+    ).resolves.toMatchObject({
+      draft: expect.any(Object),
+      published: null,
+      publishedAt: null,
+    });
+    await expect(
+      prisma.auditLog.count({
+        where: { action: "CITY_HUB_UNPUBLISHED", entityId: hubId },
+      }),
+    ).resolves.toBe(1);
+  });
+
   it("refuses draft edits unless the hub is in DRAFT, then allows edit after revert while keeping the published snapshot live", async () => {
     const hubId = await createDraftHub();
     const seeded = await getAdminCityHub(fixture.admin, hubId);
@@ -230,7 +270,7 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
     ).rejects.toMatchObject({ status: 403 });
   });
 
-  it("blocks deletion of a published hub but allows deleting a draft", async () => {
+  it("blocks deletion while any public snapshot exists but allows deleting a draft-only hub", async () => {
     const hubId = await createDraftHub();
     const reviewed = await setCityHubStatus({
       actor: fixture.admin,
@@ -238,7 +278,7 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
       status: "REVIEW",
       expectedVersion: 1,
     });
-    await setCityHubStatus({
+    const published = await setCityHubStatus({
       actor: fixture.admin,
       hubId,
       status: "PUBLISHED",
@@ -247,6 +287,23 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
     await expect(
       deleteCityHub({ actor: fixture.admin, hubId }),
     ).rejects.toMatchObject({ status: 409 });
+    const revised = await setCityHubStatus({
+      actor: fixture.admin,
+      hubId,
+      status: "DRAFT",
+      expectedVersion: published.hub.version,
+    });
+    await expect(
+      deleteCityHub({ actor: fixture.admin, hubId }),
+    ).rejects.toMatchObject({ status: 409 });
+    await unpublishCityHub({
+      actor: fixture.admin,
+      hubId,
+      expectedVersion: revised.hub.version,
+    });
+    await expect(
+      deleteCityHub({ actor: fixture.admin, hubId }),
+    ).resolves.toMatchObject({ deleted: true });
 
     // A fresh draft hub can be deleted.
     const { hub: draftHub } = await createCityHub({

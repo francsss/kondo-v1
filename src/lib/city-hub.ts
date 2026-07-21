@@ -354,12 +354,12 @@ export async function deleteCityHub(input: {
   return prisma.$transaction(async (tx) => {
     const hub = await tx.cityHub.findUnique({
       where: { id: input.hubId },
-      select: { id: true, slug: true, status: true },
+      select: { id: true, slug: true, status: true, published: true },
     });
     if (!hub) throw new CityHubError("City hub not found.", 404);
-    if (hub.status === "PUBLISHED") {
+    if (hub.status === "PUBLISHED" || hub.published != null) {
       throw new CityHubError(
-        "Move this hub back to draft before deleting it.",
+        "Unpublish this hub before deleting its draft.",
         409,
       );
     }
@@ -376,15 +376,66 @@ export async function deleteCityHub(input: {
   });
 }
 
+export async function unpublishCityHub(input: {
+  actor: Actor;
+  hubId: string;
+  expectedVersion: number;
+  meta?: RequestMeta;
+}) {
+  if (!hasAdminPermission(input.actor.role, "CITY_CMS_MANAGE")) {
+    throw new CityHubError("Access denied.", 403);
+  }
+  return prisma.$transaction(async (tx) => {
+    const hub = await tx.cityHub.findUnique({
+      where: { id: input.hubId },
+      select: { id: true, status: true, version: true, published: true },
+    });
+    if (!hub) throw new CityHubError("City hub not found.", 404);
+    if (hub.published == null) {
+      throw new CityHubError("This city hub has no live snapshot.", 409);
+    }
+    const updated = await tx.cityHub.updateMany({
+      where: {
+        id: hub.id,
+        status: hub.status,
+        version: input.expectedVersion,
+      },
+      data: {
+        status: "DRAFT",
+        published: Prisma.DbNull,
+        publishedAt: null,
+        version: { increment: 1 },
+        updatedById: input.actor.id,
+      },
+    });
+    if (updated.count !== 1) {
+      throw new CityHubError(
+        "This hub changed since you loaded it. Reload and try again.",
+        409,
+      );
+    }
+    await writeAuditLogWithClient(tx, {
+      actorId: input.actor.id,
+      action: "CITY_HUB_UNPUBLISHED",
+      entityType: "CityHub",
+      entityId: hub.id,
+      oldValue: { status: hub.status },
+      newValue: { status: "DRAFT", publicSnapshotRemoved: true },
+      ...input.meta,
+    });
+    return { status: "DRAFT" as const, version: hub.version + 1 };
+  });
+}
+
 /**
- * Public resolver: returns the validated published payload for a city slug, or
- * null when there is no published DB content (callers fall back to the static
- * registry). Never throws — a malformed stored payload is logged and treated as
- * "no published content" so the public page degrades to the registry.
+ * Public resolver: a missing row returns undefined so callers may use the
+ * static registry. A managed but unpublished row returns null and must remain
+ * absent publicly. Never throws; database failures degrade to the registry,
+ * while malformed managed snapshots are logged and withheld.
  */
 export async function resolvePublishedCity(
   slug: string,
-): Promise<ExploreCity | null> {
+): Promise<ExploreCity | null | undefined> {
   try {
     const hub = await prisma.cityHub.findUnique({
       where: { slug },
@@ -393,7 +444,8 @@ export async function resolvePublishedCity(
     // Serve the last published snapshot whenever one exists, regardless of the
     // current editorial status: reverting a hub to DRAFT to revise it must not
     // take the live public page down. The snapshot only changes on re-publish.
-    if (!hub || hub.published == null) return null;
+    if (!hub) return undefined;
+    if (hub.published == null) return null;
     const parsed = exploreCityPayloadSchema.safeParse(hub.published);
     if (!parsed.success) {
       logServerError("city-hub.resolve", parsed.error, { slug });
@@ -402,6 +454,6 @@ export async function resolvePublishedCity(
     return parsed.data as ExploreCity;
   } catch (error) {
     logServerError("city-hub.resolve", error, { slug });
-    return null;
+    return undefined;
   }
 }

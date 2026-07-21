@@ -236,6 +236,14 @@ export const notificationAnnouncementSchema = z.object({
   title: z.string().trim().min(3).max(160),
   body: z.string().trim().min(3).max(280),
   href: z.string().trim().max(500).nullable().optional(),
+  audience: z
+    .discriminatedUnion("type", [
+      z.object({ type: z.literal("ALL") }),
+      z.object({ type: z.literal("CITY"), id: z.string().cuid() }),
+      z.object({ type: z.literal("COMMUNITY"), id: z.string().cuid() }),
+      z.object({ type: z.literal("UNIVERSITY"), id: z.string().cuid() }),
+    ])
+    .default({ type: "ALL" }),
 });
 
 export const reactionSchema = z.object({
@@ -413,7 +421,14 @@ export const adminCommunityUpdateSchema = z.object({
     .enum(["PENDING_REVIEW", "ACTIVE", "ARCHIVED", "REMOVED"])
     .optional(),
   isVerified: z.boolean().optional(),
+  name: z.string().trim().min(3).max(100).optional(),
+  description: z.string().trim().min(10).max(500).optional(),
+  icon: z.string().trim().min(1).max(12).nullable().optional(),
+  joinPolicy: z.enum(["OPEN", "REQUEST", "INVITE_ONLY"]).optional(),
+  isPrivate: z.boolean().optional(),
 });
+
+export const adminOfficialCommunitySchema = createCommunitySchema;
 
 export const createListingSchema = z
   .object({
@@ -612,6 +627,11 @@ export const adminUserStatusSchema = z.object({
   reason: z.string().trim().min(5).max(500),
 });
 
+export const adminUserRoleSchema = z.object({
+  role: z.enum(["MEMBER", "MODERATOR", "ADMIN", "SUPER_ADMIN"]),
+  reason: z.string().trim().min(5).max(500),
+});
+
 // --- Module 17: Guide CMS ---
 
 const guideCategorySchema = z.enum([
@@ -631,6 +651,7 @@ export const createGuideSchema = z.object({
   category: guideCategorySchema,
   estimatedMinutes: z.number().int().min(1).max(600),
   featured: z.boolean().optional(),
+  coverMediaId: z.string().cuid().nullable().optional(),
 });
 
 export const updateGuideSchema = z
@@ -640,6 +661,7 @@ export const updateGuideSchema = z
     category: guideCategorySchema,
     estimatedMinutes: z.number().int().min(1).max(600),
     featured: z.boolean(),
+    coverMediaId: z.string().cuid().nullable(),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
@@ -800,5 +822,9 @@ export const cityHubUpdateSchema = z.object({
 
 export const cityHubStatusSchema = z.object({
   status: z.enum(["DRAFT", "REVIEW", "PUBLISHED"]),
+  expectedVersion: z.number().int().positive(),
+});
+
+export const cityHubVersionSchema = z.object({
   expectedVersion: z.number().int().positive(),
 });

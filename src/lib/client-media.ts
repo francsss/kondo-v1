@@ -10,6 +10,7 @@ type UploadIntent = {
 type MediaPurpose =
   | "PROFILE_AVATAR"
   | "COMMUNITY_COVER"
+  | "GUIDE_COVER"
   | "POST_IMAGE"
   | "LISTING_IMAGE"
   | "MESSAGE_IMAGE"
@@ -77,7 +78,7 @@ export async function uploadMediaFile(
 
 export async function uploadPublicImage(
   file: File,
-  purpose: "COMMUNITY_COVER" | "POST_IMAGE" | "LISTING_IMAGE",
+  purpose: "COMMUNITY_COVER" | "GUIDE_COVER" | "POST_IMAGE" | "LISTING_IMAGE",
   altText: string,
 ) {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {

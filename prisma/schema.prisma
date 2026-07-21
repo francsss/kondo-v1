@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Pooled connection used by the application at runtime (e.g. Neon/PgBouncer).
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
   // Direct (non-pooled) connection used only by Prisma Migrate/introspection.
   // On managed serverless Postgres, running migrations through a transaction
   // pooler is unreliable; `directUrl` lets `prisma migrate deploy` use a direct
@@ -478,6 +478,7 @@ model Community {
   coverMediaId   String?                  @unique
   coverMedia     MediaAsset?              @relation("CommunityCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
   isVerified     Boolean                  @default(false)
+  isOfficial     Boolean                  @default(false)
   isPrivate      Boolean                  @default(false)
   createdById    String
   createdBy      User                     @relation("CommunityCreator", fields: [createdById], references: [id], onDelete: Restrict)
@@ -499,6 +500,7 @@ model Community {
   searchVector   Unsupported("tsvector")?
 
   @@index([status, isPrivate, createdAt])
+  @@index([isOfficial, status, createdAt])
   @@index([type, isPrivate])
   @@index([ownerId, status])
   @@index([countryId])
@@ -545,16 +547,16 @@ model CommunityAccessRequest {
 }
 
 model Post {
-  id               String        @id @default(cuid())
+  id               String                   @id @default(cuid())
   communityId      String
-  community        Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  community        Community                @relation(fields: [communityId], references: [id], onDelete: Cascade)
   authorId         String
-  author           User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  type             PostType      @default(DISCUSSION)
-  status           ContentStatus @default(PUBLISHED)
-  title            String?       @db.VarChar(180)
-  content          String        @db.Text
-  imageKeys        String[]      @default([])
+  author           User                     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  type             PostType                 @default(DISCUSSION)
+  status           ContentStatus            @default(PUBLISHED)
+  title            String?                  @db.VarChar(180)
+  content          String                   @db.Text
+  imageKeys        String[]                 @default([])
   media            PostMedia[]
   eventAt          DateTime?
   eventEndsAt      DateTime?
@@ -566,8 +568,8 @@ model Post {
   removedAt        DateTime?
   comments         Comment[]
   reactions        Reaction[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
   searchVector     Unsupported("tsvector")?
 
   @@index([communityId, status, createdAt])
@@ -645,19 +647,19 @@ model MarketplaceCategory {
 }
 
 model MarketplaceListing {
-  id              String              @id @default(cuid())
-  slug            String              @unique
+  id              String                   @id @default(cuid())
+  slug            String                   @unique
   sellerId        String
-  seller          User                @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller          User                     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   categoryId      String
-  category        MarketplaceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category        MarketplaceCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   cityId          String
-  city            City                @relation(fields: [cityId], references: [id], onDelete: Restrict)
-  title           String              @db.VarChar(140)
-  description     String              @db.Text
+  city            City                     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  title           String                   @db.VarChar(140)
+  description     String                   @db.Text
   priceFen        Int
-  isNegotiable    Boolean             @default(false)
-  status          ListingStatus       @default(ACTIVE)
+  isNegotiable    Boolean                  @default(false)
+  status          ListingStatus            @default(ACTIVE)
   images          ListingImage[]
   favorites       ListingFavorite[]
   publishedAt     DateTime?
@@ -667,11 +669,11 @@ model MarketplaceListing {
   archivedAt      DateTime?
   removedAt       DateTime?
   moderatedAt     DateTime?
-  fraudScore      Int                 @default(0)
-  fraudFlags      String[]            @default([])
+  fraudScore      Int                      @default(0)
+  fraudFlags      String[]                 @default([])
   fraudReviewedAt DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
   searchVector    Unsupported("tsvector")?
 
   @@index([status, publishedAt])
@@ -713,21 +715,23 @@ model ListingFavorite {
 }
 
 model Guide {
-  id               String        @id @default(cuid())
-  slug             String        @unique
+  id               String                   @id @default(cuid())
+  slug             String                   @unique
   title            String
-  summary          String        @db.VarChar(500)
+  summary          String                   @db.VarChar(500)
   category         GuideCategory
   coverImageKey    String?
+  coverMediaId     String?                  @unique
+  coverMedia       MediaAsset?              @relation("GuideCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
   estimatedMinutes Int
-  published        Boolean       @default(false)
-  featured         Boolean       @default(false)
+  published        Boolean                  @default(false)
+  featured         Boolean                  @default(false)
   createdById      String
-  createdBy        User          @relation("GuideAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy        User                     @relation("GuideAuthor", fields: [createdById], references: [id], onDelete: Restrict)
   steps            GuideStep[]
   publishedAt      DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
   searchVector     Unsupported("tsvector")?
 
   @@index([published, category])
@@ -795,18 +799,18 @@ model CityHub {
 }
 
 model Question {
-  id           String        @id @default(cuid())
-  slug         String        @unique
+  id           String                   @id @default(cuid())
+  slug         String                   @unique
   authorId     String
-  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author       User                     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   category     HelpCategory
-  title        String        @db.VarChar(180)
-  body         String        @db.Text
-  status       ContentStatus @default(PUBLISHED)
+  title        String                   @db.VarChar(180)
+  body         String                   @db.Text
+  status       ContentStatus            @default(PUBLISHED)
   bestAnswerId String?
   answers      Answer[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
   searchVector Unsupported("tsvector")?
 
   @@index([category, status, createdAt])
@@ -900,6 +904,7 @@ model NotificationAnnouncement {
   title          String                         @db.VarChar(160)
   body           String                         @db.VarChar(280)
   href           String?
+  audience       Json?
   status         NotificationAnnouncementStatus @default(QUEUED)
   recipientCount Int                            @default(0)
   createdById    String?
@@ -1106,6 +1111,7 @@ model MediaAsset {
   communityCoverFor    Community?           @relation("CommunityCover")
   postMedia            PostMedia?           @relation("PostMedia")
   listingImageFor      ListingImage?        @relation("ListingImageMedia")
+  guideCoverFor        Guide?               @relation("GuideCover")
   rejectionReason      String?              @db.VarChar(500)
   retainedAt           DateTime?
   retentionReason      String?              @db.VarChar(500)

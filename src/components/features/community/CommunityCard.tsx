@@ -16,6 +16,7 @@ export function CommunityCard({
     icon: string | null;
     coverMediaId?: string | null;
     isVerified: boolean;
+    isOfficial: boolean;
     joinPolicy: "OPEN" | "REQUEST" | "INVITE_ONLY";
     members: Array<{ id: string }>;
     accessRequests?: Array<{ id: string; type: string }>;
@@ -61,6 +62,11 @@ export function CommunityCard({
               ) : null}
             </Link>
             <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-slate-400">
+              {community.isOfficial ? (
+                <span className="rounded-full bg-kondo-mint px-2 py-0.5 font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
+                  Official
+                </span>
+              ) : null}
               <span className="inline-flex items-center gap-1">
                 <Users aria-hidden="true" className="h-3.5 w-3.5" />{" "}
                 {community._count.members.toLocaleString()}

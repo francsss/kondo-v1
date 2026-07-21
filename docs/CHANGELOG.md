@@ -3425,3 +3425,71 @@ None. All additions are additive and backward-compatible; existing `POST` worker
 
 - Provide the production infrastructure credentials (PostgreSQL, object storage, optional Upstash/Resend) and configure Vercel.
 - Decide on and wire a first-party OAuth provider if desired.
+
+⸻
+
+# Version 1.0.0-rc.2
+
+Date:
+2026-07-21
+
+## Summary
+
+Completes the production administrator back office with real operational data,
+structured editorial workflows, role safety, targeted announcements, official
+community ownership, and production documentation.
+
+## Features Added
+
+- Added `/admin/analytics`, `/admin/content`, and `/admin/settings` using real
+  database aggregates and safe, non-secret configuration status.
+- Added Super-Admin-only member role changes with self-change protection,
+  immediate session revocation, and mandatory audit logging.
+- Replaced the City Hub raw JSON interface with a structured module and entry
+  editor, a protected preview, confirmed publication, and explicit unpublish.
+- Added targeted announcement audiences for all active members, a city,
+  university, or community membership.
+- Added explicit administrator-created official communities while retaining
+  separate moderation workflows for user-created communities.
+- Added secure R2-backed Student Hub guide cover upload, preview, replacement,
+  removal, and public rendering through `MediaAsset`.
+
+## Features Modified
+
+- Expanded the Admin dashboard with real user, content, moderation, marketplace,
+  event, analytics, and recent-audit metrics.
+- Added public official-community labels and prioritization without conflating
+  official ownership with verification.
+- Expanded user detail with public activity context and active listings.
+
+## Database Changes
+
+- Migration `20260721100000_notification_announcement_audience` adds nullable
+  JSONB audience metadata to `NotificationAnnouncement`.
+- Migration `20260721103000_official_communities` adds indexed
+  `Community.isOfficial` with a safe `false` default.
+- Migration `20260721110000_guide_cover_media` adds the nullable, unique
+  `Guide.coverMediaId` relation to validated `MediaAsset` records.
+
+## Security Improvements
+
+- Role management is restricted to Super Admin, blocks self-demotion, revokes
+  target sessions, and creates an AuditLog entry.
+- User-created community metadata cannot be silently rewritten by Admin;
+  operators retain status, verification, and moderation controls.
+- City Hub publication remains permission-gated and version-guarded; unpublish
+  removes the managed public snapshot without exposing a static fallback.
+- The settings index never reads or renders secret values.
+
+## Tests
+
+- Added PostgreSQL integration coverage for role changes, targeted
+  announcements, City Hub unpublish, and official-community ownership rules.
+- Expanded authorization and Playwright Admin-route coverage.
+
+## Migration Notes
+
+- Back up production, run `npx prisma migrate deploy` through `DIRECT_URL`, and
+  deploy the application only after all three migrations succeed.
+- Existing communities intentionally remain user-created (`isOfficial=false`).
+  Do not bulk-mark them official without an ownership review.

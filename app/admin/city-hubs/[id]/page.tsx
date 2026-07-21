@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { AdminNav } from "@/components/features/admin/AdminNav";
 import { CityHubEditor } from "@/components/features/admin/CityHubEditor";
 import { CityHubStatusActions } from "@/components/features/admin/CityHubStatusActions";
@@ -42,6 +42,7 @@ export default async function AdminCityHubDetailPage({
         hubId={hub.id}
         status={hub.status}
         version={hub.version}
+        hasPublishedSnapshot={Boolean(hub.published)}
       />
 
       <Card className="mt-6">
@@ -55,14 +56,21 @@ export default async function AdminCityHubDetailPage({
                   ? ` (last published ${new Date(hub.publishedAt).toLocaleString()})`
                   : ""
               }.`
-            : `No published version yet. /explore/${hub.slug} falls back to the static registry content if it exists.`}
+            : `No live snapshot. Because this city is managed by the CMS, /explore/${hub.slug} stays unavailable until publication.`}
         </p>
         <div className="mt-3">
-          <Button asChild size="sm" variant="secondary">
-            <Link href={`/explore/${hub.slug}`} target="_blank">
-              Open public page
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="secondary">
+              <Link href={`/explore/${hub.slug}`} target="_blank">
+                Open public page
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="secondary">
+              <Link href={`/admin/city-hubs/${hub.id}/preview`}>
+                <Eye className="h-4 w-4" /> Preview current draft
+              </Link>
+            </Button>
+          </div>
         </div>
       </Card>
 

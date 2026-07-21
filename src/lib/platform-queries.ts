@@ -170,7 +170,11 @@ export async function getCommunityDirectory(
           take: 1,
         },
       },
-      orderBy: [{ isVerified: "desc" }, { members: { _count: "desc" } }],
+      orderBy: [
+        { isOfficial: "desc" },
+        { isVerified: "desc" },
+        { members: { _count: "desc" } },
+      ],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

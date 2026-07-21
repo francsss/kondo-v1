@@ -51,11 +51,13 @@ export async function GET(request: NextRequest) {
           type: true,
           icon: true,
           isVerified: true,
+          isOfficial: true,
           joinPolicy: true,
           coverMediaId: true,
           _count: { select: { members: true, posts: true } },
         },
         orderBy: [
+          { isOfficial: "desc" },
           { isVerified: "desc" },
           { members: { _count: "desc" } },
           { createdAt: "desc" },

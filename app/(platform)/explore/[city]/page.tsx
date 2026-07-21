@@ -19,8 +19,8 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { city: citySlug } = await params;
-  const city =
-    (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
+  const resolved = await resolvePublishedCity(citySlug);
+  const city = resolved === undefined ? getExploreCity(citySlug) : resolved;
   if (!city) return { title: "Explore your city" };
   return {
     title: `Explore ${city.name}`,
@@ -30,8 +30,8 @@ export async function generateMetadata({
 
 export default async function ExploreCityPage({ params }: PageProps) {
   const { city: citySlug } = await params;
-  const city =
-    (await resolvePublishedCity(citySlug)) ?? getExploreCity(citySlug);
+  const resolved = await resolvePublishedCity(citySlug);
+  const city = resolved === undefined ? getExploreCity(citySlug) : resolved;
   if (!city) notFound();
 
   const user = await requireUser();

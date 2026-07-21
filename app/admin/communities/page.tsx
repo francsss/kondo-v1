@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { AdminNav } from "@/components/features/admin/AdminNav";
+import { OfficialCommunityCreateForm } from "@/components/features/admin/OfficialCommunityCreateForm";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { listAdminCommunities } from "@/lib/communities";
 import { formatRelativeDate } from "@/lib/presentation";
+import { prisma } from "@/lib/prisma";
 import { requireAdminPermission } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Admin communities" };
@@ -20,13 +22,14 @@ function one(value: string | string[] | undefined) {
 }
 
 function href(
-  input: { q?: string; status?: string; type?: string },
+  input: { q?: string; status?: string; type?: string; official?: string },
   page: number,
 ) {
   const params = new URLSearchParams();
   if (input.q) params.set("q", input.q);
   if (input.status) params.set("status", input.status);
   if (input.type) params.set("type", input.type);
+  if (input.official) params.set("official", input.official);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
   return query ? `/admin/communities?${query}` : "/admin/communities";
@@ -42,19 +45,44 @@ export default async function AdminCommunitiesPage({
   const query = one(params.q)?.trim() || undefined;
   const rawStatus = one(params.status);
   const rawType = one(params.type);
+  const officialParam = one(params.official);
+  const official =
+    officialParam === "true"
+      ? true
+      : officialParam === "false"
+        ? false
+        : undefined;
   const status = STATUSES.includes(rawStatus ?? "")
     ? (rawStatus as CommunityStatus)
     : undefined;
   const type = TYPES.includes(rawType ?? "")
     ? (rawType as CommunityType)
     : undefined;
-  const result = await listAdminCommunities(user, {
-    page: Number(one(params.page) ?? 1),
-    query,
-    status,
-    type,
-  });
-  const hrefInput = { q: query, status, type };
+  const [result, countries, cities, universities] = await Promise.all([
+    listAdminCommunities(user, {
+      page: Number(one(params.page) ?? 1),
+      query,
+      status,
+      type,
+      official,
+    }),
+    prisma.country.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.city.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.university.findMany({
+      where: { isActive: true, verified: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+  const hrefInput = { q: query, status, type, official: officialParam };
 
   return (
     <div className="mx-auto max-w-[1320px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
@@ -65,7 +93,7 @@ export default async function AdminCommunitiesPage({
       />
       <AdminNav currentPath="/admin/communities" role={user.role} />
       <Card className="mt-7">
-        <form className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_210px_190px_auto]">
+        <form className="grid gap-3 xl:grid-cols-[minmax(240px,1fr)_190px_170px_180px_auto]">
           <input
             className="h-11 rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
             defaultValue={query}
@@ -83,6 +111,15 @@ export default async function AdminCommunitiesPage({
                 {value.replaceAll("_", " ")}
               </option>
             ))}
+          </select>
+          <select
+            className="h-11 rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
+            defaultValue={officialParam ?? ""}
+            name="official"
+          >
+            <option value="">All ownership types</option>
+            <option value="true">Official platform</option>
+            <option value="false">User-created</option>
           </select>
           <select
             className="h-11 rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
@@ -115,6 +152,11 @@ export default async function AdminCommunitiesPage({
                       VERIFIED
                     </span>
                   ) : null}
+                  {community.isOfficial ? (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-black text-sky-700 dark:bg-sky-400/10 dark:text-sky-300">
+                      OFFICIAL
+                    </span>
+                  ) : null}
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 dark:bg-white/10">
                     {community.status}
                   </span>
@@ -135,6 +177,11 @@ export default async function AdminCommunitiesPage({
           </Link>
         ))}
       </div>
+      <OfficialCommunityCreateForm
+        cities={cities}
+        countries={countries}
+        universities={universities}
+      />
       {!result.records.length ? (
         <Card className="mt-6 py-16 text-center text-sm text-slate-400">
           No communities match these filters.

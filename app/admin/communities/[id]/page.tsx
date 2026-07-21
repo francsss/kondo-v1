@@ -56,6 +56,12 @@ export default async function AdminCommunityPage({
             communityId={community.id}
             initialStatus={community.status}
             initialVerified={community.isVerified}
+            initialName={community.name}
+            initialDescription={community.description}
+            initialIcon={community.icon}
+            initialJoinPolicy={community.joinPolicy}
+            initialPrivate={community.isPrivate}
+            isOfficial={community.isOfficial}
           />
           <Card>
             <h2 className="font-black text-kondo-ink dark:text-white">

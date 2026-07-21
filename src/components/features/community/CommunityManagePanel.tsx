@@ -44,6 +44,7 @@ export function CommunityManagePanel({
   members,
   requests,
   posts,
+  canEditSettings,
   canChangeRoles,
   canArchive,
 }: {
@@ -58,6 +59,7 @@ export function CommunityManagePanel({
   members: Member[];
   requests: AccessRequest[];
   posts: ManagedPost[];
+  canEditSettings: boolean;
   canChangeRoles: boolean;
   canArchive: boolean;
 }) {
@@ -142,70 +144,82 @@ export function CommunityManagePanel({
               </p>
             </div>
           </div>
-          <form className="mt-5 space-y-4" onSubmit={saveSettings}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold">Name</span>
-              <input
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
-                defaultValue={community.name}
-                maxLength={100}
-                name="name"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold">Description</span>
-              <textarea
-                className="min-h-28 w-full rounded-2xl border border-slate-200 bg-transparent p-4 text-sm dark:border-white/10"
-                defaultValue={community.description}
-                maxLength={1000}
-                name="description"
-                required
-              />
-            </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label>
-                <span className="mb-2 block text-sm font-bold">
-                  Join policy
-                </span>
-                <select
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
-                  defaultValue={community.joinPolicy}
-                  name="joinPolicy"
-                >
-                  <option value="OPEN">Open</option>
-                  <option value="REQUEST">Approval required</option>
-                  <option value="INVITE_ONLY">Invitation only</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-3 self-end pb-3 text-sm font-semibold">
+          {canEditSettings ? (
+            <form className="mt-5 space-y-4" onSubmit={saveSettings}>
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold">Name</span>
                 <input
-                  defaultChecked={community.isPrivate}
-                  name="isPrivate"
-                  type="checkbox"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
+                  defaultValue={community.name}
+                  maxLength={100}
+                  name="name"
+                  required
                 />
-                Private community
               </label>
-            </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-sm dark:border-white/15">
-              <ImagePlus className="h-5 w-5 text-kondo-green" />
-              <span className="min-w-0 flex-1 truncate">
-                {cover?.name ??
-                  (community.coverMediaId
-                    ? "Replace current cover"
-                    : "Add a cover image")}
-              </span>
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={(event) => setCover(event.target.files?.[0] ?? null)}
-                type="file"
-              />
-            </label>
-            <Button disabled={pending} type="submit">
-              Save settings
-            </Button>
-          </form>
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold">
+                  Description
+                </span>
+                <textarea
+                  className="min-h-28 w-full rounded-2xl border border-slate-200 bg-transparent p-4 text-sm dark:border-white/10"
+                  defaultValue={community.description}
+                  maxLength={1000}
+                  name="description"
+                  required
+                />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label>
+                  <span className="mb-2 block text-sm font-bold">
+                    Join policy
+                  </span>
+                  <select
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
+                    defaultValue={community.joinPolicy}
+                    name="joinPolicy"
+                  >
+                    <option value="OPEN">Open</option>
+                    <option value="REQUEST">Approval required</option>
+                    <option value="INVITE_ONLY">Invitation only</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-3 self-end pb-3 text-sm font-semibold">
+                  <input
+                    defaultChecked={community.isPrivate}
+                    name="isPrivate"
+                    type="checkbox"
+                  />
+                  Private community
+                </label>
+              </div>
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-sm dark:border-white/15">
+                <ImagePlus className="h-5 w-5 text-kondo-green" />
+                <span className="min-w-0 flex-1 truncate">
+                  {cover?.name ??
+                    (community.coverMediaId
+                      ? "Replace current cover"
+                      : "Add a cover image")}
+                </span>
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(event) =>
+                    setCover(event.target.files?.[0] ?? null)
+                  }
+                  type="file"
+                />
+              </label>
+              <Button disabled={pending} type="submit">
+                Save settings
+              </Button>
+            </form>
+          ) : (
+            <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-500 dark:bg-white/5 dark:text-slate-300">
+              This user-created community keeps control of its identity and
+              cover. Platform administrators can moderate members and content
+              below without rewriting community-owned metadata.
+            </p>
+          )}
         </Card>
 
         <Card>

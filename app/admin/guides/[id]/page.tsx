@@ -51,6 +51,7 @@ export default async function AdminGuideDetailPage({
             category: guide.category,
             estimatedMinutes: guide.estimatedMinutes,
             featured: guide.featured,
+            coverMediaId: guide.coverMediaId,
           }}
         />
         <GuideStepManager guideId={guide.id} steps={guide.steps} />

@@ -5,6 +5,7 @@ import {
   type ProfileAudience,
   type ReportReason,
   type ReportStatus,
+  type Role,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
@@ -981,6 +982,7 @@ export async function listAdminUsers(
     pageSize?: number;
     query?: string;
     status?: "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+    role?: Role;
   } = {},
 ) {
   if (!hasAdminPermission(actor.role, "USER_VIEW")) {
@@ -991,6 +993,7 @@ export async function listAdminUsers(
   const query = input.query?.trim();
   const where: Prisma.UserWhereInput = {
     status: input.status,
+    role: input.role,
     ...(query
       ? {
           OR: [
@@ -1111,6 +1114,38 @@ export async function getAdminUser(actor: ProfileActor, userId: string) {
         orderBy: { createdAt: "desc" },
         take: 20,
       },
+      posts: {
+        where: {
+          status: "PUBLISHED",
+          community: { status: "ACTIVE", isPrivate: false },
+        },
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          community: { select: { slug: true, name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      },
+      marketplaceListings: {
+        where: activeListingWhere(),
+        select: { id: true, slug: true, title: true, status: true },
+        orderBy: { publishedAt: "desc" },
+        take: 5,
+      },
+      communityMemberships: {
+        where: {
+          community: { status: "ACTIVE", isPrivate: false },
+        },
+        select: {
+          id: true,
+          role: true,
+          community: { select: { slug: true, name: true } },
+        },
+        orderBy: { joinedAt: "desc" },
+        take: 5,
+      },
       _count: {
         select: {
           communityMemberships: true,
@@ -1192,6 +1227,58 @@ export async function updateUserStatusAsAdmin(input: {
       ...input.meta,
     });
     return { status: updated.status, sessionsRevoked };
+  });
+}
+
+export async function updateUserRoleAsAdmin(input: {
+  actor: ProfileActor;
+  userId: string;
+  role: Role;
+  reason: string;
+  meta?: RequestMeta;
+}) {
+  if (!hasAdminPermission(input.actor.role, "USER_ROLE_MANAGE")) {
+    throw new ProfileError("Access denied.", 403);
+  }
+  if (input.actor.id === input.userId) {
+    throw new ProfileError(
+      "You cannot change your own administrator role.",
+      409,
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const target = await tx.user.findUnique({
+      where: { id: input.userId },
+      select: { id: true, role: true },
+    });
+    if (!target) throw new ProfileError("Account not found.", 404);
+    if (target.role === input.role) {
+      return { role: target.role, sessionsRevoked: 0 };
+    }
+
+    const updated = await tx.user.update({
+      where: { id: target.id },
+      data: { role: input.role },
+      select: { role: true },
+    });
+    const revoked = await tx.session.deleteMany({
+      where: { userId: target.id },
+    });
+    await writeAuditLogWithClient(tx, {
+      actorId: input.actor.id,
+      action: "USER_ROLE_UPDATED",
+      entityType: "User",
+      entityId: target.id,
+      oldValue: { role: target.role },
+      newValue: {
+        role: updated.role,
+        reason: input.reason,
+        sessionsRevoked: revoked.count,
+      },
+      ...input.meta,
+    });
+    return { role: updated.role, sessionsRevoked: revoked.count };
   });
 }
 
