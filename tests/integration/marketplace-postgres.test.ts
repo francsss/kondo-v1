@@ -298,6 +298,61 @@ postgresDescribe("Module 12 PostgreSQL Marketplace", () => {
     ).toEqual({ score: 0, flags: [] });
   });
 
+  it("persists a published listing and keeps it visible to fresh database queries", async () => {
+    const created = await createListing();
+
+    await expect(
+      prisma.marketplaceListing.findFirst({
+        where: {
+          id: created.listing.id,
+          ...activeListingWhere(),
+        },
+        select: {
+          id: true,
+          slug: true,
+          status: true,
+          publishedAt: true,
+          expiresAt: true,
+        },
+      }),
+    ).resolves.toMatchObject({
+      id: created.listing.id,
+      slug: created.listing.slug,
+      status: "ACTIVE",
+      publishedAt: expect.any(Date),
+      expiresAt: expect.any(Date),
+    });
+
+    await expect(listSellerListings(fixture.seller)).resolves.toMatchObject({
+      records: expect.arrayContaining([
+        expect.objectContaining({
+          id: created.listing.id,
+          status: "ACTIVE",
+        }),
+      ]),
+    });
+  });
+
+  it("rejects active listings that could disappear because their expiry is missing", async () => {
+    await expect(
+      prisma.marketplaceListing.create({
+        data: {
+          slug: `missing-expiry-${randomUUID()}`,
+          sellerId: fixture.seller.id,
+          categoryId: fixture.category.id,
+          cityId: fixture.city.id,
+          title: "Invalid active listing",
+          description:
+            "This fixture verifies the database visibility invariant.",
+          priceFen: 1_000,
+          status: "ACTIVE",
+          publishedAt: new Date(),
+          expiresAt: null,
+        },
+      }),
+    ).rejects.toThrow("MarketplaceListing_active_expiry_check");
+  });
+
   it("enforces the seller lifecycle and queues status notifications for saved listings", async () => {
     const draft = await createListing({ publish: false });
     await transitionMarketplaceListing({

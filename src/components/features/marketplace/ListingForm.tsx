@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { uploadPublicImage } from "@/lib/client-media";
+import { getMarketplaceSubmitIntent } from "@/lib/marketplace-form";
 
 type Option = { id: string; name: string };
 
@@ -35,8 +36,15 @@ export function ListingForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as
+      (HTMLElement & { name?: string; value?: string }) | null;
+    const intent = getMarketplaceSubmitIntent(submitter);
+    if (!intent) {
+      setError("Choose whether to save a draft or publish the listing.");
+      return;
+    }
     const form = new FormData(event.currentTarget);
-    const publish = form.get("intent") === "publish";
+    const publish = intent === "publish";
     if (!listing && publish && !images.length) {
       setError("Add at least one image before publishing.");
       return;
