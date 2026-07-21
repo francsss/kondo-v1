@@ -21,6 +21,7 @@ test.describe("admin operations", () => {
   });
 
   test("saves one City Hub entry through its independent section page", async ({
+    browser,
     page,
   }) => {
     const slug = `e2e-city-${Date.now()}`;
@@ -52,12 +53,79 @@ test.describe("admin operations", () => {
     await newEntry.getByRole("button", { name: "Create entry" }).click();
 
     await expect(
+      page.getByRole("status").filter({
+        hasText: "Entry created and saved to the City Hub draft.",
+      }),
+    ).toBeVisible();
+    await expect(
       page.getByRole("heading", { name: "E2E Company" }),
     ).toBeVisible();
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "E2E Company" }),
     ).toBeVisible();
+
+    const savedEntry = page.locator('[data-entry-title="E2E Company"]');
+    await savedEntry
+      .getByLabel("Summary / description")
+      .fill("Edited and persisted independently by Playwright.");
+
+    await page.getByRole("link", { name: /management areas/i }).click();
+    await expect(
+      page.getByRole("heading", { name: "Unsaved changes" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Continue editing" }).click();
+    await expect(page).toHaveURL(/\/sections\/companies$/);
+    await expect(savedEntry.getByLabel("Summary / description")).toHaveValue(
+      "Edited and persisted independently by Playwright.",
+    );
+
+    await page.route(
+      `**/api/admin/city-hubs/*/sections/companies/entries/*`,
+      (route) => route.abort(),
+    );
+    await savedEntry.getByRole("button", { name: "Save entry" }).click();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Could not save this entry" }),
+    ).toBeVisible();
+    await expect(savedEntry.getByLabel("Summary / description")).toHaveValue(
+      "Edited and persisted independently by Playwright.",
+    );
+    await page.unroute(`**/api/admin/city-hubs/*/sections/companies/entries/*`);
+
+    await savedEntry.getByRole("button", { name: "Save entry" }).click();
+    await expect(
+      page.getByRole("status").filter({
+        hasText: "Entry changes saved to the City Hub draft.",
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page
+        .locator('[data-entry-title="E2E Company"]')
+        .getByLabel("Summary / description"),
+    ).toHaveValue("Edited and persisted independently by Playwright.");
+
+    const sectionUrl = page.url();
+    const appOrigin = new URL(sectionUrl).origin;
+    const reconnectedContext = await browser.newContext();
+    const reconnectedPage = await reconnectedContext.newPage();
+    await reconnectedPage.goto(`${appOrigin}/login`);
+    await reconnectedPage
+      .getByPlaceholder("you@university.edu")
+      .fill(process.env.PLAYWRIGHT_ADMIN_EMAIL ?? "admin@kondo.app");
+    await reconnectedPage
+      .locator('input[name="password"]')
+      .fill(process.env.PLAYWRIGHT_ADMIN_PASSWORD ?? "ChangeMe123!");
+    await reconnectedPage.getByRole("button", { name: /sign in/i }).click();
+    await expect(reconnectedPage).toHaveURL(/\/(home|onboarding)/);
+    await reconnectedPage.goto(sectionUrl);
+    await expect(
+      reconnectedPage
+        .locator('[data-entry-title="E2E Company"]')
+        .getByLabel("Summary / description"),
+    ).toHaveValue("Edited and persisted independently by Playwright.");
+    await reconnectedContext.close();
 
     await page.getByRole("link", { name: /management areas/i }).click();
     page.once("dialog", (dialog) => dialog.accept());

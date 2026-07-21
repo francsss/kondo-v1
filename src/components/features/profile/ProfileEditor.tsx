@@ -3,6 +3,12 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Save } from "lucide-react";
+import {
+  SaveButtonLabel,
+  SaveFeedback,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { AccountRequestPanel } from "@/components/features/profile/AccountRequestPanel";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -41,13 +47,14 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [feedback, setFeedback] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    setPending(true);
+    setSaveState("saving");
     setFeedback("");
     try {
       let avatarMediaId: string | null | undefined;
@@ -84,22 +91,31 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
       if (!response.ok) {
         throw new Error(result.error ?? "Profile could not be saved.");
       }
-      setFeedback("Profile saved.");
-      router.push("/profile");
+      setSaveState("success");
+      setFeedback("Profile saved to the database.");
+      setIsDirty(false);
+      setFile(null);
+      setRemoveAvatar(false);
       router.refresh();
     } catch (error) {
+      setSaveState("error");
       setFeedback(
         error instanceof Error ? error.message : "Profile could not be saved.",
       );
-    } finally {
-      setPending(false);
     }
   }
 
   return (
     <div className="space-y-6">
       <Card>
-        <form className="space-y-7" onSubmit={save}>
+        <form
+          className="space-y-7"
+          onChange={() => {
+            setIsDirty(true);
+            if (saveState === "success") setSaveState("idle");
+          }}
+          onSubmit={save}
+        >
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <Avatar
               className="h-24 w-24 text-2xl"
@@ -117,6 +133,7 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
                   onChange={(event) => {
                     setFile(event.target.files?.[0] ?? null);
                     setRemoveAvatar(false);
+                    setIsDirty(true);
                   }}
                   type="file"
                 />
@@ -132,6 +149,7 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
                   onClick={() => {
                     setRemoveAvatar(true);
                     setFile(null);
+                    setIsDirty(true);
                   }}
                   type="button"
                 >
@@ -229,17 +247,17 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
               />
             </div>
           </div>
-          {feedback ? (
-            <p className="rounded-2xl bg-slate-50 p-3 text-sm text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
-              {feedback}
-            </p>
-          ) : null}
-          <Button disabled={pending} type="submit">
-            <Save className="h-4 w-4" />
-            {pending ? "Saving…" : "Save profile"}
+          <Button disabled={saveState === "saving" || !isDirty} type="submit">
+            {saveState === "idle" || saveState === "error" ? (
+              <Save className="h-4 w-4" />
+            ) : null}
+            <SaveButtonLabel idleLabel="Save profile" state={saveState} />
           </Button>
         </form>
       </Card>
+
+      <SaveFeedback message={feedback} state={saveState} />
+      <UnsavedChangesGuard isDirty={isDirty} />
 
       <AccountRequestPanel requests={profile.accountRequests} />
     </div>

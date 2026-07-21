@@ -3,6 +3,11 @@
 import { ImagePlus, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import {
+  SaveButtonLabel,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { uploadPublicImage } from "@/lib/client-media";
 import { getMarketplaceSubmitIntent } from "@/lib/marketplace-form";
@@ -31,8 +36,9 @@ export function ListingForm({
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<File[]>([]);
-  const [pending, setPending] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,7 +55,7 @@ export function ListingForm({
       setError("Add at least one image before publishing.");
       return;
     }
-    setPending(true);
+    setSaveState("saving");
     setError("");
     try {
       const title = String(form.get("title") ?? "");
@@ -88,27 +94,33 @@ export function ListingForm({
         throw new Error(result?.error ?? "Could not save the listing.");
       }
       if (listing) {
+        setIsDirty(false);
+        setSaveState("success");
         router.push("/marketplace/selling");
       } else if (result.requiresReview || !publish) {
+        setIsDirty(false);
+        setSaveState("success");
         router.push("/marketplace/selling");
       } else {
+        setIsDirty(false);
+        setSaveState("success");
         router.push(`/marketplace/${result.listing.slug}`);
       }
       router.refresh();
     } catch (caught) {
+      setSaveState("error");
       setError(
         caught instanceof Error
           ? caught.message
           : "Could not save the listing.",
       );
-    } finally {
-      setPending(false);
     }
   }
 
   function selectImages(files: FileList | null) {
     const selected = Array.from(files ?? []).slice(0, 8);
     setImages(selected);
+    setIsDirty(true);
     setError(
       (files?.length ?? 0) > 8
         ? "A listing can contain up to eight images."
@@ -117,7 +129,14 @@ export function ListingForm({
   }
 
   return (
-    <form className="mt-7 space-y-5" onSubmit={submit}>
+    <form
+      className="mt-7 space-y-5"
+      onChange={() => {
+        setIsDirty(true);
+        if (saveState === "success") setSaveState("idle");
+      }}
+      onSubmit={submit}
+    >
       <div className="grid gap-5 sm:grid-cols-2">
         <label>
           <span className="mb-2 block text-sm font-bold">Category</span>
@@ -243,7 +262,7 @@ export function ListingForm({
       <div className="flex flex-wrap justify-end gap-3">
         {!listing ? (
           <Button
-            disabled={pending}
+            disabled={saveState === "saving"}
             name="intent"
             type="submit"
             value="draft"
@@ -253,15 +272,21 @@ export function ListingForm({
           </Button>
         ) : null}
         <Button
-          disabled={pending}
+          disabled={saveState === "saving"}
           name="intent"
           type="submit"
           value={listing ? "save" : "publish"}
         >
-          <Save className="h-4 w-4" />
-          {pending ? "Saving…" : listing ? "Save changes" : "Publish listing"}
+          {saveState === "idle" || saveState === "error" ? (
+            <Save className="h-4 w-4" />
+          ) : null}
+          <SaveButtonLabel
+            idleLabel={listing ? "Save changes" : "Publish listing"}
+            state={saveState}
+          />
         </Button>
       </div>
+      <UnsavedChangesGuard isDirty={isDirty} />
     </form>
   );
 }

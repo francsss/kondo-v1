@@ -3,6 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ImagePlus, X } from "lucide-react";
+import {
+  SaveButtonLabel,
+  SaveFeedback,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { MediaImage } from "@/components/ui/MediaImage";
@@ -35,14 +41,15 @@ export function GuideEditForm({
 }) {
   const router = useRouter();
   const [featured, setFeatured] = useState(initial.featured);
-  const [pending, setPending] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
   const [cover, setCover] = useState<File | null>(null);
   const [removeCover, setRemoveCover] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPending(true);
+    setSaveState("saving");
     setMessage("");
     const form = new FormData(event.currentTarget);
     try {
@@ -67,21 +74,29 @@ export function GuideEditForm({
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error ?? "Could not save.");
-      setMessage("Saved.");
+      setSaveState("success");
+      setMessage("Guide details saved to the database.");
+      setIsDirty(false);
       setCover(null);
       setRemoveCover(false);
       router.refresh();
     } catch (caught) {
+      setSaveState("error");
       setMessage(caught instanceof Error ? caught.message : "Could not save.");
-    } finally {
-      setPending(false);
     }
   }
 
   return (
     <Card>
       <h2 className="font-black text-kondo-ink dark:text-white">Details</h2>
-      <form className="mt-4 space-y-4" onSubmit={submit}>
+      <form
+        className="mt-4 space-y-4"
+        onChange={() => {
+          setIsDirty(true);
+          if (saveState === "success") setSaveState("idle");
+        }}
+        onSubmit={submit}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-bold">Title</span>
@@ -139,7 +154,10 @@ export function GuideEditForm({
           <label className="flex h-11 items-center gap-3 text-sm font-semibold">
             <input
               checked={featured}
-              onChange={(event) => setFeatured(event.target.checked)}
+              onChange={(event) => {
+                setFeatured(event.target.checked);
+                setIsDirty(true);
+              }}
               type="checkbox"
             />
             Featured
@@ -158,7 +176,10 @@ export function GuideEditForm({
             <Button
               aria-label="Remove guide cover"
               className="absolute right-3 top-3"
-              onClick={() => setRemoveCover(true)}
+              onClick={() => {
+                setRemoveCover(true);
+                setIsDirty(true);
+              }}
               size="icon"
               type="button"
               variant="secondary"
@@ -181,19 +202,17 @@ export function GuideEditForm({
             onChange={(event) => {
               setCover(event.target.files?.[0] ?? null);
               setRemoveCover(false);
+              setIsDirty(true);
             }}
             type="file"
           />
         </label>
-        {message ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {message}
-          </p>
-        ) : null}
-        <Button disabled={pending} type="submit">
-          {pending ? "Saving…" : "Save details"}
+        <Button disabled={saveState === "saving" || !isDirty} type="submit">
+          <SaveButtonLabel idleLabel="Save details" state={saveState} />
         </Button>
       </form>
+      <SaveFeedback message={message} state={saveState} />
+      <UnsavedChangesGuard isDirty={isDirty} />
     </Card>
   );
 }

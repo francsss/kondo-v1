@@ -2,7 +2,13 @@
 
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  SaveButtonLabel,
+  SaveFeedback,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type {
@@ -114,6 +120,17 @@ function defaultEntryType(icon: ExploreIconName): ExploreEntryType {
   return mapping[icon];
 }
 
+function valuesMatch(left: unknown, right: unknown) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function requestError(error: unknown, fallback: string) {
+  if (error instanceof TypeError) {
+    return `${fallback} Check your connection and try again. Your changes are still here.`;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function CityHubSectionEditor({
   hubId,
   status,
@@ -140,30 +157,64 @@ export function CityHubSectionEditor({
     cityValue: section.cityValue,
   };
   const [value, setValue] = useState(details);
-  const [pending, setPending] = useState(false);
+  const [savedValue, setSavedValue] = useState(details);
+  const [currentVersion, setCurrentVersion] = useState(version);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
+  const [dirtyEditors, setDirtyEditors] = useState<Set<string>>(new Set());
   const editable = status === "DRAFT";
+  const sectionDirty = !valuesMatch(value, savedValue);
+  const isDirty = sectionDirty || dirtyEditors.size > 0;
+  const displayedSaveState: SaveState =
+    sectionDirty && saveState === "success" ? "idle" : saveState;
+
+  const reportEditorDirty = useCallback((editorId: string, dirty: boolean) => {
+    setDirtyEditors((current) => {
+      const next = new Set(current);
+      if (dirty) next.add(editorId);
+      else next.delete(editorId);
+      return next;
+    });
+  }, []);
+
+  const updateVersion = useCallback((nextVersion: number) => {
+    setCurrentVersion(nextVersion);
+  }, []);
 
   async function saveSection() {
-    setPending(true);
+    setSaveState("saving");
     setMessage("");
-    const response = await fetch(
-      `/api/admin/city-hubs/${hubId}/sections/${section.slug}`,
-      {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payload: value, expectedVersion: version }),
-      },
-    ).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    setPending(false);
-    if (!response?.ok) {
-      setMessage(data?.error ?? "Could not save this section.");
-      return;
+    try {
+      const response = await fetch(
+        `/api/admin/city-hubs/${hubId}/sections/${section.slug}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payload: value,
+            expectedVersion: currentVersion,
+          }),
+        },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Could not save this section.");
+      }
+      setCurrentVersion(data.hub.version);
+      setSavedValue(structuredClone(value));
+      setSaveState("success");
+      setMessage("Section settings saved. Other sections were not changed.");
+      router.refresh();
+    } catch (error) {
+      setSaveState("error");
+      setMessage(
+        requestError(
+          error,
+          "Could not save this section. Your changes are still here.",
+        ),
+      );
     }
-    setMessage("Section settings saved. Other sections were not changed.");
-    router.refresh();
   }
 
   return (
@@ -189,12 +240,19 @@ export function CityHubSectionEditor({
             </p>
           </div>
           <Button
-            disabled={!editable || pending}
+            disabled={
+              !editable || displayedSaveState === "saving" || !sectionDirty
+            }
             onClick={saveSection}
             type="button"
           >
-            <Save className="h-4 w-4" />
-            {pending ? "Saving…" : "Save section"}
+            {displayedSaveState === "idle" || displayedSaveState === "error" ? (
+              <Save className="h-4 w-4" />
+            ) : null}
+            <SaveButtonLabel
+              idleLabel="Save section"
+              state={displayedSaveState}
+            />
           </Button>
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -276,14 +334,6 @@ export function CityHubSectionEditor({
             />
           </div>
         </div>
-        {message ? (
-          <p
-            className="mt-4 text-sm font-semibold text-muted-foreground"
-            role="status"
-          >
-            {message}
-          </p>
-        ) : null}
       </Card>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -308,9 +358,11 @@ export function CityHubSectionEditor({
               create
               defaultType={defaultEntryType(section.icon)}
               hubId={hubId}
+              onDirtyChange={reportEditorDirty}
+              onVersionChange={updateVersion}
               sectionSlug={section.slug}
               status={status}
-              version={version}
+              version={currentVersion}
             />
           </div>
         </details>
@@ -322,9 +374,11 @@ export function CityHubSectionEditor({
             <EntryEditor
               entry={entry}
               hubId={hubId}
+              onDirtyChange={reportEditorDirty}
+              onVersionChange={updateVersion}
               sectionSlug={section.slug}
               status={status}
-              version={version}
+              version={currentVersion}
             />
           </Card>
         ))}
@@ -335,6 +389,8 @@ export function CityHubSectionEditor({
           </Card>
         ) : null}
       </div>
+      <SaveFeedback message={message} state={displayedSaveState} />
+      <UnsavedChangesGuard isDirty={isDirty} />
     </div>
   );
 }
@@ -347,6 +403,8 @@ function EntryEditor({
   entry,
   defaultType = "story",
   create = false,
+  onDirtyChange,
+  onVersionChange,
 }: {
   hubId: string;
   sectionSlug: string;
@@ -355,21 +413,41 @@ function EntryEditor({
   entry?: ExploreEntry;
   defaultType?: ExploreEntryType;
   create?: boolean;
+  onDirtyChange: (editorId: string, dirty: boolean) => void;
+  onVersionChange: (version: number) => void;
 }) {
   const router = useRouter();
-  const [value, setValue] = useState<EditableEntry>(() =>
-    entry ? mutableEntry(entry) : initialEntry(defaultType),
+  const initialValue = () =>
+    entry ? mutableEntry(entry) : initialEntry(defaultType);
+  const [value, setValue] = useState<EditableEntry>(initialValue);
+  const [savedValue, setSavedValue] = useState<EditableEntry>(initialValue);
+  const [createEntryId, setCreateEntryId] = useState(() =>
+    create ? crypto.randomUUID() : "",
   );
-  const [pending, setPending] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
   const editable = status === "DRAFT";
+  const editorId = create ? `new-${sectionSlug}` : entry!.id;
+  const isDirty = !valuesMatch(value, savedValue);
+
+  useEffect(() => {
+    onDirtyChange(editorId, isDirty);
+  }, [editorId, isDirty, onDirtyChange]);
+
+  useEffect(
+    () => () => onDirtyChange(editorId, false),
+    [editorId, onDirtyChange],
+  );
+
+  const displayedSaveState: SaveState =
+    isDirty && saveState === "success" ? "idle" : saveState;
 
   function payload(): EditableEntry {
     const sourceLabel = value.source?.label.trim() ?? "";
     const sourceHref = value.source?.href.trim() ?? "";
     return {
       ...value,
-      id: create ? crypto.randomUUID() : value.id,
+      id: create ? createEntryId : value.id,
       location: value.location?.trim() || undefined,
       status: value.status?.trim() || undefined,
       source:
@@ -380,52 +458,85 @@ function EntryEditor({
   }
 
   async function save() {
-    setPending(true);
+    setSaveState("saving");
     setMessage("");
     const endpoint = create
       ? `/api/admin/city-hubs/${hubId}/sections/${sectionSlug}/entries`
       : `/api/admin/city-hubs/${hubId}/sections/${sectionSlug}/entries/${entry!.id}`;
-    const response = await fetch(endpoint, {
-      method: create ? "POST" : "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload: payload(), expectedVersion: version }),
-    }).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    setPending(false);
-    if (!response?.ok) {
-      setMessage(data?.error ?? "Could not save this entry.");
-      return;
+    const submittedValue = payload();
+    try {
+      const response = await fetch(endpoint, {
+        method: create ? "POST" : "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payload: submittedValue,
+          expectedVersion: version,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Could not save this entry.");
+      }
+      onVersionChange(data.hub.version);
+      setSaveState("success");
+      setMessage(
+        create
+          ? "Entry created and saved to the City Hub draft."
+          : "Entry changes saved to the City Hub draft.",
+      );
+      if (create) {
+        const resetValue = initialEntry(defaultType);
+        setValue(resetValue);
+        setSavedValue(resetValue);
+        setCreateEntryId(crypto.randomUUID());
+      } else {
+        setValue(structuredClone(submittedValue));
+        setSavedValue(structuredClone(submittedValue));
+      }
+      router.refresh();
+    } catch (error) {
+      setSaveState("error");
+      setMessage(
+        requestError(
+          error,
+          "Could not save this entry. Your changes are still here.",
+        ),
+      );
     }
-    setMessage(create ? "Entry created." : "Entry saved.");
-    if (create) setValue(initialEntry(defaultType));
-    router.refresh();
   }
 
   async function remove() {
     if (!entry || !window.confirm(`Delete ${entry.title}?`)) return;
-    setPending(true);
+    setSaveState("saving");
     setMessage("");
-    const response = await fetch(
-      `/api/admin/city-hubs/${hubId}/sections/${sectionSlug}/entries/${entry.id}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expectedVersion: version }),
-      },
-    ).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    setPending(false);
-    if (!response?.ok) {
-      setMessage(data?.error ?? "Could not delete this entry.");
-      return;
+    try {
+      const response = await fetch(
+        `/api/admin/city-hubs/${hubId}/sections/${sectionSlug}/entries/${entry.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedVersion: version }),
+        },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Could not delete this entry.");
+      }
+      onDirtyChange(editorId, false);
+      onVersionChange(data.hub.version);
+      setSaveState("success");
+      setMessage("Entry deleted from the City Hub draft.");
+      router.refresh();
+    } catch (error) {
+      setSaveState("error");
+      setMessage(requestError(error, "Could not delete this entry."));
     }
-    router.refresh();
   }
 
   return (
-    <div>
+    <div data-entry-title={create ? "New entry" : entry?.title}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-black text-kondo-ink dark:text-white">
@@ -439,7 +550,7 @@ function EntryEditor({
           {!create ? (
             <Button
               aria-label={`Delete ${entry?.title}`}
-              disabled={!editable || pending}
+              disabled={!editable || displayedSaveState === "saving"}
               onClick={remove}
               size="icon"
               type="button"
@@ -448,9 +559,19 @@ function EntryEditor({
               <Trash2 className="h-4 w-4" />
             </Button>
           ) : null}
-          <Button disabled={!editable || pending} onClick={save} type="button">
-            <Save className="h-4 w-4" />
-            {pending ? "Saving…" : create ? "Create entry" : "Save entry"}
+          <Button
+            disabled={!editable || displayedSaveState === "saving" || !isDirty}
+            onClick={save}
+            type="button"
+          >
+            {displayedSaveState === "idle" || displayedSaveState === "error" ? (
+              <Save className="h-4 w-4" />
+            ) : null}
+            <SaveButtonLabel
+              idleLabel={create ? "Create entry" : "Save entry"}
+              state={displayedSaveState}
+              successLabel={create ? "Created" : "Saved"}
+            />
           </Button>
         </div>
       </div>
@@ -561,14 +682,7 @@ function EntryEditor({
           }
         />
       </div>
-      {message ? (
-        <p
-          className="mt-4 text-sm font-semibold text-muted-foreground"
-          role="status"
-        >
-          {message}
-        </p>
-      ) : null}
+      <SaveFeedback message={message} state={displayedSaveState} />
     </div>
   );
 }

@@ -2,6 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import { Save } from "lucide-react";
+import {
+  SaveButtonLabel,
+  SaveFeedback,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -41,8 +47,9 @@ export function NotificationSettings({
 }: {
   preferences: Preferences;
 }) {
-  const [pending, setPending] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [feedback, setFeedback] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +61,7 @@ export function NotificationSettings({
       notificationAnnouncements: values.has("notificationAnnouncements"),
       emailDigest: values.get("emailDigest"),
     };
-    setPending(true);
+    setSaveState("saving");
     setFeedback("");
     try {
       const response = await fetch("/api/settings", {
@@ -69,21 +76,29 @@ export function NotificationSettings({
           result.error ?? "Notification preferences were not saved.",
         );
       }
-      setFeedback("Notification preferences saved.");
+      setSaveState("success");
+      setFeedback("Notification preferences saved to the database.");
+      setIsDirty(false);
     } catch (error) {
+      setSaveState("error");
       setFeedback(
         error instanceof Error
           ? error.message
           : "Notification preferences were not saved.",
       );
-    } finally {
-      setPending(false);
     }
   }
 
   return (
     <Card>
-      <form className="space-y-5" onSubmit={save}>
+      <form
+        className="space-y-5"
+        onChange={() => {
+          setIsDirty(true);
+          if (saveState === "success") setSaveState("idle");
+        }}
+        onSubmit={save}
+      >
         {toggles.map(({ key, label, description }) => (
           <label
             className="flex items-start gap-3 rounded-2xl border border-slate-200 p-4 dark:border-white/10"
@@ -123,13 +138,14 @@ export function NotificationSettings({
             <option value="WEEKLY">Weekly</option>
           </select>
         </label>
-        {feedback ? (
-          <p className="text-sm text-muted-foreground">{feedback}</p>
-        ) : null}
-        <Button disabled={pending} type="submit">
-          <Save className="h-4 w-4" />
-          {pending ? "Saving…" : "Save notifications"}
+        <Button disabled={saveState === "saving" || !isDirty} type="submit">
+          {saveState === "idle" || saveState === "error" ? (
+            <Save className="h-4 w-4" />
+          ) : null}
+          <SaveButtonLabel idleLabel="Save notifications" state={saveState} />
         </Button>
+        <SaveFeedback message={feedback} state={saveState} />
+        <UnsavedChangesGuard isDirty={isDirty} />
       </form>
     </Card>
   );

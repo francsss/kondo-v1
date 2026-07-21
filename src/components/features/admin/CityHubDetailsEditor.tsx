@@ -3,6 +3,12 @@
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  SaveButtonLabel,
+  SaveFeedback,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { ExploreCity } from "@/features/explore/types";
@@ -11,6 +17,15 @@ type Details = Omit<ExploreCity, "sections">;
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-kondo-green disabled:opacity-60 dark:border-white/10";
+
+function requestError(error: unknown) {
+  if (error instanceof TypeError) {
+    return "Could not save the hub details. Check your connection and try again. Your changes are still here.";
+  }
+  return error instanceof Error
+    ? error.message
+    : "Could not save the hub details. Your changes are still here.";
+}
 
 export function CityHubDetailsEditor({
   hubId,
@@ -25,27 +40,41 @@ export function CityHubDetailsEditor({
 }) {
   const router = useRouter();
   const [value, setValue] = useState(details);
-  const [pending, setPending] = useState(false);
+  const [savedValue, setSavedValue] = useState(details);
+  const [currentVersion, setCurrentVersion] = useState(version);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
   const editable = status === "DRAFT";
+  const isDirty = JSON.stringify(value) !== JSON.stringify(savedValue);
+  const displayedSaveState: SaveState =
+    isDirty && saveState === "success" ? "idle" : saveState;
 
   async function save() {
-    setPending(true);
+    setSaveState("saving");
     setMessage("");
-    const response = await fetch(`/api/admin/city-hubs/${hubId}/details`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload: value, expectedVersion: version }),
-    }).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    setPending(false);
-    if (!response?.ok) {
-      setMessage(data?.error ?? "Could not save the hub details.");
-      return;
+    try {
+      const response = await fetch(`/api/admin/city-hubs/${hubId}/details`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payload: value,
+          expectedVersion: currentVersion,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Could not save the hub details.");
+      }
+      setCurrentVersion(data.hub.version);
+      setSavedValue(structuredClone(value));
+      setSaveState("success");
+      setMessage("City Hub details saved to the database.");
+      router.refresh();
+    } catch (error) {
+      setSaveState("error");
+      setMessage(requestError(error));
     }
-    setMessage("Hub details saved.");
-    router.refresh();
   }
 
   return (
@@ -61,8 +90,18 @@ export function CityHubDetailsEditor({
               Saved independently from every content section.
             </p>
           </div>
-          <Button disabled={!editable || pending} onClick={save} type="button">
-            <Save className="h-4 w-4" /> {pending ? "Saving…" : "Save details"}
+          <Button
+            disabled={!editable || displayedSaveState === "saving" || !isDirty}
+            onClick={save}
+            type="button"
+          >
+            {displayedSaveState === "idle" || displayedSaveState === "error" ? (
+              <Save className="h-4 w-4" />
+            ) : null}
+            <SaveButtonLabel
+              idleLabel="Save details"
+              state={displayedSaveState}
+            />
           </Button>
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -272,14 +311,8 @@ export function CityHubDetailsEditor({
         </div>
       </Card>
 
-      {message ? (
-        <p
-          className="text-sm font-semibold text-muted-foreground"
-          role="status"
-        >
-          {message}
-        </p>
-      ) : null}
+      <SaveFeedback message={message} state={displayedSaveState} />
+      <UnsavedChangesGuard isDirty={isDirty} />
     </div>
   );
 }

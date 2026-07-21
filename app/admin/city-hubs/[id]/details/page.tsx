@@ -53,7 +53,6 @@ export default async function AdminCityHubDetailsPage({
       <CityHubDetailsEditor
         details={details}
         hubId={hub.id}
-        key={hub.version}
         status={hub.status}
         version={hub.version}
       />

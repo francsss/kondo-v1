@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { uploadPublicImage } from "@/lib/client-media";
@@ -67,6 +68,7 @@ export function CommunityManagePanel({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [cover, setCover] = useState<File | null>(null);
+  const [settingsDirty, setSettingsDirty] = useState(false);
 
   async function action(url: string, method: string, body?: unknown) {
     setPending(true);
@@ -101,13 +103,17 @@ export function CommunityManagePanel({
           )
         : undefined;
       setPending(false);
-      await action(`/api/communities/${community.id}`, "PATCH", {
+      const saved = await action(`/api/communities/${community.id}`, "PATCH", {
         name: form.get("name"),
         description: form.get("description"),
         joinPolicy: form.get("joinPolicy"),
         isPrivate: form.get("isPrivate") === "on",
         coverMediaId,
       });
+      if (saved) {
+        setSettingsDirty(false);
+        setCover(null);
+      }
     } catch (caught) {
       setPending(false);
       setMessage(
@@ -145,7 +151,11 @@ export function CommunityManagePanel({
             </div>
           </div>
           {canEditSettings ? (
-            <form className="mt-5 space-y-4" onSubmit={saveSettings}>
+            <form
+              className="mt-5 space-y-4"
+              onChange={() => setSettingsDirty(true)}
+              onSubmit={saveSettings}
+            >
               <label className="block">
                 <span className="mb-2 block text-sm font-bold">Name</span>
                 <input
@@ -203,14 +213,15 @@ export function CommunityManagePanel({
                 <input
                   accept="image/jpeg,image/png,image/webp"
                   className="sr-only"
-                  onChange={(event) =>
-                    setCover(event.target.files?.[0] ?? null)
-                  }
+                  onChange={(event) => {
+                    setCover(event.target.files?.[0] ?? null);
+                    setSettingsDirty(true);
+                  }}
                   type="file"
                 />
               </label>
-              <Button disabled={pending} type="submit">
-                Save settings
+              <Button disabled={pending || !settingsDirty} type="submit">
+                {pending ? "Saving…" : "Save settings"}
               </Button>
             </form>
           ) : (
@@ -513,6 +524,7 @@ export function CommunityManagePanel({
           </p>
         ) : null}
       </aside>
+      <UnsavedChangesGuard isDirty={settingsDirty} />
     </div>
   );
 }

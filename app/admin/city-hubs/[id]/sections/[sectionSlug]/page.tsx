@@ -67,7 +67,6 @@ export default async function AdminCityHubSectionPage({
 
       <CityHubSectionEditor
         hubId={hub.id}
-        key={hub.version}
         section={section}
         status={hub.status}
         version={hub.version}

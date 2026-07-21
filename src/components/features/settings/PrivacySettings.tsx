@@ -3,6 +3,12 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
+import {
+  SaveButtonLabel,
+  SaveFeedback,
+  type SaveState,
+} from "@/components/forms/SaveFeedback";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -65,8 +71,9 @@ export function PrivacySettings({
   preferences: PrivacyPreferences;
 }) {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [feedback, setFeedback] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -74,7 +81,7 @@ export function PrivacySettings({
     const payload = Object.fromEntries(
       fields.map(({ key }) => [key, values.get(key)]),
     );
-    setPending(true);
+    setSaveState("saving");
     setFeedback("");
     try {
       const response = await fetch("/api/profile", {
@@ -87,22 +94,30 @@ export function PrivacySettings({
       if (!response.ok) {
         throw new Error(result.error ?? "Privacy preferences were not saved.");
       }
-      setFeedback("Privacy preferences saved.");
+      setSaveState("success");
+      setFeedback("Privacy preferences saved to the database.");
+      setIsDirty(false);
       router.refresh();
     } catch (error) {
+      setSaveState("error");
       setFeedback(
         error instanceof Error
           ? error.message
           : "Privacy preferences were not saved.",
       );
-    } finally {
-      setPending(false);
     }
   }
 
   return (
     <Card>
-      <form className="space-y-5" onSubmit={save}>
+      <form
+        className="space-y-5"
+        onChange={() => {
+          setIsDirty(true);
+          if (saveState === "success") setSaveState("idle");
+        }}
+        onSubmit={save}
+      >
         {fields.map(({ key, label, description }) => (
           <label
             className="grid gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-[1fr_180px] sm:items-center dark:border-white/10"
@@ -132,13 +147,14 @@ export function PrivacySettings({
           selections. Private-community content is never revealed by a profile
           preference.
         </p>
-        {feedback ? (
-          <p className="text-sm text-muted-foreground">{feedback}</p>
-        ) : null}
-        <Button disabled={pending} type="submit">
-          <Save className="h-4 w-4" />
-          {pending ? "Saving…" : "Save privacy"}
+        <Button disabled={saveState === "saving" || !isDirty} type="submit">
+          {saveState === "idle" || saveState === "error" ? (
+            <Save className="h-4 w-4" />
+          ) : null}
+          <SaveButtonLabel idleLabel="Save privacy" state={saveState} />
         </Button>
+        <SaveFeedback message={feedback} state={saveState} />
+        <UnsavedChangesGuard isDirty={isDirty} />
       </form>
     </Card>
   );
