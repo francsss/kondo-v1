@@ -29,24 +29,27 @@ revoke the target's sessions and create an `AuditLog` record.
 
 ## Routes
 
-| Route                          | Purpose                                                                                                          |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `/admin`                       | Real operational overview, moderation queue, recent users, seven-day engagement, and recent audit activity.      |
-| `/admin/users`                 | Search, role/status filters, pagination, account review, suspension/reactivation, sessions, and role assignment. |
-| `/admin/communities`           | User-community moderation plus creation and metadata management for explicitly official communities.             |
-| `/admin/marketplace`           | Listing search, status/fraud review, moderation, seller context, and category management.                        |
-| `/admin/reports`               | Central report queue, assignment, evidence, notes, decisions, and audit history.                                 |
-| `/admin/message-safety`        | Aggregate safety diagnostics only; it does not expose private conversations.                                     |
-| `/admin/city-hubs`             | Multi-city editorial workflow and structured city-module editor.                                                 |
-| `/admin/city-hubs/:id/preview` | Protected preview of the current draft before publication.                                                       |
-| `/admin/guides`                | Student Hub guide and ordered-step CMS.                                                                          |
-| `/admin/content`               | Editorial index for Guides, City Hub, official communities, and validated community events.                      |
-| `/admin/media`                 | R2-backed media inspection, validation status, retention, and safe removal.                                      |
-| `/admin/notifications`         | Templates, targeted announcement composer, queue result, and worker diagnostics.                                 |
-| `/admin/analytics`             | Real 7/30/90-day database metrics and recorded product-event counts.                                             |
-| `/admin/reference-data`        | Country, city, and university configuration.                                                                     |
-| `/admin/settings`              | Safe non-secret configuration index.                                                                             |
-| `/admin/audit`                 | Filtered administrative audit history.                                                                           |
+| Route                                 | Purpose                                                                                                          |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `/admin`                              | Real operational overview, moderation queue, recent users, seven-day engagement, and recent audit activity.      |
+| `/admin/users`                        | Search, role/status filters, pagination, account review, suspension/reactivation, sessions, and role assignment. |
+| `/admin/communities`                  | User-community moderation plus creation and metadata management for explicitly official communities.             |
+| `/admin/marketplace`                  | Listing search, status/fraud review, moderation, seller context, and category management.                        |
+| `/admin/reports`                      | Central report queue, assignment, evidence, notes, decisions, and audit history.                                 |
+| `/admin/message-safety`               | Aggregate safety diagnostics only; it does not expose private conversations.                                     |
+| `/admin/city-hubs`                    | Multi-city editorial workflow and City Hub creation.                                                             |
+| `/admin/city-hubs/:id`                | Navigation between independently managed City Hub details and existing sections.                                 |
+| `/admin/city-hubs/:id/details`        | City identity, introduction, signals, and impact-point form.                                                     |
+| `/admin/city-hubs/:id/sections/:slug` | One existing section with independently persisted settings and entry CRUD.                                       |
+| `/admin/city-hubs/:id/preview`        | Protected preview of the current draft before publication.                                                       |
+| `/admin/guides`                       | Student Hub guide and ordered-step CMS.                                                                          |
+| `/admin/content`                      | Editorial index for Guides, City Hub, official communities, and validated community events.                      |
+| `/admin/media`                        | R2-backed media inspection, validation status, retention, and safe removal.                                      |
+| `/admin/notifications`                | Templates, targeted announcement composer, queue result, and worker diagnostics.                                 |
+| `/admin/analytics`                    | Real 7/30/90-day database metrics and recorded product-event counts.                                             |
+| `/admin/reference-data`               | Country, city, and university configuration.                                                                     |
+| `/admin/settings`                     | Safe non-secret configuration index.                                                                             |
+| `/admin/audit`                        | Filtered administrative audit history.                                                                           |
 
 Student Hub administration intentionally remains under `/admin/guides`, because
 the public Student Hub composes the Guide library, Q&A, and validated community
@@ -76,24 +79,30 @@ are City Hub entries, while member/community events use the existing validated
 - `published` is the immutable public snapshot written only on publication.
 
 This preserves existing city data and the public `ExploreCity` contract without
-a destructive normalization migration. The former raw JSON textarea has been
-replaced by structured forms for city identity, signals, impact points,
-ordered modules, and typed entries (`company`, `product`, `university`,
-`opportunity`, `event`, `service`, and `story`). Type-specific guidance maps the
-actual supported fields—category, location, status/date, tags, details, and
-official source—to each content type. The Zod `ExploreCity` schema remains the
-server-side integrity gate.
+a destructive normalization migration. `/admin/city-hubs/:id` is a navigation
+page rather than one combined editor. City identity has its own form, every
+existing section has its own management route, section settings save without
+rewriting entries, and every typed entry (`company`, `product`, `university`,
+`opportunity`, `event`, `service`, and `story`) has an independent create,
+update, and delete operation. A targeted mutation reads the latest draft,
+changes only its addressed object, uses an atomic optimistic-version guard, and
+writes an AuditLog record. No other section must be submitted or validated to
+save an entry. Type-specific guidance maps the supported fields—category,
+location, status/date, tags, details, and official source—to each content type.
+The complete `ExploreCity` Zod schema remains the publication integrity gate.
 
 Workflow:
 
 1. Create a draft, optionally seeded from the typed registry.
-2. Edit structured fields and save with optimistic version checking.
-3. Preview through the protected draft-preview route.
-4. Submit `DRAFT → REVIEW`.
-5. Publish `REVIEW → PUBLISHED`; the validated draft replaces the public
+2. Open Hub details or one existing section from the navigation page.
+3. Save details, section settings, or one entry independently with optimistic
+   version checking. These operations accumulate in the working draft.
+4. Preview through the protected draft-preview route.
+5. Submit `DRAFT → REVIEW`.
+6. Publish `REVIEW → PUBLISHED`; the validated draft replaces the public
    snapshot transactionally.
-6. “Revise” returns to draft while retaining the last public snapshot.
-7. “Unpublish” returns to draft and removes the public snapshot. A managed but
+7. “Revise” returns to draft while retaining the last public snapshot.
+8. “Unpublish” returns to draft and removes the public snapshot. A managed but
    unpublished city does not fall back to static content.
 
 Unknown/unmanaged cities can still use the typed registry as a compatibility
@@ -110,8 +119,8 @@ temporary pre-CMS fallback is deliberately required.
 
 Extend `ExploreEntryType` in `src/features/explore/types.ts`, its Zod mirror in
 `src/lib/validation.ts`, the editor guidance/defaults in
-`CityHubEditor.tsx`, and the public rendering behavior. Add validation and
-public-visibility tests before publishing data of the new type.
+`CityHubSectionEditor.tsx`, and the public rendering behavior. Add validation
+and public-visibility tests before publishing data of the new type.
 
 ## Images and files
 

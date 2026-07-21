@@ -3493,3 +3493,54 @@ community ownership, and production documentation.
   deploy the application only after all three migrations succeed.
 - Existing communities intentionally remain user-created (`isOfficial=false`).
   Do not bulk-mark them official without an ownership review.
+
+⸻
+
+# Version 1.0.0-rc.3
+
+Date:
+2026-07-21
+
+## Summary
+
+Refactors City Hub administration from one combined document form into
+independent management areas while preserving the existing JSON data contract,
+permissions, editorial state machine, and public Explore snapshots.
+
+## Features Modified
+
+- `/admin/city-hubs/:id` is now a navigation page for Hub details and every
+  existing City Hub section.
+- Hub details, section metadata, and each section entry now save through
+  separate forms and targeted API mutations.
+- Each entry can be created, edited, reloaded, and deleted without submitting
+  another section or replacing unrelated draft content.
+- Existing content types and terminology remain unchanged: `company`,
+  `product`, `university`, `opportunity`, `event`, `service`, and `story`.
+- The existing `DRAFT → REVIEW → PUBLISHED` workflow still validates and
+  promotes the complete current draft to the immutable public snapshot.
+
+## API Changes
+
+- Added `PATCH /api/admin/city-hubs/:id/details`.
+- Added `PATCH /api/admin/city-hubs/:id/sections/:sectionSlug`.
+- Added `POST /api/admin/city-hubs/:id/sections/:sectionSlug/entries`.
+- Added `PATCH|DELETE /api/admin/city-hubs/:id/sections/:sectionSlug/entries/:entryId`.
+- Removed the combined City Hub `PATCH` mutation used by the former large form.
+- Every targeted write retains trusted-origin checks, `CITY_CMS_MANAGE`, atomic
+  optimistic concurrency, and transactional audit logging.
+
+## Database Changes
+
+None. Existing `draft` and `published` JSONB values remain compatible and no
+data migration is required.
+
+## Tests
+
+- Added PostgreSQL coverage proving that an internship can be created and
+  reloaded independently, section and entry edits leave Companies unchanged,
+  publication still reaches Explore, deletion remains isolated, and the last
+  published snapshot stays live during revision.
+- Updated the test command to load an optional local `.env` before database
+  preparation and Vitest, preventing the runner from silently using a different
+  local PostgreSQL port.

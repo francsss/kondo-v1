@@ -723,7 +723,7 @@ const exploreEntryTypeSchema = z.enum([
   "story",
 ]);
 
-const exploreEntrySchema = z.object({
+export const exploreEntrySchema = z.object({
   id: z.string().trim().min(1).max(80),
   slug: z
     .string()
@@ -747,7 +747,7 @@ const exploreEntrySchema = z.object({
     .optional(),
 });
 
-const exploreSectionSchema = z.object({
+export const exploreSectionSchema = z.object({
   slug: z
     .string()
     .trim()
@@ -815,10 +815,22 @@ export const cityHubCreateSchema = z.object({
   seedFromRegistry: z.boolean().optional(),
 });
 
-export const cityHubUpdateSchema = z.object({
-  payload: exploreCityPayloadSchema,
+export const cityHubDetailsUpdateSchema = z.object({
+  payload: exploreCityPayloadSchema.omit({ sections: true }),
   expectedVersion: z.number().int().positive(),
 });
+
+export const cityHubSectionUpdateSchema = z.object({
+  payload: exploreSectionSchema.omit({ entries: true }),
+  expectedVersion: z.number().int().positive(),
+});
+
+export const cityHubEntryCreateSchema = z.object({
+  payload: exploreEntrySchema,
+  expectedVersion: z.number().int().positive(),
+});
+
+export const cityHubEntryUpdateSchema = cityHubEntryCreateSchema;
 
 export const cityHubStatusSchema = z.object({
   status: z.enum(["DRAFT", "REVIEW", "PUBLISHED"]),

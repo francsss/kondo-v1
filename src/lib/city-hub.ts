@@ -2,7 +2,11 @@ import { Prisma } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { getExploreCity } from "@/features/explore/registry";
-import type { ExploreCity } from "@/features/explore/types";
+import type {
+  ExploreCity,
+  ExploreEntry,
+  ExploreSection,
+} from "@/features/explore/types";
 import { logServerError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { exploreCityPayloadSchema } from "@/lib/validation";
@@ -157,6 +161,300 @@ export async function getAdminCityHub(actor: Actor, hubId: string) {
   };
 }
 
+type CityHubDetails = Omit<ExploreCity, "sections">;
+type CityHubSectionDetails = Omit<ExploreSection, "entries">;
+
+function editableDraft(value: Prisma.JsonValue, hubSlug: string): ExploreCity {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new CityHubError("This city hub draft is malformed.", 422);
+  }
+  const draft = structuredClone(value) as unknown as ExploreCity;
+  if (draft.slug !== hubSlug || !Array.isArray(draft.sections)) {
+    throw new CityHubError("This city hub draft is malformed.", 422);
+  }
+  return draft;
+}
+
+async function mutateCityHubDraft(input: {
+  actor: Actor;
+  hubId: string;
+  expectedVersion: number;
+  action: string;
+  auditValue: Record<string, unknown>;
+  mutate: (draft: ExploreCity) => ExploreCity;
+  meta?: RequestMeta;
+}) {
+  if (!hasAdminPermission(input.actor.role, "CITY_CMS_MANAGE")) {
+    throw new CityHubError("Access denied.", 403);
+  }
+  return prisma.$transaction(async (tx) => {
+    const hub = await tx.cityHub.findUnique({
+      where: { id: input.hubId },
+      select: {
+        id: true,
+        slug: true,
+        status: true,
+        version: true,
+        draft: true,
+      },
+    });
+    if (!hub) throw new CityHubError("City hub not found.", 404);
+    if (hub.status !== "DRAFT") {
+      throw new CityHubError(
+        "Move this hub back to draft before editing its content.",
+        409,
+      );
+    }
+    if (hub.version !== input.expectedVersion) {
+      throw new CityHubError(
+        "This hub changed since you loaded it. Reload and try again.",
+        409,
+      );
+    }
+
+    const nextDraft = input.mutate(editableDraft(hub.draft, hub.slug));
+    const updated = await tx.cityHub.updateMany({
+      where: {
+        id: hub.id,
+        status: "DRAFT",
+        version: input.expectedVersion,
+      },
+      data: {
+        name: nextDraft.name,
+        draft: nextDraft as unknown as Prisma.InputJsonValue,
+        version: { increment: 1 },
+        updatedById: input.actor.id,
+      },
+    });
+    if (updated.count !== 1) {
+      throw new CityHubError(
+        "This hub changed since you loaded it. Reload and try again.",
+        409,
+      );
+    }
+    await writeAuditLogWithClient(tx, {
+      actorId: input.actor.id,
+      action: input.action,
+      entityType: "CityHub",
+      entityId: hub.id,
+      newValue: {
+        ...input.auditValue,
+        version: input.expectedVersion + 1,
+      },
+      ...input.meta,
+    });
+    return {
+      hub: {
+        id: hub.id,
+        status: "DRAFT" as const,
+        version: input.expectedVersion + 1,
+      },
+    };
+  });
+}
+
+export async function updateCityHubDetails(input: {
+  actor: Actor;
+  hubId: string;
+  data: { payload: CityHubDetails; expectedVersion: number };
+  meta?: RequestMeta;
+}) {
+  return mutateCityHubDraft({
+    actor: input.actor,
+    hubId: input.hubId,
+    expectedVersion: input.data.expectedVersion,
+    action: "CITY_HUB_DETAILS_UPDATED",
+    auditValue: { scope: "details" },
+    meta: input.meta,
+    mutate: (draft) => {
+      if (input.data.payload.slug !== draft.slug) {
+        throw new CityHubError(
+          "The payload slug must match this hub's slug.",
+          400,
+        );
+      }
+      return { ...input.data.payload, sections: draft.sections };
+    },
+  });
+}
+
+export async function updateCityHubSection(input: {
+  actor: Actor;
+  hubId: string;
+  sectionSlug: string;
+  data: { payload: CityHubSectionDetails; expectedVersion: number };
+  meta?: RequestMeta;
+}) {
+  return mutateCityHubDraft({
+    actor: input.actor,
+    hubId: input.hubId,
+    expectedVersion: input.data.expectedVersion,
+    action: "CITY_HUB_SECTION_UPDATED",
+    auditValue: { sectionSlug: input.sectionSlug },
+    meta: input.meta,
+    mutate: (draft) => {
+      if (input.data.payload.slug !== input.sectionSlug) {
+        throw new CityHubError("A section slug cannot be changed.", 400);
+      }
+      const sectionIndex = draft.sections.findIndex(
+        (section) => section.slug === input.sectionSlug,
+      );
+      if (sectionIndex < 0) {
+        throw new CityHubError("City hub section not found.", 404);
+      }
+      const current = draft.sections[sectionIndex]!;
+      const sections = [...draft.sections];
+      sections[sectionIndex] = {
+        ...input.data.payload,
+        entries: current.entries,
+      };
+      return { ...draft, sections };
+    },
+  });
+}
+
+function assertUniqueEntry(
+  draft: ExploreCity,
+  section: ExploreSection,
+  entry: ExploreEntry,
+  currentEntryId?: string,
+) {
+  if (
+    draft.sections.some((candidate) =>
+      candidate.entries.some(
+        (item) => item.id === entry.id && item.id !== currentEntryId,
+      ),
+    )
+  ) {
+    throw new CityHubError("An entry with that ID already exists.", 409);
+  }
+  if (
+    section.entries.some(
+      (item) => item.slug === entry.slug && item.id !== currentEntryId,
+    )
+  ) {
+    throw new CityHubError(
+      "An entry with that slug already exists in this section.",
+      409,
+    );
+  }
+}
+
+export async function createCityHubEntry(input: {
+  actor: Actor;
+  hubId: string;
+  sectionSlug: string;
+  data: { payload: ExploreEntry; expectedVersion: number };
+  meta?: RequestMeta;
+}) {
+  return mutateCityHubDraft({
+    actor: input.actor,
+    hubId: input.hubId,
+    expectedVersion: input.data.expectedVersion,
+    action: "CITY_HUB_ENTRY_CREATED",
+    auditValue: {
+      sectionSlug: input.sectionSlug,
+      entryId: input.data.payload.id,
+    },
+    meta: input.meta,
+    mutate: (draft) => {
+      const sectionIndex = draft.sections.findIndex(
+        (section) => section.slug === input.sectionSlug,
+      );
+      if (sectionIndex < 0) {
+        throw new CityHubError("City hub section not found.", 404);
+      }
+      const section = draft.sections[sectionIndex]!;
+      if (section.entries.length >= 50) {
+        throw new CityHubError("This section already has 50 entries.", 409);
+      }
+      assertUniqueEntry(draft, section, input.data.payload);
+      const sections = [...draft.sections];
+      sections[sectionIndex] = {
+        ...section,
+        entries: [...section.entries, input.data.payload],
+      };
+      return { ...draft, sections };
+    },
+  });
+}
+
+export async function updateCityHubEntry(input: {
+  actor: Actor;
+  hubId: string;
+  sectionSlug: string;
+  entryId: string;
+  data: { payload: ExploreEntry; expectedVersion: number };
+  meta?: RequestMeta;
+}) {
+  return mutateCityHubDraft({
+    actor: input.actor,
+    hubId: input.hubId,
+    expectedVersion: input.data.expectedVersion,
+    action: "CITY_HUB_ENTRY_UPDATED",
+    auditValue: { sectionSlug: input.sectionSlug, entryId: input.entryId },
+    meta: input.meta,
+    mutate: (draft) => {
+      const sectionIndex = draft.sections.findIndex(
+        (section) => section.slug === input.sectionSlug,
+      );
+      if (sectionIndex < 0) {
+        throw new CityHubError("City hub section not found.", 404);
+      }
+      const section = draft.sections[sectionIndex]!;
+      const entryIndex = section.entries.findIndex(
+        (entry) => entry.id === input.entryId,
+      );
+      if (entryIndex < 0) throw new CityHubError("Entry not found.", 404);
+      if (input.data.payload.id !== input.entryId) {
+        throw new CityHubError("An entry ID cannot be changed.", 400);
+      }
+      assertUniqueEntry(draft, section, input.data.payload, input.entryId);
+      const entries = [...section.entries];
+      entries[entryIndex] = input.data.payload;
+      const sections = [...draft.sections];
+      sections[sectionIndex] = { ...section, entries };
+      return { ...draft, sections };
+    },
+  });
+}
+
+export async function deleteCityHubEntry(input: {
+  actor: Actor;
+  hubId: string;
+  sectionSlug: string;
+  entryId: string;
+  expectedVersion: number;
+  meta?: RequestMeta;
+}) {
+  return mutateCityHubDraft({
+    actor: input.actor,
+    hubId: input.hubId,
+    expectedVersion: input.expectedVersion,
+    action: "CITY_HUB_ENTRY_DELETED",
+    auditValue: { sectionSlug: input.sectionSlug, entryId: input.entryId },
+    meta: input.meta,
+    mutate: (draft) => {
+      const sectionIndex = draft.sections.findIndex(
+        (section) => section.slug === input.sectionSlug,
+      );
+      if (sectionIndex < 0) {
+        throw new CityHubError("City hub section not found.", 404);
+      }
+      const section = draft.sections[sectionIndex]!;
+      if (!section.entries.some((entry) => entry.id === input.entryId)) {
+        throw new CityHubError("Entry not found.", 404);
+      }
+      const sections = [...draft.sections];
+      sections[sectionIndex] = {
+        ...section,
+        entries: section.entries.filter((entry) => entry.id !== input.entryId),
+      };
+      return { ...draft, sections };
+    },
+  });
+}
+
 export async function createCityHub(input: {
   actor: Actor;
   data: { slug: string; name: string; seedFromRegistry?: boolean };
@@ -213,61 +511,6 @@ export async function createCityHub(input: {
       ...input.meta,
     });
     return { hub };
-  });
-}
-
-export async function updateCityHubDraft(input: {
-  actor: Actor;
-  hubId: string;
-  data: { payload: ExploreCity; expectedVersion: number };
-  meta?: RequestMeta;
-}) {
-  if (!hasAdminPermission(input.actor.role, "CITY_CMS_MANAGE")) {
-    throw new CityHubError("Access denied.", 403);
-  }
-  return prisma.$transaction(async (tx) => {
-    const hub = await tx.cityHub.findUnique({
-      where: { id: input.hubId },
-      select: { id: true, slug: true, status: true, version: true },
-    });
-    if (!hub) throw new CityHubError("City hub not found.", 404);
-    if (hub.version !== input.data.expectedVersion) {
-      throw new CityHubError(
-        "This hub changed since you loaded it. Reload and try again.",
-        409,
-      );
-    }
-    if (hub.status !== "DRAFT") {
-      throw new CityHubError(
-        "Move this hub back to draft before editing its content.",
-        409,
-      );
-    }
-    if (input.data.payload.slug !== hub.slug) {
-      throw new CityHubError(
-        "The payload slug must match this hub's slug.",
-        400,
-      );
-    }
-    const updated = await tx.cityHub.update({
-      where: { id: hub.id },
-      data: {
-        name: input.data.payload.name,
-        draft: input.data.payload as unknown as Prisma.InputJsonValue,
-        version: { increment: 1 },
-        updatedById: input.actor.id,
-      },
-      select: { id: true, version: true, status: true },
-    });
-    await writeAuditLogWithClient(tx, {
-      actorId: input.actor.id,
-      action: "CITY_HUB_UPDATED",
-      entityType: "CityHub",
-      entityId: hub.id,
-      newValue: { version: updated.version },
-      ...input.meta,
-    });
-    return { hub: updated };
   });
 }
 
