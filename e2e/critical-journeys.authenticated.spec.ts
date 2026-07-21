@@ -14,15 +14,46 @@ test.describe("authenticated critical journeys", () => {
   }) => {
     await page.goto("/home");
     await expect(page).toHaveURL(/\/home/);
+    const main = page.getByRole("main");
+    const transition = main.getByTestId("home-activity-transition");
+    const welcome = main.getByRole("heading", { name: /welcome back/i });
+    const beforeReveal = await transition.boundingBox();
+    await expect(welcome).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Kondo is moving." }),
-    ).toBeVisible();
+      main.getByRole("heading", { name: "Kondo is moving." }),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(welcome).toBeHidden();
     await expect(
-      page.getByRole("list", { name: "Recent activity" }),
+      main.getByRole("list", { name: "Recent activity" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Pause activity" }),
-    ).toBeVisible();
+    await expect(main.getByRole("button", { name: /activity/i })).toHaveCount(
+      0,
+    );
+    const afterReveal = await transition.boundingBox();
+    expect(beforeReveal).not.toBeNull();
+    expect(afterReveal).not.toBeNull();
+    expect(afterReveal?.height ?? 0).toBeGreaterThan(beforeReveal?.height ?? 0);
+
+    const activityList = main.getByRole("list", { name: "Recent activity" });
+    const autoplayStart = await activityList.evaluate(
+      (element) => element.scrollLeft,
+    );
+    await expect
+      .poll(() => activityList.evaluate((element) => element.scrollLeft), {
+        timeout: 4_500,
+      })
+      .not.toBe(autoplayStart);
+
+    await activityList.hover();
+    await page.waitForTimeout(700);
+    const hoverStart = await activityList.evaluate(
+      (element) => element.scrollLeft,
+    );
+    await page.waitForTimeout(3_700);
+    const hoverEnd = await activityList.evaluate(
+      (element) => element.scrollLeft,
+    );
+    expect(Math.abs(hoverEnd - hoverStart)).toBeLessThan(2);
     for (const [href, label] of [
       ["/home", "Home"],
       ["/communities", "Communities"],

@@ -5,13 +5,9 @@ import {
   Award,
   Building2,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   Heart,
   MessageCircle,
-  Pause,
-  Play,
   Sparkles,
   Store,
   UserPlus,
@@ -21,7 +17,6 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
 import type {
   HomeActivityItem,
   HomeActivityType,
@@ -140,9 +135,8 @@ export function LiveActivityStream({
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [interacting, setInteracting] = useState(false);
-  const [manuallyPaused, setManuallyPaused] = useState(false);
   const [now, setNow] = useState(() => new Date(generatedAt).getTime());
-  const paused = hovered || focused || interacting || manuallyPaused;
+  const paused = hovered || focused || interacting;
 
   const scrollToActivity = useCallback(
     (index: number) => {
@@ -173,7 +167,7 @@ export function LiveActivityStream({
     if (paused || reducedMotion || activities.length < 2) return;
     const autoplay = window.setInterval(
       () => scrollToActivity(activeIndex + 1),
-      4_800,
+      3_400,
     );
     return () => window.clearInterval(autoplay);
   }, [activeIndex, activities.length, paused, reducedMotion, scrollToActivity]);
@@ -225,7 +219,7 @@ export function LiveActivityStream({
 
   if (!activities.length) {
     return (
-      <section className="relative mt-7 overflow-hidden rounded-[2rem] border border-emerald-200/70 bg-card p-6 shadow-soft dark:border-emerald-400/15 sm:p-8">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-emerald-200/70 bg-card p-5 shadow-soft dark:border-emerald-400/15 sm:p-6">
         <div className="flex items-center gap-3">
           <span className="relative flex h-3 w-3">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-kondo-green opacity-35" />
@@ -235,7 +229,7 @@ export function LiveActivityStream({
             Kondo live
           </p>
         </div>
-        <h2 className="mt-3 text-2xl font-black tracking-tight text-kondo-ink dark:text-white">
+        <h2 className="mt-2 text-xl font-black tracking-tight text-kondo-ink dark:text-white">
           The next story starts here.
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
@@ -249,7 +243,7 @@ export function LiveActivityStream({
   return (
     <section
       aria-labelledby="live-activity-title"
-      className="noise relative mt-7 overflow-hidden rounded-[2rem] border border-emerald-200/70 bg-gradient-to-br from-white via-emerald-50/45 to-white shadow-[0_28px_90px_rgba(20,71,58,0.13)] dark:border-emerald-400/15 dark:from-[#14221e] dark:via-[#112c24] dark:to-[#14211e]"
+      className="noise relative overflow-hidden rounded-[1.75rem] border border-emerald-200/70 bg-gradient-to-br from-white via-emerald-50/45 to-white shadow-[0_22px_70px_rgba(20,71,58,0.12)] dark:border-emerald-400/15 dark:from-[#14221e] dark:via-[#112c24] dark:to-[#14211e]"
       onFocusCapture={() => setFocused(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
@@ -267,7 +261,7 @@ export function LiveActivityStream({
         className="absolute -bottom-44 left-1/4 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl dark:bg-cyan-400/5"
       />
 
-      <div className="relative flex flex-col gap-5 px-5 pb-4 pt-6 sm:flex-row sm:items-end sm:justify-between sm:px-7 sm:pt-7">
+      <div className="relative px-4 pb-2 pt-4 sm:px-5 sm:pt-5">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
@@ -277,68 +271,43 @@ export function LiveActivityStream({
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-kondo-green">
               Kondo live
             </p>
-            <span className="rounded-full border border-emerald-200/80 bg-white/70 px-2.5 py-1 text-[10px] font-bold text-emerald-800 backdrop-blur dark:border-emerald-400/15 dark:bg-white/5 dark:text-emerald-200">
+            <span className="rounded-full border border-emerald-200/80 bg-white/70 px-2 py-0.5 text-[10px] font-bold text-emerald-800 backdrop-blur dark:border-emerald-400/15 dark:bg-white/5 dark:text-emerald-200">
               {activities.length} recent moments
             </span>
           </div>
           <h2
-            className="mt-2 text-2xl font-black tracking-[-0.035em] text-kondo-ink dark:text-white sm:text-3xl"
+            className="mt-1.5 text-xl font-black tracking-[-0.035em] text-kondo-ink dark:text-white sm:text-2xl"
             id="live-activity-title"
           >
             Kondo is moving.
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground sm:text-sm">
             People are joining, sharing and building their lives across China.
           </p>
-        </div>
-
-        <div className="flex items-center gap-1.5 self-end sm:self-auto">
-          <Button
-            aria-label={manuallyPaused ? "Resume activity" : "Pause activity"}
-            aria-pressed={manuallyPaused}
-            className="bg-white/70 backdrop-blur dark:bg-white/5"
-            onClick={() => setManuallyPaused((value) => !value)}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            {manuallyPaused ? (
-              <Play className="h-4 w-4" />
-            ) : (
-              <Pause className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            aria-label="Previous activity"
-            className="bg-white/70 backdrop-blur dark:bg-white/5"
-            onClick={() => scrollToActivity(activeIndex - 1)}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            aria-label="Next activity"
-            className="bg-white/70 backdrop-blur dark:bg-white/5"
-            onClick={() => scrollToActivity(activeIndex + 1)}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
       <div className="relative">
         <div
           aria-label="Recent activity"
-          className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-7 pt-2 sm:gap-4 sm:px-7"
+          className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 pt-1 sm:px-5"
           onPointerCancel={() => setInteracting(false)}
           onPointerDown={() => setInteracting(true)}
           onPointerUp={() => setInteracting(false)}
           onScroll={updateActiveCard}
+          onWheel={(event) => {
+            const viewport = viewportRef.current;
+            if (!viewport || Math.abs(event.deltaX) >= Math.abs(event.deltaY))
+              return;
+            const canMoveLeft = event.deltaY < 0 && viewport.scrollLeft > 0;
+            const canMoveRight =
+              event.deltaY > 0 &&
+              viewport.scrollLeft <
+                viewport.scrollWidth - viewport.clientWidth - 1;
+            if (!canMoveLeft && !canMoveRight) return;
+            event.preventDefault();
+            viewport.scrollLeft += event.deltaY;
+          }}
           ref={viewportRef}
           role="list"
           tabIndex={0}
@@ -351,7 +320,7 @@ export function LiveActivityStream({
               <motion.article
                 animate={{ opacity: active ? 1 : 0.72, y: 0 }}
                 className={cn(
-                  "relative w-[82vw] max-w-[370px] shrink-0 snap-center overflow-hidden rounded-[1.6rem] border bg-card/90 p-5 shadow-sm backdrop-blur-xl transition-[border-color,box-shadow,transform] duration-500 sm:w-[370px]",
+                  "relative w-[80vw] max-w-[330px] shrink-0 snap-center overflow-hidden rounded-[1.35rem] border bg-card/90 p-4 shadow-sm backdrop-blur-xl transition-[border-color,box-shadow,transform] duration-500 sm:w-[330px]",
                   active
                     ? "-translate-y-1 border-emerald-300/90 shadow-[0_22px_55px_rgba(20,71,58,0.14)] dark:border-emerald-400/30"
                     : "border-border/80",
@@ -365,7 +334,7 @@ export function LiveActivityStream({
                 <div
                   aria-hidden="true"
                   className={cn(
-                    "absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent",
+                    "absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent",
                     appearance.washClass,
                   )}
                 />
@@ -378,11 +347,11 @@ export function LiveActivityStream({
                     <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                       <span
                         className={cn(
-                          "grid h-8 w-8 place-items-center rounded-xl",
+                          "grid h-7 w-7 place-items-center rounded-lg",
                           appearance.iconClass,
                         )}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-3.5 w-3.5" />
                       </span>
                       {appearance.label}
                     </span>
@@ -395,10 +364,10 @@ export function LiveActivityStream({
                     </time>
                   </div>
 
-                  <div className="mt-6 flex items-start gap-3.5">
+                  <div className="mt-4 flex items-start gap-3">
                     {activity.actor ? (
                       <Avatar
-                        className="h-12 w-12 text-sm ring-[3px] ring-white shadow-md dark:ring-[#1b2b26]"
+                        className="h-10 w-10 text-xs ring-[3px] ring-white shadow-md dark:ring-[#1b2b26]"
                         firstName={activity.actor.firstName}
                         lastName={activity.actor.lastName}
                         mediaId={activity.actor.avatarMediaId}
@@ -406,14 +375,14 @@ export function LiveActivityStream({
                     ) : (
                       <span
                         aria-label="Kondo"
-                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-kondo-forest to-emerald-500 text-sm font-black text-white ring-[3px] ring-white shadow-md dark:ring-[#1b2b26]"
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-kondo-forest to-emerald-500 text-xs font-black text-white ring-[3px] ring-white shadow-md dark:ring-[#1b2b26]"
                         role="img"
                       >
                         K
                       </span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] leading-6 text-muted-foreground">
+                      <p className="text-sm leading-5 text-muted-foreground">
                         {activity.actor ? (
                           <strong className="font-black text-kondo-ink dark:text-white">
                             {activity.actor.firstName} {activity.actor.lastName}
@@ -432,7 +401,7 @@ export function LiveActivityStream({
                         ) : null}
                       </p>
                       {activity.detail ? (
-                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground/85">
+                        <p className="mt-1.5 line-clamp-1 text-xs leading-4 text-muted-foreground/85">
                           {activity.detail}
                         </p>
                       ) : null}
@@ -456,7 +425,7 @@ export function LiveActivityStream({
       </div>
 
       <div
-        className="relative flex items-center gap-1.5 px-7 pb-6"
+        className="relative flex items-center gap-1.5 px-5 pb-4"
         aria-hidden="true"
       >
         {activities.slice(0, 8).map((activity, index) => (

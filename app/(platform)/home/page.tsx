@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
-import { LiveActivityStream } from "@/components/features/activity/LiveActivityStream";
+import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIntro";
 import { PostComposer } from "@/components/features/community/PostComposer";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
@@ -36,36 +36,25 @@ export default async function HomePage() {
   const guideProgress = firstGuide?.steps.length
     ? Math.round((completedSteps / firstGuide.steps.length) * 100)
     : 0;
+  const composerCommunities = communities
+    .filter((community) => community.members.length > 0)
+    .map((community) => ({
+      id: community.id,
+      name: community.name,
+      icon: community.icon,
+      canAnnounce: ["OWNER", "MODERATOR"].includes(
+        community.members[0]?.role ?? "",
+      ),
+    }));
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">
-      <section className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-kondo-green">{chinaDate}</p>
-          <h1 className="mt-1 text-3xl font-black tracking-[-0.045em] text-kondo-ink dark:text-white sm:text-4xl">
-            Welcome back, {user.firstName} <span aria-hidden="true">👋🏾</span>
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Here’s what’s happening around your student life today.
-          </p>
-        </div>
-        <PostComposer
-          communities={communities
-            .filter((community) => community.members.length > 0)
-            .map((community) => ({
-              id: community.id,
-              name: community.name,
-              icon: community.icon,
-              canAnnounce: ["OWNER", "MODERATOR"].includes(
-                community.members[0]?.role ?? "",
-              ),
-            }))}
-        />
-      </section>
-
-      <LiveActivityStream
+      <HomeActivityIntro
+        activities={activities}
+        chinaDate={chinaDate}
+        communities={composerCommunities}
+        firstName={user.firstName}
         generatedAt={new Date().toISOString()}
-        initialActivities={activities}
       />
 
       {firstGuide ? (
@@ -115,16 +104,7 @@ export default async function HomePage() {
           <Card className="flex items-center gap-3 p-4">
             <Avatar firstName={user.firstName} lastName={user.lastName} />
             <PostComposer
-              communities={communities
-                .filter((community) => community.members.length > 0)
-                .map((community) => ({
-                  id: community.id,
-                  name: community.name,
-                  icon: community.icon,
-                  canAnnounce: ["OWNER", "MODERATOR"].includes(
-                    community.members[0]?.role ?? "",
-                  ),
-                }))}
+              communities={composerCommunities}
               triggerLabel="Share something with your community…"
               triggerVariant="composer"
             />
