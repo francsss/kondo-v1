@@ -86,7 +86,7 @@ export function FeedPost({
               <span aria-label="Country" className="text-sm">
                 {post.author.country?.emoji}
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted-foreground">
                 · {formatRelativeDate(post.createdAt)}
               </span>
             </div>
@@ -113,7 +113,7 @@ export function FeedPost({
             {post.title}
           </h2>
         ) : null}
-        <p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-slate-600 dark:text-slate-300">
+        <p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-muted-foreground">
           {post.content}
         </p>
         {post.media?.length ? (

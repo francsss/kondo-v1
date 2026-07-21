@@ -79,7 +79,7 @@ export function CommunityAdminActions({
           <h2 className="font-black text-kondo-ink dark:text-white">
             Moderation state
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Status and platform verification
           </p>
         </div>
@@ -158,13 +158,16 @@ export function CommunityAdminActions({
           </label>
         </div>
       ) : (
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="mt-4 text-xs text-muted-foreground">
           User-created metadata remains owned by the community. Administrators
           use moderation actions instead of rewriting it.
         </p>
       )}
       {message ? (
-        <p className="mt-3 text-xs font-semibold text-slate-500" role="status">
+        <p
+          className="mt-3 text-xs font-semibold text-muted-foreground"
+          role="status"
+        >
           {message}
         </p>
       ) : null}

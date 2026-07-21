@@ -53,10 +53,10 @@ export function QuestionComposer() {
         <div
           aria-labelledby="question-composer-title"
           aria-modal="true"
-          className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] grid place-items-center bg-overlay/45 p-4 backdrop-blur-sm"
           role="dialog"
         >
-          <div className="w-full max-w-xl rounded-4xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#14201d] sm:p-7">
+          <div className="w-full max-w-xl rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-2xl sm:p-7">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wider text-kondo-green">

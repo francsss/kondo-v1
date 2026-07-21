@@ -87,7 +87,9 @@ export default async function ConversationPage({
             >
               {other.firstName} {other.lastName}
             </Link>
-            <p className="text-xs text-slate-400">Private conversation</p>
+            <p className="text-xs text-muted-foreground">
+              Private conversation
+            </p>
           </div>
           <ConversationActions
             conversationId={id}
@@ -116,7 +118,7 @@ export default async function ConversationPage({
                   </span>
                 )}
               </Button>
-              <span className="px-2 text-[11px] font-bold text-slate-400">
+              <span className="px-2 text-[11px] font-bold text-muted-foreground">
                 {conversation.page} / {conversation.pageCount}
               </span>
               <Button
@@ -155,7 +157,7 @@ export default async function ConversationPage({
               return (
                 <div key={message.id}>
                   {showDate ? (
-                    <p className="mb-5 text-center text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <p className="mb-5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                       {formatDate(message.createdAt)}
                     </p>
                   ) : null}
@@ -173,7 +175,7 @@ export default async function ConversationPage({
                       className={`max-w-[82%] overflow-hidden rounded-3xl text-sm leading-6 shadow-sm sm:max-w-[72%] ${
                         mine
                           ? "rounded-br-lg bg-kondo-forest text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                          : "rounded-bl-lg bg-white text-slate-700 dark:bg-white/10 dark:text-slate-200"
+                          : "rounded-bl-lg bg-white text-muted-foreground dark:bg-white/10 dark:text-slate-200"
                       }`}
                     >
                       {message.attachment?.kind === "IMAGE" &&
@@ -227,7 +229,7 @@ export default async function ConversationPage({
                           className={`mt-1 block text-right text-[10px] ${
                             mine
                               ? "text-white/60 dark:text-kondo-ink/60"
-                              : "text-slate-400"
+                              : "text-muted-foreground"
                           }`}
                         >
                           {formatTime(message.createdAt)}
@@ -243,11 +245,11 @@ export default async function ConversationPage({
           {conversation.messages.length === 0 ? (
             <div className="grid min-h-[360px] place-items-center text-center">
               <div>
-                <MessageCircle className="mx-auto h-8 w-8 text-slate-300" />
+                <MessageCircle className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-3 font-black text-kondo-ink dark:text-white">
                   Start a new conversation
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Earlier history hidden from your account stays preserved for
                   the other participant and existing safety evidence.
                 </p>
@@ -266,7 +268,7 @@ export default async function ConversationPage({
             </div>
           ) : null}
           <MessageComposer conversationId={id} disabled={Boolean(block)} />
-          <p className="mt-3 text-center text-[11px] text-slate-400">
+          <p className="mt-3 text-center text-[11px] text-muted-foreground">
             Text, emoji, validated images and PDF documents are supported.
           </p>
         </div>

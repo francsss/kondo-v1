@@ -57,7 +57,7 @@ export function GuidePublishActions({
   return (
     <Card>
       <h2 className="font-black text-kondo-ink dark:text-white">Publishing</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+      <p className="mt-2 text-sm text-muted-foreground">
         {published
           ? "Live in the Student Hub guide library."
           : stepCount
@@ -65,7 +65,7 @@ export function GuidePublishActions({
             : "Add at least one step before publishing."}
       </p>
       {message ? (
-        <p className="mt-3 text-xs text-slate-400" role="status">
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}

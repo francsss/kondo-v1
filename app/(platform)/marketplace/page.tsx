@@ -147,7 +147,7 @@ export default async function MarketplacePage({
       <Card className="mt-8 bg-kondo-navy text-white">
         <form className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_130px_130px_160px_auto]">
           <label className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               className="h-11 w-full rounded-2xl bg-white pl-11 pr-4 text-sm text-kondo-ink"
               defaultValue={params.q}
@@ -229,7 +229,7 @@ export default async function MarketplacePage({
           >
             <span className="text-2xl">{category.icon}</span>
             <span className="mt-2 text-xs font-black">{category.name}</span>
-            <span className="mt-0.5 text-[10px] text-slate-400">
+            <span className="mt-0.5 text-[10px] text-muted-foreground">
               {category._count.listings}
             </span>
           </Link>
@@ -241,7 +241,9 @@ export default async function MarketplacePage({
           <h2 className="text-xl font-black text-kondo-ink dark:text-white">
             Available nearby
           </h2>
-          <p className="mt-1 text-xs text-slate-400">{total} active listings</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {total} active listings
+          </p>
         </div>
         <div className="hidden items-center gap-1.5 text-xs font-bold text-kondo-green sm:flex">
           <ShieldCheck className="h-4 w-4" /> No deposits or in-app payments
@@ -253,12 +255,12 @@ export default async function MarketplacePage({
         ))}
       </section>
       {!listings.length ? (
-        <Card className="mt-5 py-16 text-center text-sm text-slate-400">
+        <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
           No active listings match these filters.
         </Card>
       ) : null}
       <div className="mt-7 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {page} of {pageCount} · {total} listings
         </p>
         <div className="flex gap-2">

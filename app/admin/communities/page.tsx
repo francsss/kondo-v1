@@ -157,20 +157,20 @@ export default async function AdminCommunitiesPage({
                       OFFICIAL
                     </span>
                   ) : null}
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 dark:bg-white/10">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-muted-foreground dark:bg-white/10">
                     {community.status}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {community.type} · {community.joinPolicy} · Owner{" "}
                   {community.owner.fullName}
                 </p>
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-muted-foreground">
                 {community._count.members} members · {community._count.posts}{" "}
                 posts · {community._count.accessRequests} pending
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {formatRelativeDate(new Date(community.updatedAt))}
               </p>
             </Card>
@@ -183,12 +183,12 @@ export default async function AdminCommunitiesPage({
         universities={universities}
       />
       {!result.records.length ? (
-        <Card className="mt-6 py-16 text-center text-sm text-slate-400">
+        <Card className="mt-6 py-16 text-center text-sm text-muted-foreground">
           No communities match these filters.
         </Card>
       ) : null}
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} records
         </p>
         <div className="flex gap-2">

@@ -64,11 +64,11 @@ export default async function NotificationsPage({
           })
         ) : (
           <div className="px-6 py-16 text-center">
-            <Bell className="mx-auto h-8 w-8 text-slate-300" />
+            <Bell className="mx-auto h-8 w-8 text-muted-foreground" />
             <h2 className="mt-4 font-black text-kondo-ink dark:text-white">
               You’re all caught up
             </h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-muted-foreground">
               Useful updates will appear here.
             </p>
           </div>
@@ -76,7 +76,7 @@ export default async function NotificationsPage({
       </Card>
       {result.pageCount > 1 ? (
         <div className="mt-6 flex items-center justify-between">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Page {result.page} of {result.pageCount} · {result.total} updates
           </p>
           <div className="flex gap-2">

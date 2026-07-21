@@ -70,7 +70,9 @@ export default async function AdminCommunityPage({
             <p className="mt-3 font-bold text-kondo-ink dark:text-white">
               {community.owner.fullName}
             </p>
-            <p className="text-xs text-slate-400">{community.owner.email}</p>
+            <p className="text-xs text-muted-foreground">
+              {community.owner.email}
+            </p>
             <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
               <Stat label="Members" value={community.members.length} />
               <Stat label="Posts" value={community.posts.length} />
@@ -91,10 +93,10 @@ export default async function AdminCommunityPage({
             <h2 className="font-black text-kondo-ink dark:text-white">
               Community record
             </h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
               {community.description}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
               <span>{community.status}</span>
               <span>·</span>
               <span>{community.type}</span>
@@ -117,7 +119,7 @@ export default async function AdminCommunityPage({
                     <p className="text-sm font-bold text-kondo-ink dark:text-white">
                       {member.user.fullName}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {member.user.email}
                     </p>
                   </div>
@@ -145,7 +147,7 @@ export default async function AdminCommunityPage({
                   <p className="mt-1 font-bold text-kondo-ink dark:text-white">
                     {post.title ?? post.content.slice(0, 120)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {post.author.fullName} · {post._count.comments} comments ·{" "}
                     {post._count.reactions} reactions
                   </p>
@@ -162,7 +164,7 @@ export default async function AdminCommunityPage({
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-3 dark:bg-white/5">
-      <dt className="text-xs text-slate-400">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1 font-black text-kondo-ink dark:text-white">
         {value}
       </dd>

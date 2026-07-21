@@ -66,10 +66,10 @@ export const exploreAccentStyles: Record<
     label: "text-cyan-700 dark:text-cyan-300",
   },
   slate: {
-    icon: "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200",
+    icon: "bg-slate-100 text-muted-foreground dark:bg-white/10 dark:text-slate-200",
     gradient: "from-slate-600 via-slate-700 to-slate-950",
     glow: "bg-white/15",
-    label: "text-slate-600 dark:text-slate-300",
+    label: "text-muted-foreground",
   },
 };
 

@@ -121,7 +121,7 @@ export default async function AdminMarketplacePage({
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {listing.category.name} · {listing.city.name} ·{" "}
                   {listing.seller.fullName}
                 </p>
@@ -129,7 +129,7 @@ export default async function AdminMarketplacePage({
               <p className="font-black text-kondo-green">
                 {formatPrice(listing.priceFen)}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {listing._count.favorites} saved ·{" "}
                 {formatRelativeDate(new Date(listing.updatedAt))}
               </p>
@@ -138,7 +138,7 @@ export default async function AdminMarketplacePage({
         ))}
       </div>
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total}
         </p>
         <div className="flex gap-2">

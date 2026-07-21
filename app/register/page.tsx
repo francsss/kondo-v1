@@ -40,7 +40,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-kondo-sand px-5 py-6 dark:bg-[#0c1412] sm:px-10">
+    <main className="min-h-screen bg-background px-5 py-6 sm:px-10">
       <div className="mx-auto max-w-6xl">
         <KondoLogo />
         <div className="mt-10 grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
@@ -51,7 +51,7 @@ export default function RegisterPage() {
             <h1 className="mt-4 text-balance text-4xl font-black tracking-[-0.05em] text-kondo-ink dark:text-white sm:text-5xl">
               Your student life in China starts here.
             </h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-slate-500 dark:text-slate-400">
+            <p className="mt-5 max-w-md text-base leading-7 text-muted-foreground">
               Meet students who understand the journey, find trusted answers,
               and settle in with less friction.
             </p>
@@ -62,7 +62,7 @@ export default function RegisterPage() {
                 "A safer local student marketplace",
               ].map((item) => (
                 <div
-                  className="flex items-center gap-3 text-sm font-semibold text-slate-600 dark:text-slate-300"
+                  className="flex items-center gap-3 text-sm font-semibold text-muted-foreground"
                   key={item}
                 >
                   <span className="grid h-7 w-7 place-items-center rounded-full bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
@@ -73,11 +73,11 @@ export default function RegisterPage() {
               ))}
             </div>
           </section>
-          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-[#14201d] sm:p-8">
+          <section className="rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-soft sm:p-8">
             <h2 className="text-2xl font-black tracking-tight text-kondo-ink dark:text-white">
               Create your account
             </h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-muted-foreground">
               Your profile takes less than two minutes.
             </p>
             <form
@@ -118,7 +118,7 @@ export default function RegisterPage() {
                   />
                   <button
                     aria-label="Toggle password visibility"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                     onClick={() => setShowPassword((value) => !value)}
                     type="button"
                   >
@@ -129,7 +129,7 @@ export default function RegisterPage() {
                     )}
                   </button>
                 </span>
-                <span className="mt-1.5 block text-[11px] text-slate-400">
+                <span className="mt-1.5 block text-[11px] text-muted-foreground">
                   10+ characters, uppercase, lowercase, and a number.
                 </span>
               </label>
@@ -139,7 +139,7 @@ export default function RegisterPage() {
                 type="password"
                 autoComplete="new-password"
               />
-              <label className="flex items-start gap-3 text-xs leading-5 text-slate-500 sm:col-span-2">
+              <label className="flex items-start gap-3 text-xs leading-5 text-muted-foreground sm:col-span-2">
                 <input
                   className="mt-0.5 h-4 w-4 accent-kondo-green"
                   name="acceptedTerms"
@@ -178,7 +178,7 @@ export default function RegisterPage() {
                 </Button>
               </div>
             </form>
-            <p className="mt-6 text-center text-sm text-slate-500">
+            <p className="mt-6 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link className="font-black text-kondo-green" href="/login">
                 Sign in

@@ -38,12 +38,12 @@ export function ProfileView({
   const own = profile.viewer.isOwner;
   return (
     <div className="mx-auto max-w-[1100px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
-      <section className="relative overflow-hidden rounded-4xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#14201d]">
+      <section className="relative overflow-hidden rounded-4xl border border-border bg-card text-card-foreground">
         <div className="noise h-36 bg-gradient-to-br from-kondo-mint via-emerald-100 to-kondo-lime/70 dark:from-emerald-900/40 dark:to-lime-900/20" />
         <div className="relative px-6 pb-7 sm:px-8">
           <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <Avatar
-              className="h-24 w-24 border-4 border-white text-2xl dark:border-[#14201d]"
+              className="h-24 w-24 border-4 border-card text-2xl"
               firstName={profile.firstName}
               lastName={profile.lastName}
               mediaId={profile.avatar?.id}
@@ -73,10 +73,10 @@ export function ProfileView({
               </p>
             ) : null}
           </div>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {profile.bio ?? "Kondo student community member."}
           </p>
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-slate-400">
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-muted-foreground">
             {profile.location ? (
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="h-4 w-4" />{" "}
@@ -137,7 +137,7 @@ export function ProfileView({
                   </Link>
                 ))}
                 {!profile.communities.length ? (
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-muted-foreground">
                     No visible communities yet.
                   </p>
                 ) : null}
@@ -182,7 +182,7 @@ export function ProfileView({
             ) : profile.activity ? (
               <ActivityList items={profile.activity} />
             ) : (
-              <Card className="py-12 text-center text-sm text-slate-400">
+              <Card className="py-12 text-center text-sm text-muted-foreground">
                 This member keeps activity private.
               </Card>
             )}
@@ -199,7 +199,7 @@ function Count({ label, value }: { label: string; value: number | null }) {
       <p className="text-xl font-black text-kondo-ink dark:text-white">
         {value ?? "—"}
       </p>
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -219,7 +219,7 @@ function Tab({
       className={
         active
           ? "border-b-2 border-kondo-green px-1 pb-3 text-kondo-forest dark:text-emerald-300"
-          : "px-1 pb-3 text-slate-400 hover:text-kondo-green"
+          : "px-1 pb-3 text-muted-foreground hover:text-kondo-green"
       }
       href={href}
     >
@@ -240,17 +240,17 @@ function ActivityList({ items }: { items: ActivityItem[] }) {
             <h3 className="mt-2 font-black text-kondo-ink dark:text-white">
               {item.title}
             </h3>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+            <p className="mt-2 text-sm text-muted-foreground">
               {item.subtitle}
             </p>
-            <p className="mt-3 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-muted-foreground">
               {formatRelativeDate(new Date(item.createdAt))}
             </p>
           </Card>
         </Link>
       ))}
       {!items.length ? (
-        <Card className="py-12 text-center text-sm text-slate-400">
+        <Card className="py-12 text-center text-sm text-muted-foreground">
           No visible activity yet.
         </Card>
       ) : null}
@@ -275,14 +275,14 @@ function MarketplaceList({
             <p className="mt-2 text-sm font-bold text-kondo-green">
               {formatPrice(item.priceFen)}
             </p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               {item.category.icon} {item.category.name} · {item.city.name}
             </p>
           </Card>
         </Link>
       ))}
       {!items.length ? (
-        <Card className="py-12 text-center text-sm text-slate-400 sm:col-span-2">
+        <Card className="py-12 text-center text-sm text-muted-foreground sm:col-span-2">
           No active listings yet.
         </Card>
       ) : null}
@@ -302,17 +302,17 @@ function SavedList({ items }: { items: SavedItem[] }) {
             <h3 className="mt-2 font-black text-kondo-ink dark:text-white">
               {item.title}
             </h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+            <p className="mt-1 text-sm text-muted-foreground">
               {item.subtitle}
             </p>
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-muted-foreground">
               Saved {formatRelativeDate(new Date(item.savedAt))}
             </p>
           </Card>
         </Link>
       ))}
       {!items.length ? (
-        <Card className="py-12 text-center text-sm text-slate-400">
+        <Card className="py-12 text-center text-sm text-muted-foreground">
           No visible saved content yet.
         </Card>
       ) : null}

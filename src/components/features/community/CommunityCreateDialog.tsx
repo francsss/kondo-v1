@@ -86,10 +86,10 @@ export function CommunityCreateDialog({
         <div
           aria-labelledby="community-create-title"
           aria-modal="true"
-          className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-overlay/45 p-4 backdrop-blur-sm"
           role="dialog"
         >
-          <div className="my-6 w-full max-w-2xl rounded-4xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#14201d] sm:p-8">
+          <div className="my-6 w-full max-w-2xl rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
@@ -101,7 +101,7 @@ export function CommunityCreateDialog({
                 >
                   Create a community
                 </h2>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-muted-foreground">
                   New communities are reviewed before becoming publicly visible.
                 </p>
               </div>

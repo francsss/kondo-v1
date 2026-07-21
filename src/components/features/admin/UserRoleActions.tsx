@@ -50,7 +50,7 @@ export function UserRoleActions({
       <h2 className="font-black text-kondo-ink dark:text-white">
         Administrator role
       </h2>
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-muted-foreground">
         Restricted to Super Admins. Role changes revoke active sessions and are
         recorded in the audit log.
       </p>
@@ -73,7 +73,7 @@ export function UserRoleActions({
         value={reason}
       />
       {message ? (
-        <p className="mt-3 text-xs text-slate-400" role="status">
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}

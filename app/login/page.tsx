@@ -35,7 +35,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen bg-white dark:bg-[#0c1412] lg:grid-cols-[0.9fr_1.1fr]">
+    <main className="grid min-h-screen bg-background text-foreground lg:grid-cols-[0.9fr_1.1fr]">
       <section className="flex min-h-screen flex-col px-5 py-6 sm:px-10 lg:px-14">
         <KondoLogo />
         <div className="my-auto mx-auto w-full max-w-md py-12">
@@ -45,7 +45,7 @@ export default function LoginPage() {
           <h1 className="mt-3 text-4xl font-black tracking-[-0.05em] text-kondo-ink dark:text-white">
             Your people are here.
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Sign in to continue to your communities, guides, and student life in
             China.
           </p>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 />
                 <button
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   onClick={() => setShowPassword((value) => !value)}
                   type="button"
                 >
@@ -120,7 +120,7 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-          <p className="mt-7 text-center text-sm text-slate-500">
+          <p className="mt-7 text-center text-sm text-muted-foreground">
             New to Kondo?{" "}
             <Link
               className="font-black text-kondo-green hover:underline"
@@ -130,7 +130,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-        <p className="flex items-center gap-1.5 text-xs text-slate-400">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built for
           students.
         </p>

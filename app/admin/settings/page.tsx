@@ -70,7 +70,7 @@ export default async function AdminSettingsPage() {
                 <h2 className="font-black text-kondo-ink dark:text-white">
                   {label}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {description}
                 </p>
               </div>

@@ -79,7 +79,7 @@ export function PostActions({
         <MoreHorizontal className="h-4 w-4" />
       </Button>
       {open ? (
-        <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-soft dark:border-white/10 dark:bg-[#17231f]">
+        <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-soft">
           {isAuthor ? (
             <button
               className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10"

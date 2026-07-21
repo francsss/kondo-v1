@@ -61,13 +61,13 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <main className="overflow-hidden bg-kondo-sand text-kondo-ink dark:bg-[#0c1412] dark:text-white">
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/60 bg-kondo-sand/85 backdrop-blur-xl dark:border-white/10 dark:bg-[#0c1412]/85">
+    <main className="overflow-hidden bg-background text-foreground">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
           <KondoLogo />
           <nav
             aria-label="Marketing navigation"
-            className="hidden items-center gap-8 text-sm font-bold text-slate-500 md:flex"
+            className="hidden items-center gap-8 text-sm font-bold text-muted-foreground md:flex"
           >
             <a
               className="transition hover:text-kondo-forest dark:hover:text-emerald-300"
@@ -120,7 +120,7 @@ export default function LandingPage() {
             <br />
             <span className="text-kondo-green">Find your way.</span>
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-balance text-base leading-7 text-slate-500 dark:text-slate-400 sm:text-lg">
+          <p className="mx-auto mt-7 max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:text-lg">
             Community, trusted answers, a local marketplace, and practical
             guides—everything you need to feel at home while studying in China.
           </p>
@@ -134,15 +134,15 @@ export default function LandingPage() {
               <a href="#inside">See what’s inside</a>
             </Button>
           </div>
-          <p className="mt-5 text-xs font-semibold text-slate-400">
+          <p className="mt-5 text-xs font-semibold text-muted-foreground">
             Free for students · No payments · Privacy by design
           </p>
 
           <div className="relative mx-auto mt-16 max-w-6xl rounded-[32px] border border-slate-200 bg-white/80 p-2 shadow-[0_40px_100px_rgba(20,71,58,0.18)] backdrop-blur dark:border-white/10 dark:bg-white/5 sm:p-3">
             <div className="overflow-hidden rounded-[24px] bg-[#f7f7f3] text-left dark:bg-[#111c19]">
-              <div className="flex h-14 items-center gap-4 border-b border-slate-200 bg-white px-4 dark:border-white/10 dark:bg-[#14201d] sm:px-6">
+              <div className="flex h-14 items-center gap-4 border-b border-border bg-card px-4 text-card-foreground sm:px-6">
                 <KondoLogo href="#" size="sm" />
-                <div className="mx-auto hidden h-9 w-full max-w-sm items-center gap-2 rounded-full bg-slate-100 px-4 text-xs text-slate-400 sm:flex dark:bg-white/5">
+                <div className="mx-auto hidden h-9 w-full max-w-sm items-center gap-2 rounded-full bg-slate-100 px-4 text-xs text-muted-foreground sm:flex dark:bg-white/5">
                   <Search className="h-3.5 w-3.5" /> Search Kondo
                 </div>
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-amber-200 to-orange-400 text-[10px] font-black text-amber-950">
@@ -150,7 +150,7 @@ export default function LandingPage() {
                 </span>
               </div>
               <div className="grid min-h-[530px] sm:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[210px_minmax(0,1fr)_270px]">
-                <aside className="hidden border-r border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#14201d] sm:block">
+                <aside className="hidden border-r border-border bg-card p-4 text-card-foreground sm:block">
                   <div className="space-y-1">
                     {[
                       ["Home", "🏡"],
@@ -160,7 +160,7 @@ export default function LandingPage() {
                       ["Help center", "💬"],
                     ].map(([label, icon], index) => (
                       <div
-                        className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold ${index === 0 ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300" : "text-slate-400"}`}
+                        className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold ${index === 0 ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300" : "text-muted-foreground"}`}
                         key={label}
                       >
                         <span>{icon}</span>
@@ -193,7 +193,7 @@ export default function LandingPage() {
                       <div className="h-full w-[64%] rounded-full bg-kondo-lime" />
                     </div>
                   </div>
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#14201d]">
+                  <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-card-foreground">
                     <div className="flex gap-3">
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-200 to-fuchsia-400 text-[10px] font-black text-violet-950">
                         KN
@@ -201,7 +201,7 @@ export default function LandingPage() {
                       <div>
                         <p className="text-xs font-black">
                           Kwame N.{" "}
-                          <span className="font-normal text-slate-400">
+                          <span className="font-normal text-muted-foreground">
                             · 2h
                           </span>
                         </p>
@@ -213,11 +213,11 @@ export default function LandingPage() {
                     <p className="mt-4 text-sm font-black">
                       Where do you buy a student metro card?
                     </p>
-                    <p className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-300">
+                    <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
                       The office near the east gate now accepts passports. Go
                       before 4 PM and bring your admission letter...
                     </p>
-                    <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-[10px] font-bold text-slate-400 dark:border-white/10">
+                    <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-[10px] font-bold text-muted-foreground dark:border-white/10">
                       <span>♡ 28</span>
                       <span>◯ 12</span>
                       <span className="ml-auto">⌑</span>
@@ -225,7 +225,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <aside className="hidden border-l border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.02] lg:block">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                     Upcoming near you
                   </p>
                   <div className="mt-4 space-y-4">
@@ -240,14 +240,14 @@ export default function LandingPage() {
                         </span>
                         <div>
                           <p className="text-[11px] font-bold">{title}</p>
-                          <p className="mt-0.5 text-[9px] text-slate-400">
+                          <p className="mt-0.5 text-[9px] text-muted-foreground">
                             Beijing
                           </p>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <p className="mt-8 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  <p className="mt-8 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                     Your communities
                   </p>
                   <div className="mt-3 space-y-3">
@@ -274,9 +274,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y border-slate-200 bg-white py-8 dark:border-white/10 dark:bg-[#101a17]">
+      <section className="border-y border-border bg-card py-8 text-card-foreground">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-5 text-center sm:flex-row sm:text-left">
-          <p className="text-sm font-bold text-slate-400">
+          <p className="text-sm font-bold text-muted-foreground">
             Made for students from across Africa
           </p>
           <div className="flex flex-wrap justify-center gap-5 text-xl grayscale-[0.2]">
@@ -307,7 +307,7 @@ export default function LandingPage() {
             <br />
             More living.
           </h2>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-500 dark:text-slate-400">
+          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
             Kondo brings the parts of student life that usually live across
             group chats, old documents, and word of mouth into one calm, trusted
             place.
@@ -317,7 +317,7 @@ export default function LandingPage() {
           {features.map(
             ({ icon: Icon, eyebrow, title, description, color }) => (
               <article
-                className="group rounded-4xl border border-slate-200 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:shadow-lift dark:border-white/10 dark:bg-[#14201d] sm:p-9"
+                className="group rounded-4xl border border-border bg-card p-7 text-card-foreground transition duration-300 hover:-translate-y-1 hover:shadow-lift sm:p-9"
                 key={title}
               >
                 <span
@@ -331,7 +331,7 @@ export default function LandingPage() {
                 <h3 className="mt-2 text-2xl font-black tracking-tight">
                   {title}
                 </h3>
-                <p className="mt-3 max-w-md text-sm leading-7 text-slate-500 dark:text-slate-400">
+                <p className="mt-3 max-w-md text-sm leading-7 text-muted-foreground">
                   {description}
                 </p>
                 <span className="mt-7 inline-flex items-center gap-2 text-sm font-black text-kondo-forest transition group-hover:gap-3 dark:text-emerald-300">
@@ -392,7 +392,7 @@ export default function LandingPage() {
             <br />
             Never face them alone.
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-base">
+          <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
             Join the growing home for African students building their lives,
             studies, and friendships in China.
           </p>
@@ -408,11 +408,11 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <KondoLogo />
-            <p className="mt-3 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-muted-foreground">
               The digital home for African students in China.
             </p>
           </div>
-          <div className="flex flex-wrap gap-6 text-xs font-bold text-slate-400">
+          <div className="flex flex-wrap gap-6 text-xs font-bold text-muted-foreground">
             <Link href="/about">About</Link>
             <Link href="/guidelines">Guidelines</Link>
             <Link href="/privacy">Privacy</Link>

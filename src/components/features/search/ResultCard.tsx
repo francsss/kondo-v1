@@ -27,7 +27,9 @@ export function ResultCard({
           <span className="mt-1 block font-bold text-kondo-ink dark:text-white">
             {title}
           </span>
-          <span className="mt-1 block text-xs text-slate-400">{detail}</span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {detail}
+          </span>
         </span>
       </Card>
     </Link>

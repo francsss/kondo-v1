@@ -66,10 +66,10 @@ export default async function AdminReportDetailPage({
               <span className="rounded-full bg-orange-100 px-3 py-1.5 text-xs font-black text-orange-700 dark:bg-orange-400/10 dark:text-orange-300">
                 {report.status}
               </span>
-              <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600 dark:bg-white/5 dark:text-slate-300">
+              <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
                 {report.reason}
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted-foreground">
                 Updated {formatRelativeDate(report.updatedAt)}
               </span>
             </div>
@@ -110,10 +110,10 @@ export default async function AdminReportDetailPage({
               />
             </div>
             <div className="mt-6 rounded-3xl bg-slate-50 p-5 dark:bg-white/[0.03]">
-              <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
                 Member details
               </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {report.details || "No additional details were provided."}
               </p>
             </div>
@@ -122,7 +122,7 @@ export default async function AdminReportDetailPage({
                 <p className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                   {report.decision}
                 </p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                   {report.resolution}
                 </p>
               </div>
@@ -136,7 +136,7 @@ export default async function AdminReportDetailPage({
                 <h2 className="font-black text-kondo-ink dark:text-white">
                   Restricted evidence
                 </h2>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Access level: {report.permissions.evidenceLevel}. Evidence is
                   never returned to member endpoints.
                 </p>
@@ -151,7 +151,7 @@ export default async function AdminReportDetailPage({
                   <p className="font-black text-kondo-ink dark:text-white">
                     {evidence.label}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Captured {formatDate(evidence.capturedAt)}
                   </p>
                   {evidence.unavailable ? (
@@ -166,10 +166,10 @@ export default async function AdminReportDetailPage({
                           ? ` · @${evidence.profile.username}`
                           : ""}
                       </p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                         {evidence.profile.bio || "No profile bio was present."}
                       </p>
-                      <p className="mt-3 text-xs text-slate-400">
+                      <p className="mt-3 text-xs text-muted-foreground">
                         Audience: {evidence.profile.profileAudience} · Created{" "}
                         {new Date(
                           evidence.profile.profileCreatedAt,
@@ -192,7 +192,7 @@ export default async function AdminReportDetailPage({
                     </div>
                   ) : evidence.content ? (
                     <div className="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.03]">
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-black text-kondo-green">
                           {evidence.content.targetType}
                         </span>
@@ -205,18 +205,18 @@ export default async function AdminReportDetailPage({
                         {evidence.content.title ||
                           `${evidence.content.targetType} content`}
                       </p>
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {evidence.content.authorName}
                         {evidence.content.authorUsername
                           ? ` · @${evidence.content.authorUsername}`
                           : ""}{" "}
                         · {evidence.content.communityName}
                       </p>
-                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
                         {evidence.content.body}
                       </p>
                       {typeof evidence.content.priceFen === "number" ? (
-                        <p className="mt-2 text-xs font-bold text-slate-400">
+                        <p className="mt-2 text-xs font-bold text-muted-foreground">
                           ¥{(evidence.content.priceFen / 100).toFixed(2)} ·{" "}
                           {evidence.content.categoryName} ·{" "}
                           {evidence.content.cityName}
@@ -246,17 +246,17 @@ export default async function AdminReportDetailPage({
                           className="rounded-2xl bg-slate-50 p-3 dark:bg-white/[0.03]"
                           key={message.id ?? `${message.createdAt}-${index}`}
                         >
-                          <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400">
+                          <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
                             <span className="font-bold">{message.sender}</span>
                             <span>
                               {new Date(message.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600 dark:text-slate-300">
+                          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
                             {message.body ?? `[${message.type} message]`}
                           </p>
                           {message.attachmentName ? (
-                            <p className="mt-2 text-xs text-slate-400">
+                            <p className="mt-2 text-xs text-muted-foreground">
                               Attachment: {message.attachmentName}
                             </p>
                           ) : null}
@@ -280,17 +280,17 @@ export default async function AdminReportDetailPage({
                     className="rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.03]"
                     key={note.id}
                   >
-                    <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span>{note.author?.fullName ?? "Former staff"}</span>
                       <span>{formatRelativeDate(note.createdAt)}</span>
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                       {note.body}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   No internal notes have been added.
                 </p>
               )}
@@ -311,13 +311,13 @@ export default async function AdminReportDetailPage({
                     <span className="font-black text-kondo-ink dark:text-white">
                       {log.action}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       {log.actor?.fullName ?? "System"} ·{" "}
                       {formatRelativeDate(log.createdAt)}
                     </span>
                   </div>
                   {log.newValue ? (
-                    <pre className="mt-2 overflow-x-auto rounded-2xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-white/[0.03] dark:text-slate-400">
+                    <pre className="mt-2 overflow-x-auto rounded-2xl bg-slate-50 p-3 text-xs text-muted-foreground dark:bg-white/[0.03] dark:text-muted-foreground">
                       {JSON.stringify(log.newValue, null, 2)}
                     </pre>
                   ) : null}
@@ -332,7 +332,7 @@ export default async function AdminReportDetailPage({
             <h2 className="font-black text-kondo-ink dark:text-white">
               Case actions
             </h2>
-            <p className="mt-1 text-xs leading-5 text-slate-400">
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
               Every mutation and internal note is recorded in AuditLog within
               the same database transaction.
             </p>
@@ -369,7 +369,7 @@ function CaseField({
     <div className="flex items-start gap-3 rounded-2xl border border-slate-100 p-4 dark:border-white/10">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green" />
       <div>
-        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
           {label}
         </p>
         <p className="mt-1 break-all text-sm font-bold text-kondo-ink dark:text-white">

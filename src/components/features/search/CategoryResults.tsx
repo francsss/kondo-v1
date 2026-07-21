@@ -111,7 +111,7 @@ function renderItem(category: Category, item: Record<string, unknown>) {
               <h2 className="mt-1 font-bold text-kondo-ink dark:text-white">
                 {user.firstName} {user.lastName}
               </h2>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {user.countryEmoji} {user.affiliation}
               </p>
             </div>
@@ -176,7 +176,7 @@ export function CategoryResults({
         {items.map((item) => renderItem(category, item))}
       </div>
       {!items.length && initialized && !loading ? (
-        <Card className="mt-5 py-16 text-center text-sm text-slate-400">
+        <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
           No more results.
         </Card>
       ) : null}

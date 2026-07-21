@@ -115,13 +115,13 @@ export function CityHubStatusActions({
               ? "rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"
               : status === "REVIEW"
                 ? "rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-700 dark:bg-amber-400/10 dark:text-amber-300"
-                : "rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300"
+                : "rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-muted-foreground dark:bg-white/10 dark:text-muted-foreground"
           }
         >
           {status}
         </span>
       </div>
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-muted-foreground">
         Draft → Review → Published. Only administrators can publish. Publishing
         overwrites the live public snapshot; sending a hub back to draft leaves
         the last published version live while you revise.

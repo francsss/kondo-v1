@@ -67,7 +67,7 @@ export default async function AdminUserDetailPage({
                 <h2 className="text-xl font-black text-kondo-ink dark:text-white">
                   {user.fullName}
                 </h2>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {user.username ? `@${user.username} · ` : ""}
                   {user.role} · {user.status}
                 </p>
@@ -78,7 +78,7 @@ export default async function AdminUserDetailPage({
                 </Button>
               </div>
             </div>
-            <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-slate-500 dark:text-slate-300">
+            <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
               {user.bio ?? "No bio."}
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -129,11 +129,11 @@ export default async function AdminUserDetailPage({
                     <p className="font-bold text-kondo-ink dark:text-white">
                       {request.type.replaceAll("_", " ")}
                     </p>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/10 dark:text-muted-foreground">
                       {request.status}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     {request.reason ?? "No member reason provided."}
                   </p>
                   {request.responseNote ? (
@@ -151,7 +151,9 @@ export default async function AdminUserDetailPage({
                 </div>
               ))}
               {!user.accountRequests.length ? (
-                <p className="text-sm text-slate-400">No account requests.</p>
+                <p className="text-sm text-muted-foreground">
+                  No account requests.
+                </p>
               ) : null}
             </div>
           </Card>
@@ -172,7 +174,7 @@ export default async function AdminUserDetailPage({
                     <span className="block font-bold text-kondo-ink dark:text-white">
                       {report.targetType} · {report.reason}
                     </span>
-                    <span className="mt-1 block text-xs text-slate-400">
+                    <span className="mt-1 block text-xs text-muted-foreground">
                       {report.status} ·{" "}
                       {formatRelativeDate(new Date(report.createdAt))}
                     </span>
@@ -180,7 +182,7 @@ export default async function AdminUserDetailPage({
                 </Link>
               ))}
               {!user.reports.length ? (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   No reports about this member.
                 </p>
               ) : null}
@@ -191,7 +193,7 @@ export default async function AdminUserDetailPage({
             <h2 className="font-black text-kondo-ink dark:text-white">
               Public content summary
             </h2>
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-muted-foreground">
               Public posts, active Marketplace listings, and public community
               memberships only. Private conversations are never shown here.
             </p>
@@ -269,7 +271,7 @@ export default async function AdminUserDetailPage({
                   className="rounded-2xl bg-slate-50 p-3 dark:bg-white/5"
                   key={label}
                 >
-                  <dt className="text-xs text-slate-400">{label}</dt>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="mt-1 text-xl font-black text-kondo-ink dark:text-white">
                     {value}
                   </dd>
@@ -296,7 +298,7 @@ function Fact({
     <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-white/5">
       <Icon className="mt-0.5 h-4 w-4 text-kondo-green" />
       <div>
-        <p className="text-xs font-bold text-slate-400">{label}</p>
+        <p className="text-xs font-bold text-muted-foreground">{label}</p>
         <p className="mt-1 break-all text-sm font-semibold text-kondo-ink dark:text-white">
           {value}
         </p>
@@ -308,7 +310,7 @@ function Fact({
 function Visibility({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 dark:border-white/10">
-      <dt className="text-sm text-slate-500 dark:text-slate-300">{label}</dt>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="text-xs font-black text-kondo-green">{value}</dd>
     </div>
   );
@@ -325,7 +327,7 @@ function ContentLinks({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+      <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
       <div className="mt-3 space-y-2">
@@ -338,13 +340,13 @@ function ContentLinks({
             <span className="block font-bold text-kondo-ink dark:text-white">
               {item.label}
             </span>
-            <span className="mt-1 block text-xs text-slate-400">
+            <span className="mt-1 block text-xs text-muted-foreground">
               {item.meta}
             </span>
           </Link>
         ))}
         {!items.length ? (
-          <p className="text-sm text-slate-400">{empty}</p>
+          <p className="text-sm text-muted-foreground">{empty}</p>
         ) : null}
       </div>
     </div>

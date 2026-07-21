@@ -130,9 +130,9 @@ export default async function AdminMediaPage({
                     width={960}
                   />
                 ) : media.kind === "DOCUMENT" ? (
-                  <FileText className="h-10 w-10 text-slate-300" />
+                  <FileText className="h-10 w-10 text-muted-foreground" />
                 ) : (
-                  <ImageIcon className="h-10 w-10 text-slate-300" />
+                  <ImageIcon className="h-10 w-10 text-muted-foreground" />
                 )}
               </div>
               <div className="mt-4 flex items-start justify-between gap-3">
@@ -140,12 +140,12 @@ export default async function AdminMediaPage({
                   <p className="truncate font-black text-kondo-ink dark:text-white">
                     {media.originalFileName}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {media.owner?.name ?? "Deleted owner"} ·{" "}
                     {formatRelativeDate(new Date(media.createdAt))}
                   </p>
                 </div>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/10 dark:text-muted-foreground">
                   {media.status}
                 </span>
               </div>
@@ -158,13 +158,13 @@ export default async function AdminMediaPage({
       </div>
 
       {!result.records.length ? (
-        <Card className="mt-6 py-16 text-center text-sm text-slate-400">
+        <Card className="mt-6 py-16 text-center text-sm text-muted-foreground">
           No media matches these filters.
         </Card>
       ) : null}
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} records
         </p>
         <div className="flex gap-2">

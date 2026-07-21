@@ -151,7 +151,7 @@ export function MessageComposer({
   return (
     <form className="relative" onSubmit={submit}>
       {emojiOpen ? (
-        <div className="absolute bottom-full left-0 mb-2 flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-soft dark:border-white/10 dark:bg-[#17231f]">
+        <div className="absolute bottom-full left-0 mb-2 flex flex-wrap gap-1 rounded-2xl border border-border bg-card p-2 text-card-foreground shadow-soft">
           {emojis.map((emoji) => (
             <button
               aria-label={`Add ${emoji}`}
@@ -179,7 +179,7 @@ export function MessageComposer({
               <p className="truncate text-sm font-bold text-kondo-ink dark:text-white">
                 {attachment.name}
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-muted-foreground">
                 {(attachment.size / 1024 / 1024).toFixed(1)} MB
               </p>
             </div>
@@ -238,7 +238,7 @@ export function MessageComposer({
         </Button>
         <textarea
           aria-label="Message"
-          className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 text-kondo-ink outline-none placeholder:text-slate-400 dark:text-white"
+          className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 text-kondo-ink outline-none placeholder:text-muted-foreground dark:text-white"
           disabled={disabled || pending}
           maxLength={2000}
           onChange={(event) => setBody(event.target.value)}
@@ -262,7 +262,7 @@ export function MessageComposer({
           )}
         </Button>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 px-2 text-[11px] text-slate-400">
+      <div className="mt-2 flex items-center justify-between gap-3 px-2 text-[11px] text-muted-foreground">
         <span>
           {error ||
             (pending

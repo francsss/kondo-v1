@@ -52,7 +52,7 @@ export function GuideCard({
         </span>
         <ArrowUpRight
           aria-hidden="true"
-          className="h-5 w-5 text-slate-300 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-kondo-green"
+          className="h-5 w-5 text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-kondo-green"
         />
       </div>
       <Link className="mt-5" href={`/guides/${guide.slug}`}>
@@ -60,11 +60,11 @@ export function GuideCard({
           {guide.title}
         </h2>
       </Link>
-      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+      <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
         {guide.summary}
       </p>
       <div className="mt-auto pt-5">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
+        <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Clock3 aria-hidden="true" className="h-3.5 w-3.5" />{" "}
             {guide.estimatedMinutes} min

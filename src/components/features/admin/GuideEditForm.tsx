@@ -186,7 +186,7 @@ export function GuideEditForm({
           />
         </label>
         {message ? (
-          <p className="text-xs text-slate-400" role="status">
+          <p className="text-xs text-muted-foreground" role="status">
             {message}
           </p>
         ) : null}

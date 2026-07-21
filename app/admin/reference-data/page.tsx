@@ -90,7 +90,7 @@ export default async function AdminReferenceDataPage({
       />
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} records
         </p>
         <div className="flex gap-2">

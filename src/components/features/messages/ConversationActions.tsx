@@ -132,9 +132,9 @@ export function ConversationActions({
         <MoreHorizontal className="h-5 w-5" />
       </Button>
       {open ? (
-        <div className="absolute right-0 top-12 z-20 w-72 rounded-3xl border border-slate-200 bg-white p-3 shadow-lift dark:border-white/10 dark:bg-[#17231f]">
+        <div className="absolute right-0 top-12 z-20 w-72 rounded-3xl border border-border bg-card p-3 text-card-foreground shadow-lift">
           <button
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-muted-foreground hover:bg-slate-100 dark:text-muted-foreground dark:hover:bg-white/10"
             disabled={pending}
             onClick={toggleArchive}
             type="button"
@@ -147,7 +147,7 @@ export function ConversationActions({
             {archived ? "Restore conversation" : "Archive conversation"}
           </button>
           <button
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-muted-foreground hover:bg-slate-100 dark:text-muted-foreground dark:hover:bg-white/10"
             disabled={pending}
             onClick={toggleBlock}
             type="button"
@@ -203,7 +203,7 @@ export function ConversationActions({
             </form>
           ) : null}
           {status ? (
-            <p className="px-3 pt-2 text-xs text-slate-500">{status}</p>
+            <p className="px-3 pt-2 text-xs text-muted-foreground">{status}</p>
           ) : null}
         </div>
       ) : null}

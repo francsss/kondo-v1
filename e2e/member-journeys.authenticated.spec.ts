@@ -25,6 +25,60 @@ test.describe("authenticated member journeys", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 
+  test("toggles the color theme immediately and persists it", async ({
+    page,
+  }) => {
+    await page.goto("/home");
+    const originalTheme = await page.evaluate(async () => {
+      const response = await fetch("/api/settings", { credentials: "include" });
+      const payload = await response.json();
+      return payload.preferences.theme as "LIGHT" | "DARK" | "SYSTEM";
+    });
+
+    // Start from a deterministic light state without reloading after the click
+    // that is under test.
+    await page.evaluate(async () => {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: "LIGHT" }),
+      });
+      localStorage.setItem("theme", "light");
+    });
+    await page.reload();
+    await expect(page.locator("html")).not.toHaveClass(/dark/);
+
+    const toggle = page.getByRole("button", { name: "Switch to dark mode" });
+    const savedPreference = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/settings") &&
+        response.request().method() === "PATCH",
+    );
+    await toggle.click();
+    await expect(page.locator("html")).toHaveClass(/dark/, { timeout: 1_000 });
+    const preferenceResponse = await savedPreference;
+    expect(preferenceResponse.ok()).toBe(true);
+    await expect(
+      page.getByRole("button", { name: "Switch to light mode" }),
+    ).toBeEnabled();
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await page.goto("/communities");
+    await expect(page.locator("html")).toHaveClass(/dark/);
+
+    await page.evaluate(async (theme) => {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme }),
+      });
+      localStorage.setItem("theme", theme.toLowerCase());
+    }, originalTheme);
+  });
+
   test("can open the profile edit page", async ({ page }) => {
     await page.goto("/profile/edit");
     await expect(page).toHaveURL(/\/profile\/edit/);

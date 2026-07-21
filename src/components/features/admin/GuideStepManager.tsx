@@ -156,7 +156,7 @@ export function GuideStepManager({
         Steps ({steps.length})
       </h2>
       {message ? (
-        <p className="mt-2 text-xs text-slate-400" role="status">
+        <p className="mt-2 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}
@@ -183,7 +183,7 @@ export function GuideStepManager({
                     <p className="font-bold text-kondo-ink dark:text-white">
                       {step.order}. {step.title}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-slate-500 dark:text-slate-300">
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
                       {step.content}
                     </p>
                     {step.actionUrl ? (
@@ -196,7 +196,7 @@ export function GuideStepManager({
                         {step.actionUrl}
                       </a>
                     ) : null}
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {step._count.progress} member
                       {step._count.progress === 1 ? "" : "s"} completed
                     </p>

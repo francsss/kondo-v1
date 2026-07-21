@@ -192,14 +192,14 @@ export function MarketplaceCategoryManager({
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-            <p className="text-xs text-slate-400 lg:col-span-full">
+            <p className="text-xs text-muted-foreground lg:col-span-full">
               {category._count.listings} listings use this category.
             </p>
           </form>
         ))}
       </div>
       {message ? (
-        <p className="mt-3 text-xs text-slate-400" role="status">
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}

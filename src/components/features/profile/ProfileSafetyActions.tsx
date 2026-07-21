@@ -75,8 +75,8 @@ export function ProfileSafetyActions({
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-center gap-2">
-        <ShieldAlert className="h-4 w-4 text-slate-400" />
-        <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+        <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+        <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
           Safety
         </p>
       </div>
@@ -124,9 +124,7 @@ export function ProfileSafetyActions({
         </form>
       ) : null}
       {feedback ? (
-        <p className="mt-3 text-xs text-slate-500 dark:text-slate-300">
-          {feedback}
-        </p>
+        <p className="mt-3 text-xs text-muted-foreground">{feedback}</p>
       ) : null}
     </div>
   );

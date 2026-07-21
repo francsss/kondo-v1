@@ -66,7 +66,7 @@ function ResetPasswordForm() {
         <h1 className="mt-4 text-2xl font-black text-kondo-ink dark:text-white">
           Password updated
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Every device was signed out for your security. Redirecting to sign in…
         </p>
       </div>
@@ -97,7 +97,7 @@ function ResetPasswordForm() {
             />
             <button
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               onClick={() => setShowPassword((value) => !value)}
               type="button"
             >
@@ -146,7 +146,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="grid min-h-screen place-items-center bg-white px-5 py-10 dark:bg-[#0c1412]">
+    <main className="grid min-h-screen place-items-center bg-background px-5 py-10 text-foreground">
       <div className="w-full max-w-md">
         <KondoLogo />
         <div className="mt-10">
@@ -154,7 +154,7 @@ export default function ResetPasswordPage() {
             <ResetPasswordForm />
           </Suspense>
         </div>
-        <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+        <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built for
           students.
         </p>

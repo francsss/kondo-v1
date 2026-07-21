@@ -305,7 +305,7 @@ export function ReportCaseActions({
 
       {feedback ? (
         <p
-          className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 dark:bg-white/5 dark:text-slate-300"
+          className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-muted-foreground dark:bg-white/5 dark:text-muted-foreground"
           role="status"
         >
           {feedback}

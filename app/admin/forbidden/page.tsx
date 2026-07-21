@@ -11,7 +11,7 @@ export default function AdminForbiddenPage() {
         <h1 className="mt-5 text-2xl font-black text-kondo-ink dark:text-white">
           Access denied
         </h1>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
           Your current operational role does not include the permission needed
           for this page.
         </p>

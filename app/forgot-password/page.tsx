@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-white px-5 py-10 dark:bg-[#0c1412]">
+    <main className="grid min-h-screen place-items-center bg-background px-5 py-10 text-foreground">
       <div className="w-full max-w-md">
         <KondoLogo />
         <div className="mt-10">
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
               <h1 className="mt-4 text-2xl font-black text-kondo-ink dark:text-white">
                 Check your email
               </h1>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 If that address has a Kondo account, a reset link is on its way.
                 It expires in one hour.
               </p>
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
               <h1 className="mt-3 text-3xl font-black tracking-[-0.05em] text-kondo-ink dark:text-white">
                 Forgot your password?
               </h1>
-              <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 Enter the email on your account and we&apos;ll send a link to
                 reset it.
               </p>
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
                   )}
                 </Button>
               </form>
-              <p className="mt-7 text-center text-sm text-slate-500">
+              <p className="mt-7 text-center text-sm text-muted-foreground">
                 <Link
                   className="font-black text-kondo-green hover:underline"
                   href="/login"
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
             </>
           )}
         </div>
-        <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+        <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> Secure, private, and built for
           students.
         </p>

@@ -37,7 +37,7 @@ export default async function AccountSettingsPage() {
           <h2 className="font-black text-kondo-ink dark:text-white">
             Sign out
           </h2>
-          <p className="mb-4 mt-2 text-sm leading-6 text-slate-500 dark:text-slate-300">
+          <p className="mb-4 mt-2 text-sm leading-6 text-muted-foreground">
             This immediately revokes the current database session and removes
             its session cookie.
           </p>

@@ -89,11 +89,11 @@ export default async function AdminAuditPage({
                     <span className="font-black text-kondo-ink dark:text-white">
                       {log.action}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500 dark:bg-white/5 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
                       {log.entityType}
                     </span>
                   </div>
-                  <p className="mt-1 break-all text-xs text-slate-400">
+                  <p className="mt-1 break-all text-xs text-muted-foreground">
                     {log.entityId} · {log.actor?.fullName ?? "System"} ·{" "}
                     {formatRelativeDate(log.createdAt)}
                   </p>
@@ -102,7 +102,7 @@ export default async function AdminAuditPage({
                       <summary className="cursor-pointer text-xs font-bold text-kondo-green">
                         View redacted change data
                       </summary>
-                      <pre className="mt-2 overflow-x-auto rounded-2xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-white/[0.03] dark:text-slate-400">
+                      <pre className="mt-2 overflow-x-auto rounded-2xl bg-slate-50 p-3 text-xs text-muted-foreground dark:bg-white/[0.03] dark:text-muted-foreground">
                         {JSON.stringify(
                           { oldValue: log.oldValue, newValue: log.newValue },
                           null,
@@ -112,7 +112,7 @@ export default async function AdminAuditPage({
                     </details>
                   ) : null}
                   {log.ipAddress || log.userAgent ? (
-                    <p className="mt-3 text-[11px] text-slate-400">
+                    <p className="mt-3 text-[11px] text-muted-foreground">
                       Security metadata: {log.ipAddress ?? "unknown IP"} ·{" "}
                       {log.userAgent ?? "unknown agent"}
                     </p>
@@ -123,7 +123,7 @@ export default async function AdminAuditPage({
           ))
         ) : (
           <Card className="py-16 text-center">
-            <ScrollText className="mx-auto h-8 w-8 text-slate-300" />
+            <ScrollText className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-4 font-black text-kondo-ink dark:text-white">
               No audit events match these filters.
             </p>
@@ -132,7 +132,7 @@ export default async function AdminAuditPage({
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} events
         </p>
         <div className="flex gap-2">

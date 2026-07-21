@@ -110,7 +110,7 @@ export function PostComposer({
     <>
       {triggerVariant === "composer" ? (
         <button
-          className="flex h-11 w-full items-center rounded-full bg-slate-100 px-4 text-left text-sm text-slate-400 transition hover:bg-slate-200/70 dark:bg-white/5 dark:hover:bg-white/10"
+          className="flex h-11 w-full items-center rounded-full bg-slate-100 px-4 text-left text-sm text-muted-foreground transition hover:bg-slate-200/70 dark:bg-white/5 dark:hover:bg-white/10"
           onClick={() => setOpen(true)}
           type="button"
         >
@@ -126,10 +126,10 @@ export function PostComposer({
         <div
           aria-labelledby="post-composer-title"
           aria-modal="true"
-          className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-overlay/45 p-4 backdrop-blur-sm"
           role="dialog"
         >
-          <div className="my-6 w-full max-w-xl rounded-4xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#14201d] sm:p-7">
+          <div className="my-6 w-full max-w-xl rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-2xl sm:p-7">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
@@ -248,7 +248,7 @@ export function PostComposer({
                 type="file"
               />
               <button
-                className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-left text-sm text-slate-500 transition hover:border-kondo-green dark:border-white/15"
+                className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-left text-sm text-muted-foreground transition hover:border-kondo-green dark:border-white/15"
                 onClick={() => filesRef.current?.click()}
                 type="button"
               >
@@ -258,7 +258,7 @@ export function PostComposer({
                   : "Add up to four images"}
               </button>
               {type === "EVENT" && !canAnnounce ? (
-                <p className="text-xs leading-5 text-slate-400">
+                <p className="text-xs leading-5 text-muted-foreground">
                   Events submitted by members require validation from community
                   staff before publication.
                 </p>

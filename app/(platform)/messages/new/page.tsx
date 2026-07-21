@@ -63,7 +63,7 @@ export default async function NewMessagePage({
               <h1 className="truncate text-lg font-black text-kondo-ink dark:text-white">
                 {recipient.firstName} {recipient.lastName}
               </h1>
-              <p className="truncate text-xs text-slate-400">
+              <p className="truncate text-xs text-muted-foreground">
                 {recipient.university?.shortName ??
                   recipient.university?.name ??
                   "Kondo member"}
@@ -77,7 +77,7 @@ export default async function NewMessagePage({
             <h2 className="mt-4 text-xl font-black text-kondo-ink dark:text-white">
               Start a private conversation
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               The conversation is created only when you send the first message.
               Be respectful and never share payment passwords or verification
               codes.

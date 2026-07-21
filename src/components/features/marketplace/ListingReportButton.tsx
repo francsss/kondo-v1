@@ -42,7 +42,7 @@ export function ListingReportButton({ listingId }: { listingId: string }) {
         {pending ? "Submitting…" : "Report listing"}
       </Button>
       {message ? (
-        <p className="mt-1 text-xs text-slate-400" role="status">
+        <p className="mt-1 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}

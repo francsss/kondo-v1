@@ -13,7 +13,7 @@ export default function AdminError({ reset }: { reset: () => void }) {
         <h1 className="mt-5 text-2xl font-black text-kondo-ink dark:text-white">
           Admin workspace unavailable
         </h1>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
           The operation could not be completed. No internal error or private
           case data has been exposed.
         </p>

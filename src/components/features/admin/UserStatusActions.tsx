@@ -87,12 +87,12 @@ export function UserStatusActions({
         placeholder="Reason for this change (10+ characters, required)"
         value={reason}
       />
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-muted-foreground">
         Suspending or deactivating this account immediately revokes all of its
         active sessions.
       </p>
       {message ? (
-        <p className="mt-3 text-xs text-slate-400" role="status">
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}

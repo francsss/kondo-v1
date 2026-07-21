@@ -57,7 +57,7 @@ export function CityHubDetailsEditor({
             <h2 className="font-black text-kondo-ink dark:text-white">
               City identity
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Saved independently from every content section.
             </p>
           </div>
@@ -274,7 +274,7 @@ export function CityHubDetailsEditor({
 
       {message ? (
         <p
-          className="text-sm font-semibold text-slate-600 dark:text-slate-300"
+          className="text-sm font-semibold text-muted-foreground"
           role="status"
         >
           {message}
@@ -308,7 +308,7 @@ function Field({
   disabled?: boolean;
 }) {
   return (
-    <label className="block text-xs font-bold text-slate-500 dark:text-slate-300">
+    <label className="block text-xs font-bold text-muted-foreground">
       {label}
       {multiline ? (
         <textarea

@@ -11,7 +11,7 @@ export default function PlatformNotFound() {
         <h1 className="mt-4 text-xl font-black text-kondo-ink dark:text-white">
           Page not found
         </h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+        <p className="mt-2 text-sm text-muted-foreground">
           This page may have moved, expired, or be unavailable to your account.
         </p>
         <Button asChild className="mt-5">

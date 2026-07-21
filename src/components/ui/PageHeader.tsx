@@ -19,10 +19,10 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-balance text-3xl font-black tracking-[-0.045em] text-kondo-ink dark:text-white sm:text-4xl">
+        <h1 className="text-balance text-3xl font-black tracking-[-0.045em] text-foreground sm:text-4xl">
           {title}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400 sm:text-base">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
           {description}
         </p>
       </div>

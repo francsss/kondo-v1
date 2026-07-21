@@ -85,7 +85,7 @@ export function OfficialCommunityCreateForm({
       <h2 className="font-black text-kondo-ink dark:text-white">
         Create official community
       </h2>
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-muted-foreground">
         Official communities are created active and verified. They remain
         explicitly distinct from user-created communities.
       </p>
@@ -167,7 +167,7 @@ export function OfficialCommunityCreateForm({
         </div>
       </form>
       {message ? (
-        <p className="mt-4 text-sm text-slate-500" role="status">
+        <p className="mt-4 text-sm text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}
@@ -185,7 +185,7 @@ function OptionSelect({
   options: Option[];
 }) {
   return (
-    <label className="text-xs font-bold text-slate-500">
+    <label className="text-xs font-bold text-muted-foreground">
       {label}
       <select
         className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"

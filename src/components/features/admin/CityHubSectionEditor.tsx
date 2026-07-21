@@ -183,7 +183,7 @@ export function CityHubSectionEditor({
             <h2 className="font-black text-kondo-ink dark:text-white">
               {section.title} settings
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               This form only updates the current section. Its entries are saved
               separately below.
             </p>
@@ -278,7 +278,7 @@ export function CityHubSectionEditor({
         </div>
         {message ? (
           <p
-            className="mt-4 text-sm font-semibold text-slate-600 dark:text-slate-300"
+            className="mt-4 text-sm font-semibold text-muted-foreground"
             role="status"
           >
             {message}
@@ -291,7 +291,7 @@ export function CityHubSectionEditor({
           <h2 className="text-xl font-black text-kondo-ink dark:text-white">
             {section.shortTitle} entries
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             {section.entries.length} entries. Every entry has its own save and
             delete operation.
           </p>
@@ -329,7 +329,7 @@ export function CityHubSectionEditor({
           </Card>
         ))}
         {!section.entries.length ? (
-          <Card className="py-14 text-center text-sm text-slate-400">
+          <Card className="py-14 text-center text-sm text-muted-foreground">
             No entries in this section yet. You can create one without editing
             any other City Hub section.
           </Card>
@@ -431,7 +431,7 @@ function EntryEditor({
           <h3 className="font-black text-kondo-ink dark:text-white">
             {create ? "New entry" : entry?.title}
           </h3>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             {entryGuidance[value.type]}
           </p>
         </div>
@@ -563,7 +563,7 @@ function EntryEditor({
       </div>
       {message ? (
         <p
-          className="mt-4 text-sm font-semibold text-slate-600 dark:text-slate-300"
+          className="mt-4 text-sm font-semibold text-muted-foreground"
           role="status"
         >
           {message}
@@ -587,7 +587,7 @@ function Field({
   disabled?: boolean;
 }) {
   return (
-    <label className="block text-xs font-bold text-slate-500 dark:text-slate-300">
+    <label className="block text-xs font-bold text-muted-foreground">
       {label}
       {multiline ? (
         <textarea
@@ -622,7 +622,7 @@ function SelectField({
   disabled?: boolean;
 }) {
   return (
-    <label className="block text-xs font-bold text-slate-500 dark:text-slate-300">
+    <label className="block text-xs font-bold text-muted-foreground">
       {label}
       <select
         className={inputClass}

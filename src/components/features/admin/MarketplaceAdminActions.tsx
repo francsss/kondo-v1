@@ -86,7 +86,7 @@ export function MarketplaceAdminActions({
         value={note}
       />
       {message ? (
-        <p className="mt-3 text-xs text-slate-400" role="status">
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
           {message}
         </p>
       ) : null}

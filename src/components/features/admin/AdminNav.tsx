@@ -135,7 +135,7 @@ export function AdminNav({
               className={
                 active
                   ? "inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                  : "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 transition hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                  : "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-muted-foreground transition hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
               }
               href={href}
               key={href}

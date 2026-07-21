@@ -50,7 +50,7 @@ export default async function AdminCityHubDetailPage({
         <h2 className="font-black text-kondo-ink dark:text-white">
           Live public snapshot
         </h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+        <p className="mt-2 text-sm text-muted-foreground">
           {hub.published
             ? `Published version is live at /explore/${hub.slug}${
                 hub.publishedAt
@@ -83,7 +83,7 @@ export default async function AdminCityHubDetailPage({
           <h2 className="mt-2 text-2xl font-black text-kondo-ink dark:text-white">
             Choose what you want to manage
           </h2>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+          <p className="mt-2 text-sm text-muted-foreground">
             Every section and every entry is saved separately. Opening one area
             does not require completing or resaving another.
           </p>
@@ -94,17 +94,17 @@ export default async function AdminCityHubDetailPage({
             <Card className="h-full transition hover:border-kondo-green/40 hover:shadow-lift">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-muted-foreground dark:bg-white/10 dark:text-slate-200">
                     <Settings2 className="h-5 w-5" />
                   </span>
                   <h3 className="mt-4 font-black text-kondo-ink dark:text-white">
                     Hub details
                   </h3>
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     City identity, introduction, signals, and impact points.
                   </p>
                 </div>
-                <ArrowRight className="mt-2 h-5 w-5 text-slate-300" />
+                <ArrowRight className="mt-2 h-5 w-5 text-muted-foreground" />
               </div>
             </Card>
           </Link>
@@ -123,14 +123,14 @@ export default async function AdminCityHubDetailPage({
                     <h3 className="mt-2 font-black text-kondo-ink dark:text-white">
                       {section.title}
                     </h3>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                    <p className="mt-2 text-sm text-muted-foreground">
                       {section.summary}
                     </p>
-                    <p className="mt-4 text-xs font-bold text-slate-400">
+                    <p className="mt-4 text-xs font-bold text-muted-foreground">
                       {section.entries.length} entries
                     </p>
                   </div>
-                  <ArrowRight className="mt-2 h-5 w-5 shrink-0 text-slate-300" />
+                  <ArrowRight className="mt-2 h-5 w-5 shrink-0 text-muted-foreground" />
                 </div>
               </Card>
             </Link>

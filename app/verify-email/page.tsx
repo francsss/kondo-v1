@@ -45,7 +45,7 @@ function VerifyEmailBody() {
     return (
       <div className="text-center">
         <Loader2 className="mx-auto h-10 w-10 animate-spin text-kondo-green" />
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-4 text-sm text-muted-foreground">
           Verifying your email…
         </p>
       </div>
@@ -59,7 +59,7 @@ function VerifyEmailBody() {
         <h1 className="mt-4 text-2xl font-black text-kondo-ink dark:text-white">
           Couldn&apos;t verify your email
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {error || "This link is missing its token."} Request a new one from
           Settings → Account.
         </p>
@@ -76,7 +76,7 @@ function VerifyEmailBody() {
       <h1 className="mt-4 text-2xl font-black text-kondo-ink dark:text-white">
         Email verified
       </h1>
-      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
         Thanks for confirming your address.
       </p>
       <Button asChild className="mt-6" size="lg">
@@ -88,7 +88,7 @@ function VerifyEmailBody() {
 
 export default function VerifyEmailPage() {
   return (
-    <main className="grid min-h-screen place-items-center bg-white px-5 py-10 dark:bg-[#0c1412]">
+    <main className="grid min-h-screen place-items-center bg-background px-5 py-10 text-foreground">
       <div className="w-full max-w-md">
         <KondoLogo />
         <div className="mt-10">

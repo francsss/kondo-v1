@@ -82,10 +82,12 @@ export function LanguageSettings({
                   <p className="font-black text-kondo-ink dark:text-white">
                     {language.nativeName}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">{language.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {language.name}
+                  </p>
                 </div>
                 {active ? (
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-kondo-green text-white">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground">
                     <Check className="h-3.5 w-3.5" strokeWidth={3} />
                   </span>
                 ) : null}
@@ -95,9 +97,7 @@ export function LanguageSettings({
         })}
       </div>
       {feedback ? (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">
-          {feedback}
-        </p>
+        <p className="mt-4 text-sm text-muted-foreground">{feedback}</p>
       ) : null}
     </Card>
   );

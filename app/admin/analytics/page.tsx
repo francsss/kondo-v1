@@ -87,7 +87,7 @@ export default async function AdminAnalyticsPage({
       <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(([label, value]) => (
           <Card key={label}>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {label}
             </p>
             <p className="mt-3 text-3xl font-black text-kondo-ink dark:text-white">
@@ -103,7 +103,7 @@ export default async function AdminAnalyticsPage({
             <h2 className="font-black text-kondo-ink dark:text-white">
               Recorded product events
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Event counts from AnalyticsEvent during the selected period.
             </p>
           </div>
@@ -112,10 +112,12 @@ export default async function AdminAnalyticsPage({
           {eventGroups.map((event) => (
             <div key={event.name}>
               <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-bold text-muted-foreground">
                   {event.name.replaceAll("_", " ")}
                 </span>
-                <span className="text-slate-400">{event._count._all}</span>
+                <span className="text-muted-foreground">
+                  {event._count._all}
+                </span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-slate-100 dark:bg-white/10">
                 <div
@@ -128,7 +130,7 @@ export default async function AdminAnalyticsPage({
             </div>
           ))}
           {!eventGroups.length ? (
-            <p className="py-10 text-center text-sm text-slate-400">
+            <p className="py-10 text-center text-sm text-muted-foreground">
               No analytics events were recorded in this period.
             </p>
           ) : null}

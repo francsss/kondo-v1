@@ -231,7 +231,7 @@ export function ListingForm({
               : "Add 1–8 validated images"}
         </span>
       </button>
-      <p className="text-xs leading-5 text-slate-400">
+      <p className="text-xs leading-5 text-muted-foreground">
         Kondo never handles payment. Do not request deposits, gift cards,
         cryptocurrency, or off-platform advance transfers.
       </p>

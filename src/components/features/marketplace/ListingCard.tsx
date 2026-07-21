@@ -57,7 +57,7 @@ export function ListingCard({
   }
 
   return (
-    <article className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lift dark:border-white/10 dark:bg-[#14201d]">
+    <article className="group overflow-hidden rounded-3xl border border-border bg-card text-card-foreground transition duration-300 hover:-translate-y-1 hover:shadow-lift">
       <div
         className={cn(
           "relative grid aspect-[4/3] place-items-center overflow-hidden bg-gradient-to-br",
@@ -85,7 +85,7 @@ export function ListingCard({
         <button
           aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
           aria-pressed={favorite}
-          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-slate-500 shadow-sm backdrop-blur transition hover:scale-105 hover:text-rose-500 dark:bg-slate-950/70 dark:text-slate-300"
+          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-muted-foreground shadow-sm backdrop-blur transition hover:scale-105 hover:text-rose-500 dark:bg-slate-950/70 dark:text-muted-foreground"
           onClick={toggleFavorite}
           type="button"
         >
@@ -104,7 +104,7 @@ export function ListingCard({
             >
               <h2 className="truncate">{listing.title}</h2>
             </Link>
-            <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin aria-hidden="true" className="h-3 w-3" />{" "}
               {listing.city.name}
             </p>
@@ -113,7 +113,7 @@ export function ListingCard({
             {formatPrice(listing.priceFen)}
           </p>
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-400 dark:border-white/10">
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-muted-foreground dark:border-white/10">
           <span>
             {listing.seller.firstName} {listing.seller.lastName[0]}.
           </span>

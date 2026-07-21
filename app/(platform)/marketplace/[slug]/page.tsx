@@ -97,15 +97,15 @@ export default async function ListingDetailPage({
           <p className="mt-3 text-3xl font-black text-kondo-forest dark:text-emerald-300">
             {formatPrice(listing.priceFen)}{" "}
             {listing.isNegotiable ? (
-              <span className="text-sm font-bold text-slate-400">
+              <span className="text-sm font-bold text-muted-foreground">
                 negotiable
               </span>
             ) : null}
           </p>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-400">
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" /> {listing.city.name}
           </p>
-          <p className="mt-6 whitespace-pre-line text-sm leading-7 text-slate-600 dark:text-slate-300">
+          <p className="mt-6 whitespace-pre-line text-sm leading-7 text-muted-foreground">
             {listing.description}
           </p>
           <Card className="mt-6 flex items-center gap-3 p-4">
@@ -117,7 +117,7 @@ export default async function ListingDetailPage({
               <p className="font-bold text-kondo-ink dark:text-white">
                 {listing.seller.firstName} {listing.seller.lastName}
               </p>
-              <p className="truncate text-xs text-slate-400">
+              <p className="truncate text-xs text-muted-foreground">
                 {listing.seller.country?.emoji}{" "}
                 {listing.seller.university?.shortName ?? "Kondo member"}
               </p>
@@ -139,7 +139,7 @@ export default async function ListingDetailPage({
               userId={listing.seller.id}
             />
           )}
-          <p className="mt-3 text-center text-xs leading-5 text-slate-400">
+          <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
             Meet in a public place. Kondo never handles payment or asks for a
             deposit.
           </p>

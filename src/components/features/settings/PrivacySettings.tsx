@@ -112,7 +112,7 @@ export function PrivacySettings({
               <span className="block font-bold text-kondo-ink dark:text-white">
                 {label}
               </span>
-              <span className="mt-1 block text-sm text-slate-500 dark:text-slate-300">
+              <span className="mt-1 block text-sm text-muted-foreground">
                 {description}
               </span>
             </span>
@@ -127,15 +127,13 @@ export function PrivacySettings({
             </select>
           </label>
         ))}
-        <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-500 dark:bg-white/5 dark:text-slate-300">
+        <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
           Your email and phone number remain private regardless of these
           selections. Private-community content is never revealed by a profile
           preference.
         </p>
         {feedback ? (
-          <p className="text-sm text-slate-500 dark:text-slate-300">
-            {feedback}
-          </p>
+          <p className="text-sm text-muted-foreground">{feedback}</p>
         ) : null}
         <Button disabled={pending} type="submit">
           <Save className="h-4 w-4" />

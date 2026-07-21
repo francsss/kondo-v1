@@ -98,7 +98,7 @@ export default async function AdminUsersPage({
       <div className="mt-6 space-y-3">
         {result.users.map((user) => (
           <Link
-            className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-kondo-green dark:border-white/10 dark:bg-[#14201d] sm:flex-row sm:items-center"
+            className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5 text-card-foreground transition hover:-translate-y-0.5 hover:border-primary sm:flex-row sm:items-center"
             href={`/admin/users/${user.id}`}
             key={user.id}
           >
@@ -112,18 +112,18 @@ export default async function AdminUsersPage({
                 {user.fullName}
                 {user.username ? ` · @${user.username}` : ""}
               </p>
-              <p className="mt-1 truncate text-xs text-slate-400">
+              <p className="mt-1 truncate text-xs text-muted-foreground">
                 {user.email} · {user.university?.name ?? "No university"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/10 dark:text-muted-foreground">
                 {user.status}
               </span>
               <span className="rounded-full bg-kondo-mint px-2.5 py-1 text-[10px] font-black text-kondo-green dark:bg-emerald-400/10">
                 {user.activeRequestCount} requests
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted-foreground">
                 Joined {formatRelativeDate(new Date(user.createdAt))}
               </span>
             </div>
@@ -131,8 +131,8 @@ export default async function AdminUsersPage({
         ))}
         {!result.users.length ? (
           <Card className="py-16 text-center">
-            <Users className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="mt-4 text-sm text-slate-400">
+            <Users className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-4 text-sm text-muted-foreground">
               No users match these filters.
             </p>
           </Card>
@@ -140,7 +140,7 @@ export default async function AdminUsersPage({
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} users
         </p>
         <div className="flex gap-2">

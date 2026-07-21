@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   const { countries, cities, universities } =
     await getOnboardingReferenceData();
   return (
-    <main className="min-h-screen bg-kondo-sand px-5 py-6 dark:bg-[#0c1412] sm:px-10">
+    <main className="min-h-screen bg-background px-5 py-6 sm:px-10">
       <div className="mx-auto max-w-6xl">
         <KondoLogo />
         <OnboardingFlow

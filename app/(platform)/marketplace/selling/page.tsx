@@ -96,7 +96,7 @@ export default async function SellerDashboard({
                 <h2 className="font-black text-kondo-ink dark:text-white">
                   {listing.title}
                 </h2>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500 dark:bg-white/10">
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/10">
                   {listing.status}
                 </span>
                 {listing.fraudScore >= 40 ? (
@@ -108,7 +108,7 @@ export default async function SellerDashboard({
               <p className="mt-2 font-black text-kondo-green">
                 {formatPrice(listing.priceFen)}
               </p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {listing._count.favorites} saved · Updated{" "}
                 {formatRelativeDate(new Date(listing.updatedAt))}
                 {listing.expiresAt
@@ -131,13 +131,13 @@ export default async function SellerDashboard({
         ))}
       </div>
       {!result.records.length ? (
-        <Card className="mt-6 py-16 text-center text-sm text-slate-400">
+        <Card className="mt-6 py-16 text-center text-sm text-muted-foreground">
           No listings in this view.
         </Card>
       ) : null}
       {result.pageCount > 1 ? (
         <div className="mt-6 flex items-center justify-between">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Page {result.page} of {result.pageCount} · {result.total} listings
           </p>
           <div className="flex gap-2">

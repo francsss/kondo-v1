@@ -6,25 +6,57 @@
   color-scheme: light;
   --background: 248 247 242;
   --foreground: 16 24 40;
-  --surface: 255 255 255;
-  --border: 225 229 222;
-  --muted: 102 112 133;
-  --brand: 16 163 109;
+  --card: 255 255 255;
+  --card-foreground: 16 24 40;
+  --primary: 7 122 79;
+  --primary-foreground: 255 255 255;
+  --secondary: 223 247 236;
+  --secondary-foreground: 18 91 74;
+  --muted: 242 244 240;
+  --muted-foreground: 71 84 103;
+  --border: 208 214 206;
+  --destructive: 185 28 28;
+  --destructive-foreground: 255 255 255;
+  --success: 4 120 87;
+  --success-foreground: 255 255 255;
+  --warning: 180 83 9;
+  --warning-foreground: 255 255 255;
+  --info: 29 78 216;
+  --info-foreground: 255 255 255;
+  --ring: 7 122 79;
+  --overlay: 15 23 42;
+  --brand: 7 122 79;
 }
 
 .dark {
   color-scheme: dark;
   --background: 12 20 18;
   --foreground: 238 244 240;
-  --surface: 20 31 28;
-  --border: 45 60 55;
-  --muted: 159 174 168;
+  --card: 20 31 28;
+  --card-foreground: 238 244 240;
+  --primary: 65 205 148;
+  --primary-foreground: 10 36 27;
+  --secondary: 28 54 46;
+  --secondary-foreground: 220 248 236;
+  --muted: 25 39 35;
+  --muted-foreground: 174 190 183;
+  --border: 57 73 67;
+  --destructive: 248 113 113;
+  --destructive-foreground: 51 8 8;
+  --success: 74 222 128;
+  --success-foreground: 7 40 24;
+  --warning: 251 191 36;
+  --warning-foreground: 58 30 2;
+  --info: 125 170 255;
+  --info-foreground: 9 28 67;
+  --ring: 65 205 148;
+  --overlay: 2 6 23;
   --brand: 65 205 148;
 }
 
 @layer base {
   * {
-    @apply border-slate-200 dark:border-white/10;
+    @apply border-border;
     box-sizing: border-box;
   }
 
@@ -34,8 +66,7 @@
 
   body {
     margin: 0;
-    background: rgb(var(--background));
-    color: rgb(var(--foreground));
+    @apply bg-background text-foreground;
     font-family:
       Inter,
       ui-sans-serif,
@@ -49,11 +80,25 @@
   }
 
   ::selection {
-    background: rgba(16, 163, 109, 0.2);
+    background: rgb(var(--primary) / 0.22);
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-kondo-green ring-offset-2 ring-offset-white dark:ring-offset-[#0c1412];
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply text-foreground placeholder:text-muted-foreground;
+  }
+
+  select option {
+    @apply bg-card text-card-foreground;
+  }
+
+  :disabled {
+    @apply cursor-not-allowed;
   }
 }
 
@@ -75,18 +120,26 @@ textarea {
   }
 
   .surface {
-    background: rgb(var(--surface));
+    @apply bg-card text-card-foreground;
   }
 
   .hairline {
-    border-color: rgb(var(--border));
+    @apply border-border;
   }
 
   .muted-copy {
-    color: rgb(var(--muted));
+    @apply text-muted-foreground;
   }
 
   .noise {
+    position: relative;
+  }
+
+  .noise::before {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
     background-image: radial-gradient(
       rgba(23, 59, 53, 0.06) 0.7px,
       transparent 0.7px

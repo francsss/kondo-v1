@@ -19,7 +19,7 @@ export function Avatar({
       <span
         aria-label={name}
         className={cn(
-          "inline-grid h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white dark:bg-white/5 dark:ring-[#14201d]",
+          "inline-grid h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted ring-2 ring-card",
           className,
         )}
         role="img"
@@ -39,7 +39,7 @@ export function Avatar({
     <span
       aria-label={name}
       className={cn(
-        "inline-grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br text-xs font-black ring-2 ring-white dark:ring-[#14201d]",
+        "inline-grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br text-xs font-black ring-2 ring-card",
         stableGradient(name),
         className,
       )}

@@ -139,7 +139,7 @@ export function CommunityManagePanel({
               <h2 className="font-black text-kondo-ink dark:text-white">
                 Community settings
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Identity, access policy and cover
               </p>
             </div>
@@ -214,7 +214,7 @@ export function CommunityManagePanel({
               </Button>
             </form>
           ) : (
-            <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-500 dark:bg-white/5 dark:text-slate-300">
+            <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
               This user-created community keeps control of its identity and
               cover. Platform administrators can moderate members and content
               below without rewriting community-owned metadata.
@@ -236,7 +236,7 @@ export function CommunityManagePanel({
                   <p className="font-bold text-kondo-ink dark:text-white">
                     {member.user.fullName}
                   </p>
-                  <p className="truncate text-xs text-slate-400">
+                  <p className="truncate text-xs text-muted-foreground">
                     {member.user.email}
                   </p>
                 </div>
@@ -312,7 +312,7 @@ export function CommunityManagePanel({
                 className="rounded-2xl border border-slate-100 p-4 dark:border-white/10"
                 key={post.id}
               >
-                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                   <span>{post.type}</span>
                   <span>·</span>
                   <span>{post.status}</span>
@@ -324,7 +324,7 @@ export function CommunityManagePanel({
                 <h3 className="mt-2 font-bold text-kondo-ink dark:text-white">
                   {post.title ?? post.content.slice(0, 100)}
                 </h3>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   By {post.authorName}
                   {post.eventAt
                     ? ` · ${new Date(post.eventAt).toLocaleString()}`
@@ -385,7 +385,9 @@ export function CommunityManagePanel({
               </div>
             ))}
             {!posts.length ? (
-              <p className="text-sm text-slate-400">No posts to moderate.</p>
+              <p className="text-sm text-muted-foreground">
+                No posts to moderate.
+              </p>
             ) : null}
           </div>
         </Card>
@@ -435,9 +437,11 @@ export function CommunityManagePanel({
                 <p className="text-sm font-bold text-kondo-ink dark:text-white">
                   {request.user.fullName}
                 </p>
-                <p className="text-xs text-slate-400">{request.user.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  {request.user.email}
+                </p>
                 {request.note ? (
-                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     {request.note}
                   </p>
                 ) : null}
@@ -466,7 +470,9 @@ export function CommunityManagePanel({
               </div>
             ))}
             {!requests.length ? (
-              <p className="text-sm text-slate-400">No pending requests.</p>
+              <p className="text-sm text-muted-foreground">
+                No pending requests.
+              </p>
             ) : null}
           </div>
         </Card>
@@ -479,7 +485,7 @@ export function CommunityManagePanel({
                 Archive community
               </h2>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Archiving hides the community from public discovery while
               preserving its members, content and audit history.
             </p>

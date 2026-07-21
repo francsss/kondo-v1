@@ -75,7 +75,7 @@ export default async function MessageSafetyPage() {
                 {value.toLocaleString()}
               </span>
             </div>
-            <p className="mt-4 text-sm font-bold text-slate-500 dark:text-slate-300">
+            <p className="mt-4 text-sm font-bold text-muted-foreground">
               {label}
             </p>
           </Card>
@@ -89,7 +89,7 @@ export default async function MessageSafetyPage() {
             <h2 className="font-black text-kondo-ink dark:text-white">
               Privacy boundary
             </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Administrators cannot browse raw private conversations. Message
               evidence is available only inside a member-created report and is
               redacted according to the reviewer&apos;s permission level.
@@ -104,7 +104,7 @@ export default async function MessageSafetyPage() {
             <h2 className="font-black text-kondo-ink dark:text-white">
               Recent conversation reports
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Report-bound evidence only
             </p>
           </div>
@@ -122,7 +122,7 @@ export default async function MessageSafetyPage() {
                 <p className="font-bold text-kondo-ink dark:text-white">
                   {report.reason} · {report.status}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {report.assigneeName
                     ? `Assigned to ${report.assigneeName}`
                     : "Unassigned"}{" "}
@@ -135,14 +135,14 @@ export default async function MessageSafetyPage() {
             </div>
           ))}
           {overview.recentReports.length === 0 ? (
-            <p className="px-5 py-12 text-center text-sm text-slate-400">
+            <p className="px-5 py-12 text-center text-sm text-muted-foreground">
               No conversation reports have been submitted.
             </p>
           ) : null}
         </div>
       </Card>
 
-      <p className="mt-5 text-xs text-slate-400">
+      <p className="mt-5 text-xs text-muted-foreground">
         {overview.metrics.clearedMemberships.toLocaleString()} participant
         histories are hidden for their owners while shared records remain
         retained for the other participant and report evidence.

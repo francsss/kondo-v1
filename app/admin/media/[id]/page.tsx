@@ -55,8 +55,8 @@ export default async function AdminMediaDetailPage({
                 />
               ) : (
                 <div className="text-center">
-                  <FileText className="mx-auto h-12 w-12 text-slate-300" />
-                  <p className="mt-3 text-sm font-semibold text-slate-400">
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-semibold text-muted-foreground">
                     {media.status === "ACTIVE" || media.retainedAt
                       ? "Document preview is disabled; delivery forces download."
                       : "The file is not available for delivery."}
@@ -90,7 +90,7 @@ export default async function AdminMediaDetailPage({
                   <p className="text-sm font-bold text-kondo-ink dark:text-white">
                     {log.action.replaceAll("_", " ")}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {log.actor?.name ?? "System"} ·{" "}
                     {formatRelativeDate(new Date(log.createdAt))}
                   </p>
@@ -110,7 +110,7 @@ export default async function AdminMediaDetailPage({
                 <h2 className="font-black text-kondo-ink dark:text-white">
                   Validation record
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Storage keys are deliberately hidden.
                 </p>
               </div>
@@ -196,7 +196,7 @@ export default async function AdminMediaDetailPage({
               <h2 className="font-black text-kondo-ink dark:text-white">
                 Administrative removal
               </h2>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Delivery is disabled and storage deletion is retried if the
                 provider is temporarily unavailable. Metadata remains audited.
               </p>
@@ -217,8 +217,8 @@ export default async function AdminMediaDetailPage({
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-1 border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-white/10">
-      <dt className="text-xs font-bold text-slate-400">{label}</dt>
-      <dd className="break-words font-semibold text-slate-600 dark:text-slate-200">
+      <dt className="text-xs font-bold text-muted-foreground">{label}</dt>
+      <dd className="break-words font-semibold text-muted-foreground dark:text-slate-200">
         {value}
       </dd>
     </div>

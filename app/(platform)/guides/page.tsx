@@ -60,15 +60,15 @@ export default async function GuidesPage({
           <h2 className="mt-5 text-balance text-3xl font-black tracking-[-0.04em] text-kondo-ink dark:text-white sm:text-4xl">
             China feels easier when someone shows you the steps.
           </h2>
-          <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
             Every guide is written around real student tasks, with short steps
             you can finish and save as you go.
           </p>
           <form className="mt-6 flex h-12 max-w-md items-center gap-3 rounded-2xl bg-white px-4 shadow-sm dark:bg-white/10">
-            <Search className="h-4 w-4 text-slate-400" />
+            <Search className="h-4 w-4 text-muted-foreground" />
             <input
               aria-label="Search guides"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               defaultValue={q}
               name="q"
               placeholder="What do you need help with?"
@@ -93,7 +93,7 @@ export default async function GuidesPage({
               selectedCategory === category.value ||
               (!selectedCategory && !category.value)
                 ? "whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                : "whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-muted-foreground dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
             }
             href={
               category.value ? `/guides?category=${category.value}` : "/guides"

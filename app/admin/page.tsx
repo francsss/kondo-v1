@@ -178,12 +178,14 @@ export default async function AdminPage() {
               >
                 <Icon className="h-4 w-4" />
               </span>
-              <span className="text-xs font-bold text-slate-400">Live</span>
+              <span className="text-xs font-bold text-muted-foreground">
+                Live
+              </span>
             </div>
             <p className="mt-5 text-3xl font-black tracking-tight text-kondo-ink dark:text-white">
               {value.toLocaleString()}
             </p>
-            <p className="mt-1 text-sm text-slate-400">{label}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{label}</p>
           </Card>
         ))}
       </section>
@@ -194,7 +196,7 @@ export default async function AdminPage() {
               <h2 className="font-black text-kondo-ink dark:text-white">
                 Weekly engagement
               </h2>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Events across the last seven days
               </p>
             </div>
@@ -211,7 +213,7 @@ export default async function AdminPage() {
                     className="group flex flex-1 flex-col items-center gap-2"
                     key={event.name}
                   >
-                    <span className="text-[10px] font-bold text-slate-400 opacity-0 transition group-hover:opacity-100">
+                    <span className="text-[10px] font-bold text-muted-foreground opacity-0 transition group-hover:opacity-100">
                       {event._count}
                     </span>
                     <div
@@ -220,14 +222,14 @@ export default async function AdminPage() {
                         height: `${Math.max(16, (event._count / max) * 170)}px`,
                       }}
                     />
-                    <span className="max-w-full truncate text-[9px] font-semibold text-slate-400">
+                    <span className="max-w-full truncate text-[9px] font-semibold text-muted-foreground">
                       {event.name.split("_")[0]}
                     </span>
                   </div>
                 );
               })
             ) : (
-              <div className="m-auto text-center text-sm text-slate-400">
+              <div className="m-auto text-center text-sm text-muted-foreground">
                 Analytics will populate as students use Kondo.
               </div>
             )}
@@ -253,14 +255,14 @@ export default async function AdminPage() {
                     <span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-black text-orange-700 dark:bg-orange-400/10 dark:text-orange-300">
                       {report.status}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-muted-foreground">
                       {formatRelativeDate(report.createdAt)}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-bold text-kondo-ink dark:text-white">
                     {report.reason} · {report.targetType}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Reported by{" "}
                     {report.reporter
                       ? `${report.reporter.firstName} ${report.reporter.lastName}`
@@ -269,7 +271,7 @@ export default async function AdminPage() {
                 </div>
               ))
             ) : (
-              <p className="py-12 text-center text-sm text-slate-400">
+              <p className="py-12 text-center text-sm text-muted-foreground">
                 No open reports. Nice and quiet.
               </p>
             )}
@@ -282,7 +284,7 @@ export default async function AdminPage() {
             <h2 className="font-black text-kondo-ink dark:text-white">
               New students
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Recent account activity
             </p>
           </div>
@@ -294,7 +296,7 @@ export default async function AdminPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="border-y border-slate-100 bg-slate-50 text-xs text-slate-400 dark:border-white/10 dark:bg-white/[0.03]">
+            <thead className="border-y border-slate-100 bg-slate-50 text-xs text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]">
               <tr>
                 <th className="px-5 py-3 font-semibold">Student</th>
                 <th className="px-5 py-3 font-semibold">University</th>
@@ -317,20 +319,22 @@ export default async function AdminPage() {
                         <p className="font-bold text-kondo-ink dark:text-white">
                           {user.firstName} {user.lastName}
                         </p>
-                        <p className="text-xs text-slate-400">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.email}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-slate-500 dark:text-slate-300">
+                  <td className="px-5 py-3 text-muted-foreground">
                     {user.country?.emoji}{" "}
                     {user.university?.shortName ?? "Onboarding"}
                   </td>
                   <td className="px-5 py-3">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500 dark:bg-white/5 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-xs text-slate-400">
+                  <td className="px-5 py-3 text-xs text-muted-foreground">
                     {formatRelativeDate(user.createdAt)}
                   </td>
                   <td className="px-5 py-3">
@@ -355,7 +359,7 @@ export default async function AdminPage() {
             <h2 className="font-black text-kondo-ink dark:text-white">
               Recent administrative activity
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Latest persisted audit events
             </p>
           </div>
@@ -372,7 +376,7 @@ export default async function AdminPage() {
               <p className="text-sm font-bold text-kondo-ink dark:text-white">
                 {entry.action.replaceAll("_", " ")}
               </p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {entry.entityType} ·{" "}
                 {entry.actor
                   ? `${entry.actor.firstName} ${entry.actor.lastName}`
@@ -382,7 +386,9 @@ export default async function AdminPage() {
             </div>
           ))}
           {!recentAudit.length ? (
-            <p className="text-sm text-slate-400">No audit events yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No audit events yet.
+            </p>
           ) : null}
         </div>
       </Card>

@@ -46,7 +46,7 @@ export function CityHubCreateForm({
       <h2 className="font-black text-kondo-ink dark:text-white">
         New city hub
       </h2>
-      <p className="mt-1 text-xs text-slate-400">
+      <p className="mt-1 text-xs text-muted-foreground">
         Seed from an existing registry city to start with its full content, or
         create an empty draft to build from scratch.
       </p>
@@ -85,7 +85,7 @@ export function CityHubCreateForm({
           </span>
         </label>
         {registryCities.length ? (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Registry cities available to seed from:{" "}
             {registryCities.map((c) => c.slug).join(", ")}.
           </p>

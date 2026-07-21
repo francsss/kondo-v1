@@ -131,7 +131,7 @@ export default async function CommunitiesPage({
             <input name="type" type="hidden" value={normalizedFilter} />
           ) : null}
           <label className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent pl-11 pr-4 text-sm outline-none focus:border-kondo-green dark:border-white/10"
               defaultValue={params.q}
@@ -153,7 +153,7 @@ export default async function CommunitiesPage({
               className={
                 active
                   ? "whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                  : "whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                  : "whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-muted-foreground hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
               }
               href={href({ type: filter.value, q: params.q })}
               key={filter.label}
@@ -170,13 +170,13 @@ export default async function CommunitiesPage({
         ))}
       </section>
       {!result.communities.length ? (
-        <Card className="mt-5 py-16 text-center text-sm text-slate-400">
+        <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
           No communities match this view.
         </Card>
       ) : null}
 
       <div className="mt-7 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} communities
         </p>
         <div className="flex gap-2">

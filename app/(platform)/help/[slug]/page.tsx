@@ -54,7 +54,7 @@ export default async function QuestionPage({
               {question.author.firstName} {question.author.lastName}{" "}
               {question.author.country?.emoji}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               {question.author.university?.shortName ?? "Kondo member"} ·{" "}
               {formatRelativeDate(question.createdAt)}
             </p>
@@ -71,7 +71,7 @@ export default async function QuestionPage({
         <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] text-kondo-ink dark:text-white">
           {question.title}
         </h1>
-        <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-slate-600 dark:text-slate-300">
+        <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-muted-foreground">
           {question.body}
         </p>
       </Card>
@@ -94,7 +94,7 @@ export default async function QuestionPage({
               key={answer.id}
             >
               {best ? (
-                <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-kondo-green px-3 py-1 text-xs font-black text-white">
+                <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-black text-primary-foreground">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Best answer
                 </div>
               ) : null}
@@ -108,13 +108,13 @@ export default async function QuestionPage({
                     {answer.author.firstName} {answer.author.lastName}{" "}
                     {answer.author.country?.emoji}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {answer.author.university?.shortName ?? "Student"} ·{" "}
                     {formatRelativeDate(answer.createdAt)}
                   </p>
                 </div>
               </div>
-              <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600 dark:text-slate-300">
+              <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">
                 {answer.body}
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

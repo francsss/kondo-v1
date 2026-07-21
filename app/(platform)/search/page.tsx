@@ -74,28 +74,28 @@ export default async function SearchPage({
   return (
     <div className="mx-auto max-w-[1040px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
       <form
-        className="flex h-16 items-center gap-4 rounded-3xl border border-slate-200 bg-white px-5 shadow-soft dark:border-white/10 dark:bg-[#14201d]"
+        className="flex h-16 items-center gap-4 rounded-3xl border border-border bg-card px-5 text-card-foreground shadow-soft"
         role="search"
       >
         <Search className="h-5 w-5 text-kondo-green" />
         <input
           autoFocus
-          className="w-full bg-transparent text-lg font-semibold text-kondo-ink outline-none placeholder:font-normal placeholder:text-slate-400 dark:text-white"
+          className="w-full bg-transparent text-lg font-semibold text-kondo-ink outline-none placeholder:font-normal placeholder:text-muted-foreground dark:text-white"
           defaultValue={q}
           name="q"
           placeholder="Search all of Kondo"
         />
-        <kbd className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-400 dark:border-white/10 dark:bg-white/5">
+        <kbd className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-muted-foreground dark:border-white/10 dark:bg-white/5">
           Enter
         </kbd>
       </form>
       {q.length < 2 ? (
         <div className="py-24 text-center">
-          <Search className="mx-auto h-9 w-9 text-slate-300" />
+          <Search className="mx-auto h-9 w-9 text-muted-foreground" />
           <h1 className="mt-4 text-xl font-black text-kondo-ink dark:text-white">
             One search for your whole student life
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             Find people, communities, answers, guides, posts, and marketplace
             items.
           </p>
@@ -111,7 +111,7 @@ export default async function SearchPage({
                 “{q}”
               </h1>
             </div>
-            <p className="text-sm text-slate-400">{total} results</p>
+            <p className="text-sm text-muted-foreground">{total} results</p>
           </div>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             {results.communities.map((item) => (
@@ -175,7 +175,7 @@ export default async function SearchPage({
                     <h2 className="mt-1 font-bold text-kondo-ink dark:text-white">
                       {item.firstName} {item.lastName}
                     </h2>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {item.countryEmoji} {item.affiliation}
                     </p>
                   </div>

@@ -100,7 +100,7 @@ export function SessionsPanel({
           <h2 className="font-black text-kondo-ink dark:text-white">
             Active sessions
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+          <p className="mt-1 text-sm text-muted-foreground">
             Review devices that can currently access your Kondo account.
           </p>
         </div>
@@ -116,7 +116,7 @@ export function SessionsPanel({
       </div>
       <div className="mt-5 space-y-3">
         {loading ? (
-          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-400 dark:bg-white/5">
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-muted-foreground dark:bg-white/5">
             Loading sessions…
           </p>
         ) : (
@@ -143,7 +143,7 @@ export function SessionsPanel({
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Signed in {new Date(session.signedInAt).toLocaleString()} ·
                     expires {new Date(session.expiresAt).toLocaleDateString()}
                   </p>
@@ -164,9 +164,7 @@ export function SessionsPanel({
         )}
       </div>
       {feedback ? (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">
-          {feedback}
-        </p>
+        <p className="mt-4 text-sm text-muted-foreground">{feedback}</p>
       ) : null}
       <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5 dark:border-white/10">
         <Button

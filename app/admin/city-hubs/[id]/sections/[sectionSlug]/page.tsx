@@ -54,8 +54,8 @@ export default async function AdminCityHubSectionPage({
             className={cn(
               "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition",
               candidate.slug === section.slug
-                ? "border-kondo-green bg-kondo-green text-white"
-                : "border-slate-200 bg-white text-slate-500 hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-slate-300",
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-slate-200 bg-white text-muted-foreground hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground",
             )}
             href={`/admin/city-hubs/${hub.id}/sections/${candidate.slug}`}
             key={candidate.slug}

@@ -67,10 +67,10 @@ export default async function MessagesPage({
       </div>
 
       <form className="mt-4 flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <Search className="h-4 w-4 text-slate-400" />
+        <Search className="h-4 w-4 text-muted-foreground" />
         <input
           aria-label="Search conversations"
-          className="w-full bg-transparent text-sm text-kondo-ink outline-none placeholder:text-slate-400 dark:text-white"
+          className="w-full bg-transparent text-sm text-kondo-ink outline-none placeholder:text-muted-foreground dark:text-white"
           defaultValue={q}
           name="q"
           placeholder="Search people or messages"
@@ -100,7 +100,7 @@ export default async function MessagesPage({
                       {other.firstName} {other.lastName}
                     </h2>
                     {item.unreadCount > 0 ? (
-                      <span className="grid min-w-5 place-items-center rounded-full bg-kondo-green px-1.5 py-0.5 text-[10px] font-black text-white">
+                      <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-black text-primary-foreground">
                         {item.unreadCount > 99 ? "99+" : item.unreadCount}
                       </span>
                     ) : null}
@@ -108,8 +108,8 @@ export default async function MessagesPage({
                   <p
                     className={`mt-1 truncate text-sm ${
                       item.unreadCount
-                        ? "font-bold text-slate-700 dark:text-slate-200"
-                        : "text-slate-400"
+                        ? "font-bold text-muted-foreground dark:text-slate-200"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {latestMessage.senderId === user.id ? "You: " : ""}
@@ -118,7 +118,7 @@ export default async function MessagesPage({
                       "Attachment"}
                   </p>
                 </div>
-                <time className="shrink-0 self-start text-xs font-semibold text-slate-400">
+                <time className="shrink-0 self-start text-xs font-semibold text-muted-foreground">
                   {formatRelativeDate(latestMessage.createdAt)}
                 </time>
               </Card>
@@ -143,7 +143,7 @@ export default async function MessagesPage({
                 ? "No archived conversations"
                 : "Your conversations will appear here"}
           </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Start naturally from a member profile, community post, comment,
             marketplace listing or Student Hub answer.
           </p>
@@ -152,7 +152,7 @@ export default async function MessagesPage({
 
       {inbox.pageCount > 1 ? (
         <div className="mt-6 flex items-center justify-between gap-4">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Page {inbox.page} of {inbox.pageCount} · {inbox.total} conversations
           </p>
           <div className="flex gap-2">

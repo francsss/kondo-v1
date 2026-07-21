@@ -51,7 +51,7 @@ export function MediaAdminActions({
 
   if (removed) {
     return (
-      <p className="text-sm font-semibold text-slate-400">
+      <p className="text-sm font-semibold text-muted-foreground">
         This media has already been removed from delivery.
       </p>
     );
@@ -60,7 +60,7 @@ export function MediaAdminActions({
   return (
     <form className="space-y-3" onSubmit={remove}>
       <label className="block">
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
+        <span className="text-xs font-bold text-muted-foreground">
           Removal reason
         </span>
         <textarea

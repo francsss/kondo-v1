@@ -274,7 +274,7 @@ export default async function CommunityPage({
                 triggerVariant="composer"
               />
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 Join this active community to start a conversation.
               </p>
             )}
@@ -288,13 +288,13 @@ export default async function CommunityPage({
             />
           ))}
           {!community.posts.length ? (
-            <Card className="py-14 text-center text-sm text-slate-400">
+            <Card className="py-14 text-center text-sm text-muted-foreground">
               No published posts on this page.
             </Card>
           ) : null}
           {pageCount > 1 ? (
             <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Page {page} of {pageCount}
               </p>
               <div className="flex gap-2">
@@ -339,7 +339,7 @@ export default async function CommunityPage({
             <h2 className="font-black text-kondo-ink dark:text-white">
               Community care
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Be generous, protect privacy, and keep advice grounded in lived
               experience.
             </p>

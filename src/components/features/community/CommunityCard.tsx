@@ -40,7 +40,7 @@ export function CommunityCard({
             width={720}
           />
         ) : null}
-        <span className="absolute -bottom-6 left-5 grid h-14 w-14 place-items-center rounded-2xl border-4 border-white bg-white text-2xl shadow-sm dark:border-[#14201d] dark:bg-[#1c2a26]">
+        <span className="absolute -bottom-6 left-5 grid h-14 w-14 place-items-center rounded-2xl border-4 border-card bg-card text-2xl shadow-sm">
           {community.icon ?? "✦"}
         </span>
       </div>
@@ -61,7 +61,7 @@ export function CommunityCard({
                 />
               ) : null}
             </Link>
-            <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-slate-400">
+            <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-muted-foreground">
               {community.isOfficial ? (
                 <span className="rounded-full bg-kondo-mint px-2 py-0.5 font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
                   Official
@@ -85,15 +85,13 @@ export function CommunityCard({
           />
         </div>
         {!compact ? (
-          <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground">
             {community.description}
           </p>
         ) : null}
         {community.posts?.[0] ? (
-          <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400 dark:border-white/10">
-            <span className="font-bold text-slate-600 dark:text-slate-300">
-              Latest:
-            </span>{" "}
+          <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-5 text-muted-foreground dark:border-white/10">
+            <span className="font-bold text-muted-foreground">Latest:</span>{" "}
             {community.posts[0].title ?? community.posts[0].content}
           </p>
         ) : null}

@@ -136,7 +136,7 @@ export default async function StudentHubPage() {
               <h2 className="mt-5 text-lg font-black tracking-tight text-kondo-ink dark:text-white">
                 {title}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {description}
               </p>
               <span className="mt-5 inline-flex items-center gap-1 text-sm font-black text-kondo-green">
@@ -192,7 +192,7 @@ export default async function StudentHubPage() {
                 <p className="font-bold text-kondo-ink hover:text-kondo-green dark:text-white">
                   {question.title}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {question._count.answers} answers · asked{" "}
                   {formatRelativeDate(question.createdAt)}
                 </p>
@@ -226,7 +226,7 @@ export default async function StudentHubPage() {
                   <p className="font-bold text-kondo-ink dark:text-white">
                     {event.title ?? event.content.slice(0, 70)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {event.eventAt
                       ? formatDate(event.eventAt)
                       : "Date to be confirmed"}
@@ -235,7 +235,7 @@ export default async function StudentHubPage() {
                 </Link>
               ))
             ) : (
-              <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-500 dark:bg-white/5 dark:text-slate-400">
+              <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
                 New university and community events will appear here as soon as
                 they are published.
               </p>

@@ -45,7 +45,7 @@ export function AnswerComposer({ questionId }: { questionId: string }) {
     >
       <label className="block text-sm font-black">Your answer</label>
       <textarea
-        className="mt-3 min-h-32 w-full resize-y rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 outline-none focus:border-kondo-green dark:border-white/10 dark:bg-[#14201d]"
+        className="mt-3 min-h-32 w-full resize-y rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-card-foreground outline-none focus:border-primary"
         minLength={10}
         onChange={(event) => setBody(event.target.value)}
         placeholder="Share a clear answer from your experience…"

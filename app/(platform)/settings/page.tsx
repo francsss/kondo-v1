@@ -91,11 +91,11 @@ export default function SettingsPage() {
               <span className="block font-black text-kondo-ink dark:text-white">
                 {title}
               </span>
-              <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">
+              <span className="mt-1 block text-sm text-muted-foreground">
                 {description}
               </span>
             </span>
-            <ChevronRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-kondo-green" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-kondo-green" />
           </Link>
         ))}
       </Card>

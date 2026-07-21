@@ -43,7 +43,7 @@ export default async function HomePage() {
           <h1 className="mt-1 text-3xl font-black tracking-[-0.045em] text-kondo-ink dark:text-white sm:text-4xl">
             Welcome back, {user.firstName} <span aria-hidden="true">👋🏾</span>
           </h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             Here’s what’s happening around your student life today.
           </p>
         </div>
@@ -128,7 +128,7 @@ export default async function HomePage() {
               <h2 className="text-xl font-black tracking-tight text-kondo-ink dark:text-white">
                 For you
               </h2>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Fresh from your communities
               </p>
             </div>
@@ -136,7 +136,7 @@ export default async function HomePage() {
               <span className="rounded-full bg-white px-3 py-1.5 text-kondo-ink shadow-sm dark:bg-white/10 dark:text-white">
                 Relevant
               </span>
-              <span className="px-3 py-1.5 text-slate-400">Latest</span>
+              <span className="px-3 py-1.5 text-muted-foreground">Latest</span>
             </div>
           </div>
 
@@ -150,7 +150,7 @@ export default async function HomePage() {
               <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
                 Your feed is ready to grow
               </h2>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                 Join a few communities and the conversations that matter to you
                 will appear here.
               </p>
@@ -165,7 +165,7 @@ export default async function HomePage() {
           <Card>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
                   Your corner of China
                 </p>
                 <h2 className="mt-1 flex items-center gap-1.5 font-black text-kondo-ink dark:text-white">
@@ -182,13 +182,13 @@ export default async function HomePage() {
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
-                <p className="text-xs text-slate-400">Local time</p>
+                <p className="text-xs text-muted-foreground">Local time</p>
                 <p className="mt-1 font-black text-kondo-ink dark:text-white">
                   {chinaTime}
                 </p>
               </div>
               <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
-                <p className="text-xs text-slate-400">Time zone</p>
+                <p className="text-xs text-muted-foreground">Time zone</p>
                 <p className="mt-1 font-black text-kondo-ink dark:text-white">
                   China · UTC+8
                 </p>
@@ -225,14 +225,14 @@ export default async function HomePage() {
                       <span className="block truncate text-sm font-bold text-kondo-ink dark:text-white">
                         {event.title}
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-slate-400">
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                         {event.eventLocation ?? event.community.name}
                       </span>
                     </span>
                   </Link>
                 ))
               ) : (
-                <p className="py-5 text-center text-sm text-slate-400">
+                <p className="py-5 text-center text-sm text-muted-foreground">
                   No events this week.
                 </p>
               )}
@@ -264,7 +264,7 @@ export default async function HomePage() {
                     <span className="block truncate text-sm font-bold text-kondo-ink dark:text-white">
                       {community.name}
                     </span>
-                    <span className="block text-xs text-slate-400">
+                    <span className="block text-xs text-muted-foreground">
                       {community._count.members.toLocaleString()} members
                     </span>
                   </span>
@@ -285,7 +285,7 @@ export default async function HomePage() {
               <h2 className="text-2xl font-black tracking-tight text-kondo-ink dark:text-white">
                 Fresh in the marketplace
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Useful things from students near you
               </p>
             </div>

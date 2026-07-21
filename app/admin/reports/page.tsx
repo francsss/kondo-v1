@@ -118,7 +118,7 @@ export default async function AdminReportsPage({
         {result.reports.length ? (
           result.reports.map((report) => (
             <Link
-              className="block rounded-3xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-kondo-green hover:shadow-soft dark:border-white/10 dark:bg-[#14201d]"
+              className="block rounded-3xl border border-border bg-card p-5 text-card-foreground transition hover:-translate-y-0.5 hover:border-primary hover:shadow-soft"
               href={`/admin/reports/${report.id}`}
               key={report.id}
             >
@@ -128,26 +128,26 @@ export default async function AdminReportsPage({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
                       {report.status}
                     </span>
                     <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-black text-orange-700 dark:bg-orange-400/10 dark:text-orange-300">
                       {report.reason}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       {report.targetType}
                     </span>
                   </div>
                   <p className="mt-2 truncate font-black text-kondo-ink dark:text-white">
                     Case {report.id}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Reporter: {report.reporter?.fullName ?? "Deleted member"} ·
                     Assignee: {report.assignee?.fullName ?? "Unassigned"} ·{" "}
                     {report.noteCount} notes · {report.evidenceCount} evidence
                   </p>
                 </div>
-                <div className="text-right text-xs text-slate-400">
+                <div className="text-right text-xs text-muted-foreground">
                   <p>Updated {formatRelativeDate(report.updatedAt)}</p>
                   <p className="mt-1">v{report.version}</p>
                 </div>
@@ -156,7 +156,7 @@ export default async function AdminReportsPage({
           ))
         ) : (
           <Card className="py-16 text-center">
-            <FileSearch className="mx-auto h-8 w-8 text-slate-300" />
+            <FileSearch className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-4 font-black text-kondo-ink dark:text-white">
               No reports match these filters.
             </p>
@@ -165,7 +165,7 @@ export default async function AdminReportsPage({
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total} reports
         </p>
         <div className="flex gap-2">

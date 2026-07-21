@@ -25,7 +25,7 @@ export function CitySectionView({
   return (
     <div className="mx-auto max-w-[1280px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <Link
-        className="inline-flex items-center gap-2 text-sm font-black text-slate-500 transition hover:text-kondo-green dark:text-slate-300"
+        className="inline-flex items-center gap-2 text-sm font-black text-muted-foreground transition hover:text-kondo-green dark:text-muted-foreground"
         href={`/explore/${city.slug}`}
       >
         <ArrowLeft className="h-4 w-4" /> Explore {city.name}
@@ -67,7 +67,7 @@ export function CitySectionView({
             className={
               item.slug === section.slug
                 ? "inline-flex shrink-0 items-center gap-2 rounded-full bg-kondo-ink px-4 py-2.5 text-xs font-black text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-500 transition hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                : "inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-muted-foreground transition hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
             }
             href={`/explore/${city.slug}/${item.slug}`}
             key={item.slug}
@@ -81,7 +81,7 @@ export function CitySectionView({
       <section className="mt-8 grid gap-5 md:grid-cols-2">
         {section.entries.map((entry) => (
           <article
-            className="flex flex-col rounded-4xl border border-slate-200 bg-white p-6 shadow-[0_8px_30px_rgba(16,24,40,0.04)] dark:border-white/10 dark:bg-[#14201d] sm:p-7"
+            className="flex flex-col rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-[0_8px_30px_rgba(16,24,40,0.04)] sm:p-7"
             id={entry.slug}
             key={entry.id}
           >
@@ -107,18 +107,18 @@ export function CitySectionView({
             </div>
 
             {entry.location ? (
-              <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-400">
+              <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5" /> {entry.location}
               </p>
             ) : null}
-            <p className="mt-4 text-sm leading-7 text-slate-500 dark:text-slate-400">
+            <p className="mt-4 text-sm leading-7 text-muted-foreground">
               {entry.summary}
             </p>
 
             <ul className="mt-5 space-y-2.5">
               {entry.details.map((detail) => (
                 <li
-                  className="flex items-start gap-2.5 text-sm leading-6 text-slate-600 dark:text-slate-300"
+                  className="flex items-start gap-2.5 text-sm leading-6 text-muted-foreground"
                   key={detail}
                 >
                   <span className="mt-1 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-kondo-mint text-kondo-green dark:bg-emerald-400/15 dark:text-emerald-300">
@@ -133,7 +133,7 @@ export function CitySectionView({
               <div className="flex flex-wrap gap-2">
                 {entry.tags.map((tag) => (
                   <span
-                    className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black text-slate-500 dark:bg-white/5 dark:text-slate-300"
+                    className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black text-muted-foreground dark:bg-white/5 dark:text-muted-foreground"
                     key={tag}
                   >
                     {tag}
@@ -141,7 +141,7 @@ export function CitySectionView({
                 ))}
               </div>
               <div className="mt-5 flex min-h-9 items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-white/10">
-                <span className="text-[11px] font-bold text-slate-400">
+                <span className="text-[11px] font-bold text-muted-foreground">
                   {entry.status ?? "Profile architecture ready"}
                 </span>
                 {entry.source ? (
@@ -169,8 +169,8 @@ export function CitySectionView({
             {section.studentValue}
           </p>
         </article>
-        <article className="rounded-4xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-[#14201d]">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+        <article className="rounded-4xl border border-border bg-card p-6 text-card-foreground">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted-foreground">
             City value
           </p>
           <p className="mt-3 text-lg font-black leading-7 text-kondo-ink dark:text-white">

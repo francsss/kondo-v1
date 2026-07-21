@@ -104,7 +104,7 @@ export function CommentThread({
           </div>
         </form>
       ) : (
-        <p className="mt-4 text-sm text-slate-400">
+        <p className="mt-4 text-sm text-muted-foreground">
           Join the community to comment.
         </p>
       )}
@@ -123,7 +123,7 @@ export function CommentThread({
           ))}
         </div>
       ) : (
-        <p className="mt-5 text-sm text-slate-400">No comments yet.</p>
+        <p className="mt-5 text-sm text-muted-foreground">No comments yet.</p>
       )}
     </div>
   );
@@ -197,13 +197,13 @@ function CommentRow({
             {comment.author.firstName} {comment.author.lastName}{" "}
             {comment.author.country?.emoji}
           </p>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {comment.author.university?.shortName ?? "Kondo member"} ·{" "}
             {formatRelativeDate(comment.createdAt)}
             {comment.editedAt ? " · edited" : ""}
           </span>
         </div>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
           {comment.content}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-1">

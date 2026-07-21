@@ -71,7 +71,9 @@ export default async function AdminListingPage({
               ))}
             </div>
             {!listing.fraudFlags.length ? (
-              <p className="mt-2 text-sm text-slate-400">No automatic flags.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                No automatic flags.
+              </p>
             ) : null}
           </Card>
         </div>
@@ -82,7 +84,7 @@ export default async function AdminListingPage({
                 <p className="text-3xl font-black text-kondo-green">
                   {formatPrice(listing.priceFen)}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {listing.isNegotiable ? "Negotiable" : "Fixed price"} ·{" "}
                   {listing._count.favorites} saved
                 </p>
@@ -91,7 +93,7 @@ export default async function AdminListingPage({
                 {listing.status}
               </span>
             </div>
-            <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-slate-600 dark:text-slate-300">
+            <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
               {listing.description}
             </p>
           </Card>
@@ -112,7 +114,7 @@ export default async function AdminListingPage({
                   />
                 ) : (
                   <div
-                    className="grid aspect-[4/3] place-items-center rounded-2xl bg-slate-100 text-xs text-slate-400 dark:bg-white/5"
+                    className="grid aspect-[4/3] place-items-center rounded-2xl bg-slate-100 text-xs text-muted-foreground dark:bg-white/5"
                     key={image.id}
                   >
                     Legacy image unavailable
@@ -126,7 +128,9 @@ export default async function AdminListingPage({
               Seller
             </h2>
             <p className="mt-3 font-bold">{listing.seller.fullName}</p>
-            <p className="text-xs text-slate-400">{listing.seller.email}</p>
+            <p className="text-xs text-muted-foreground">
+              {listing.seller.email}
+            </p>
           </Card>
         </div>
       </div>

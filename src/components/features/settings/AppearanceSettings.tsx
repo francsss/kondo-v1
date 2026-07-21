@@ -79,25 +79,25 @@ export function AppearanceSettings({
               aria-pressed={active}
               className={`relative rounded-3xl border p-5 text-left transition ${
                 active
-                  ? "border-kondo-green bg-kondo-mint/60 dark:bg-emerald-400/10"
-                  : "border-slate-200 hover:border-emerald-200 dark:border-white/10"
+                  ? "border-primary bg-secondary"
+                  : "border-border hover:border-primary/50"
               }`}
               disabled={pending}
               key={value}
               onClick={() => choose(value)}
               type="button"
             >
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-kondo-green shadow-sm dark:bg-white/10 dark:text-emerald-300">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-card text-primary shadow-sm ring-1 ring-border">
                 <Icon className="h-5 w-5" />
               </span>
-              <span className="mt-4 block font-black text-kondo-ink dark:text-white">
+              <span className="mt-4 block font-black text-card-foreground">
                 {label}
               </span>
-              <span className="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-300">
+              <span className="mt-1 block text-sm leading-6 text-muted-foreground">
                 {description}
               </span>
               {active ? (
-                <span className="absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-full bg-kondo-green text-white">
+                <span className="absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground">
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />
                 </span>
               ) : null}
@@ -106,9 +106,7 @@ export function AppearanceSettings({
         })}
       </div>
       {feedback ? (
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">
-          {feedback}
-        </p>
+        <p className="mt-4 text-sm text-muted-foreground">{feedback}</p>
       ) : null}
     </Card>
   );

@@ -85,7 +85,7 @@ export default async function AdminContentPage() {
               <h2 className="mt-5 font-black text-kondo-ink dark:text-white">
                 {label}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-300">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {description}
               </p>
             </Card>

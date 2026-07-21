@@ -191,10 +191,10 @@ export function OnboardingFlow({
                 className={cn(
                   "grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black",
                   index < step
-                    ? "bg-kondo-green text-white"
+                    ? "bg-primary text-primary-foreground"
                     : step === index
                       ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
-                      : "bg-slate-100 text-slate-400 dark:bg-white/5",
+                      : "bg-slate-100 text-muted-foreground dark:bg-white/5",
                 )}
               >
                 {index < step ? <Check className="h-4 w-4" /> : index + 1}
@@ -205,12 +205,12 @@ export function OnboardingFlow({
                     "block text-sm font-bold",
                     step === index
                       ? "text-kondo-ink dark:text-white"
-                      : "text-slate-400",
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.title}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-slate-400">
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
                   Step {index + 1} of 4
                 </span>
               </span>
@@ -218,7 +218,7 @@ export function OnboardingFlow({
           ))}
         </div>
       </aside>
-      <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-[#14201d] sm:p-10">
+      <section className="rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-soft sm:p-10">
         <div className="flex items-center justify-between gap-4">
           <span className="text-4xl">{steps[step].icon}</span>
           {completed ? (
@@ -230,7 +230,7 @@ export function OnboardingFlow({
         <h1 className="mt-5 text-3xl font-black tracking-[-0.04em] text-kondo-ink dark:text-white">
           {steps[step].title}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {steps[step].description}
         </p>
         <div className="mt-8 min-h-[260px]">
@@ -341,7 +341,7 @@ export function OnboardingFlow({
                     "flex items-center gap-3 rounded-2xl border p-4 text-left text-sm font-bold transition",
                     form.interests.includes(interest)
                       ? "border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
-                      : "border-slate-200 text-slate-500 hover:border-emerald-200 dark:border-white/10 dark:text-slate-300",
+                      : "border-slate-200 text-muted-foreground hover:border-emerald-200 dark:border-white/10 dark:text-muted-foreground",
                   )}
                   key={interest}
                   onClick={() => toggleInterest(interest)}
@@ -423,7 +423,7 @@ function OptionGrid({
             {option.name}
           </span>
           {option.secondary ? (
-            <span className="mt-1 block text-xs text-slate-400">
+            <span className="mt-1 block text-xs text-muted-foreground">
               {option.secondary}
             </span>
           ) : null}

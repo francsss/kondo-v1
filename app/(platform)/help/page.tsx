@@ -57,10 +57,10 @@ export default async function HelpPage({
             What do you need to figure out?
           </h2>
           <form className="mt-5 flex h-13 items-center gap-3 rounded-2xl bg-white px-4 text-left">
-            <Search className="h-5 w-5 text-slate-400" />
+            <Search className="h-5 w-5 text-muted-foreground" />
             <input
               aria-label="Search questions"
-              className="w-full bg-transparent text-sm text-kondo-ink outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-sm text-kondo-ink outline-none placeholder:text-muted-foreground"
               defaultValue={q}
               name="q"
               placeholder="Try “residence permit renewal”"
@@ -78,7 +78,7 @@ export default async function HelpPage({
             className={
               category === label
                 ? "flex min-w-fit items-center gap-2 rounded-full bg-kondo-ink px-4 py-2.5 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "flex min-w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                : "flex min-w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-muted-foreground transition hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
             }
             href={`/help?category=${label}`}
             key={label}
@@ -107,7 +107,7 @@ export default async function HelpPage({
                   lastName={question.author.lastName}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="rounded-full bg-kondo-mint px-2.5 py-1 font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
                       {question.category}
                     </span>
@@ -122,7 +122,7 @@ export default async function HelpPage({
                       {question.title}
                     </h2>
                   </Link>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
                     {question.body}
                   </p>
                   {bestAnswer ? (
@@ -130,12 +130,12 @@ export default async function HelpPage({
                       <div className="flex items-center gap-1.5 text-xs font-black text-kondo-green">
                         <CheckCircle2 className="h-4 w-4" /> Community answer
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
                         {bestAnswer.body}
                       </p>
                     </div>
                   ) : null}
-                  <div className="mt-4 flex items-center gap-4 text-xs font-semibold text-slate-400">
+                  <div className="mt-4 flex items-center gap-4 text-xs font-semibold text-muted-foreground">
                     <span>{question._count.answers} answers</span>
                     {bestAnswer ? (
                       <span className="inline-flex items-center gap-1">
@@ -145,7 +145,7 @@ export default async function HelpPage({
                     ) : null}
                   </div>
                 </div>
-                <ArrowUpRight className="hidden h-5 w-5 text-slate-300 sm:block" />
+                <ArrowUpRight className="hidden h-5 w-5 text-muted-foreground sm:block" />
               </div>
             </Card>
           );

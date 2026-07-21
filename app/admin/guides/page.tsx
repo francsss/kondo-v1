@@ -88,7 +88,7 @@ export default async function AdminGuidesPage({
                     className={
                       guide.published
                         ? "rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"
-                        : "rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300"
+                        : "rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/10 dark:text-muted-foreground"
                     }
                   >
                     {guide.published ? "PUBLISHED" : "DRAFT"}
@@ -99,29 +99,29 @@ export default async function AdminGuidesPage({
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {guide.category.replaceAll("_", " ")} · {guide._count.steps}{" "}
                   step
                   {guide._count.steps === 1 ? "" : "s"}
                 </p>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {guide.estimatedMinutes} min
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Updated {new Date(guide.updatedAt).toLocaleDateString()}
               </p>
             </Card>
           </Link>
         ))}
         {!result.records.length ? (
-          <Card className="py-16 text-center text-sm text-slate-400">
+          <Card className="py-16 text-center text-sm text-muted-foreground">
             No guides match these filters.
           </Card>
         ) : null}
       </div>
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total}
         </p>
         <div className="flex gap-2">

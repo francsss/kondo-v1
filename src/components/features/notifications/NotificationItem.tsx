@@ -72,7 +72,7 @@ export function NotificationItem({
           </span>
         )}
         {!read ? (
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-orange-500 dark:border-[#14201d]" />
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-orange-500" />
         ) : null}
       </div>
       <div className="min-w-0 flex-1">
@@ -82,12 +82,12 @@ export function NotificationItem({
               {notification.title}
             </p>
             {notification.body ? (
-              <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 {notification.body}
               </p>
             ) : null}
           </div>
-          <span className="whitespace-nowrap text-xs text-slate-400">
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
             {timestamp}
           </span>
         </div>
@@ -116,7 +116,7 @@ export function NotificationItem({
       )}
       <button
         aria-label="Hide notification"
-        className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-slate-300 opacity-0 transition hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-white/10 dark:hover:text-white"
+        className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground opacity-0 transition hover:bg-slate-100 hover:text-muted-foreground group-hover:opacity-100 focus:opacity-100 dark:hover:bg-white/10 dark:hover:text-white"
         onClick={hide}
         type="button"
       >

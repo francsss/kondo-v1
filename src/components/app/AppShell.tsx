@@ -20,7 +20,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
 import { KondoLogo } from "@/components/KondoLogo";
@@ -67,31 +67,50 @@ const navigation: NavigationItem[] = [
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const [saving, setSaving] = useState(false);
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
     () => false,
   );
+  const dark = mounted && resolvedTheme === "dark";
+
+  async function toggleTheme() {
+    if (!mounted || saving) return;
+    const previousTheme = dark ? "dark" : "light";
+    const nextTheme = dark ? "light" : "dark";
+
+    // next-themes updates <html class="dark"> and localStorage immediately.
+    // The account request runs afterwards and never blocks the visual toggle.
+    setTheme(nextTheme);
+    setSaving(true);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: nextTheme.toUpperCase() }),
+      });
+      if (!response.ok) setTheme(previousTheme);
+    } catch {
+      setTheme(previousTheme);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Button
-      aria-label="Toggle color theme"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-pressed={dark}
       className="rounded-full"
-      onClick={() => {
-        const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
-        setTheme(nextTheme);
-        void fetch("/api/settings", {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ theme: nextTheme.toUpperCase() }),
-        });
-      }}
+      disabled={!mounted || saving}
+      onClick={toggleTheme}
       size="icon"
       type="button"
       variant="ghost"
     >
-      {mounted && resolvedTheme === "dark" ? (
+      {dark ? (
         <Sun aria-hidden="true" className="h-[18px] w-[18px]" />
       ) : (
         <Moon aria-hidden="true" className="h-[18px] w-[18px]" />
@@ -105,11 +124,20 @@ function ThemePreferenceSync({
 }: {
   preference: "LIGHT" | "DARK" | "SYSTEM";
 }) {
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
+  const setThemeRef = useRef(setTheme);
+
   useEffect(() => {
-    const preferredTheme = preference.toLowerCase();
-    if (theme !== preferredTheme) setTheme(preferredTheme);
-  }, [preference, setTheme, theme]);
+    setThemeRef.current = setTheme;
+  }, [setTheme]);
+
+  useEffect(() => {
+    // Only react to a new server preference. Depending on `theme` here would
+    // immediately undo an optimistic toggle while its PATCH request is saving.
+    // next-themes can also replace setTheme when its context updates, so keep
+    // the latest function in a ref without making that replacement a sync event.
+    setThemeRef.current(preference.toLowerCase());
+  }, [preference]);
   return null;
 }
 
@@ -139,8 +167,8 @@ function NavLink({
       className={cn(
         "group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-colors",
         active
-          ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/15 dark:text-emerald-300"
-          : "text-slate-500 hover:bg-slate-100 hover:text-kondo-ink dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white",
+          ? "bg-secondary text-secondary-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
       href={href}
       onClick={onNavigate}
@@ -152,7 +180,7 @@ function NavLink({
       />
       {label}
       {badgeCount ? (
-        <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black text-white">
+        <span className="ml-auto rounded-full bg-warning px-2 py-0.5 text-[10px] font-black text-warning-foreground">
           {badgeCount > 99 ? "99+" : badgeCount}
         </span>
       ) : null}
@@ -194,9 +222,9 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-kondo-sand dark:bg-[#0c1412]">
+    <div className="min-h-screen bg-background text-foreground">
       <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-slate-200/80 bg-white/90 px-4 py-6 backdrop-blur-xl dark:border-white/10 dark:bg-[#101a17]/90 lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col">
         <div className="px-2">
           <KondoLogo href="/home" />
         </div>
@@ -241,7 +269,7 @@ export function AppShell({
             />
           ) : null}
           <button
-            className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-kondo-ink dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
+            className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
             onClick={logout}
             type="button"
           >
@@ -251,7 +279,7 @@ export function AppShell({
       </aside>
 
       <div className="lg:pl-[248px]">
-        <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-kondo-sand/85 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-[#0c1412]/85 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-[1440px] items-center gap-3">
             <div className="flex items-center lg:hidden">
               <Button
@@ -267,7 +295,7 @@ export function AppShell({
               </Button>
             </div>
             <Link
-              className="group mx-auto flex h-11 min-w-0 w-full max-w-xl items-center gap-3 rounded-full border border-slate-200 bg-white px-4 text-sm text-slate-400 shadow-sm transition hover:border-emerald-200 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-slate-500 sm:mx-0"
+              className="group mx-auto flex h-11 min-w-0 w-full max-w-xl items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md sm:mx-0"
               href="/search"
             >
               <Search
@@ -275,7 +303,7 @@ export function AppShell({
                 className="h-4 w-4 transition group-hover:text-kondo-green"
               />
               <span className="truncate">Search Kondo</span>
-              <kbd className="ml-auto hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-400 dark:border-white/10 dark:bg-white/5 sm:inline">
+              <kbd className="ml-auto hidden rounded-lg border border-border bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground sm:inline">
                 ⌘ K
               </kbd>
             </Link>
@@ -292,7 +320,7 @@ export function AppShell({
                 >
                   <Bell aria-hidden="true" className="h-[18px] w-[18px]" />
                   {user.notificationUnreadCount ? (
-                    <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-orange-500 px-1 text-[9px] font-black leading-none text-white dark:border-[#0c1412]">
+                    <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-background bg-warning px-1 text-[9px] font-black leading-none text-warning-foreground">
                       {user.notificationUnreadCount > 99
                         ? "99+"
                         : user.notificationUnreadCount}
@@ -330,7 +358,7 @@ export function AppShell({
       <div
         aria-hidden={!menuOpen}
         className={cn(
-          "fixed inset-0 z-50 bg-slate-950/30 backdrop-blur-sm transition lg:hidden",
+          "fixed inset-0 z-50 bg-overlay/40 backdrop-blur-sm transition lg:hidden",
           menuOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0",
@@ -343,7 +371,7 @@ export function AppShell({
           id="mobile-navigation"
           role="dialog"
           className={cn(
-            "h-full w-[min(84vw,320px)] bg-white p-5 shadow-2xl transition-transform duration-300 dark:bg-[#101a17]",
+            "h-full w-[min(84vw,320px)] bg-card p-5 text-card-foreground shadow-2xl transition-transform duration-300",
             menuOpen ? "translate-x-0" : "-translate-x-full",
           )}
           onClick={(event) => event.stopPropagation()}
@@ -383,7 +411,7 @@ export function AppShell({
               />
             ) : null}
             <button
-              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-kondo-ink dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
+              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
               onClick={logout}
               type="button"
             >
@@ -395,7 +423,7 @@ export function AppShell({
 
       <nav
         aria-label="Mobile quick navigation"
-        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl dark:border-white/10 dark:bg-[#15201d]/95 lg:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
       >
         {navigation.map(({ href, icon: Icon, label, aliases }) => {
           const active =
@@ -411,8 +439,8 @@ export function AppShell({
               className={cn(
                 "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold",
                 active
-                  ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/15 dark:text-emerald-300"
-                  : "text-slate-400",
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground",
               )}
               href={href}
               key={href}
@@ -420,7 +448,7 @@ export function AppShell({
               <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
               <span className="max-w-full truncate px-1">{label}</span>
               {href === "/messages" && user.messageUnreadCount ? (
-                <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-orange-500 px-1 text-[8px] font-black text-white">
+                <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-warning px-1 text-[8px] font-black text-warning-foreground">
                   {user.messageUnreadCount > 99
                     ? "99+"
                     : user.messageUnreadCount}

@@ -185,7 +185,7 @@ export function ReferenceDataManager({
             <h2 className="font-black text-kondo-ink dark:text-white">
               {editing ? `Edit ${editing.name}` : `Add ${singular(type)}`}
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Every change is written to AuditLog.
             </p>
           </div>
@@ -333,7 +333,7 @@ export function ReferenceDataManager({
             </div>
           </form>
         ) : (
-          <p className="mt-6 text-sm text-slate-500">
+          <p className="mt-6 text-sm text-muted-foreground">
             Your role can view reference data but cannot change it.
           </p>
         )}
@@ -352,10 +352,10 @@ export function ReferenceDataManager({
                     <StatusBadge active={record.isActive} />
                     <VerifiedBadge verified={record.verified} />
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {recordSummary(record)}
                   </p>
-                  <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
                     {recordCounts(record)}
                   </p>
                 </div>
@@ -428,7 +428,7 @@ function StatusBadge({ active }: { active: boolean }) {
       <CheckCircle2 className="h-3 w-3" /> Active
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500 dark:bg-white/5 dark:text-slate-300">
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
       <XCircle className="h-3 w-3" /> Inactive
     </span>
   );

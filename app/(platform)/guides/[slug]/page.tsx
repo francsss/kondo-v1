@@ -119,11 +119,11 @@ export default async function GuideDetailPage({
             <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
               A quick note
             </p>
-            <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Local processes can change. Kondo dates every guide and encourages
               you to verify official requirements with your university.
             </p>
-            <p className="mt-4 text-xs font-semibold text-slate-400">
+            <p className="mt-4 text-xs font-semibold text-muted-foreground">
               Updated{" "}
               {guide.updatedAt.toLocaleDateString("en", {
                 month: "long",

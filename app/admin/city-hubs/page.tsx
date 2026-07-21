@@ -18,7 +18,7 @@ const STATUS_STYLES: Record<CityHubStatus, string> = {
   REVIEW:
     "rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-700 dark:bg-amber-400/10 dark:text-amber-300",
   DRAFT:
-    "rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500 dark:bg-white/10 dark:text-slate-300",
+    "rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-muted-foreground dark:bg-white/10 dark:text-muted-foreground",
 };
 
 function one(value: string | string[] | undefined) {
@@ -102,27 +102,29 @@ export default async function AdminCityHubsPage({
                     {hub.status}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">/{hub.slug}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  /{hub.slug}
+                </p>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {hub.publishedAt
                   ? `Published ${new Date(hub.publishedAt).toLocaleDateString()}`
                   : "Never published"}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Updated {new Date(hub.updatedAt).toLocaleDateString()}
               </p>
             </Card>
           </Link>
         ))}
         {!result.records.length ? (
-          <Card className="py-16 text-center text-sm text-slate-400">
+          <Card className="py-16 text-center text-sm text-muted-foreground">
             No city hubs match these filters.
           </Card>
         ) : null}
       </div>
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Page {result.page} of {result.pageCount} · {result.total}
         </p>
         <div className="flex gap-2">

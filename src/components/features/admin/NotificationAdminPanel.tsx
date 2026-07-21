@@ -150,7 +150,7 @@ export function NotificationAdminPanel({
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {stats.map(([label, value]) => (
           <Card key={label}>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {label}
             </p>
             <p className="mt-2 text-3xl font-black text-kondo-ink dark:text-white">
@@ -170,7 +170,7 @@ export function NotificationAdminPanel({
               <h2 className="font-black text-kondo-ink dark:text-white">
                 Product announcement
               </h2>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 Queue one useful in-app announcement for active members.
               </p>
             </div>
@@ -192,7 +192,7 @@ export function NotificationAdminPanel({
               placeholder="Useful announcement"
               required
             />
-            <label className="text-xs font-bold text-slate-500">
+            <label className="text-xs font-bold text-muted-foreground">
               Audience
               <select
                 className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
@@ -256,11 +256,11 @@ export function NotificationAdminPanel({
                     <p className="font-black text-kondo-ink dark:text-white">
                       {template.key}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {template.type} · version {template.version}
                     </p>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
                     <input
                       className="accent-emerald-700"
                       defaultChecked={template.isActive}
@@ -271,7 +271,7 @@ export function NotificationAdminPanel({
                     Active
                   </label>
                 </div>
-                <label className="block text-xs font-bold text-slate-500">
+                <label className="block text-xs font-bold text-muted-foreground">
                   Title
                   <input
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-kondo-green dark:border-white/10"
@@ -283,7 +283,7 @@ export function NotificationAdminPanel({
                     required
                   />
                 </label>
-                <label className="block text-xs font-bold text-slate-500">
+                <label className="block text-xs font-bold text-muted-foreground">
                   Body
                   <textarea
                     className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-kondo-green dark:border-white/10"
@@ -293,7 +293,7 @@ export function NotificationAdminPanel({
                     name="bodyTemplate"
                   />
                 </label>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Allowed tokens:{" "}
                   {template.allowedTokens.length
                     ? template.allowedTokens
@@ -313,7 +313,7 @@ export function NotificationAdminPanel({
       </section>
 
       {feedback ? (
-        <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+        <p className="rounded-2xl bg-slate-50 p-4 text-sm text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
           {feedback}
         </p>
       ) : null}
@@ -332,7 +332,7 @@ export function NotificationAdminPanel({
                 <p className="font-bold text-kondo-ink dark:text-white">
                   {announcement.title}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {announcement.status} · {announcement.recipientCount} targets
                   · {announcementAudienceLabel(announcement.audience)}
                 </p>
@@ -354,11 +354,11 @@ export function NotificationAdminPanel({
                   <p className="font-bold text-kondo-ink dark:text-white">
                     {job.templateKey}
                   </p>
-                  <span className="text-xs font-black text-slate-400">
+                  <span className="text-xs font-black text-muted-foreground">
                     {job.status}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {job.type} · attempt {job.attempts}
                   {job.lastErrorCode ? ` · ${job.lastErrorCode}` : ""}
                 </p>

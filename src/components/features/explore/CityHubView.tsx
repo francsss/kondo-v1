@@ -95,7 +95,7 @@ export function CityHubView({ city }: { city: ExploreCity }) {
               Find your way into Jiaxing.
             </h2>
           </div>
-          <p className="max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="max-w-md text-sm leading-6 text-muted-foreground">
             {city.summary}
           </p>
         </div>
@@ -105,7 +105,7 @@ export function CityHubView({ city }: { city: ExploreCity }) {
             const styles = exploreAccentStyles[section.accent];
             return (
               <Link
-                className={`group relative overflow-hidden rounded-4xl border border-slate-200 bg-white p-6 shadow-[0_8px_30px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-soft dark:border-white/10 dark:bg-[#14201d] ${index === 0 ? "sm:col-span-2 xl:col-span-1" : ""}`}
+                className={`group relative overflow-hidden rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-[0_8px_30px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-soft ${index === 0 ? "sm:col-span-2 xl:col-span-1" : ""}`}
                 href={`/explore/${city.slug}/${section.slug}`}
                 key={section.slug}
               >
@@ -120,7 +120,7 @@ export function CityHubView({ city }: { city: ExploreCity }) {
                     >
                       <ExploreIcon name={section.icon} />
                     </span>
-                    <span className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-400 transition group-hover:border-kondo-green group-hover:bg-kondo-mint group-hover:text-kondo-forest dark:border-white/10">
+                    <span className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-muted-foreground transition group-hover:border-kondo-green group-hover:bg-kondo-mint group-hover:text-kondo-forest dark:border-white/10">
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                     </span>
                   </div>
@@ -132,11 +132,11 @@ export function CityHubView({ city }: { city: ExploreCity }) {
                   <h3 className="mt-2 text-2xl font-black tracking-[-0.035em] text-kondo-ink dark:text-white">
                     {section.title}
                   </h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
                     {section.summary}
                   </p>
                   <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 text-xs dark:border-white/10">
-                    <span className="font-bold text-slate-400">
+                    <span className="font-bold text-muted-foreground">
                       {section.signal}
                     </span>
                     <span className="font-black text-kondo-green">
@@ -176,7 +176,7 @@ export function CityHubView({ city }: { city: ExploreCity }) {
               <h3 className="mt-3 text-lg font-black text-kondo-ink dark:text-white">
                 {point.title}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {point.description}
               </p>
             </article>

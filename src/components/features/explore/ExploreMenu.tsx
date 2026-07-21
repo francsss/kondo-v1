@@ -75,9 +75,9 @@ export function ExploreMenu() {
         aria-haspopup="menu"
         aria-label="Open Explore menu"
         className={cn(
-          "rounded-full bg-kondo-ink text-white shadow-sm hover:bg-kondo-forest hover:text-white dark:bg-emerald-400 dark:text-kondo-ink dark:hover:bg-emerald-300 sm:w-auto sm:px-3",
+          "rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground sm:w-auto sm:px-3",
           (open || pathname.startsWith("/explore")) &&
-            "bg-kondo-green text-white dark:bg-emerald-300 dark:text-kondo-ink",
+            "bg-primary text-primary-foreground",
         )}
         onClick={() => setOpen((value) => !value)}
         size="icon"
@@ -91,7 +91,7 @@ export function ExploreMenu() {
 
       {open ? (
         <div
-          className="absolute right-0 top-12 z-50 w-[min(88vw,340px)] origin-top-right rounded-3xl border border-slate-200/80 bg-white/95 p-2 shadow-[0_24px_80px_rgba(16,24,40,0.2)] backdrop-blur-xl dark:border-white/10 dark:bg-[#14201d]/95"
+          className="absolute right-0 top-12 z-50 w-[min(88vw,340px)] origin-top-right rounded-3xl border border-border bg-card/95 p-2 text-card-foreground shadow-[0_24px_80px_rgba(16,24,40,0.2)] backdrop-blur-xl"
           role="menu"
         >
           <div className="rounded-2xl bg-gradient-to-br from-kondo-navy to-kondo-forest px-4 py-3.5 text-white">
@@ -112,9 +112,7 @@ export function ExploreMenu() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "group flex items-center gap-3 rounded-2xl px-3 py-3 transition",
-                    active
-                      ? "bg-kondo-mint dark:bg-emerald-400/10"
-                      : "hover:bg-slate-50 dark:hover:bg-white/5",
+                    active ? "bg-secondary" : "hover:bg-muted",
                   )}
                   href={item.href}
                   key={item.href}
@@ -126,20 +124,20 @@ export function ExploreMenu() {
                       "grid h-10 w-10 shrink-0 place-items-center rounded-2xl",
                       item.featured
                         ? "bg-kondo-lime text-kondo-forest"
-                        : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300",
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
                     <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-black text-kondo-ink dark:text-white">
+                    <span className="block text-sm font-black text-card-foreground">
                       {item.label}
                     </span>
-                    <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
                       {item.description}
                     </span>
                   </span>
-                  <span className="text-sm text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-kondo-green">
+                  <span className="text-sm text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-kondo-green">
                     →
                   </span>
                 </Link>

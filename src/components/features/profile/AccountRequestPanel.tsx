@@ -86,7 +86,7 @@ export function AccountRequestPanel({
       <h2 className="font-black text-kondo-ink dark:text-white">
         Your data and account
       </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-300">
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
         These controls create reviewed requests. They do not immediately erase
         data or deactivate your account.
       </p>
@@ -96,7 +96,7 @@ export function AccountRequestPanel({
           <p className="mt-3 font-bold text-kondo-ink dark:text-white">
             Data export
           </p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Ask Kondo operations to prepare a portable copy of your account
             data.
           </p>
@@ -139,7 +139,7 @@ export function AccountRequestPanel({
         </form>
       </div>
       {feedback ? (
-        <p className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+        <p className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
           {feedback}
         </p>
       ) : null}
@@ -155,12 +155,12 @@ export function AccountRequestPanel({
                   ? "Data export"
                   : "Account deletion"}
               </p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {request.status} ·{" "}
                 {new Date(request.createdAt).toLocaleDateString()}
               </p>
               {request.responseNote ? (
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                <p className="mt-2 text-sm text-muted-foreground">
                   {request.responseNote}
                 </p>
               ) : null}

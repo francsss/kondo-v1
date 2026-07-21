@@ -122,7 +122,9 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
                 />
               </label>
               {file ? (
-                <p className="mt-2 text-xs text-slate-400">{file.name}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {file.name}
+                </p>
               ) : null}
               {profile.avatarMediaId ? (
                 <button
@@ -166,9 +168,7 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
             />
           </div>
           <label className="block">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
-              Bio
-            </span>
+            <span className="text-xs font-bold text-muted-foreground">Bio</span>
             <textarea
               className="mt-2 min-h-28 w-full rounded-2xl border border-slate-200 bg-transparent px-4 py-3 text-sm outline-none focus:border-kondo-green dark:border-white/10"
               defaultValue={profile.bio ?? ""}
@@ -187,7 +187,7 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
             <h2 className="font-black text-kondo-ink dark:text-white">
               Profile visibility
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+            <p className="mt-1 text-sm text-muted-foreground">
               Email and phone are always private. Choose who can see each
               student-facing section.
             </p>
@@ -230,7 +230,7 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
             </div>
           </div>
           {feedback ? (
-            <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+            <p className="rounded-2xl bg-slate-50 p-3 text-sm text-muted-foreground dark:bg-white/5 dark:text-muted-foreground">
               {feedback}
             </p>
           ) : null}
@@ -261,9 +261,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
-        {label}
-      </span>
+      <span className="text-xs font-bold text-muted-foreground">{label}</span>
       <input
         className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm outline-none focus:border-kondo-green dark:border-white/10"
         defaultValue={defaultValue}
@@ -286,9 +284,7 @@ function AudienceField({
 }) {
   return (
     <label>
-      <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
-        {label}
-      </span>
+      <span className="text-xs font-bold text-muted-foreground">{label}</span>
       <select
         className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
         defaultValue={defaultValue}
