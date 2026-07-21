@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
+import { LiveActivityStream } from "@/components/features/activity/LiveActivityStream";
 import { PostComposer } from "@/components/features/community/PostComposer";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
@@ -8,6 +9,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { getHomeData } from "@/lib/platform-queries";
+import { getHomeActivityStream } from "@/lib/home-activity";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Home" };
@@ -26,8 +28,8 @@ export default async function HomePage() {
     hour: "numeric",
     minute: "2-digit",
   }).format(now);
-  const { posts, communities, listings, guides, upcomingEvents } =
-    await getHomeData(user.id);
+  const [{ posts, communities, listings, guides, upcomingEvents }, activities] =
+    await Promise.all([getHomeData(user.id), getHomeActivityStream(user)]);
   const firstGuide = guides[0];
   const completedSteps =
     firstGuide?.steps.filter((step) => step.progress.length > 0).length ?? 0;
@@ -60,6 +62,11 @@ export default async function HomePage() {
             }))}
         />
       </section>
+
+      <LiveActivityStream
+        generatedAt={new Date().toISOString()}
+        initialActivities={activities}
+      />
 
       {firstGuide ? (
         <Card className="noise relative mt-7 overflow-hidden border-emerald-100 bg-gradient-to-r from-kondo-navy via-kondo-forest to-[#237d61] p-0 text-white shadow-lift dark:border-emerald-400/10">

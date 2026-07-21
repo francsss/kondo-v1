@@ -14,6 +14,15 @@ test.describe("authenticated critical journeys", () => {
   }) => {
     await page.goto("/home");
     await expect(page).toHaveURL(/\/home/);
+    await expect(
+      page.getByRole("heading", { name: "Kondo is moving." }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Recent activity" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Pause activity" }),
+    ).toBeVisible();
     for (const [href, label] of [
       ["/home", "Home"],
       ["/communities", "Communities"],
