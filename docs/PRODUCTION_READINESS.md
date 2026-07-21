@@ -1,7 +1,7 @@
 # Production readiness review
 
 Reviewed on 2026-07-20 against Modules 0–20 and the production deployment at
-`https://kondo-v1.vercel.app`.
+`https://www.joinkondo.com`.
 
 ## Release status
 
@@ -119,7 +119,7 @@ be canonical:
 ```json
 [
   {
-    "AllowedOrigins": ["https://kondo-v1.vercel.app"],
+    "AllowedOrigins": ["https://www.joinkondo.com"],
     "AllowedMethods": ["GET", "PUT", "HEAD"],
     "AllowedHeaders": ["Content-Type"],
     "ExposeHeaders": [
