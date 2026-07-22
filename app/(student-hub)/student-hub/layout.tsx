@@ -8,12 +8,6 @@ export default async function StudentHubLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireUser();
-  return (
-    <StudentHubShell
-      user={{ firstName: user.firstName, lastName: user.lastName }}
-    >
-      {children}
-    </StudentHubShell>
-  );
+  await requireUser();
+  return <StudentHubShell>{children}</StudentHubShell>;
 }
