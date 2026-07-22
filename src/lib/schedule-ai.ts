@@ -30,6 +30,8 @@ type PeriodContext = {
   }>;
 };
 
+const DEEPSEEK_TIMETABLE_MODEL = "deepseek-v4-flash";
+
 export type ScheduleAnalysis = {
   extraction: ExtractedSchedule;
   provider: string;
@@ -121,10 +123,10 @@ function providerError(
   return new ScheduleAnalysisError(
     "AI_DOCUMENT_REJECTED",
     providerType === "invalid_request_error"
-      ? "The file could not be processed by the analysis model. Try a clearer PDF or image."
-      : "This document could not be analyzed. Try a clearer PDF or image.",
+      ? "The extracted timetable text was rejected by the analysis service. Please try again."
+      : "The analysis service could not process the extracted timetable text.",
     422,
-    false,
+    status >= 500,
   );
 }
 
@@ -146,7 +148,7 @@ function responseText(payload: Record<string, unknown>) {
   }
   throw new ScheduleAnalysisError(
     "AI_INVALID_RESPONSE",
-    "The document was read, but its timetable could not be understood. Try a clearer file.",
+    "The document text was read, but the analysis service returned no structured timetable data. Please try again.",
     502,
     true,
   );
@@ -163,10 +165,18 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
         false,
       );
     }
-    const model = process.env.SCHEDULE_AI_MODEL?.trim() || "deepseek-v4-pro";
+    const configuredModel = process.env.SCHEDULE_AI_MODEL?.trim();
+    const model = DEEPSEEK_TIMETABLE_MODEL;
+    if (configuredModel && configuredModel !== model) {
+      logServerEvent("student-hub.schedule-analysis.model-override.ignored", {
+        configuredModel,
+        selectedModel: model,
+        reason: "low-latency-structured-extraction",
+      });
+    }
     const timeout = Math.min(
       120_000,
-      Math.max(10_000, Number(process.env.SCHEDULE_AI_TIMEOUT_MS) || 120_000),
+      Math.max(20_000, Number(process.env.SCHEDULE_AI_TIMEOUT_MS) || 75_000),
     );
 
     const extractedDocuments: string[] = [];
@@ -175,6 +185,7 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
       logServerEvent("student-hub.schedule-analysis.file-read.started", {
         provider: file.storageProvider,
         mimeType: file.detectedMime,
+        extension: file.originalFileName.split(".").pop()?.toLowerCase(),
       });
       let bytes: Uint8Array;
       try {
@@ -202,10 +213,26 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
       const mime = file.detectedMime ?? "application/octet-stream";
       try {
         const extracted = await extractDocumentText(bytes, mime);
+        logServerEvent("student-hub.schedule-analysis.file-extracted", {
+          mimeType: mime,
+          sizeBytes: bytes.byteLength,
+          method: extracted.method,
+          pageCount: extracted.pageCount,
+          characterCount: extracted.characterCount,
+          confidence:
+            extracted.confidence === null
+              ? null
+              : Math.round(extracted.confidence),
+          warningCount: extracted.warnings.length,
+          attempts: extracted.attempts.join(","),
+        });
         extractedDocuments.push(
           [
             `--- Document: ${file.originalFileName} ---`,
             `Extraction method: ${extracted.method}; pages: ${extracted.pageCount}`,
+            extracted.warnings.length
+              ? `Extraction warnings: ${extracted.warnings.join(" ")}`
+              : "Extraction warnings: none",
             extracted.text,
           ].join("\n"),
         );
@@ -225,9 +252,39 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
     const systemPrompt = [
       "You extract university timetables from OCR or embedded PDF text.",
       "Return exactly one JSON object matching the supplied JSON schema. Do not wrap it in markdown.",
+      "The output must be valid JSON, even when some OCR text is incomplete.",
       "Read Chinese and English text, merged table cells, numbered periods, 1-16周, 单周 (odd weeks), and 双周 (even weeks).",
       "Do not invent missing values. Use null and add the field name to uncertainFields when uncertain.",
+      "Keep partially readable courses and lower their confidence instead of rejecting the whole document.",
+      "If an OCR warning is present, add a concise warning to the warnings array.",
       `JSON schema: ${JSON.stringify(SCHEDULE_EXTRACTION_JSON_SCHEMA)}`,
+      `Example JSON: ${JSON.stringify({
+        title: "Fall timetable",
+        warnings: ["Room was uncertain for one course."],
+        courses: [
+          {
+            courseName: "Business English",
+            teacher: "Dr. Chen",
+            dayOfWeek: "MONDAY",
+            specificDate: null,
+            startPeriod: null,
+            endPeriod: null,
+            startTime: "08:00",
+            endTime: "09:30",
+            room: "A201",
+            building: null,
+            campus: null,
+            startWeek: 1,
+            endWeek: 18,
+            weekPattern: "ALL",
+            weeks: [],
+            language: "en",
+            notes: null,
+            confidence: 0.9,
+            uncertainFields: [],
+          },
+        ],
+      })}`,
     ].join("\n");
     const userPrompt = [
       `University context: ${context.university}. Campus: ${context.campus ?? "not specified"}. Term: ${context.term ?? "not specified"}. Timezone: ${context.timezone}.`,
@@ -259,32 +316,83 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
               model,
               messages: [
                 { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
+                {
+                  role: "user",
+                  content:
+                    attempt === 1
+                      ? userPrompt
+                      : `${userPrompt}\n\nThe previous attempt returned empty or invalid JSON. Return one complete, non-empty JSON object now.`,
+                },
               ],
               response_format: { type: "json_object" },
-              thinking: { type: "enabled" },
-              reasoning_effort: "high",
+              thinking: { type: "disabled" },
+              temperature: 0,
               max_tokens: 8_192,
               stream: false,
             }),
             signal: controller.signal,
           },
         );
-        const payload = (await response.json().catch(() => null)) as Record<
-          string,
-          unknown
-        > | null;
+        const responseBody = await response.text();
+        let payload: Record<string, unknown> | null = null;
+        try {
+          const candidate = JSON.parse(responseBody) as unknown;
+          if (candidate && typeof candidate === "object") {
+            payload = candidate as Record<string, unknown>;
+          }
+        } catch {
+          payload = null;
+        }
+        const choices = Array.isArray(payload?.choices) ? payload.choices : [];
+        const firstChoice =
+          choices[0] && typeof choices[0] === "object"
+            ? (choices[0] as Record<string, unknown>)
+            : {};
+        const message =
+          firstChoice.message && typeof firstChoice.message === "object"
+            ? (firstChoice.message as Record<string, unknown>)
+            : {};
+        const providerDetails =
+          payload?.error && typeof payload.error === "object"
+            ? (payload.error as Record<string, unknown>)
+            : {};
         logServerEvent("student-hub.schedule-analysis.provider.responded", {
           provider: "deepseek",
           model,
           attempt,
           status: response.status,
           requestId: response.headers.get("x-request-id"),
+          contentType: response.headers.get("content-type"),
+          responseBytes: Buffer.byteLength(responseBody),
+          payloadParsed: Boolean(payload),
+          finishReason:
+            typeof firstChoice.finish_reason === "string"
+              ? firstChoice.finish_reason
+              : null,
+          messageCharacterCount:
+            typeof message.content === "string" ? message.content.length : 0,
+          providerErrorCode:
+            typeof providerDetails.code === "string"
+              ? providerDetails.code
+              : null,
+          providerErrorType:
+            typeof providerDetails.type === "string"
+              ? providerDetails.type
+              : null,
         });
-        if (!response.ok || !payload) {
+        if (!response.ok) {
           const failure = providerError(response.status, payload);
           if (!failure.retryable) throw failure;
           lastError = failure;
+          continue;
+        }
+        if (!payload) {
+          lastError = new ScheduleAnalysisError(
+            "AI_INVALID_RESPONSE",
+            "The analysis service returned an empty or invalid response. Please try again.",
+            502,
+            true,
+          );
           continue;
         }
         let parsed: ExtractedSchedule;
@@ -292,14 +400,39 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
           parsed = scheduleExtractionSchema.parse(
             JSON.parse(responseText(payload)),
           );
+          if (parsed.courses.length === 0) {
+            throw new ScheduleAnalysisError(
+              "AI_INVALID_RESPONSE",
+              "No courses could be structured from the extracted timetable text.",
+              422,
+              true,
+            );
+          }
         } catch (error) {
           if (error instanceof ScheduleAnalysisError) throw error;
           if (error instanceof SyntaxError || error instanceof ZodError) {
+            logServerError(
+              "student-hub.schedule-analysis.response-validation.failed",
+              error,
+              {
+                provider: "deepseek",
+                model,
+                attempt,
+                issueCount: error instanceof ZodError ? error.issues.length : 1,
+                issuePaths:
+                  error instanceof ZodError
+                    ? error.issues
+                        .slice(0, 8)
+                        .map((issue) => issue.path.join("."))
+                        .join(",")
+                    : "json",
+              },
+            );
             throw new ScheduleAnalysisError(
               "AI_INVALID_RESPONSE",
-              "The document was read, but its timetable could not be understood. Try a clearer file.",
+              "The timetable text was extracted, but the structured result was invalid. Please try again.",
               502,
-              attempt < 2,
+              true,
             );
           }
           throw error;
@@ -333,7 +466,7 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
         if (error instanceof Error && error.name === "AbortError") {
           lastError = new ScheduleAnalysisError(
             "AI_TIMEOUT",
-            "The timetable analysis took too long. Try a smaller or clearer file.",
+            "The analysis service took too long to respond. Please try again shortly.",
             504,
             true,
           );

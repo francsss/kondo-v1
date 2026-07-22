@@ -85,8 +85,12 @@ describe("DeepSeek timetable analysis", () => {
     extractDocumentText.mockReset();
     extractDocumentText.mockResolvedValue({
       text: "Monday 08:00 International Business A-201",
-      method: "ocr",
+      method: "image-ocr",
       pageCount: 1,
+      characterCount: 45,
+      confidence: 91,
+      warnings: [],
+      attempts: ["auto-rotate-resize-contrast-ocr", "normalized"],
     });
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -119,10 +123,10 @@ describe("DeepSeek timetable analysis", () => {
       expect(url).toBe("https://api.deepseek.com/chat/completions");
       const request = JSON.parse(String(init?.body));
       expect(request).toMatchObject({
-        model: "deepseek-v4-pro",
+        model: "deepseek-v4-flash",
         response_format: { type: "json_object" },
-        thinking: { type: "enabled" },
-        reasoning_effort: "high",
+        thinking: { type: "disabled" },
+        temperature: 0,
       });
       expect(request.messages[1].content).toContain(
         "Monday 08:00 International Business A-201",
@@ -130,7 +134,7 @@ describe("DeepSeek timetable analysis", () => {
       expect(request.messages[1].content).not.toContain("data:image");
       expect(result).toMatchObject({
         provider: "deepseek",
-        model: "deepseek-v4-pro",
+        model: "deepseek-v4-flash",
         inputTokens: 120,
         outputTokens: 80,
       });
@@ -180,5 +184,51 @@ describe("DeepSeek timetable analysis", () => {
       status: 502,
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("retries an invalid HTTP 200 body instead of blaming the document", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(successfulResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getScheduleAnalysisProvider().analyze(
+      [file("image/png", "timetable.png")],
+      context,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.extraction.courses).toHaveLength(1);
+  });
+
+  it("retries JSON that does not satisfy the timetable schema", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: JSON.stringify({ courses: [] }) } },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(successfulResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getScheduleAnalysisProvider().analyze(
+      [file("application/pdf", "timetable.pdf")],
+      context,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.extraction.title).toBe("Spring timetable");
   });
 });

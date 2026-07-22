@@ -15,7 +15,7 @@ The shell deliberately links back to `/home`; it does not duplicate the main Kon
 
 1. The signed-in student uploads one to five PDF/JPG/PNG/WebP files through the private media pipeline (`SCHEDULE_IMPORT`). Each file is signature checked, scanned for unsafe PDF actions, and stored privately in R2 in production.
 2. The import API verifies ownership, active media status, the selected university/campus/term relationship, per-file limits, and a 30 MB aggregate limit.
-3. The server-only `ScheduleAnalysisProvider` reads the private objects. It extracts embedded PDF text when available and otherwise runs bundled English/Chinese OCR for images and scanned PDFs. The browser never receives `DEEPSEEK_API_KEY`.
+3. The server-only `ScheduleAnalysisProvider` reads the private objects. Native PDFs use layout-aware embedded-text extraction. Empty or weak PDFs fall back to rendered-page OCR. Images use automatic EXIF/orientation correction, resizing, contrast normalization and a second high-contrast OCR pass when necessary. Partial results are retained with review warnings. The browser never receives `DEEPSEEK_API_KEY`.
 4. Only the extracted text is sent to the official DeepSeek Chat Completions API. `deepseek-v4-pro` returns JSON output, which is validated against the existing strict Zod schema. The workflow supports timetable notation such as `第1-2节`, `1-16周`, `单周`, and `双周`.
 5. Official `UniversityPeriodConfiguration` records convert numbered periods into exact local times. Missing mappings are marked uncertain instead of invented.
 6. The result enters `REVIEW_REQUIRED`. It is not a `StudentSchedule` yet. The student can edit, add, duplicate, or remove rows and must explicitly confirm.
@@ -41,8 +41,8 @@ Students can also submit a private custom mapping through `/api/student-hub/cust
 
 - `DEEPSEEK_API_KEY` — required in Vercel Production, server-only.
 - `SCHEDULE_AI_PROVIDER` — optional; defaults to `deepseek`.
-- `SCHEDULE_AI_MODEL` — optional; defaults to `deepseek-v4-pro`.
-- `SCHEDULE_AI_TIMEOUT_MS` — optional 10–120 second timeout; default 120 seconds.
+- `SCHEDULE_AI_MODEL` — legacy override; timetable extraction is pinned to `deepseek-v4-flash` for low-latency structured JSON.
+- `SCHEDULE_AI_TIMEOUT_MS` — optional 20–120 second timeout; default 75 seconds.
 - The existing private R2 variables are required because timetable source files use the media pipeline.
 
 To replace the AI provider, implement `ScheduleAnalysisProvider` in `src/lib/schedule-ai.ts`, preserve the strict `scheduleExtractionSchema`, return provider/model/token metadata, and add an explicit branch in `getScheduleAnalysisProvider`. Never call a provider from a client component.

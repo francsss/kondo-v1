@@ -27,7 +27,12 @@ const nextConfig = {
   allowedDevOrigins: ["192.168.*.*", ...configuredDevOrigins],
   compress: true,
   poweredByHeader: false,
-  serverExternalPackages: ["pdf-to-img", "tesseract.js"],
+  serverExternalPackages: [
+    "@napi-rs/canvas",
+    "pdf-to-img",
+    "pdfjs-dist",
+    "tesseract.js",
+  ],
   outputFileTracingIncludes: {
     "/api/student-hub/imports/*/analyze": [
       "./node_modules/@napi-rs/canvas/**/*",

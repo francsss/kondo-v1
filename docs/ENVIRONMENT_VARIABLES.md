@@ -43,17 +43,17 @@ marketplace expiry hourly, media cleanup hourly, and digests daily.
 
 ## Optional runtime variables
 
-| Variable                       | Required                   | Purpose                                                                                                         |
-| ------------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `NOTIFICATION_WORKER_SECRET`   | Optional secret            | Separate bearer secret for manual/external notification and digest calls. Generate with `openssl rand -hex 32`. |
-| `MARKETPLACE_WORKER_SECRET`    | Optional secret            | Separate bearer secret for manual/external marketplace expiry calls.                                            |
-| `MEDIA_WORKER_SECRET`          | Optional secret            | Separate bearer secret for manual/external media cleanup calls.                                                 |
-| `KONDO_ALLOW_DESTRUCTIVE_SEED` | Never enable in production | Explicit local/demo database reset opt-in. Production validation rejects `true`.                                |
-| `KONDO_DEV_ORIGINS`            | Development only           | Comma-separated origins allowed for Next.js development HMR.                                                    |
-| `STORAGE_LOCAL_ROOT`           | Development/test only      | Local media root; defaults to `.data/media`.                                                                    |
-| `SCHEDULE_AI_PROVIDER`         | Optional                   | Timetable provider adapter; currently `deepseek` (default).                                                     |
-| `SCHEDULE_AI_MODEL`            | Optional                   | DeepSeek model override; omit to use `deepseek-v4-pro`.                                                         |
-| `SCHEDULE_AI_TIMEOUT_MS`       | Optional                   | Provider timeout in milliseconds, clamped from 10,000 to 120,000.                                               |
+| Variable                       | Required                   | Purpose                                                                                                                   |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `NOTIFICATION_WORKER_SECRET`   | Optional secret            | Separate bearer secret for manual/external notification and digest calls. Generate with `openssl rand -hex 32`.           |
+| `MARKETPLACE_WORKER_SECRET`    | Optional secret            | Separate bearer secret for manual/external marketplace expiry calls.                                                      |
+| `MEDIA_WORKER_SECRET`          | Optional secret            | Separate bearer secret for manual/external media cleanup calls.                                                           |
+| `KONDO_ALLOW_DESTRUCTIVE_SEED` | Never enable in production | Explicit local/demo database reset opt-in. Production validation rejects `true`.                                          |
+| `KONDO_DEV_ORIGINS`            | Development only           | Comma-separated origins allowed for Next.js development HMR.                                                              |
+| `STORAGE_LOCAL_ROOT`           | Development/test only      | Local media root; defaults to `.data/media`.                                                                              |
+| `SCHEDULE_AI_PROVIDER`         | Optional                   | Timetable provider adapter; currently `deepseek` (default).                                                               |
+| `SCHEDULE_AI_MODEL`            | Legacy/ignored             | Timetable extraction uses `deepseek-v4-flash` for predictable low-latency JSON. Remove older `deepseek-v4-pro` overrides. |
+| `SCHEDULE_AI_TIMEOUT_MS`       | Optional                   | Provider timeout in milliseconds, clamped from 20,000 to 120,000; default 75,000.                                         |
 
 Route-specific worker secrets are alternatives for manual callers. The
 scheduled workflow needs only `CRON_SECRET`. There is no Cloudflare Worker in

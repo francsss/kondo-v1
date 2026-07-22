@@ -36,7 +36,7 @@ export async function POST(
     importId: id,
   });
   if (
-    !(await rateLimit(`schedule-analysis:${user.id}`, 5, 24 * 60 * 60_000))
+    !(await rateLimit(`schedule-analysis:${user.id}`, 10, 24 * 60 * 60_000))
       .allowed
   ) {
     return jsonError(
@@ -57,6 +57,15 @@ export async function POST(
   logServerEvent("student-hub.schedule-analysis.files.received", {
     importId: id,
     fileCount: scheduleImport.files.length,
+    totalBytes: scheduleImport.files.reduce(
+      (total, file) => total + file.mediaAsset.sizeBytes,
+      0,
+    ),
+    mimeTypes: scheduleImport.files
+      .map(
+        (file) => file.mediaAsset.detectedMime ?? file.mediaAsset.declaredMime,
+      )
+      .join(","),
   });
   if (
     !["UPLOADED", "FAILED", "REVIEW_REQUIRED"].includes(scheduleImport.status)

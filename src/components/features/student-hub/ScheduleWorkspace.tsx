@@ -171,6 +171,7 @@ export function ScheduleWorkspace({
   const [showManual, setShowManual] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [analysisStage, setAnalysisStage] = useState("");
   const [error, setError] = useState("");
   const [importError, setImportError] = useState("");
   const [success, setSuccess] = useState("");
@@ -214,6 +215,8 @@ export function ScheduleWorkspace({
     setBusy(true);
     setImportError("");
     setSuccess("");
+    setAnalysisStage("Preparing upload...");
+    const stageTimers: Array<ReturnType<typeof setTimeout>> = [];
     try {
       let currentImportId = pendingImportId;
       if (!currentImportId) {
@@ -225,6 +228,7 @@ export function ScheduleWorkspace({
           );
         if (!files.length)
           throw new Error("Choose at least one PDF or timetable image.");
+        setAnalysisStage("Uploading document...");
         const mediaIds = [];
         for (const file of files)
           mediaIds.push(
@@ -240,6 +244,17 @@ export function ScheduleWorkspace({
         currentImportId = (created.import as { id: string }).id;
         setPendingImportId(currentImportId);
       }
+      setAnalysisStage("Reading document...");
+      stageTimers.push(
+        setTimeout(
+          () => setAnalysisStage("Running text extraction and OCR..."),
+          4_000,
+        ),
+        setTimeout(
+          () => setAnalysisStage("Structuring your timetable..."),
+          15_000,
+        ),
+      );
       const analyzed = await api(
         `/api/student-hub/imports/${currentImportId}/analyze`,
         {},
@@ -264,6 +279,8 @@ export function ScheduleWorkspace({
           : "The timetable could not be analyzed.",
       );
     } finally {
+      stageTimers.forEach((timer) => clearTimeout(timer));
+      setAnalysisStage("");
       setBusy(false);
     }
   }
@@ -612,9 +629,9 @@ export function ScheduleWorkspace({
               </label>
               <label className="flex items-start gap-3 text-xs text-muted-foreground">
                 <input className="mt-0.5" required type="checkbox" />I
-                understand that Kondo securely sends these files to its
-                configured AI provider for timetable extraction. Results that
-                need correction will be shown for review before saving.
+                understand that Kondo extracts text securely, then sends only
+                that text to its configured AI provider. Results that need
+                correction will be shown for review before saving.
               </label>
               {importError ? (
                 <div
@@ -636,7 +653,7 @@ export function ScheduleWorkspace({
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                {busy ? "Analyzing..." : "Analyze timetable"}
+                {busy ? analysisStage || "Analyzing..." : "Analyze timetable"}
               </Button>
             </fieldset>
           </form>
