@@ -91,6 +91,17 @@ type ReviewCourse = Omit<
 > & { specificDate?: string | null; uncertainFields?: string[] };
 type Review = { title: string; warnings: string[]; courses: ReviewCourse[] };
 
+class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string | null,
+    public readonly retryable: boolean,
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
 const input =
   "h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none transition focus:border-kondo-green";
 const emptyCourse: ReviewCourse = {
@@ -122,9 +133,18 @@ async function api(url: string, body: unknown, method = "POST") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const payload = await response.json().catch(() => ({}));
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    code?: string;
+    retryable?: boolean;
+    [key: string]: unknown;
+  };
   if (!response.ok)
-    throw new Error(payload.error ?? "The request could not be completed.");
+    throw new ApiRequestError(
+      payload.error ?? "The request could not be completed.",
+      payload.code ?? null,
+      payload.retryable ?? false,
+    );
   return payload;
 }
 
@@ -152,9 +172,11 @@ export function ScheduleWorkspace({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [importError, setImportError] = useState("");
   const [success, setSuccess] = useState("");
   const [review, setReview] = useState<Review | null>(null);
   const [importId, setImportId] = useState("");
+  const [pendingImportId, setPendingImportId] = useState("");
   const [manual, setManual] = useState({ ...emptyCourse });
   const schedule =
     schedules.find((item) => item.id === selectedSchedule) ?? schedules[0];
@@ -188,37 +210,59 @@ export function ScheduleWorkspace({
 
   async function importSchedule(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
-    setError("");
+    setImportError("");
     setSuccess("");
     try {
-      const form = new FormData(event.currentTarget);
-      const files = form
-        .getAll("files")
-        .filter((item): item is File => item instanceof File && item.size > 0);
-      if (!files.length)
-        throw new Error("Choose at least one PDF or timetable image.");
-      const mediaIds = [];
-      for (const file of files)
-        mediaIds.push(
-          await uploadMediaFile(file, { purpose: "SCHEDULE_IMPORT" }),
-        );
-      const created = await api("/api/student-hub/imports", {
-        universityId: form.get("universityId"),
-        campusId: form.get("campusId") || null,
-        academicTermId: form.get("academicTermId") || null,
-        mediaIds,
-        retainSource: form.get("retainSource") === "on",
-      });
-      setImportId(created.import.id);
+      let currentImportId = pendingImportId;
+      if (!currentImportId) {
+        const form = new FormData(event.currentTarget);
+        const files = form
+          .getAll("files")
+          .filter(
+            (item): item is File => item instanceof File && item.size > 0,
+          );
+        if (!files.length)
+          throw new Error("Choose at least one PDF or timetable image.");
+        const mediaIds = [];
+        for (const file of files)
+          mediaIds.push(
+            await uploadMediaFile(file, { purpose: "SCHEDULE_IMPORT" }),
+          );
+        const created = await api("/api/student-hub/imports", {
+          universityId: form.get("universityId"),
+          campusId: form.get("campusId") || null,
+          academicTermId: form.get("academicTermId") || null,
+          mediaIds,
+          retainSource: form.get("retainSource") === "on",
+        });
+        currentImportId = (created.import as { id: string }).id;
+        setPendingImportId(currentImportId);
+      }
       const analyzed = await api(
-        `/api/student-hub/imports/${created.import.id}/analyze`,
+        `/api/student-hub/imports/${currentImportId}/analyze`,
         {},
       );
-      setReview(analyzed.result);
+      const generated = analyzed.schedule as { id?: string } | undefined;
+      if (analyzed.saved === true && generated?.id) {
+        setShowImport(false);
+        setPendingImportId("");
+        setImportId("");
+        router.push(
+          `/student-hub/tools/timetables/${generated.id}?generated=1`,
+        );
+        return;
+      }
+      setImportId(currentImportId);
+      setReview(analyzed.result as Review);
       setShowImport(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Import failed.");
+      setImportError(
+        cause instanceof Error
+          ? cause.message
+          : "The timetable could not be analyzed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -229,20 +273,22 @@ export function ScheduleWorkspace({
     setBusy(true);
     setError("");
     try {
-      await api(`/api/student-hub/imports/${importId}/confirm`, {
-        title: review.title || "My timetable",
-        courses: review.courses.map((course) => {
-          const confirmed = { ...course };
-          delete confirmed.uncertainFields;
-          return confirmed;
-        }),
-      });
+      const confirmed = await api(
+        `/api/student-hub/imports/${importId}/confirm`,
+        {
+          title: review.title || "My timetable",
+          courses: review.courses.map((course) => {
+            const confirmed = { ...course };
+            delete confirmed.uncertainFields;
+            return confirmed;
+          }),
+        },
+      );
+      const scheduleId = (confirmed.schedule as { id: string }).id;
       setReview(null);
       setImportId("");
-      setSuccess(
-        "Your timetable is saved and will remain available after refresh.",
-      );
-      router.refresh();
+      setPendingImportId("");
+      router.push(`/student-hub/tools/timetables/${scheduleId}?generated=1`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Save failed.");
     } finally {
@@ -261,7 +307,7 @@ export function ScheduleWorkspace({
           title: "My timetable",
           timezone: "Asia/Shanghai",
         });
-        scheduleId = created.schedule.id;
+        scheduleId = (created.schedule as { id: string }).id;
       }
       await api(
         editingId
@@ -498,16 +544,20 @@ export function ScheduleWorkspace({
             </p>
             <div className="mt-3 space-y-2">
               {recentImports.map((item) => (
-                <div
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-muted p-3 text-xs"
-                  key={item.id}
-                >
-                  <span className="font-bold">
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </span>
-                  <span className="rounded-full bg-card px-2 py-1 font-black">
-                    {item.status.replaceAll("_", " ")}
-                  </span>
+                <div className="rounded-2xl bg-muted p-3 text-xs" key={item.id}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-bold">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
+                    <span className="rounded-full bg-card px-2 py-1 font-black">
+                      {item.status.replaceAll("_", " ")}
+                    </span>
+                  </div>
+                  {item.errorMessage ? (
+                    <p className="mt-2 leading-5 text-red-700 dark:text-red-300">
+                      {item.errorMessage}
+                    </p>
+                  ) : null}
                 </div>
               ))}
               {!recentImports.length ? (
@@ -523,44 +573,72 @@ export function ScheduleWorkspace({
           title="Import your timetable"
           onClose={() => !busy && setShowImport(false)}
         >
-          <form className="space-y-4" onSubmit={importSchedule}>
-            <UniversityFields universities={universities} />
-            <label className="block rounded-3xl border-2 border-dashed border-emerald-200 p-6 text-center dark:border-emerald-400/20">
-              <FileImage className="mx-auto h-7 w-7 text-kondo-green" />
-              <span className="mt-2 block text-sm font-black">
-                PDF, JPG, PNG or WebP
-              </span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                Up to 5 files, 15 MB each and 10 PDF pages.
-              </span>
-              <input
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                className="mt-4 block w-full text-xs"
-                multiple
-                name="files"
-                required
-                type="file"
-              />
-            </label>
-            <label className="flex items-start gap-3 text-xs text-muted-foreground">
-              <input className="mt-0.5" name="retainSource" type="checkbox" />
-              Keep my source files after confirmation. Otherwise Kondo deletes
-              them.
-            </label>
-            <label className="flex items-start gap-3 text-xs text-muted-foreground">
-              <input className="mt-0.5" required type="checkbox" />I understand
-              that Kondo securely sends these files to its configured AI
-              provider for timetable extraction. The result must be reviewed
-              before it is saved.
-            </label>
-            <Button disabled={busy} fullWidth type="submit">
-              {busy ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {busy ? "Secure upload and analysis…" : "Analyze timetable"}
-            </Button>
+          <form
+            aria-busy={busy}
+            onChange={() => {
+              if (!busy) {
+                setPendingImportId("");
+                setImportError("");
+              }
+            }}
+            onSubmit={importSchedule}
+          >
+            <fieldset
+              className="space-y-4 disabled:cursor-wait disabled:opacity-70"
+              disabled={busy}
+            >
+              <UniversityFields universities={universities} />
+              <label className="block rounded-3xl border-2 border-dashed border-emerald-200 p-6 text-center dark:border-emerald-400/20">
+                <FileImage className="mx-auto h-7 w-7 text-kondo-green" />
+                <span className="mt-2 block text-sm font-black">
+                  PDF, JPG, PNG or WebP
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Up to 5 files, 15 MB each and 10 PDF pages.
+                </span>
+                <input
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  className="mt-4 block w-full text-xs"
+                  multiple
+                  name="files"
+                  required={!pendingImportId}
+                  type="file"
+                />
+              </label>
+              <label className="flex items-start gap-3 text-xs text-muted-foreground">
+                <input className="mt-0.5" name="retainSource" type="checkbox" />
+                Keep my source files after confirmation. Otherwise Kondo deletes
+                them.
+              </label>
+              <label className="flex items-start gap-3 text-xs text-muted-foreground">
+                <input className="mt-0.5" required type="checkbox" />I
+                understand that Kondo securely sends these files to its
+                configured AI provider for timetable extraction. Results that
+                need correction will be shown for review before saving.
+              </label>
+              {importError ? (
+                <div
+                  className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 dark:bg-red-400/10 dark:text-red-300"
+                  role="alert"
+                >
+                  <p>{importError}</p>
+                  {pendingImportId ? (
+                    <p className="mt-1 text-xs font-medium opacity-80">
+                      Your uploaded file is still available. You can try the
+                      analysis again without uploading it a second time.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              <Button disabled={busy} fullWidth type="submit">
+                {busy ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {busy ? "Analyzing..." : "Analyze timetable"}
+              </Button>
+            </fieldset>
           </form>
         </Modal>
       ) : null}

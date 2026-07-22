@@ -1,10 +1,11 @@
 import type { MediaAsset } from "@prisma/client";
+import { ZodError } from "zod";
 import {
   SCHEDULE_EXTRACTION_JSON_SCHEMA,
   scheduleExtractionSchema,
   type ExtractedSchedule,
 } from "@/features/student-hub/schemas";
-import { logServerError } from "@/lib/logger";
+import { logServerError, logServerEvent } from "@/lib/logger";
 import { getObjectStorageForProvider } from "@/lib/storage";
 
 type ScheduleFile = Pick<
@@ -40,6 +41,84 @@ export interface ScheduleAnalysisProvider {
   ): Promise<ScheduleAnalysis>;
 }
 
+export type ScheduleAnalysisErrorCode =
+  | "AI_NOT_CONFIGURED"
+  | "AI_AUTHENTICATION_FAILED"
+  | "AI_QUOTA_EXCEEDED"
+  | "AI_RATE_LIMITED"
+  | "AI_TIMEOUT"
+  | "AI_PROVIDER_UNAVAILABLE"
+  | "AI_DOCUMENT_REJECTED"
+  | "AI_INVALID_RESPONSE"
+  | "STORAGE_READ_FAILED";
+
+export class ScheduleAnalysisError extends Error {
+  constructor(
+    public readonly code: ScheduleAnalysisErrorCode,
+    public readonly userMessage: string,
+    public readonly status: number,
+    public readonly retryable: boolean,
+  ) {
+    super(userMessage);
+    this.name = "ScheduleAnalysisError";
+  }
+}
+
+function providerError(
+  status: number,
+  payload: Record<string, unknown> | null,
+) {
+  const details =
+    payload?.error && typeof payload.error === "object"
+      ? (payload.error as Record<string, unknown>)
+      : {};
+  const providerCode =
+    typeof details.code === "string" ? details.code : undefined;
+  const providerType =
+    typeof details.type === "string" ? details.type : undefined;
+
+  if (status === 429 && providerCode === "insufficient_quota") {
+    return new ScheduleAnalysisError(
+      "AI_QUOTA_EXCEEDED",
+      "The timetable analysis service has no available API quota. Please contact Kondo support.",
+      503,
+      false,
+    );
+  }
+  if (status === 401 || status === 403) {
+    return new ScheduleAnalysisError(
+      "AI_AUTHENTICATION_FAILED",
+      "The timetable analysis service is not configured correctly. Please contact Kondo support.",
+      503,
+      false,
+    );
+  }
+  if (status === 429) {
+    return new ScheduleAnalysisError(
+      "AI_RATE_LIMITED",
+      "The analysis model is temporarily busy. Please try again shortly.",
+      503,
+      true,
+    );
+  }
+  if (status >= 500) {
+    return new ScheduleAnalysisError(
+      "AI_PROVIDER_UNAVAILABLE",
+      "The analysis model is temporarily unavailable. Please try again shortly.",
+      503,
+      true,
+    );
+  }
+  return new ScheduleAnalysisError(
+    "AI_DOCUMENT_REJECTED",
+    providerType === "invalid_request_error"
+      ? "The file could not be processed by the analysis model. Try a clearer PDF or image."
+      : "This document could not be analyzed. Try a clearer PDF or image.",
+    422,
+    false,
+  );
+}
+
 function responseText(payload: Record<string, unknown>) {
   if (typeof payload.output_text === "string") return payload.output_text;
   const output = Array.isArray(payload.output) ? payload.output : [];
@@ -58,13 +137,25 @@ function responseText(payload: Record<string, unknown>) {
       }
     }
   }
-  throw new Error("The analysis provider returned no structured output.");
+  throw new ScheduleAnalysisError(
+    "AI_INVALID_RESPONSE",
+    "The document was read, but its timetable could not be understood. Try a clearer file.",
+    502,
+    false,
+  );
 }
 
 class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
   async analyze(files: ScheduleFile[], context: PeriodContext) {
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("Schedule analysis is not configured.");
+    if (!apiKey) {
+      throw new ScheduleAnalysisError(
+        "AI_NOT_CONFIGURED",
+        "Timetable analysis is not configured yet. Please contact Kondo support.",
+        503,
+        false,
+      );
+    }
     const model = process.env.SCHEDULE_AI_MODEL?.trim() || "gpt-5.6-terra";
     const timeout = Math.min(
       120_000,
@@ -85,9 +176,33 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
     ];
 
     for (const file of files) {
-      const bytes = await getObjectStorageForProvider(
-        file.storageProvider,
-      ).read(file.objectKey);
+      logServerEvent("student-hub.schedule-analysis.file-read.started", {
+        provider: file.storageProvider,
+        mimeType: file.detectedMime,
+      });
+      let bytes: Uint8Array;
+      try {
+        bytes = await getObjectStorageForProvider(file.storageProvider).read(
+          file.objectKey,
+        );
+      } catch (error) {
+        logServerError(
+          "student-hub.schedule-analysis.file-read.failed",
+          error,
+          { provider: file.storageProvider, mimeType: file.detectedMime },
+        );
+        throw new ScheduleAnalysisError(
+          "STORAGE_READ_FAILED",
+          "The uploaded file could not be read from media storage. Please upload it again.",
+          502,
+          true,
+        );
+      }
+      logServerEvent("student-hub.schedule-analysis.file-read.completed", {
+        provider: file.storageProvider,
+        mimeType: file.detectedMime,
+        sizeBytes: bytes.byteLength,
+      });
       const mime = file.detectedMime ?? "application/octet-stream";
       const dataUrl = `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
       content.push(
@@ -96,6 +211,7 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
               type: "input_file",
               filename: file.originalFileName,
               file_data: dataUrl,
+              detail: "high",
             }
           : { type: "input_image", image_url: dataUrl, detail: "high" },
       );
@@ -106,6 +222,12 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
       const controller = new AbortController();
       const abort = setTimeout(() => controller.abort(), timeout);
       try {
+        logServerEvent("student-hub.schedule-analysis.provider.started", {
+          provider: "openai",
+          model,
+          attempt,
+          fileCount: files.length,
+        });
         const response = await fetch("https://api.openai.com/v1/responses", {
           method: "POST",
           headers: {
@@ -132,19 +254,43 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
           string,
           unknown
         > | null;
+        logServerEvent("student-hub.schedule-analysis.provider.responded", {
+          provider: "openai",
+          model,
+          attempt,
+          status: response.status,
+          requestId: response.headers.get("x-request-id"),
+        });
         if (!response.ok || !payload) {
-          const providerError = new Error(
-            `Schedule provider error ${response.status}`,
-          );
-          if (response.status < 500 && response.status !== 429)
-            throw providerError;
-          lastError = providerError;
+          const failure = providerError(response.status, payload);
+          if (!failure.retryable) throw failure;
+          lastError = failure;
           continue;
         }
-        const parsed = scheduleExtractionSchema.parse(
-          JSON.parse(responseText(payload)),
-        );
+        let parsed: ExtractedSchedule;
+        try {
+          parsed = scheduleExtractionSchema.parse(
+            JSON.parse(responseText(payload)),
+          );
+        } catch (error) {
+          if (error instanceof ScheduleAnalysisError) throw error;
+          if (error instanceof SyntaxError || error instanceof ZodError) {
+            throw new ScheduleAnalysisError(
+              "AI_INVALID_RESPONSE",
+              "The document was read, but its timetable could not be understood. Try a clearer file.",
+              502,
+              false,
+            );
+          }
+          throw error;
+        }
         const usage = (payload.usage ?? {}) as Record<string, unknown>;
+        logServerEvent("student-hub.schedule-analysis.validated", {
+          provider: "openai",
+          model,
+          courseCount: parsed.courses.length,
+          warningCount: parsed.warnings.length,
+        });
         return {
           extraction: parsed,
           provider: "openai",
@@ -157,8 +303,26 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
               : null,
         };
       } catch (error) {
-        lastError = error;
-        if (error instanceof SyntaxError) break;
+        if (error instanceof ScheduleAnalysisError) {
+          lastError = error;
+          if (!error.retryable) break;
+          continue;
+        }
+        if (error instanceof Error && error.name === "AbortError") {
+          lastError = new ScheduleAnalysisError(
+            "AI_TIMEOUT",
+            "The timetable analysis took too long. Try a smaller or clearer file.",
+            504,
+            true,
+          );
+          continue;
+        }
+        lastError = new ScheduleAnalysisError(
+          "AI_PROVIDER_UNAVAILABLE",
+          "The analysis model is temporarily unavailable. Please try again shortly.",
+          503,
+          true,
+        );
       } finally {
         clearTimeout(abort);
       }
@@ -168,7 +332,13 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
       model,
       fileCount: files.length,
     });
-    throw new Error("The timetable could not be analyzed. Please try again.");
+    if (lastError instanceof ScheduleAnalysisError) throw lastError;
+    throw new ScheduleAnalysisError(
+      "AI_PROVIDER_UNAVAILABLE",
+      "The analysis model is temporarily unavailable. Please try again shortly.",
+      503,
+      true,
+    );
   }
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { saveScheduleImport } from "@/lib/schedule-import";
 
 const enabled =
   process.env.DATABASE_URL?.includes("/kondo_module3_test") ?? false;
@@ -104,6 +105,79 @@ postgresDescribe("Student Hub PostgreSQL persistence", () => {
     expect(reloaded?.title).toBe("Spring timetable");
     expect(reloaded?.courses).toHaveLength(1);
     expect(reloaded?.courses[0]?.courseName).toBe("International Business");
+  });
+
+  it("atomically saves a successful analyzed import and its extraction", async () => {
+    const scheduleImport = await prisma.scheduleImport.create({
+      data: {
+        ownerId,
+        universityId,
+        status: "ANALYZING",
+      },
+    });
+    const normalized = {
+      title: "AI generated timetable",
+      warnings: [],
+      courses: [
+        {
+          courseName: "Applied Economics",
+          teacher: "Professor Wang",
+          dayOfWeek: 2,
+          specificDate: null,
+          startPeriod: null,
+          endPeriod: null,
+          startTime: "14:00",
+          endTime: "15:30",
+          room: "B-304",
+          building: null,
+          campusLabel: null,
+          startWeek: 1,
+          endWeek: 16,
+          weekPattern: "ALL",
+          weeks: [],
+          language: "en",
+          notes: null,
+          color: "#22A06B",
+          isOptional: false,
+          confidence: 0.97,
+          source: "IMPORT",
+        },
+      ],
+    };
+
+    const saved = await saveScheduleImport({
+      importId: scheduleImport.id,
+      ownerId,
+      expectedStatus: "ANALYZING",
+      title: normalized.title,
+      courses: normalized.courses,
+      analysis: {
+        provider: "openai",
+        model: "test-model",
+        inputTokens: 50,
+        outputTokens: 25,
+        normalized,
+        reviewCount: 0,
+      },
+    });
+
+    const reloaded = await prisma.scheduleImport.findUnique({
+      where: { id: scheduleImport.id },
+      include: {
+        result: true,
+        schedule: { include: { courses: true } },
+      },
+    });
+    expect(saved.schedule.id).toBe(reloaded?.scheduleId);
+    expect(reloaded).toMatchObject({
+      status: "CONFIRMED",
+      provider: "openai",
+      model: "test-model",
+    });
+    expect(reloaded?.result?.courseCount).toBe(1);
+    expect(reloaded?.schedule?.courses[0]?.courseName).toBe(
+      "Applied Economics",
+    );
   });
 
   it("does not expose another student's private schedule through owner-scoped queries", async () => {

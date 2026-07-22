@@ -3,6 +3,20 @@ type OperationalContext = Record<
   boolean | number | string | null | undefined
 >;
 
+export function logServerEvent(
+  event: string,
+  context: OperationalContext = {},
+) {
+  console.info(
+    JSON.stringify({
+      level: "info",
+      event,
+      ...context,
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
 function errorDescriptor(error: unknown) {
   if (!(error instanceof Error)) {
     return { errorType: "UnknownError" };

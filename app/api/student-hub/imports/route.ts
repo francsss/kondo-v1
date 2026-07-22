@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { attachMediaAsset, MediaError } from "@/lib/media";
+import { logServerEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import {
   getRequestMeta,
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest) {
     return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
+  logServerEvent("student-hub.schedule-import.request.received");
   const parsed = scheduleImportCreateSchema.safeParse(
     await request.json().catch(() => null),
   );
@@ -64,6 +66,10 @@ export async function POST(request: NextRequest) {
       30 * 1024 * 1024
     )
       return jsonError("A timetable import cannot exceed 30 MB in total.", 413);
+    logServerEvent("student-hub.schedule-import.files.validated", {
+      fileCount: assets.length,
+      totalBytes: assets.reduce((total, asset) => total + asset.sizeBytes, 0),
+    });
 
     const scheduleImport = await prisma.$transaction(async (tx) => {
       const created = await tx.scheduleImport.create({
@@ -102,6 +108,10 @@ export async function POST(request: NextRequest) {
         ...getRequestMeta(request),
       });
       return created;
+    });
+    logServerEvent("student-hub.schedule-import.created", {
+      importId: scheduleImport.id,
+      fileCount: mediaIds.length,
     });
     return Response.json({ import: scheduleImport }, { status: 201 });
   } catch (error) {

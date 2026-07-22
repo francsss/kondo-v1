@@ -1,10 +1,27 @@
 import { NextRequest } from "next/server";
+import { logServerError, logServerEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
-import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
-import { getScheduleAnalysisProvider } from "@/lib/schedule-ai";
+import {
+  getRequestMeta,
+  hasTrustedOrigin,
+  internalApiError,
+  jsonError,
+} from "@/lib/request";
+import {
+  getScheduleAnalysisProvider,
+  ScheduleAnalysisError,
+} from "@/lib/schedule-ai";
+import {
+  cleanupScheduleImportSources,
+  parseScheduleForPersistence,
+  saveScheduleImport,
+  ScheduleImportStateError,
+} from "@/lib/schedule-import";
 import { getCurrentUser } from "@/lib/server-auth";
 import { normalizeExtractedSchedule } from "@/lib/student-schedule";
+
+export const maxDuration = 120;
 
 export async function POST(
   request: NextRequest,
@@ -14,6 +31,10 @@ export async function POST(
     return jsonError("Invalid request origin.", 403);
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
+  const id = (await params).id;
+  logServerEvent("student-hub.schedule-analysis.request.received", {
+    importId: id,
+  });
   if (
     !(await rateLimit(`schedule-analysis:${user.id}`, 5, 24 * 60 * 60_000))
       .allowed
@@ -23,7 +44,6 @@ export async function POST(
       429,
     );
   }
-  const id = (await params).id;
   const scheduleImport = await prisma.scheduleImport.findFirst({
     where: { id, ownerId: user.id },
     include: {
@@ -34,6 +54,10 @@ export async function POST(
     },
   });
   if (!scheduleImport) return jsonError("Import not found.", 404);
+  logServerEvent("student-hub.schedule-analysis.files.received", {
+    importId: id,
+    fileCount: scheduleImport.files.length,
+  });
   if (
     !["UPLOADED", "FAILED", "REVIEW_REQUIRED"].includes(scheduleImport.status)
   ) {
@@ -52,6 +76,11 @@ export async function POST(
     },
   });
   if (claimed.count !== 1) return jsonError("Analysis already started.", 409);
+  logServerEvent("student-hub.schedule-analysis.started", {
+    importId: id,
+    attempt: scheduleImport.attemptCount + 1,
+    fileCount: scheduleImport.files.length,
+  });
 
   try {
     const configuration = await prisma.universityPeriodConfiguration.findFirst({
@@ -87,6 +116,55 @@ export async function POST(
     const reviewCount = normalized.courses.filter(
       (course) => course.uncertainFields.length > 0 || course.confidence < 0.75,
     ).length;
+    const persistable = parseScheduleForPersistence(normalized);
+    logServerEvent("student-hub.schedule-analysis.validation.completed", {
+      importId: id,
+      courseCount: normalized.courses.length,
+      reviewCount,
+      canSave: persistable.success,
+    });
+
+    if (persistable.success) {
+      const saved = await saveScheduleImport({
+        importId: id,
+        ownerId: user.id,
+        expectedStatus: "ANALYZING",
+        title: persistable.data.title,
+        courses: persistable.data.courses,
+        requestMeta: getRequestMeta(request),
+        analysis: {
+          provider: analysis.provider,
+          model: analysis.model,
+          inputTokens: analysis.inputTokens,
+          outputTokens: analysis.outputTokens,
+          normalized,
+          reviewCount,
+        },
+      });
+      await cleanupScheduleImportSources({
+        actor: user,
+        importId: id,
+        files: saved.files,
+        retainSource: saved.retainSource,
+        requestMeta: getRequestMeta(request),
+      });
+      logServerEvent("student-hub.schedule-analysis.completed", {
+        importId: id,
+        scheduleId: saved.schedule.id,
+        courseCount: saved.schedule.courses.length,
+      });
+      return Response.json(
+        {
+          importId: id,
+          schedule: saved.schedule,
+          conflicts: saved.conflicts,
+          reviewCount,
+          saved: true,
+        },
+        { status: 201 },
+      );
+    }
+
     await prisma.$transaction([
       prisma.scheduleImportResult.upsert({
         where: { importId: id },
@@ -115,21 +193,53 @@ export async function POST(
         },
       }),
     ]);
-    return Response.json({ importId: id, result: normalized, reviewCount });
+    logServerEvent("student-hub.schedule-analysis.review-required", {
+      importId: id,
+      courseCount: normalized.courses.length,
+      reviewCount,
+      validationIssueCount: persistable.error.issues.length,
+    });
+    return Response.json({
+      importId: id,
+      result: normalized,
+      reviewCount,
+      saved: false,
+    });
   } catch (error) {
+    const failure =
+      error instanceof ScheduleAnalysisError
+        ? error
+        : error instanceof ScheduleImportStateError
+          ? new ScheduleAnalysisError(
+              "AI_INVALID_RESPONSE",
+              error.message,
+              error.status,
+              false,
+            )
+          : null;
     await prisma.scheduleImport.updateMany({
       where: { id, ownerId: user.id },
       data: {
         status: "FAILED",
-        errorCode: "ANALYSIS_FAILED",
-        errorMessage: "The timetable could not be analyzed.",
+        errorCode: failure?.code ?? "ANALYSIS_FAILED",
+        errorMessage:
+          failure?.userMessage ?? "The timetable could not be analyzed.",
       },
     });
-    if (
-      error instanceof Error &&
-      error.message === "Schedule analysis is not configured."
-    ) {
-      return jsonError("Timetable analysis is not configured yet.", 503);
+    logServerError("student-hub.schedule-analysis.request.failed", error, {
+      importId: id,
+      errorCode: failure?.code ?? "ANALYSIS_FAILED",
+      retryable: failure?.retryable ?? false,
+    });
+    if (failure) {
+      return Response.json(
+        {
+          error: failure.userMessage,
+          code: failure.code,
+          retryable: failure.retryable,
+        },
+        { status: failure.status },
+      );
     }
     return internalApiError("student-hub.import.analyze", error);
   }
