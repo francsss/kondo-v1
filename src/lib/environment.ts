@@ -16,6 +16,9 @@ const REQUIRED_PRODUCTION_VALUES = [
   "UPSTASH_REDIS_REST_TOKEN",
   "CRON_SECRET",
   "DEEPSEEK_API_KEY",
+  "LIVEKIT_URL",
+  "LIVEKIT_API_KEY",
+  "LIVEKIT_API_SECRET",
 ] as const;
 
 const PLACEHOLDER_PATTERN = /(?:change[-_ ]?me|replace|example|<[^>]+>)/i;
@@ -206,6 +209,16 @@ export function productionEnvironmentIssues(
     issues.push("UPSTASH_REDIS_REST_URL must be an Upstash REST endpoint.");
   }
 
+  const liveKitUrl = parseUrl(
+    environment.LIVEKIT_URL,
+    "LIVEKIT_URL",
+    ["wss:"],
+    issues,
+  );
+  if (liveKitUrl && !liveKitUrl.hostname.endsWith(".livekit.cloud")) {
+    issues.push("LIVEKIT_URL must be a LiveKit Cloud WebSocket endpoint.");
+  }
+
   requireSecret(environment, "JWT_SECRET", 32, issues);
   requireSecret(environment, "CRON_SECRET", 32, issues);
   requireSecret(environment, "STORAGE_ACCESS_KEY_ID", 16, issues);
@@ -213,6 +226,8 @@ export function productionEnvironmentIssues(
   requireSecret(environment, "RESEND_API_KEY", 16, issues);
   requireSecret(environment, "UPSTASH_REDIS_REST_TOKEN", 20, issues);
   requireSecret(environment, "DEEPSEEK_API_KEY", 20, issues);
+  requireSecret(environment, "LIVEKIT_API_KEY", 8, issues);
+  requireSecret(environment, "LIVEKIT_API_SECRET", 24, issues);
   if (
     environment.DEEPSEEK_API_KEY &&
     !environment.DEEPSEEK_API_KEY.startsWith("sk-")

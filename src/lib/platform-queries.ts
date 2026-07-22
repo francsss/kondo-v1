@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   activeListingWhere,
@@ -121,17 +122,27 @@ export async function getCommunityDirectory(
     pageSize?: number;
     type?: "COUNTRY" | "CITY" | "UNIVERSITY" | "TOPIC";
     joined?: boolean;
+    membership?: "MANAGED" | "JOINED";
+    sort?: "POPULAR" | "RECENT" | "RECOMMENDED";
     query?: string;
   } = {},
 ) {
   const page = Math.max(1, Math.floor(input.page ?? 1));
   const pageSize = Math.min(30, Math.max(6, Math.floor(input.pageSize ?? 12)));
   const query = input.query?.trim();
-  const where = {
+  const where: Prisma.CommunityWhereInput = {
     AND: [
       communityVisibilityWhere({ id: userId }),
       input.type ? { type: input.type } : {},
       input.joined ? { members: { some: { userId } } } : {},
+      input.membership === "MANAGED"
+        ? {
+            members: { some: { userId, role: { in: ["OWNER", "MODERATOR"] } } },
+          }
+        : {},
+      input.membership === "JOINED"
+        ? { members: { some: { userId, role: "MEMBER" } } }
+        : {},
       query
         ? {
             OR: [
@@ -170,11 +181,16 @@ export async function getCommunityDirectory(
           take: 1,
         },
       },
-      orderBy: [
-        { isOfficial: "desc" },
-        { isVerified: "desc" },
-        { members: { _count: "desc" } },
-      ],
+      orderBy:
+        input.sort === "RECENT"
+          ? [{ createdAt: "desc" }]
+          : input.sort === "POPULAR"
+            ? [{ members: { _count: "desc" } }, { createdAt: "desc" }]
+            : [
+                { isOfficial: "desc" },
+                { isVerified: "desc" },
+                { members: { _count: "desc" } },
+              ],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

@@ -26,6 +26,9 @@ const validProductionEnvironment = {
   UPSTASH_REDIS_REST_TOKEN: "upstash-token-long-enough",
   CRON_SECRET: "cron-secret-that-is-at-least-thirty-two-bytes",
   DEEPSEEK_API_KEY: "sk-deepseek-test-key-long-enough",
+  LIVEKIT_URL: "wss://kondo-test.livekit.cloud",
+  LIVEKIT_API_KEY: "APItestkey",
+  LIVEKIT_API_SECRET: "livekit-test-secret-long-enough",
 };
 
 describe("production environment validation", () => {

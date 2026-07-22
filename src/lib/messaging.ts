@@ -624,6 +624,8 @@ export async function getConversationForUser(
                   lastName: true,
                   username: true,
                   avatarKey: true,
+                  avatarMediaId: true,
+                  lastActiveAt: true,
                 },
               },
             },

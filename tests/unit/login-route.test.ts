@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   auditCreate: vi.fn(),
   passwordCompare: vi.fn(),
+  rateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    remaining: 7,
+    resetAt: 1_000_000,
+  }),
   sessionCreate: vi.fn(),
   transaction: vi.fn(),
   userFindUnique: vi.fn(),
@@ -20,6 +25,10 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: mocks.transaction,
     user: { findUnique: mocks.userFindUnique },
   },
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimit: mocks.rateLimit,
 }));
 
 import { POST } from "../../app/api/auth/login/route";

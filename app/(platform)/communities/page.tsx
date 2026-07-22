@@ -1,9 +1,18 @@
 import type { CommunityType } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search, Sparkles } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Search,
+  Sparkles,
+  Users,
+  Video,
+} from "lucide-react";
 import { CommunityCard } from "@/components/features/community/CommunityCard";
 import { CommunityCreateDialog } from "@/components/features/community/CommunityCreateDialog";
+import { MeetPanel } from "@/components/features/community/MeetPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -13,17 +22,24 @@ import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Communities" };
 
-const filters = [
-  { label: "All", value: undefined },
-  { label: "My communities", value: "JOINED" },
-  { label: "University", value: "UNIVERSITY" },
-  { label: "City", value: "CITY" },
-  { label: "Country", value: "COUNTRY" },
-  { label: "Topics", value: "TOPIC" },
-] as const;
+type MainTab = "my" | "discover" | "meet";
+type Scope = "managed" | "joined";
+type Sort = "recommended" | "popular" | "recent";
 
-function href(input: { type?: string; q?: string; page?: number }) {
+function communityHref(input: {
+  tab?: MainTab;
+  scope?: Scope;
+  sort?: Sort;
+  type?: string;
+  q?: string;
+  page?: number;
+}) {
   const params = new URLSearchParams();
+  if (input.tab && input.tab !== "my") params.set("tab", input.tab);
+  if (input.scope && input.scope !== "managed")
+    params.set("scope", input.scope);
+  if (input.sort && input.sort !== "recommended")
+    params.set("sort", input.sort);
   if (input.type) params.set("type", input.type);
   if (input.q) params.set("q", input.q);
   if (input.page && input.page > 1) params.set("page", String(input.page));
@@ -34,25 +50,33 @@ function href(input: { type?: string; q?: string; page?: number }) {
 export default async function CommunitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; q?: string; page?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    scope?: string;
+    sort?: string;
+    type?: string;
+    q?: string;
+    page?: string;
+  }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const normalizedFilter = params.type?.toUpperCase();
+  const tab: MainTab = ["my", "discover", "meet"].includes(params.tab ?? "")
+    ? (params.tab as MainTab)
+    : "my";
+  const scope: Scope = params.scope === "joined" ? "joined" : "managed";
+  const sort: Sort = ["popular", "recent"].includes(params.sort ?? "")
+    ? (params.sort as Sort)
+    : "recommended";
+  const normalizedType = params.type?.toUpperCase();
   const type = ["UNIVERSITY", "CITY", "COUNTRY", "TOPIC"].includes(
-    normalizedFilter ?? "",
+    normalizedType ?? "",
   )
-    ? (normalizedFilter as CommunityType)
+    ? (normalizedType as CommunityType)
     : undefined;
-  const [result, joinedResult, countries, cities, universities] =
+
+  const [countries, cities, universities, result, joinedSummary] =
     await Promise.all([
-      getCommunityDirectory(user.id, {
-        page: Number(params.page ?? 1),
-        type,
-        joined: normalizedFilter === "JOINED",
-        query: params.q,
-      }),
-      getCommunityDirectory(user.id, { joined: true, pageSize: 5 }),
       prisma.country.findMany({
         where: { isActive: true },
         select: { id: true, name: true },
@@ -68,7 +92,30 @@ export default async function CommunitiesPage({
         select: { id: true, name: true, city: { select: { name: true } } },
         orderBy: { name: "asc" },
       }),
+      tab === "meet"
+        ? Promise.resolve(null)
+        : getCommunityDirectory(user.id, {
+            page: Number(params.page ?? 1),
+            type,
+            query: params.q,
+            membership:
+              tab === "my"
+                ? scope === "managed"
+                  ? "MANAGED"
+                  : "JOINED"
+                : undefined,
+            sort:
+              tab === "discover"
+                ? sort === "popular"
+                  ? "POPULAR"
+                  : sort === "recent"
+                    ? "RECENT"
+                    : "RECOMMENDED"
+                : undefined,
+          }),
+      getCommunityDirectory(user.id, { joined: true, pageSize: 5 }),
     ]);
+
   const referenceCities = cities.map((city) => ({
     id: city.id,
     name: `${city.name}, ${city.country.name}`,
@@ -77,14 +124,19 @@ export default async function CommunitiesPage({
     id: university.id,
     name: `${university.name} · ${university.city.name}`,
   }));
+  const tabs = [
+    { value: "my" as const, label: "My Communities", icon: Users },
+    { value: "discover" as const, label: "Discover", icon: Compass },
+    { value: "meet" as const, label: "Meet", icon: Video },
+  ];
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader
-          description="Find the people who understand your campus, your city, your country, and the questions on your mind."
+          description="Your circles, new communities to discover, and real conversations with students across Kondo."
           eyebrow="Belong anywhere"
-          title="Your communities"
+          title="Communities"
         />
         <CommunityCreateDialog
           cities={referenceCities}
@@ -93,24 +145,49 @@ export default async function CommunitiesPage({
         />
       </div>
 
-      {joinedResult.communities.length ? (
+      <nav
+        aria-label="Community sections"
+        className="scrollbar-none mt-8 flex gap-2 overflow-x-auto rounded-3xl border border-border bg-card p-1.5 shadow-sm"
+      >
+        {tabs.map(({ value, label, icon: Icon }) => (
+          <Link
+            aria-current={tab === value ? "page" : undefined}
+            className={
+              tab === value
+                ? "inline-flex min-w-fit flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm transition"
+                : "inline-flex min-w-fit flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            }
+            href={communityHref({ tab: value })}
+            key={value}
+          >
+            <Icon className="h-4 w-4" /> {label}
+          </Link>
+        ))}
+      </nav>
+
+      {tab === "meet" ? (
+        <section className="mt-8">
+          <MeetPanel initialGender={user.gender} />
+        </section>
+      ) : null}
+
+      {tab === "my" && joinedSummary.total > 0 ? (
         <section className="mt-8 overflow-hidden rounded-4xl bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#238164] p-6 text-white shadow-lift sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-kondo-lime">
-                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" /> Your
-                circle
+                <Sparkles className="h-3.5 w-3.5" /> Your circle
               </div>
               <h2 className="mt-4 text-2xl font-black tracking-tight sm:text-3xl">
-                You have {joinedResult.total} places to belong.
+                You have {joinedSummary.total} places to belong.
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-                Ask the small questions, share useful discoveries, and make the
-                next student’s first week easier.
+                Manage the spaces you lead and return to every community you
+                have joined.
               </p>
             </div>
             <div className="flex -space-x-3">
-              {joinedResult.communities.map((community) => (
+              {joinedSummary.communities.map((community) => (
                 <Link
                   aria-label={community.name}
                   className="grid h-12 w-12 place-items-center rounded-2xl border-2 border-kondo-forest bg-white text-xl shadow-lg transition hover:-translate-y-1"
@@ -125,95 +202,178 @@ export default async function CommunitiesPage({
         </section>
       ) : null}
 
-      <Card className="mt-8">
-        <form className="flex flex-col gap-3 sm:flex-row">
-          {normalizedFilter ? (
-            <input name="type" type="hidden" value={normalizedFilter} />
-          ) : null}
-          <label className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent pl-11 pr-4 text-sm outline-none focus:border-kondo-green dark:border-white/10"
-              defaultValue={params.q}
-              name="q"
-              placeholder="Search communities"
-            />
-          </label>
-          <Button type="submit">Search</Button>
-        </form>
-      </Card>
-
-      <div className="scrollbar-none mt-6 flex gap-2 overflow-x-auto pb-1">
-        {filters.map((filter) => {
-          const active = filter.value
-            ? normalizedFilter === filter.value
-            : !normalizedFilter;
-          return (
+      {tab === "my" ? (
+        <div className="mt-7 flex gap-2">
+          {(["managed", "joined"] as const).map((value) => (
             <Link
               className={
-                active
-                  ? "whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                  : "whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-muted-foreground hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
+                scope === value
+                  ? "rounded-full bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"
+                  : "rounded-full border border-border bg-card px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground"
               }
-              href={href({ type: filter.value, q: params.q })}
-              key={filter.label}
+              href={communityHref({
+                tab,
+                scope: value,
+                q: params.q,
+                type: normalizedType,
+              })}
+              key={value}
             >
-              {filter.label}
+              {value === "managed" ? "Managed" : "Joined"}
             </Link>
-          );
-        })}
-      </div>
-
-      <section className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {result.communities.map((community) => (
-          <CommunityCard community={community} key={community.id} />
-        ))}
-      </section>
-      {!result.communities.length ? (
-        <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
-          No communities match this view.
-        </Card>
+          ))}
+        </div>
       ) : null}
 
-      <div className="mt-7 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Page {result.page} of {result.pageCount} · {result.total} communities
-        </p>
-        <div className="flex gap-2">
-          <Button
-            aria-disabled={result.page <= 1}
-            asChild
-            size="sm"
-            variant="secondary"
-          >
+      {tab === "discover" ? (
+        <div className="mt-7 flex flex-wrap gap-2">
+          {(["recommended", "popular", "recent"] as const).map((value) => (
             <Link
-              href={href({
-                type: normalizedFilter,
+              className={
+                sort === value
+                  ? "rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground"
+                  : "rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground"
+              }
+              href={communityHref({
+                tab,
+                sort: value,
                 q: params.q,
-                page: Math.max(1, result.page - 1),
+                type: normalizedType,
               })}
+              key={value}
             >
-              <ChevronLeft className="h-4 w-4" /> Previous
+              {value[0].toUpperCase() + value.slice(1)}
             </Link>
-          </Button>
-          <Button
-            aria-disabled={result.page >= result.pageCount}
-            asChild
-            size="sm"
-            variant="secondary"
-          >
-            <Link
-              href={href({
-                type: normalizedFilter,
-                q: params.q,
-                page: Math.min(result.pageCount, result.page + 1),
-              })}
-            >
-              Next <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          ))}
         </div>
-      </div>
+      ) : null}
+
+      {tab !== "meet" ? (
+        <>
+          <Card className="mt-6">
+            <form className="flex flex-col gap-3 sm:flex-row">
+              <input name="tab" type="hidden" value={tab} />
+              {tab === "my" ? (
+                <input name="scope" type="hidden" value={scope} />
+              ) : (
+                <input name="sort" type="hidden" value={sort} />
+              )}
+              {normalizedType ? (
+                <input name="type" type="hidden" value={normalizedType} />
+              ) : null}
+              <label className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  className="h-11 w-full rounded-2xl border border-border bg-transparent pl-11 pr-4 text-sm outline-none focus:border-primary"
+                  defaultValue={params.q}
+                  name="q"
+                  placeholder={
+                    tab === "discover"
+                      ? "Search communities to discover"
+                      : "Search your communities"
+                  }
+                />
+              </label>
+              <Button type="submit">Search</Button>
+            </form>
+          </Card>
+
+          <div className="scrollbar-none mt-5 flex gap-2 overflow-x-auto pb-1">
+            {[
+              { label: "All", value: undefined },
+              { label: "University", value: "UNIVERSITY" },
+              { label: "City", value: "CITY" },
+              { label: "Country", value: "COUNTRY" },
+              { label: "Topics", value: "TOPIC" },
+            ].map((filter) => {
+              const active = filter.value
+                ? normalizedType === filter.value
+                : !normalizedType;
+              return (
+                <Link
+                  className={
+                    active
+                      ? "whitespace-nowrap rounded-full bg-foreground px-4 py-2 text-sm font-bold text-background"
+                      : "whitespace-nowrap rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-muted-foreground hover:border-primary hover:text-foreground"
+                  }
+                  href={communityHref({
+                    tab,
+                    scope,
+                    sort,
+                    type: filter.value,
+                    q: params.q,
+                  })}
+                  key={filter.label}
+                >
+                  {filter.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <section className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {result?.communities.map((community) => (
+              <CommunityCard community={community} key={community.id} />
+            ))}
+          </section>
+          {!result?.communities.length ? (
+            <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
+              {tab === "my"
+                ? `No ${scope} communities match this view.`
+                : "No communities match this discovery view."}
+            </Card>
+          ) : null}
+
+          {result ? (
+            <div className="mt-7 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Page {result.page} of {result.pageCount} · {result.total}{" "}
+                communities
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  aria-disabled={result.page <= 1}
+                  asChild
+                  size="sm"
+                  variant="secondary"
+                >
+                  <Link
+                    href={communityHref({
+                      tab,
+                      scope,
+                      sort,
+                      type: normalizedType,
+                      q: params.q,
+                      page: Math.max(1, result.page - 1),
+                    })}
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Previous
+                  </Link>
+                </Button>
+                <Button
+                  aria-disabled={result.page >= result.pageCount}
+                  asChild
+                  size="sm"
+                  variant="secondary"
+                >
+                  <Link
+                    href={communityHref({
+                      tab,
+                      scope,
+                      sort,
+                      type: normalizedType,
+                      q: params.q,
+                      page: Math.min(result.pageCount, result.page + 1),
+                    })}
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

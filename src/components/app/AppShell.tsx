@@ -221,6 +221,15 @@ export function AppShell({
     if (response?.ok) window.location.assign("/login");
   }
 
+  if (/^\/messages\/[^/]+$/.test(pathname)) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />

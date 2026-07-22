@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAfricanCountryCode } from "@/lib/african-countries";
 
 const passwordSchema = z
   .string()
@@ -12,6 +13,11 @@ export const registerSchema = z
     firstName: z.string().trim().min(2).max(60),
     lastName: z.string().trim().min(2).max(60),
     email: z.string().trim().email().toLowerCase(),
+    countryCode: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .refine(isAfricanCountryCode, "Select a valid African country."),
     password: passwordSchema,
     confirmPassword: z.string(),
     acceptedTerms: z.literal(true),

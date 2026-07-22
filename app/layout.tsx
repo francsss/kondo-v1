@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { getAppUrl } from "@/lib/app-url";
 import "./globals.css";
+import "@livekit/components-styles";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getAppUrl()),

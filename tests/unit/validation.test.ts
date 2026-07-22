@@ -36,6 +36,7 @@ describe("input validation", () => {
         firstName: "Ama",
         lastName: "Mensah",
         email: "AMA@example.com",
+        countryCode: "GH",
         password: "StrongPass1",
         confirmPassword: "StrongPass1",
         acceptedTerms: true,

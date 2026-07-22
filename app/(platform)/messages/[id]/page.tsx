@@ -11,6 +11,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { ConversationActions } from "@/components/features/messages/ConversationActions";
+import { ConversationCallButtons } from "@/components/features/calls/ConversationCallButtons";
 import { MarkConversationRead } from "@/components/features/messages/MarkConversationRead";
 import { MessageComposer } from "@/components/features/messages/MessageComposer";
 import { Avatar } from "@/components/ui/Avatar";
@@ -56,29 +57,38 @@ export default async function ConversationPage({
     select: { blockerId: true },
   });
   const blockedByMe = block?.blockerId === user.id;
+  const recentlyActive = Boolean(other.lastActiveAt);
   const latestDisplayedMessage =
     conversation.page === 1
       ? conversation.messages[conversation.messages.length - 1]
       : null;
 
   return (
-    <div className="mx-auto max-w-[860px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
+    <div className="h-dvh overflow-hidden bg-background">
       {latestDisplayedMessage ? (
         <MarkConversationRead
           conversationId={id}
           latestMessageId={latestDisplayedMessage.id}
         />
       ) : null}
-      <Button asChild size="sm" variant="ghost">
-        <Link href="/messages">
-          <ChevronLeft className="h-4 w-4" /> Messages
-        </Link>
-      </Button>
-
-      <Card className="mt-4 overflow-hidden p-0">
-        <header className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-white/10 sm:px-5">
+      <Card className="flex h-full flex-col overflow-hidden rounded-none border-0 p-0 shadow-none">
+        <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card/95 p-3 backdrop-blur-xl sm:px-5">
+          <Button
+            asChild
+            aria-label="Back to conversations"
+            size="icon"
+            variant="ghost"
+          >
+            <Link href="/messages">
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+          </Button>
           <Link href={`/profile/${other.username ?? other.id}`}>
-            <Avatar firstName={other.firstName} lastName={other.lastName} />
+            <Avatar
+              firstName={other.firstName}
+              lastName={other.lastName}
+              mediaId={other.avatarMediaId}
+            />
           </Link>
           <div className="min-w-0 flex-1">
             <Link
@@ -88,9 +98,12 @@ export default async function ConversationPage({
               {other.firstName} {other.lastName}
             </Link>
             <p className="text-xs text-muted-foreground">
-              Private conversation
+              <span className={recentlyActive ? "text-kondo-green" : undefined}>
+                {recentlyActive ? "Recently active" : "Offline"}
+              </span>
             </p>
           </div>
+          {!block ? <ConversationCallButtons conversationId={id} /> : null}
           <ConversationActions
             conversationId={id}
             initiallyArchived={Boolean(conversation.archivedAt)}
@@ -99,7 +112,7 @@ export default async function ConversationPage({
           />
         </header>
 
-        <div className="min-h-[440px] bg-slate-50/70 p-4 dark:bg-white/[0.02] sm:p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/35 p-4 sm:p-6">
           {conversation.pageCount > 1 ? (
             <div className="mb-6 flex items-center justify-center gap-2">
               <Button
@@ -258,7 +271,7 @@ export default async function ConversationPage({
           ) : null}
         </div>
 
-        <div className="border-t border-slate-100 p-4 dark:border-white/10 sm:p-5">
+        <div className="shrink-0 border-t border-border bg-card p-3 sm:p-4">
           {block ? (
             <div className="mb-3 flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300">
               <Ban className="h-4 w-4" />

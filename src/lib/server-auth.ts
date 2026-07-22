@@ -22,6 +22,7 @@ const currentUserSelect = {
   avatarMediaId: true,
   role: true,
   status: true,
+  gender: true,
   countryId: true,
   cityId: true,
   universityId: true,

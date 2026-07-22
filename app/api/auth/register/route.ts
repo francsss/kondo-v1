@@ -3,9 +3,11 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
-import { writeAuditLogWithClient } from "@/lib/audit";
-import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  RegistrationConfigurationError,
+  registerUserWithNationalCommunity,
+} from "@/lib/registration";
 import {
   getRequestMeta,
   hasTrustedOrigin,
@@ -14,7 +16,6 @@ import {
   requestIp,
 } from "@/lib/request";
 import { toSafeUser } from "@/lib/serializers";
-import { createDatabaseSession } from "@/lib/server-auth";
 import { registerSchema } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
@@ -41,33 +42,13 @@ export async function POST(request: NextRequest) {
 
   const meta = getRequestMeta(request);
   try {
-    const { user, sessionId } = await prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email: parsed.data.email,
-          passwordHash,
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
-          role: "MEMBER",
-        },
-      });
-      const createdSessionId = await createDatabaseSession(
-        {
-          userId: createdUser.id,
-          ipAddress: meta.ipAddress,
-          userAgent: meta.userAgent,
-        },
-        tx,
-      );
-      await writeAuditLogWithClient(tx, {
-        actorId: createdUser.id,
-        action: "USER_REGISTERED",
-        entityType: "User",
-        entityId: createdUser.id,
-        newValue: { role: createdUser.role },
-        ...meta,
-      });
-      return { user: createdUser, sessionId: createdSessionId };
+    const { user, sessionId } = await registerUserWithNationalCommunity({
+      email: parsed.data.email,
+      passwordHash,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      countryCode: parsed.data.countryCode,
+      ...meta,
     });
     await trackEvent({ name: "USER_REGISTERED", userId: user.id, sessionId });
 
@@ -90,6 +71,9 @@ export async function POST(request: NextRequest) {
     setSessionCookie(request, response, token);
     return response;
   } catch (error) {
+    if (error instanceof RegistrationConfigurationError) {
+      return jsonError("Registration is temporarily unavailable.", 503);
+    }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"

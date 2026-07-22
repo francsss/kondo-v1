@@ -6,6 +6,7 @@ import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
+import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function RegisterPage() {
         firstName: form.get("firstName"),
         lastName: form.get("lastName"),
         email: form.get("email"),
+        countryCode: form.get("countryCode"),
         password: form.get("password"),
         confirmPassword: form.get("confirmPassword"),
         acceptedTerms: form.get("acceptedTerms") === "on",
@@ -104,6 +106,30 @@ export default function RegisterPage() {
                   autoComplete="email"
                 />
               </div>
+              <label className="block sm:col-span-2">
+                <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
+                  Country of origin
+                </span>
+                <select
+                  autoComplete="country"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-card px-4 text-sm text-foreground outline-none transition focus:border-kondo-green dark:border-white/10"
+                  defaultValue=""
+                  name="countryCode"
+                  required
+                >
+                  <option disabled value="">
+                    Select your country
+                  </option>
+                  {AFRICAN_COUNTRIES.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.emoji} {country.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1.5 block text-[11px] text-muted-foreground">
+                  You will automatically join your official national community.
+                </span>
+              </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
                   Password

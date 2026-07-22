@@ -195,6 +195,36 @@ enum MessageType {
   DOCUMENT
 }
 
+enum UserGender {
+  MALE
+  FEMALE
+}
+
+enum MeetGenderPreference {
+  ALL
+  MALE
+  FEMALE
+}
+
+enum CallKind {
+  MEET
+  VIDEO
+  AUDIO
+}
+
+enum CallStatus {
+  CONNECTING
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum CallParticipantStatus {
+  INVITED
+  JOINED
+  LEFT
+}
+
 enum BookmarkTargetType {
   POST
   LISTING
@@ -357,6 +387,7 @@ model User {
   marketplaceAudience              ProfileAudience             @default(MEMBERS)
   role                             Role                        @default(MEMBER)
   status                           UserStatus                  @default(ACTIVE)
+  gender                           UserGender?
   countryId                        String?
   country                          Country?                    @relation(fields: [countryId], references: [id], onDelete: SetNull)
   cityId                           String?
@@ -402,6 +433,9 @@ model User {
   createdNotificationAnnouncements NotificationAnnouncement[]  @relation("NotificationAnnouncementCreator")
   conversationMemberships          ConversationParticipant[]
   sentMessages                     Message[]                   @relation("MessageSender")
+  meetQueueEntry                   MeetQueueEntry?
+  createdCallSessions              CallSession[]               @relation("CallSessionCreator")
+  callParticipations               CallParticipant[]
   blockedUsers                     UserBlock[]                 @relation("Blocker")
   blockedByUsers                   UserBlock[]                 @relation("BlockedUser")
   reports                          Report[]                    @relation("ReportReporter")
@@ -435,18 +469,19 @@ model User {
 }
 
 model Country {
-  id           String       @id @default(cuid())
-  code         String       @unique @db.Char(2)
-  name         String       @unique
-  emoji        String?
-  isActive     Boolean      @default(true)
-  verified     Boolean      @default(false)
-  users        User[]
-  cities       City[]
-  universities University[]
-  communities  Community[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                   String           @id @default(cuid())
+  code                 String           @unique @db.Char(2)
+  name                 String           @unique
+  emoji                String?
+  isActive             Boolean          @default(true)
+  verified             Boolean          @default(false)
+  users                User[]
+  cities               City[]
+  universities         University[]
+  communities          Community[]
+  meetQueuePreferences MeetQueueEntry[] @relation("MeetCountryPreference")
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@index([isActive, name])
 }
@@ -1250,6 +1285,7 @@ model Conversation {
   directKey     String?                   @unique
   participants  ConversationParticipant[]
   messages      Message[]
+  callSessions  CallSession[]
   lastMessageAt DateTime?
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
@@ -1293,6 +1329,60 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@index([senderId, createdAt])
+}
+
+model MeetQueueEntry {
+  id                  String               @id @default(cuid())
+  userId              String               @unique
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  genderPreference    MeetGenderPreference @default(ALL)
+  countryPreferenceId String?
+  countryPreference   Country?             @relation("MeetCountryPreference", fields: [countryPreferenceId], references: [id], onDelete: SetNull)
+  callSessionId       String?
+  callSession         CallSession?         @relation(fields: [callSessionId], references: [id], onDelete: SetNull)
+  heartbeatAt         DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([callSessionId, createdAt])
+  @@index([heartbeatAt])
+  @@index([countryPreferenceId])
+}
+
+model CallSession {
+  id             String            @id @default(cuid())
+  roomName       String            @unique
+  kind           CallKind
+  status         CallStatus        @default(CONNECTING)
+  conversationId String?
+  conversation   Conversation?     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User              @relation("CallSessionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  participants   CallParticipant[]
+  meetEntries    MeetQueueEntry[]
+  connectedAt    DateTime?
+  endedAt        DateTime?
+  expiresAt      DateTime
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([conversationId, status, createdAt])
+}
+
+model CallParticipant {
+  callSessionId String
+  callSession   CallSession           @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        CallParticipantStatus @default(INVITED)
+  joinedAt      DateTime?
+  leftAt        DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@id([callSessionId, userId])
+  @@index([userId, status, createdAt])
 }
 
 model UserBlock {
