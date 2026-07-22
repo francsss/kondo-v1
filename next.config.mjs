@@ -27,6 +27,18 @@ const nextConfig = {
   allowedDevOrigins: ["192.168.*.*", ...configuredDevOrigins],
   compress: true,
   poweredByHeader: false,
+  serverExternalPackages: ["pdf-to-img", "tesseract.js"],
+  outputFileTracingIncludes: {
+    "/api/student-hub/imports/*/analyze": [
+      "./node_modules/@napi-rs/canvas/**/*",
+      "./node_modules/@napi-rs/canvas-*/**/*",
+      "./node_modules/pdf-to-img/**/*",
+      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/tesseract.js/**/*",
+      "./node_modules/tesseract.js-core/**/*",
+      "./vendor/tessdata/**/*",
+    ],
+  },
   turbopack: {
     root: projectRoot,
   },

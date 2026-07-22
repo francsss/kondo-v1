@@ -15,7 +15,7 @@ const REQUIRED_PRODUCTION_VALUES = [
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
   "CRON_SECRET",
-  "OPENAI_API_KEY",
+  "DEEPSEEK_API_KEY",
 ] as const;
 
 const PLACEHOLDER_PATTERN = /(?:change[-_ ]?me|replace|example|<[^>]+>)/i;
@@ -212,12 +212,12 @@ export function productionEnvironmentIssues(
   requireSecret(environment, "STORAGE_SECRET_ACCESS_KEY", 32, issues);
   requireSecret(environment, "RESEND_API_KEY", 16, issues);
   requireSecret(environment, "UPSTASH_REDIS_REST_TOKEN", 20, issues);
-  requireSecret(environment, "OPENAI_API_KEY", 20, issues);
+  requireSecret(environment, "DEEPSEEK_API_KEY", 20, issues);
   if (
-    environment.OPENAI_API_KEY &&
-    !environment.OPENAI_API_KEY.startsWith("sk-")
+    environment.DEEPSEEK_API_KEY &&
+    !environment.DEEPSEEK_API_KEY.startsWith("sk-")
   ) {
-    issues.push("OPENAI_API_KEY must be an OpenAI API key.");
+    issues.push("DEEPSEEK_API_KEY must be a DeepSeek API key.");
   }
   requireSecret(environment, "NOTIFICATION_WORKER_SECRET", 32, issues);
   requireSecret(environment, "MARKETPLACE_WORKER_SECRET", 32, issues);

@@ -24,7 +24,7 @@ Secrets belong in Vercel or GitHub settings, never in Git.
 | `UPSTASH_REDIS_REST_URL`    | Mandatory        | Shared serverless rate-limit state                     | Upstash → Redis database → REST API → URL.                                                                                                   |
 | `UPSTASH_REDIS_REST_TOKEN`  | Mandatory secret | Authorizes rate-limit reads/writes                     | Upstash → Redis database → REST API → standard read/write token.                                                                             |
 | `CRON_SECRET`               | Mandatory secret | Authenticates all scheduled worker calls               | Generate with `openssl rand -hex 32`; use the identical value in Vercel and GitHub Actions.                                                  |
-| `OPENAI_API_KEY`            | Mandatory secret | Server-side PDF/image timetable extraction             | OpenAI Platform → API keys. Keep server-only and scope it to the production project.                                                         |
+| `DEEPSEEK_API_KEY`          | Mandatory secret | Server-side timetable structuring after PDF/image OCR  | DeepSeek Platform → API keys. Keep server-only and scope it to the production project.                                                       |
 
 Add these to Vercel for **Production**. Use isolated Neon, R2, Redis, Resend,
 JWT, and worker values for Preview if previews need full integration access.
@@ -51,8 +51,8 @@ marketplace expiry hourly, media cleanup hourly, and digests daily.
 | `KONDO_ALLOW_DESTRUCTIVE_SEED` | Never enable in production | Explicit local/demo database reset opt-in. Production validation rejects `true`.                                |
 | `KONDO_DEV_ORIGINS`            | Development only           | Comma-separated origins allowed for Next.js development HMR.                                                    |
 | `STORAGE_LOCAL_ROOT`           | Development/test only      | Local media root; defaults to `.data/media`.                                                                    |
-| `SCHEDULE_AI_PROVIDER`         | Optional                   | Timetable provider adapter; currently `openai` (default).                                                       |
-| `SCHEDULE_AI_MODEL`            | Optional                   | Reviewed model override; omit to use the application default.                                                   |
+| `SCHEDULE_AI_PROVIDER`         | Optional                   | Timetable provider adapter; currently `deepseek` (default).                                                     |
+| `SCHEDULE_AI_MODEL`            | Optional                   | DeepSeek model override; omit to use `deepseek-v4-pro`.                                                         |
 | `SCHEDULE_AI_TIMEOUT_MS`       | Optional                   | Provider timeout in milliseconds, clamped from 10,000 to 120,000.                                               |
 
 Route-specific worker secrets are alternatives for manual callers. The

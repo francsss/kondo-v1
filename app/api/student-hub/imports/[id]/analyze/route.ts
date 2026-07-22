@@ -21,7 +21,7 @@ import {
 import { getCurrentUser } from "@/lib/server-auth";
 import { normalizeExtractedSchedule } from "@/lib/student-schedule";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(
   request: NextRequest,

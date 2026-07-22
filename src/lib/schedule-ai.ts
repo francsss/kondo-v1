@@ -5,6 +5,10 @@ import {
   scheduleExtractionSchema,
   type ExtractedSchedule,
 } from "@/features/student-hub/schemas";
+import {
+  DocumentExtractionError,
+  extractDocumentText,
+} from "@/lib/document-ocr";
 import { logServerError, logServerEvent } from "@/lib/logger";
 import { getObjectStorageForProvider } from "@/lib/storage";
 
@@ -50,6 +54,7 @@ export type ScheduleAnalysisErrorCode =
   | "AI_PROVIDER_UNAVAILABLE"
   | "AI_DOCUMENT_REJECTED"
   | "AI_INVALID_RESPONSE"
+  | "DOCUMENT_TEXT_EXTRACTION_FAILED"
   | "STORAGE_READ_FAILED";
 
 export class ScheduleAnalysisError extends Error {
@@ -77,7 +82,11 @@ function providerError(
   const providerType =
     typeof details.type === "string" ? details.type : undefined;
 
-  if (status === 429 && providerCode === "insufficient_quota") {
+  if (
+    status === 402 ||
+    providerCode === "insufficient_balance" ||
+    providerCode === "insufficient_quota"
+  ) {
     return new ScheduleAnalysisError(
       "AI_QUOTA_EXCEEDED",
       "The timetable analysis service has no available API quota. Please contact Kondo support.",
@@ -101,7 +110,7 @@ function providerError(
       true,
     );
   }
-  if (status >= 500) {
+  if (status === 500 || status === 503) {
     return new ScheduleAnalysisError(
       "AI_PROVIDER_UNAVAILABLE",
       "The analysis model is temporarily unavailable. Please try again shortly.",
@@ -120,20 +129,18 @@ function providerError(
 }
 
 function responseText(payload: Record<string, unknown>) {
-  if (typeof payload.output_text === "string") return payload.output_text;
-  const output = Array.isArray(payload.output) ? payload.output : [];
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const content = Array.isArray((item as { content?: unknown }).content)
-      ? ((item as { content: unknown[] }).content ?? [])
-      : [];
-    for (const part of content) {
-      if (
-        part &&
-        typeof part === "object" &&
-        typeof (part as { text?: unknown }).text === "string"
-      ) {
-        return (part as { text: string }).text;
+  const choices = Array.isArray(payload.choices) ? payload.choices : [];
+  const first = choices[0];
+  if (first && typeof first === "object") {
+    const message = (first as { message?: unknown }).message;
+    if (message && typeof message === "object") {
+      const content = (message as { content?: unknown }).content;
+      if (typeof content === "string" && content.trim()) {
+        return content
+          .trim()
+          .replace(/^```(?:json)?\s*/i, "")
+          .replace(/\s*```$/, "")
+          .trim();
       }
     }
   }
@@ -141,13 +148,13 @@ function responseText(payload: Record<string, unknown>) {
     "AI_INVALID_RESPONSE",
     "The document was read, but its timetable could not be understood. Try a clearer file.",
     502,
-    false,
+    true,
   );
 }
 
-class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
+class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
   async analyze(files: ScheduleFile[], context: PeriodContext) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       throw new ScheduleAnalysisError(
         "AI_NOT_CONFIGURED",
@@ -156,24 +163,13 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
         false,
       );
     }
-    const model = process.env.SCHEDULE_AI_MODEL?.trim() || "gpt-5.6-terra";
+    const model = process.env.SCHEDULE_AI_MODEL?.trim() || "deepseek-v4-pro";
     const timeout = Math.min(
       120_000,
-      Math.max(10_000, Number(process.env.SCHEDULE_AI_TIMEOUT_MS) || 60_000),
+      Math.max(10_000, Number(process.env.SCHEDULE_AI_TIMEOUT_MS) || 120_000),
     );
 
-    const content: Array<Record<string, unknown>> = [
-      {
-        type: "input_text",
-        text: [
-          "Extract only the university timetable shown in the attached files.",
-          "Read Chinese and English text, merged table cells, numbered periods, 1-16周, 单周 (odd weeks), and 双周 (even weeks).",
-          "Do not invent missing values. Use null and add the field name to uncertainFields when uncertain.",
-          `University context: ${context.university}. Campus: ${context.campus ?? "not specified"}. Term: ${context.term ?? "not specified"}. Timezone: ${context.timezone}.`,
-          `Official period mapping: ${JSON.stringify(context.periods)}. Use it only when a numbered period is present.`,
-        ].join("\n"),
-      },
-    ];
+    const extractedDocuments: string[] = [];
 
     for (const file of files) {
       logServerEvent("student-hub.schedule-analysis.file-read.started", {
@@ -204,18 +200,41 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
         sizeBytes: bytes.byteLength,
       });
       const mime = file.detectedMime ?? "application/octet-stream";
-      const dataUrl = `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
-      content.push(
-        mime === "application/pdf"
-          ? {
-              type: "input_file",
-              filename: file.originalFileName,
-              file_data: dataUrl,
-              detail: "high",
-            }
-          : { type: "input_image", image_url: dataUrl, detail: "high" },
-      );
+      try {
+        const extracted = await extractDocumentText(bytes, mime);
+        extractedDocuments.push(
+          [
+            `--- Document: ${file.originalFileName} ---`,
+            `Extraction method: ${extracted.method}; pages: ${extracted.pageCount}`,
+            extracted.text,
+          ].join("\n"),
+        );
+      } catch (error) {
+        if (error instanceof DocumentExtractionError) {
+          throw new ScheduleAnalysisError(
+            "DOCUMENT_TEXT_EXTRACTION_FAILED",
+            error.message,
+            422,
+            error.retryable,
+          );
+        }
+        throw error;
+      }
     }
+
+    const systemPrompt = [
+      "You extract university timetables from OCR or embedded PDF text.",
+      "Return exactly one JSON object matching the supplied JSON schema. Do not wrap it in markdown.",
+      "Read Chinese and English text, merged table cells, numbered periods, 1-16周, 单周 (odd weeks), and 双周 (even weeks).",
+      "Do not invent missing values. Use null and add the field name to uncertainFields when uncertain.",
+      `JSON schema: ${JSON.stringify(SCHEDULE_EXTRACTION_JSON_SCHEMA)}`,
+    ].join("\n");
+    const userPrompt = [
+      `University context: ${context.university}. Campus: ${context.campus ?? "not specified"}. Term: ${context.term ?? "not specified"}. Timezone: ${context.timezone}.`,
+      `Official period mapping: ${JSON.stringify(context.periods)}. Use it only when a numbered period is present.`,
+      "Extract only the timetable contained in these documents and respond as JSON:",
+      extractedDocuments.join("\n\n"),
+    ].join("\n\n");
 
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -223,39 +242,40 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
       const abort = setTimeout(() => controller.abort(), timeout);
       try {
         logServerEvent("student-hub.schedule-analysis.provider.started", {
-          provider: "openai",
+          provider: "deepseek",
           model,
           attempt,
           fileCount: files.length,
         });
-        const response = await fetch("https://api.openai.com/v1/responses", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            store: false,
-            input: [{ role: "user", content }],
-            reasoning: { effort: "low" },
-            text: {
-              format: {
-                type: "json_schema",
-                name: "kondo_schedule_extraction",
-                strict: true,
-                schema: SCHEDULE_EXTRACTION_JSON_SCHEMA,
-              },
+        const response = await fetch(
+          "https://api.deepseek.com/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
             },
-          }),
-          signal: controller.signal,
-        });
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              response_format: { type: "json_object" },
+              thinking: { type: "enabled" },
+              reasoning_effort: "high",
+              max_tokens: 8_192,
+              stream: false,
+            }),
+            signal: controller.signal,
+          },
+        );
         const payload = (await response.json().catch(() => null)) as Record<
           string,
           unknown
         > | null;
         logServerEvent("student-hub.schedule-analysis.provider.responded", {
-          provider: "openai",
+          provider: "deepseek",
           model,
           attempt,
           status: response.status,
@@ -279,27 +299,29 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
               "AI_INVALID_RESPONSE",
               "The document was read, but its timetable could not be understood. Try a clearer file.",
               502,
-              false,
+              attempt < 2,
             );
           }
           throw error;
         }
         const usage = (payload.usage ?? {}) as Record<string, unknown>;
         logServerEvent("student-hub.schedule-analysis.validated", {
-          provider: "openai",
+          provider: "deepseek",
           model,
           courseCount: parsed.courses.length,
           warningCount: parsed.warnings.length,
         });
         return {
           extraction: parsed,
-          provider: "openai",
+          provider: "deepseek",
           model,
           inputTokens:
-            typeof usage.input_tokens === "number" ? usage.input_tokens : null,
+            typeof usage.prompt_tokens === "number"
+              ? usage.prompt_tokens
+              : null,
           outputTokens:
-            typeof usage.output_tokens === "number"
-              ? usage.output_tokens
+            typeof usage.completion_tokens === "number"
+              ? usage.completion_tokens
               : null,
         };
       } catch (error) {
@@ -328,7 +350,7 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
       }
     }
     logServerError("student-hub.schedule-analysis.failed", lastError, {
-      provider: "openai",
+      provider: "deepseek",
       model,
       fileCount: files.length,
     });
@@ -344,7 +366,7 @@ class OpenAIScheduleProvider implements ScheduleAnalysisProvider {
 
 export function getScheduleAnalysisProvider(): ScheduleAnalysisProvider {
   const provider =
-    process.env.SCHEDULE_AI_PROVIDER?.trim().toLowerCase() || "openai";
-  if (provider === "openai") return new OpenAIScheduleProvider();
+    process.env.SCHEDULE_AI_PROVIDER?.trim().toLowerCase() || "deepseek";
+  if (provider === "deepseek") return new DeepSeekScheduleProvider();
   throw new Error(`Unsupported schedule analysis provider: ${provider}`);
 }

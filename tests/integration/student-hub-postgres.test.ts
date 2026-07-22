@@ -152,8 +152,8 @@ postgresDescribe("Student Hub PostgreSQL persistence", () => {
       title: normalized.title,
       courses: normalized.courses,
       analysis: {
-        provider: "openai",
-        model: "test-model",
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
         inputTokens: 50,
         outputTokens: 25,
         normalized,
@@ -171,8 +171,8 @@ postgresDescribe("Student Hub PostgreSQL persistence", () => {
     expect(saved.schedule.id).toBe(reloaded?.scheduleId);
     expect(reloaded).toMatchObject({
       status: "CONFIRMED",
-      provider: "openai",
-      model: "test-model",
+      provider: "deepseek",
+      model: "deepseek-v4-pro",
     });
     expect(reloaded?.result?.courseCount).toBe(1);
     expect(reloaded?.schedule?.courses[0]?.courseName).toBe(

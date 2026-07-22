@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageRead = vi.hoisted(() => vi.fn());
+const extractDocumentText = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/storage", () => ({
   getObjectStorageForProvider: () => ({ read: storageRead }),
+}));
+
+vi.mock("@/lib/document-ocr", () => ({
+  DocumentExtractionError: class DocumentExtractionError extends Error {
+    retryable = false;
+  },
+  extractDocumentText,
 }));
 
 import { getScheduleAnalysisProvider } from "@/lib/schedule-ai";
@@ -56,8 +64,8 @@ function file(detectedMime: string, originalFileName: string) {
 function successfulResponse() {
   return new Response(
     JSON.stringify({
-      output_text: JSON.stringify(extraction),
-      usage: { input_tokens: 120, output_tokens: 80 },
+      choices: [{ message: { content: JSON.stringify(extraction) } }],
+      usage: { prompt_tokens: 120, completion_tokens: 80 },
     }),
     {
       status: 200,
@@ -66,14 +74,20 @@ function successfulResponse() {
   );
 }
 
-describe("OpenAI timetable analysis", () => {
+describe("DeepSeek timetable analysis", () => {
   beforeEach(() => {
-    process.env.OPENAI_API_KEY = "sk-test-key-with-enough-characters";
-    process.env.SCHEDULE_AI_PROVIDER = "openai";
-    process.env.SCHEDULE_AI_MODEL = "gpt-5.6-terra";
+    process.env.DEEPSEEK_API_KEY = "sk-test-key-with-enough-characters";
+    process.env.SCHEDULE_AI_PROVIDER = "deepseek";
+    process.env.SCHEDULE_AI_MODEL = "deepseek-v4-pro";
     process.env.SCHEDULE_AI_TIMEOUT_MS = "10000";
     storageRead.mockReset();
     storageRead.mockResolvedValue(new Uint8Array([1, 2, 3, 4]));
+    extractDocumentText.mockReset();
+    extractDocumentText.mockResolvedValue({
+      text: "Monday 08:00 International Business A-201",
+      method: "ocr",
+      pageCount: 1,
+    });
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -83,53 +97,57 @@ describe("OpenAI timetable analysis", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends an uploaded timetable image as an image input", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(successfulResponse());
-    vi.stubGlobal("fetch", fetchMock);
+  it.each([
+    ["image/png", "timetable.png"],
+    ["application/pdf", "timetable.pdf"],
+  ])(
+    "extracts %s locally and sends only text to DeepSeek",
+    async (mime, name) => {
+      const fetchMock = vi.fn().mockResolvedValue(successfulResponse());
+      vi.stubGlobal("fetch", fetchMock);
 
-    const result = await getScheduleAnalysisProvider().analyze(
-      [file("image/png", "timetable.png")],
-      context,
-    );
+      const result = await getScheduleAnalysisProvider().analyze(
+        [file(mime, name)],
+        context,
+      );
 
-    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-    expect(request.input[0].content[1]).toMatchObject({
-      type: "input_image",
-      detail: "high",
-    });
-    expect(result.extraction.courses[0]?.courseName).toBe(
-      "International Business",
-    );
-  });
+      expect(extractDocumentText).toHaveBeenCalledWith(
+        expect.any(Uint8Array),
+        mime,
+      );
+      const [url, init] = fetchMock.mock.calls[0] ?? [];
+      expect(url).toBe("https://api.deepseek.com/chat/completions");
+      const request = JSON.parse(String(init?.body));
+      expect(request).toMatchObject({
+        model: "deepseek-v4-pro",
+        response_format: { type: "json_object" },
+        thinking: { type: "enabled" },
+        reasoning_effort: "high",
+      });
+      expect(request.messages[1].content).toContain(
+        "Monday 08:00 International Business A-201",
+      );
+      expect(request.messages[1].content).not.toContain("data:image");
+      expect(result).toMatchObject({
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        inputTokens: 120,
+        outputTokens: 80,
+      });
+    },
+  );
 
-  it("sends an uploaded timetable PDF as a high-detail file input", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(successfulResponse());
-    vi.stubGlobal("fetch", fetchMock);
-
-    await getScheduleAnalysisProvider().analyze(
-      [file("application/pdf", "timetable.pdf")],
-      context,
-    );
-
-    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-    expect(request.input[0].content[1]).toMatchObject({
-      type: "input_file",
-      filename: "timetable.pdf",
-      detail: "high",
-    });
-  });
-
-  it("surfaces exhausted API quota without a pointless retry", async () => {
+  it("surfaces insufficient DeepSeek balance without a pointless retry", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           error: {
-            type: "insufficient_quota",
-            code: "insufficient_quota",
-            message: "quota details that must not reach the user",
+            type: "insufficient_balance",
+            code: "insufficient_balance",
+            message: "balance details that must not reach the user",
           },
         }),
-        { status: 429, headers: { "Content-Type": "application/json" } },
+        { status: 402, headers: { "Content-Type": "application/json" } },
       ),
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -147,7 +165,7 @@ describe("OpenAI timetable analysis", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("distinguishes a missing R2 object from an OpenAI failure", async () => {
+  it("distinguishes a missing R2 object from a DeepSeek failure", async () => {
     storageRead.mockRejectedValueOnce(new Error("NoSuchKey"));
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
