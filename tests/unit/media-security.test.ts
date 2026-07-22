@@ -106,4 +106,23 @@ describe("media security primitives", () => {
       }),
     ).rejects.toThrow("does not match its declared MIME");
   });
+
+  it("accepts private timetable images and safe PDFs under the schedule limits", async () => {
+    expect(
+      validateMediaIntent({
+        purpose: "SCHEDULE_IMPORT",
+        fileName: "timetable.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 2_000_000,
+      }),
+    ).toMatchObject({ kind: "DOCUMENT", policy: { visibility: "PRIVATE" } });
+    expect(
+      validateMediaIntent({
+        purpose: "SCHEDULE_IMPORT",
+        fileName: "课表.png",
+        mimeType: "image/png",
+        sizeBytes: 2_000_000,
+      }),
+    ).toMatchObject({ kind: "IMAGE", policy: { visibility: "PRIVATE" } });
+  });
 });

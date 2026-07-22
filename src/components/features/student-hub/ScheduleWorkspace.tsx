@@ -1,0 +1,1078 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  Clock3,
+  Copy,
+  FileImage,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { uploadMediaFile } from "@/lib/client-media";
+import { DAY_NAMES } from "@/lib/student-schedule";
+
+type University = {
+  id: string;
+  name: string;
+  shortName: string | null;
+  campuses: Array<{ id: string; name: string }>;
+  academicTerms: Array<{
+    id: string;
+    name: string;
+    campusId: string | null;
+    startsOn: string;
+    endsOn: string;
+    firstWeekStartsOn: string;
+    totalWeeks: number;
+  }>;
+  periodConfigurations: Array<{
+    id: string;
+    campusId: string | null;
+    isDefault: boolean;
+  }>;
+};
+type Course = {
+  id: string;
+  courseName: string;
+  teacher: string | null;
+  dayOfWeek: number;
+  specificDate: string | null;
+  startPeriod: number | null;
+  endPeriod: number | null;
+  startTime: string;
+  endTime: string;
+  room: string | null;
+  building: string | null;
+  campusLabel: string | null;
+  startWeek: number | null;
+  endWeek: number | null;
+  weekPattern: "ALL" | "ODD" | "EVEN" | "CUSTOM";
+  weeks: number[];
+  language: string | null;
+  notes: string | null;
+  color: string;
+  isOptional: boolean;
+  confidence: number | null;
+  source: "IMPORT" | "MANUAL";
+  createdAt: string;
+  updatedAt: string;
+};
+type Schedule = {
+  id: string;
+  title: string;
+  timezone: string;
+  university: { name: string } | null;
+  campus: { name: string } | null;
+  academicTerm: {
+    name: string;
+    firstWeekStartsOn: string;
+    totalWeeks: number;
+  } | null;
+  courses: Course[];
+  createdAt: string;
+  updatedAt: string;
+  confirmedAt: string | null;
+};
+type ReviewCourse = Omit<
+  Course,
+  "id" | "createdAt" | "updatedAt" | "specificDate"
+> & { specificDate?: string | null; uncertainFields?: string[] };
+type Review = { title: string; warnings: string[]; courses: ReviewCourse[] };
+
+const input =
+  "h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none transition focus:border-kondo-green";
+const emptyCourse: ReviewCourse = {
+  courseName: "",
+  teacher: "",
+  dayOfWeek: 1,
+  startPeriod: null,
+  endPeriod: null,
+  startTime: "08:00",
+  endTime: "09:30",
+  room: "",
+  building: "",
+  campusLabel: "",
+  startWeek: 1,
+  endWeek: 18,
+  weekPattern: "ALL" as const,
+  weeks: [] as number[],
+  language: "",
+  notes: "",
+  color: "#22A06B",
+  isOptional: false,
+  confidence: null,
+  source: "MANUAL" as const,
+};
+
+async function api(url: string, body: unknown, method = "POST") {
+  const response = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok)
+    throw new Error(payload.error ?? "The request could not be completed.");
+  return payload;
+}
+
+export function ScheduleWorkspace({
+  universities,
+  schedules,
+  recentImports,
+}: {
+  universities: University[];
+  schedules: Schedule[];
+  recentImports: Array<{
+    id: string;
+    status: string;
+    createdAt: string;
+    errorMessage: string | null;
+  }>;
+}) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"week" | "today" | "semester">("week");
+  const [selectedSchedule, setSelectedSchedule] = useState(
+    schedules[0]?.id ?? "",
+  );
+  const [showImport, setShowImport] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [review, setReview] = useState<Review | null>(null);
+  const [importId, setImportId] = useState("");
+  const [manual, setManual] = useState({ ...emptyCourse });
+  const schedule =
+    schedules.find((item) => item.id === selectedSchedule) ?? schedules[0];
+  const today = new Date().getDay() || 7;
+  const visibleCourses = useMemo(
+    () =>
+      !schedule
+        ? []
+        : mode === "today"
+          ? schedule.courses.filter((course) => course.dayOfWeek === today)
+          : schedule.courses,
+    [mode, schedule, today],
+  );
+
+  function updateReview(
+    index: number,
+    field: keyof ReviewCourse,
+    value: unknown,
+  ) {
+    setReview((current) =>
+      current
+        ? {
+            ...current,
+            courses: current.courses.map((course, courseIndex) =>
+              courseIndex === index ? { ...course, [field]: value } : course,
+            ),
+          }
+        : current,
+    );
+  }
+
+  async function importSchedule(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    try {
+      const form = new FormData(event.currentTarget);
+      const files = form
+        .getAll("files")
+        .filter((item): item is File => item instanceof File && item.size > 0);
+      if (!files.length)
+        throw new Error("Choose at least one PDF or timetable image.");
+      const mediaIds = [];
+      for (const file of files)
+        mediaIds.push(
+          await uploadMediaFile(file, { purpose: "SCHEDULE_IMPORT" }),
+        );
+      const created = await api("/api/student-hub/imports", {
+        universityId: form.get("universityId"),
+        campusId: form.get("campusId") || null,
+        academicTermId: form.get("academicTermId") || null,
+        mediaIds,
+        retainSource: form.get("retainSource") === "on",
+      });
+      setImportId(created.import.id);
+      const analyzed = await api(
+        `/api/student-hub/imports/${created.import.id}/analyze`,
+        {},
+      );
+      setReview(analyzed.result);
+      setShowImport(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Import failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmImport() {
+    if (!review || !importId) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/student-hub/imports/${importId}/confirm`, {
+        title: review.title || "My timetable",
+        courses: review.courses.map((course) => {
+          const confirmed = { ...course };
+          delete confirmed.uncertainFields;
+          return confirmed;
+        }),
+      });
+      setReview(null);
+      setImportId("");
+      setSuccess(
+        "Your timetable is saved and will remain available after refresh.",
+      );
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addManual(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      let scheduleId = schedule?.id;
+      if (!scheduleId) {
+        const created = await api("/api/student-hub/schedules", {
+          title: "My timetable",
+          timezone: "Asia/Shanghai",
+        });
+        scheduleId = created.schedule.id;
+      }
+      await api(
+        editingId
+          ? `/api/student-hub/schedules/${scheduleId}/courses/${editingId}`
+          : `/api/student-hub/schedules/${scheduleId}/courses`,
+        {
+          ...manual,
+          teacher: manual.teacher || null,
+          room: manual.room || null,
+          building: manual.building || null,
+          campusLabel: manual.campusLabel || null,
+          language: manual.language || null,
+          notes: manual.notes || null,
+        },
+        editingId ? "PATCH" : "POST",
+      );
+      setManual({ ...emptyCourse });
+      setEditingId(null);
+      setShowManual(false);
+      setSuccess(
+        editingId ? "Course updated." : "Course added to your timetable.",
+      );
+      router.refresh();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Course could not be saved.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editCourse(course: Course) {
+    setManual({
+      courseName: course.courseName,
+      teacher: course.teacher ?? "",
+      dayOfWeek: course.dayOfWeek,
+      startPeriod: course.startPeriod,
+      endPeriod: course.endPeriod,
+      startTime: course.startTime,
+      endTime: course.endTime,
+      room: course.room ?? "",
+      building: course.building ?? "",
+      campusLabel: course.campusLabel ?? "",
+      startWeek: course.startWeek ?? 1,
+      endWeek: course.endWeek ?? 18,
+      weekPattern: course.weekPattern,
+      weeks: course.weeks,
+      language: course.language ?? "",
+      notes: course.notes ?? "",
+      color: course.color,
+      isOptional: course.isOptional,
+      confidence: course.confidence,
+      source: course.source,
+    });
+    setEditingId(course.id);
+    setShowManual(true);
+  }
+
+  async function deleteCourse(courseId: string) {
+    if (!schedule || !window.confirm("Delete this course from your timetable?"))
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(
+        `/api/student-hub/schedules/${schedule.id}/courses/${courseId}`,
+        {},
+        "DELETE",
+      );
+      setSuccess("Course deleted.");
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Delete failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-[1440px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
+            My Tools
+          </p>
+          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
+            Your semester, under control.
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Import a timetable, review every detected course, then manage the
+            result privately.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setShowImport(true)}>
+            <Upload className="h-4 w-4" />
+            Import PDF or image
+          </Button>
+          <Button onClick={() => setShowManual(true)} variant="secondary">
+            <Plus className="h-4 w-4" />
+            Add manually
+          </Button>
+        </div>
+      </div>
+      {error ? (
+        <p
+          role="alert"
+          className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 dark:bg-red-400/10 dark:text-red-300"
+        >
+          {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="mt-5 flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-300">
+          <Check className="h-4 w-4" />
+          {success}
+        </p>
+      ) : null}
+
+      <section className="mt-7 grid gap-5 xl:grid-cols-[minmax(0,1fr)_290px]">
+        <Card className="overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
+            <div>
+              {schedules.length ? (
+                <select
+                  aria-label="Timetable"
+                  className={input}
+                  onChange={(event) => setSelectedSchedule(event.target.value)}
+                  value={schedule?.id}
+                >
+                  {schedules.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="font-black">My timetable</p>
+              )}
+            </div>
+            <div className="flex rounded-full bg-muted p-1">
+              {(["today", "week", "semester"] as const).map((view) => (
+                <button
+                  className={
+                    mode === view
+                      ? "rounded-full bg-card px-4 py-2 text-xs font-black shadow-sm"
+                      : "px-4 py-2 text-xs font-bold text-muted-foreground"
+                  }
+                  key={view}
+                  onClick={() => setMode(view)}
+                  type="button"
+                >
+                  {view[0]?.toUpperCase()}
+                  {view.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {!schedule ? (
+            <div className="grid min-h-96 place-items-center p-8 text-center">
+              <div>
+                <CalendarDays className="mx-auto h-10 w-10 text-kondo-green" />
+                <h2 className="mt-4 text-xl font-black">
+                  Build your first timetable
+                </h2>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                  Import your university timetable or add the first course
+                  manually. Nothing is saved until you confirm it.
+                </p>
+              </div>
+            </div>
+          ) : mode === "week" ? (
+            <div className="grid min-w-[760px] grid-cols-7 divide-x divide-border overflow-x-auto">
+              {DAY_NAMES.map((day, index) => (
+                <div className="min-h-[430px] p-2.5" key={day}>
+                  <p className="mb-3 text-center text-xs font-black uppercase tracking-wide text-muted-foreground">
+                    {day.slice(0, 3)}
+                  </p>
+                  <div className="space-y-2">
+                    {schedule.courses
+                      .filter((course) => course.dayOfWeek === index + 1)
+                      .map((course) => (
+                        <CourseCard
+                          course={course}
+                          key={course.id}
+                          onDelete={() => deleteCourse(course.id)}
+                          onEdit={() => editCourse(course)}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="min-h-96 p-5">
+              <div className="space-y-3">
+                {visibleCourses.map((course) => (
+                  <CourseRow
+                    course={course}
+                    key={course.id}
+                    onDelete={() => deleteCourse(course.id)}
+                    onEdit={() => editCourse(course)}
+                  />
+                ))}
+                {!visibleCourses.length ? (
+                  <p className="py-16 text-center text-sm text-muted-foreground">
+                    No classes in this view.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </Card>
+        <aside className="space-y-4">
+          <Card>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+              Schedule details
+            </p>
+            <h2 className="mt-2 font-black">
+              {schedule?.university?.name ?? "No university selected"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {schedule?.academicTerm?.name ?? "Semester not linked"}
+            </p>
+            <div className="mt-4 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              <Clock3 className="h-4 w-4" />
+              {schedule?.timezone ?? "Asia/Shanghai"}
+            </div>
+          </Card>
+          <Card>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+              Recent imports
+            </p>
+            <div className="mt-3 space-y-2">
+              {recentImports.map((item) => (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-muted p-3 text-xs"
+                  key={item.id}
+                >
+                  <span className="font-bold">
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </span>
+                  <span className="rounded-full bg-card px-2 py-1 font-black">
+                    {item.status.replaceAll("_", " ")}
+                  </span>
+                </div>
+              ))}
+              {!recentImports.length ? (
+                <p className="text-sm text-muted-foreground">No imports yet.</p>
+              ) : null}
+            </div>
+          </Card>
+        </aside>
+      </section>
+
+      {showImport ? (
+        <Modal
+          title="Import your timetable"
+          onClose={() => !busy && setShowImport(false)}
+        >
+          <form className="space-y-4" onSubmit={importSchedule}>
+            <UniversityFields universities={universities} />
+            <label className="block rounded-3xl border-2 border-dashed border-emerald-200 p-6 text-center dark:border-emerald-400/20">
+              <FileImage className="mx-auto h-7 w-7 text-kondo-green" />
+              <span className="mt-2 block text-sm font-black">
+                PDF, JPG, PNG or WebP
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Up to 5 files, 15 MB each and 10 PDF pages.
+              </span>
+              <input
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                className="mt-4 block w-full text-xs"
+                multiple
+                name="files"
+                required
+                type="file"
+              />
+            </label>
+            <label className="flex items-start gap-3 text-xs text-muted-foreground">
+              <input className="mt-0.5" name="retainSource" type="checkbox" />
+              Keep my source files after confirmation. Otherwise Kondo deletes
+              them.
+            </label>
+            <label className="flex items-start gap-3 text-xs text-muted-foreground">
+              <input className="mt-0.5" required type="checkbox" />I understand
+              that Kondo securely sends these files to its configured AI
+              provider for timetable extraction. The result must be reviewed
+              before it is saved.
+            </label>
+            <Button disabled={busy} fullWidth type="submit">
+              {busy ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {busy ? "Secure upload and analysis…" : "Analyze timetable"}
+            </Button>
+          </form>
+        </Modal>
+      ) : null}
+      {showManual ? (
+        <Modal
+          title={editingId ? "Edit course" : "Add a course"}
+          onClose={() => {
+            if (!busy) {
+              setShowManual(false);
+              setEditingId(null);
+              setManual({ ...emptyCourse });
+            }
+          }}
+        >
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={addManual}>
+            <CourseFields
+              course={manual}
+              onChange={(field, value) =>
+                setManual((current) => ({ ...current, [field]: value }))
+              }
+            />
+            <div className="sm:col-span-2">
+              <Button disabled={busy} fullWidth type="submit">
+                {busy ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {editingId ? "Save changes" : "Save course"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+      {review ? (
+        <div className="fixed inset-0 z-[80] overflow-y-auto bg-kondo-navy/70 p-3 backdrop-blur-sm sm:p-6">
+          <div className="mx-auto max-w-5xl rounded-4xl bg-card p-5 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
+                  Review required
+                </p>
+                <h2 className="mt-2 text-2xl font-black">
+                  Check before anything is saved
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Yellow fields were uncertain. You remain in control of the
+                  final data.
+                </p>
+              </div>
+              <Button
+                aria-label="Cancel review"
+                onClick={() => setReview(null)}
+                size="icon"
+                variant="ghost"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            {review.warnings.length ? (
+              <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
+                {review.warnings.join(" ")}
+              </div>
+            ) : null}
+            <label className="mt-5 block">
+              <span className="mb-2 block text-sm font-black">
+                Timetable name
+              </span>
+              <input
+                className={input}
+                onChange={(event) =>
+                  setReview((current) =>
+                    current
+                      ? { ...current, title: event.target.value }
+                      : current,
+                  )
+                }
+                value={review.title}
+              />
+            </label>
+            <div className="mt-5 space-y-4">
+              {review.courses.map((course, index) => (
+                <Card
+                  className={
+                    course.uncertainFields?.length
+                      ? "border-amber-300 dark:border-amber-400/30"
+                      : ""
+                  }
+                  key={`${course.courseName}-${index}`}
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm font-black">Course {index + 1}</p>
+                    <div className="flex gap-1">
+                      <Button
+                        aria-label="Duplicate detected course"
+                        onClick={() =>
+                          setReview((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  courses: [
+                                    ...current.courses.slice(0, index + 1),
+                                    { ...course, weeks: [...course.weeks] },
+                                    ...current.courses.slice(index + 1),
+                                  ],
+                                }
+                              : current,
+                          )
+                        }
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        aria-label="Remove detected course"
+                        onClick={() =>
+                          setReview((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  courses: current.courses.filter(
+                                    (_, itemIndex) => itemIndex !== index,
+                                  ),
+                                }
+                              : current,
+                          )
+                        }
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <CourseFields
+                      course={course}
+                      onChange={(field, value) =>
+                        updateReview(index, field, value)
+                      }
+                    />
+                  </div>
+                  {course.uncertainFields?.length ? (
+                    <p className="mt-3 flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="h-4 w-4" />
+                      Please verify: {course.uncertainFields.join(", ")}
+                    </p>
+                  ) : null}
+                </Card>
+              ))}
+            </div>
+            <div className="sticky bottom-3 mt-6 flex flex-wrap justify-end gap-3 rounded-3xl border border-border bg-card/95 p-3 backdrop-blur">
+              <Button
+                onClick={() =>
+                  setReview((current) =>
+                    current
+                      ? {
+                          ...current,
+                          courses: [...current.courses, { ...emptyCourse }],
+                        }
+                      : current,
+                  )
+                }
+                variant="secondary"
+              >
+                <Plus className="h-4 w-4" />
+                Add course
+              </Button>
+              <Button
+                disabled={busy || !review.courses.length}
+                onClick={confirmImport}
+              >
+                {busy ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                Confirm and save
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-kondo-navy/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-4xl border border-border bg-card p-6 shadow-2xl">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-black">{title}</h2>
+          <Button
+            aria-label="Close"
+            onClick={onClose}
+            size="icon"
+            variant="ghost"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function UniversityFields({ universities }: { universities: University[] }) {
+  const [selected, setSelected] = useState(universities[0]?.id ?? "");
+  const university = universities.find((item) => item.id === selected);
+  return (
+    <>
+      <label className="block">
+        <span className="mb-2 block text-sm font-black">University</span>
+        <select
+          className={input}
+          name="universityId"
+          onChange={(event) => setSelected(event.target.value)}
+          required
+          value={selected}
+        >
+          <option value="">Choose university</option>
+          {universities.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label>
+          <span className="mb-2 block text-sm font-black">Campus</span>
+          <select className={input} name="campusId">
+            <option value="">All campuses</option>
+            {university?.campuses.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="mb-2 block text-sm font-black">Semester</span>
+          <select className={input} name="academicTermId">
+            <option value="">Not specified</option>
+            {university?.academicTerms.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {university && !university.periodConfigurations.length ? (
+        <p className="rounded-2xl bg-amber-50 p-3 text-xs font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
+          This university has no official period configuration yet. Exact times
+          in the document can still be read; numbered periods will be marked for
+          review.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function CourseFields({
+  course,
+  onChange,
+}: {
+  course: Partial<ReviewCourse> & {
+    courseName: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+  };
+  onChange: (field: keyof ReviewCourse, value: never) => void;
+}) {
+  return (
+    <>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Course</span>
+        <input
+          className={input}
+          maxLength={200}
+          onChange={(event) =>
+            onChange("courseName", event.target.value as never)
+          }
+          required
+          value={course.courseName}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Teacher</span>
+        <input
+          className={input}
+          onChange={(event) => onChange("teacher", event.target.value as never)}
+          value={course.teacher ?? ""}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Day</span>
+        <select
+          className={input}
+          onChange={(event) =>
+            onChange("dayOfWeek", Number(event.target.value) as never)
+          }
+          value={course.dayOfWeek}
+        >
+          {DAY_NAMES.map((day, index) => (
+            <option key={day} value={index + 1}>
+              {day}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Room</span>
+        <input
+          className={input}
+          onChange={(event) => onChange("room", event.target.value as never)}
+          value={course.room ?? ""}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Starts</span>
+        <input
+          className={input}
+          onChange={(event) =>
+            onChange("startTime", event.target.value as never)
+          }
+          required
+          type="time"
+          value={course.startTime}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Ends</span>
+        <input
+          className={input}
+          onChange={(event) => onChange("endTime", event.target.value as never)}
+          required
+          type="time"
+          value={course.endTime}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">First week</span>
+        <input
+          className={input}
+          max={60}
+          min={1}
+          onChange={(event) =>
+            onChange("startWeek", Number(event.target.value) as never)
+          }
+          type="number"
+          value={course.startWeek ?? 1}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Last week</span>
+        <input
+          className={input}
+          max={60}
+          min={1}
+          onChange={(event) =>
+            onChange("endWeek", Number(event.target.value) as never)
+          }
+          type="number"
+          value={course.endWeek ?? 18}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Weeks</span>
+        <select
+          className={input}
+          onChange={(event) =>
+            onChange("weekPattern", event.target.value as never)
+          }
+          value={course.weekPattern ?? "ALL"}
+        >
+          <option value="ALL">Every week</option>
+          <option value="ODD">Odd weeks</option>
+          <option value="EVEN">Even weeks</option>
+          <option value="CUSTOM">Custom weeks</option>
+        </select>
+      </label>
+      {course.weekPattern === "CUSTOM" ? (
+        <label>
+          <span className="mb-1 block text-xs font-bold">Week numbers</span>
+          <input
+            className={input}
+            onChange={(event) =>
+              onChange(
+                "weeks",
+                event.target.value
+                  .split(",")
+                  .map((value) => Number(value.trim()))
+                  .filter(
+                    (value) =>
+                      Number.isInteger(value) && value > 0 && value <= 60,
+                  ) as never,
+              )
+            }
+            placeholder="1, 3, 7, 9"
+            required
+            value={course.weeks?.join(", ") ?? ""}
+          />
+        </label>
+      ) : null}
+      <label>
+        <span className="mb-1 block text-xs font-bold">Color</span>
+        <input
+          className={`${input} p-1`}
+          onChange={(event) => onChange("color", event.target.value as never)}
+          type="color"
+          value={course.color ?? "#22A06B"}
+        />
+      </label>
+    </>
+  );
+}
+
+function CourseCard({
+  course,
+  onDelete,
+  onEdit,
+}: {
+  course: Course;
+  onDelete: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div
+      className="group rounded-2xl border-l-4 bg-muted/70 p-3"
+      style={{ borderLeftColor: course.color }}
+    >
+      <p className="line-clamp-2 text-xs font-black">{course.courseName}</p>
+      <p className="mt-1 text-[11px] font-bold text-muted-foreground">
+        {course.startTime}–{course.endTime}
+      </p>
+      <p className="mt-1 line-clamp-1 text-[10px] text-muted-foreground">
+        {course.room || course.teacher || "Class"}
+      </p>
+      <button
+        aria-label={`Edit ${course.courseName}`}
+        className="mt-2 mr-2 inline-flex text-kondo-green"
+        onClick={onEdit}
+        type="button"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+      <button
+        aria-label={`Delete ${course.courseName}`}
+        className="mt-2 inline-flex text-red-600"
+        onClick={onDelete}
+        type="button"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+function CourseRow({
+  course,
+  onDelete,
+  onEdit,
+}: {
+  course: Course;
+  onDelete: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-border p-4">
+      <span
+        className="h-12 w-1 rounded-full"
+        style={{ backgroundColor: course.color }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="font-black">{course.courseName}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {DAY_NAMES[course.dayOfWeek - 1]} · {course.startTime}–
+          {course.endTime} {course.room ? `· ${course.room}` : ""}
+        </p>
+      </div>
+      <Button
+        aria-label="Edit course"
+        onClick={onEdit}
+        size="icon"
+        variant="ghost"
+      >
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <Button
+        aria-label="Delete course"
+        onClick={onDelete}
+        size="icon"
+        variant="ghost"
+      >
+        <Trash2 className="h-4 w-4 text-red-600" />
+      </Button>
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </div>
+  );
+}

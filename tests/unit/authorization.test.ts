@@ -71,6 +71,8 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("ADMIN", "PLATFORM_SETTINGS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "GUIDE_CMS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "GUIDE_CMS_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "STUDENT_HUB_CONFIG_VIEW")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "STUDENT_HUB_CONFIG_MANAGE")).toBe(true);
     expect(hasAdminPermission("MODERATOR", "REFERENCE_DATA_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "MEDIA_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "USER_VIEW")).toBe(false);

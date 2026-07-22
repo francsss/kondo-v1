@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { MediaError, receiveLocalMediaUpload } from "@/lib/media";
 import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
 export async function PUT(
   request: NextRequest,

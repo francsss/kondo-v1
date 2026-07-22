@@ -65,7 +65,7 @@ const navigation: NavigationItem[] = [
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
 
-function ThemeToggle() {
+export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [saving, setSaving] = useState(false);
   const mounted = useSyncExternalStore(

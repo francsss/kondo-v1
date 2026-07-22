@@ -219,7 +219,7 @@ export async function createMediaUploadIntent(
     if (
       replacement.status !== "ACTIVE" ||
       replacement.purpose !== input.purpose ||
-      replacement.kind !== validated.policy.kind
+      replacement.kind !== validated.kind
     ) {
       throw new MediaError("This media cannot be replaced.", 409);
     }
@@ -238,7 +238,7 @@ export async function createMediaUploadIntent(
         ownerId: actor.id,
         objectKey,
         storageProvider: storage.provider,
-        kind: validated.policy.kind,
+        kind: validated.kind,
         purpose: input.purpose,
         visibility: validated.policy.visibility,
         originalFileName,

@@ -25,6 +25,7 @@ const validProductionEnvironment = {
   UPSTASH_REDIS_REST_URL: "https://kondo.upstash.io",
   UPSTASH_REDIS_REST_TOKEN: "upstash-token-long-enough",
   CRON_SECRET: "cron-secret-that-is-at-least-thirty-two-bytes",
+  OPENAI_API_KEY: "sk-project-test-key-long-enough",
 };
 
 describe("production environment validation", () => {

@@ -7,6 +7,7 @@ import {
   Database,
   FileSearch,
   Files,
+  GraduationCap,
   Images,
   LayoutDashboard,
   MapPin,
@@ -96,6 +97,12 @@ const items = [
     label: "City hubs",
     icon: MapPin,
     permission: "CITY_CMS_VIEW" as const,
+  },
+  {
+    href: "/admin/student-hub",
+    label: "Student hub",
+    icon: GraduationCap,
+    permission: "STUDENT_HUB_CONFIG_VIEW" as const,
   },
   {
     href: "/admin/analytics",

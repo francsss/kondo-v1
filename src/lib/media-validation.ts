@@ -73,7 +73,7 @@ export async function validateUploadedMedia(input: {
 
   let width: number | null = null;
   let height: number | null = null;
-  if (policy.kind === "IMAGE") {
+  if (detectedMime.startsWith("image/")) {
     try {
       const decoder = sharp(input.bytes, {
         failOn: "error",
@@ -107,6 +107,15 @@ export async function validateUploadedMedia(input: {
     const tail = new TextDecoder("latin1").decode(input.bytes.slice(-2048));
     if (!tail.includes("%%EOF")) {
       throw new MediaPolicyError("The PDF file is incomplete or invalid.");
+    }
+    if (input.purpose === "SCHEDULE_IMPORT") {
+      const text = new TextDecoder("latin1").decode(input.bytes);
+      const pages = text.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+      if (pages > 10) {
+        throw new MediaPolicyError(
+          "Schedule PDFs must contain 10 pages or fewer.",
+        );
+      }
     }
   }
 

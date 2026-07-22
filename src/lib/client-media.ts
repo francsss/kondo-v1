@@ -14,7 +14,8 @@ type MediaPurpose =
   | "POST_IMAGE"
   | "LISTING_IMAGE"
   | "MESSAGE_IMAGE"
-  | "MESSAGE_DOCUMENT";
+  | "MESSAGE_DOCUMENT"
+  | "SCHEDULE_IMPORT";
 
 export async function uploadMediaFile(
   file: File,

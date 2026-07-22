@@ -2,7 +2,7 @@ import type { MediaKind, MediaPurpose, MediaVisibility } from "@prisma/client";
 import { extname } from "node:path";
 
 type MediaPolicy = {
-  kind: MediaKind;
+  kind: MediaKind | "MIXED";
   visibility: MediaVisibility;
   maxBytes: number;
   mimeExtensions: Record<string, readonly string[]>;
@@ -95,6 +95,18 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     },
     altRequired: false,
   },
+  SCHEDULE_IMPORT: {
+    kind: "MIXED",
+    visibility: "PRIVATE",
+    maxBytes: 15 * 1024 * 1024,
+    mimeExtensions: {
+      ...imageTypes,
+      "application/pdf": ["pdf"],
+    },
+    maxWidth: 12_000,
+    maxHeight: 12_000,
+    altRequired: false,
+  },
 };
 
 export class MediaPolicyError extends Error {
@@ -146,6 +158,12 @@ export function validateMediaIntent(input: {
 
   return {
     policy,
+    kind:
+      policy.kind === "MIXED"
+        ? mimeType === "application/pdf"
+          ? ("DOCUMENT" as const)
+          : ("IMAGE" as const)
+        : policy.kind,
     extension,
     mimeType,
     altText,

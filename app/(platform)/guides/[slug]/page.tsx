@@ -10,10 +10,12 @@ import { publishedGuideWhere } from "@/lib/content-visibility";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
-export default async function GuideDetailPage({
+export async function GuideDetailContent({
   params,
+  backHref = "/guides",
 }: {
   params: Promise<{ slug: string }>;
+  backHref?: string;
 }) {
   const user = await requireUser();
   const { slug } = await params;
@@ -48,7 +50,7 @@ export default async function GuideDetailPage({
     <div className="mx-auto max-w-[1000px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
       <div className="flex items-center justify-between">
         <Button asChild size="sm" variant="ghost">
-          <Link href="/guides">
+          <Link href={backHref}>
             <ChevronLeft className="h-4 w-4" /> All guides
           </Link>
         </Button>
@@ -135,4 +137,12 @@ export default async function GuideDetailPage({
       </div>
     </div>
   );
+}
+
+export default function GuideDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  return <GuideDetailContent params={params} />;
 }

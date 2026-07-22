@@ -247,6 +247,48 @@ enum MediaPurpose {
   GUIDE_COVER
   MESSAGE_IMAGE
   MESSAGE_DOCUMENT
+  SCHEDULE_IMPORT
+}
+
+enum ScheduleWeekPattern {
+  ALL
+  ODD
+  EVEN
+  CUSTOM
+}
+
+enum ScheduleImportStatus {
+  UPLOADED
+  ANALYZING
+  REVIEW_REQUIRED
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+enum ScheduleCourseSource {
+  IMPORT
+  MANUAL
+}
+
+enum ClassPeriodPart {
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+enum ScholarshipFundingType {
+  FULL
+  PARTIAL
+}
+
+enum ScholarshipApplicationStatus {
+  SAVED
+  PREPARING
+  APPLIED
+  INTERVIEW
+  ACCEPTED
+  REJECTED
 }
 
 enum MediaVisibility {
@@ -294,91 +336,95 @@ enum AnalyticsEventName {
 }
 
 model User {
-  id                               String                     @id @default(cuid())
-  email                            String                     @unique
+  id                               String                      @id @default(cuid())
+  email                            String                      @unique
   emailVerifiedAt                  DateTime?
   passwordHash                     String?
   firstName                        String
   lastName                         String
-  username                         String?                    @unique
+  username                         String?                     @unique
   avatarKey                        String?
-  avatarMediaId                    String?                    @unique
-  avatarMedia                      MediaAsset?                @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
-  bio                              String?                    @db.VarChar(280)
+  avatarMediaId                    String?                     @unique
+  avatarMedia                      MediaAsset?                 @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  bio                              String?                     @db.VarChar(280)
   phone                            String?
-  profileAudience                  ProfileAudience            @default(MEMBERS)
-  locationAudience                 ProfileAudience            @default(MEMBERS)
-  educationAudience                ProfileAudience            @default(MEMBERS)
-  languagesAudience                ProfileAudience            @default(MEMBERS)
-  communitiesAudience              ProfileAudience            @default(MEMBERS)
-  activityAudience                 ProfileAudience            @default(MEMBERS)
-  marketplaceAudience              ProfileAudience            @default(MEMBERS)
-  role                             Role                       @default(MEMBER)
-  status                           UserStatus                 @default(ACTIVE)
+  profileAudience                  ProfileAudience             @default(MEMBERS)
+  locationAudience                 ProfileAudience             @default(MEMBERS)
+  educationAudience                ProfileAudience             @default(MEMBERS)
+  languagesAudience                ProfileAudience             @default(MEMBERS)
+  communitiesAudience              ProfileAudience             @default(MEMBERS)
+  activityAudience                 ProfileAudience             @default(MEMBERS)
+  marketplaceAudience              ProfileAudience             @default(MEMBERS)
+  role                             Role                        @default(MEMBER)
+  status                           UserStatus                  @default(ACTIVE)
   countryId                        String?
-  country                          Country?                   @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  country                          Country?                    @relation(fields: [countryId], references: [id], onDelete: SetNull)
   cityId                           String?
-  city                             City?                      @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  city                             City?                       @relation(fields: [cityId], references: [id], onDelete: SetNull)
   universityId                     String?
-  university                       University?                @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  university                       University?                 @relation(fields: [universityId], references: [id], onDelete: SetNull)
   degree                           String?
   studyLevel                       StudyLevel?
   studyYear                        Int?
   arrivalDate                      DateTime?
-  languages                        String[]                   @default([])
-  interests                        String[]                   @default([])
+  languages                        String[]                    @default([])
+  interests                        String[]                    @default([])
   onboardingCompletedAt            DateTime?
   lastActiveAt                     DateTime?
-  createdCommunities               Community[]                @relation("CommunityCreator")
-  ownedCommunities                 Community[]                @relation("CommunityOwner")
+  createdCommunities               Community[]                 @relation("CommunityCreator")
+  ownedCommunities                 Community[]                 @relation("CommunityOwner")
   communityMemberships             CommunityMember[]
-  communityAccessSubjects          CommunityAccessRequest[]   @relation("CommunityAccessSubject")
-  createdCommunityAccessRequests   CommunityAccessRequest[]   @relation("CommunityAccessCreator")
-  resolvedCommunityAccessRequests  CommunityAccessRequest[]   @relation("CommunityAccessResolver")
+  communityAccessSubjects          CommunityAccessRequest[]    @relation("CommunityAccessSubject")
+  createdCommunityAccessRequests   CommunityAccessRequest[]    @relation("CommunityAccessCreator")
+  resolvedCommunityAccessRequests  CommunityAccessRequest[]    @relation("CommunityAccessResolver")
   posts                            Post[]
   comments                         Comment[]
   reactions                        Reaction[]
   marketplaceListings              MarketplaceListing[]
   listingFavorites                 ListingFavorite[]
   guideProgress                    GuideProgress[]
-  createdGuides                    Guide[]                    @relation("GuideAuthor")
-  createdCityHubs                  CityHub[]                  @relation("CityHubAuthor")
-  updatedCityHubs                  CityHub[]                  @relation("CityHubEditor")
+  createdGuides                    Guide[]                     @relation("GuideAuthor")
+  createdCityHubs                  CityHub[]                   @relation("CityHubAuthor")
+  updatedCityHubs                  CityHub[]                   @relation("CityHubEditor")
   questions                        Question[]
   answers                          Answer[]
   answerVotes                      AnswerVote[]
+  studentSchedules                 StudentSchedule[]
+  scheduleImports                  ScheduleImport[]
+  customPeriodConfigurations       CustomPeriodConfiguration[]
+  scholarshipFavorites             ScholarshipFavorite[]
   bookmarks                        Bookmark[]
-  notifications                    Notification[]             @relation("NotificationRecipient")
-  triggeredNotifications           Notification[]             @relation("NotificationActor")
-  notificationJobs                 NotificationJob[]          @relation("NotificationJobRecipient")
-  triggeredNotificationJobs        NotificationJob[]          @relation("NotificationJobActor")
-  updatedNotificationTemplates     NotificationTemplate[]     @relation("NotificationTemplateUpdater")
-  createdNotificationAnnouncements NotificationAnnouncement[] @relation("NotificationAnnouncementCreator")
+  notifications                    Notification[]              @relation("NotificationRecipient")
+  triggeredNotifications           Notification[]              @relation("NotificationActor")
+  notificationJobs                 NotificationJob[]           @relation("NotificationJobRecipient")
+  triggeredNotificationJobs        NotificationJob[]           @relation("NotificationJobActor")
+  updatedNotificationTemplates     NotificationTemplate[]      @relation("NotificationTemplateUpdater")
+  createdNotificationAnnouncements NotificationAnnouncement[]  @relation("NotificationAnnouncementCreator")
   conversationMemberships          ConversationParticipant[]
-  sentMessages                     Message[]                  @relation("MessageSender")
-  blockedUsers                     UserBlock[]                @relation("Blocker")
-  blockedByUsers                   UserBlock[]                @relation("BlockedUser")
-  reports                          Report[]                   @relation("ReportReporter")
-  reportedSubjects                 Report[]                   @relation("ReportSubject")
-  assignedReports                  Report[]                   @relation("ReportAssignee")
-  reportAssignments                Report[]                   @relation("ReportAssignedBy")
-  resolvedReports                  Report[]                   @relation("ReportResolvedBy")
-  reopenedReports                  Report[]                   @relation("ReportReopenedBy")
+  sentMessages                     Message[]                   @relation("MessageSender")
+  blockedUsers                     UserBlock[]                 @relation("Blocker")
+  blockedByUsers                   UserBlock[]                 @relation("BlockedUser")
+  reports                          Report[]                    @relation("ReportReporter")
+  reportedSubjects                 Report[]                    @relation("ReportSubject")
+  assignedReports                  Report[]                    @relation("ReportAssignee")
+  reportAssignments                Report[]                    @relation("ReportAssignedBy")
+  resolvedReports                  Report[]                    @relation("ReportResolvedBy")
+  reopenedReports                  Report[]                    @relation("ReportReopenedBy")
   reportNotes                      ReportNote[]
   reportEvidenceCaptures           ReportEvidence[]
-  ownedMedia                       MediaAsset[]               @relation("MediaOwner")
-  removedMedia                     MediaAsset[]               @relation("MediaRemovedBy")
-  accountRequests                  AccountRequest[]           @relation("AccountRequestOwner")
-  processedAccountRequests         AccountRequest[]           @relation("AccountRequestProcessor")
+  ownedMedia                       MediaAsset[]                @relation("MediaOwner")
+  removedMedia                     MediaAsset[]                @relation("MediaRemovedBy")
+  accountRequests                  AccountRequest[]            @relation("AccountRequestOwner")
+  processedAccountRequests         AccountRequest[]            @relation("AccountRequestProcessor")
   preference                       UserPreference?
-  auditLogs                        AuditLog[]                 @relation("AuditActor")
+  auditLogs                        AuditLog[]                  @relation("AuditActor")
   analyticsEvents                  AnalyticsEvent[]
   accounts                         OAuthAccount[]
   sessions                         Session[]
   emailVerificationTokens          EmailVerificationToken[]
   passwordResetTokens              PasswordResetToken[]
-  createdAt                        DateTime                   @default(now())
-  updatedAt                        DateTime                   @updatedAt
+  createdAt                        DateTime                    @default(now())
+  updatedAt                        DateTime                    @updatedAt
   searchVector                     Unsupported("tsvector")?
 
   @@index([countryId])
@@ -444,25 +490,274 @@ model City {
 }
 
 model University {
-  id          String      @id @default(cuid())
-  slug        String      @unique
-  name        String
-  shortName   String?
-  countryId   String
-  country     Country     @relation(fields: [countryId], references: [id], onDelete: Restrict)
-  cityId      String
-  city        City        @relation(fields: [cityId], references: [id], onDelete: Restrict)
-  isActive    Boolean     @default(true)
-  verified    Boolean     @default(false)
-  users       User[]
-  communities Community[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                   String                          @id @default(cuid())
+  slug                 String                          @unique
+  name                 String
+  shortName            String?
+  countryId            String
+  country              Country                         @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId               String
+  city                 City                            @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  isActive             Boolean                         @default(true)
+  verified             Boolean                         @default(false)
+  users                User[]
+  communities          Community[]
+  campuses             Campus[]
+  academicTerms        AcademicTerm[]
+  periodConfigurations UniversityPeriodConfiguration[]
+  studentSchedules     StudentSchedule[]
+  scheduleImports      ScheduleImport[]
+  scholarships         Scholarship[]
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
 
   @@unique([cityId, name])
   @@index([countryId])
   @@index([cityId])
   @@index([cityId, isActive, verified, name])
+}
+
+model Campus {
+  id                   String                          @id @default(cuid())
+  universityId         String
+  university           University                      @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  name                 String
+  address              String?                         @db.VarChar(300)
+  isActive             Boolean                         @default(true)
+  academicTerms        AcademicTerm[]
+  periodConfigurations UniversityPeriodConfiguration[]
+  studentSchedules     StudentSchedule[]
+  scheduleImports      ScheduleImport[]
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
+
+  @@unique([universityId, name])
+  @@index([universityId, isActive, name])
+}
+
+model AcademicTerm {
+  id                String            @id @default(cuid())
+  universityId      String
+  university        University        @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  campusId          String?
+  campus            Campus?           @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  name              String
+  startsOn          DateTime          @db.Date
+  endsOn            DateTime          @db.Date
+  firstWeekStartsOn DateTime          @db.Date
+  totalWeeks        Int
+  isActive          Boolean           @default(true)
+  studentSchedules  StudentSchedule[]
+  scheduleImports   ScheduleImport[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([universityId, isActive, startsOn])
+  @@index([campusId])
+}
+
+model UniversityPeriodConfiguration {
+  id              String        @id @default(cuid())
+  universityId    String
+  university      University    @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  campusId        String?
+  campus          Campus?       @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  name            String
+  timezone        String        @default("Asia/Shanghai")
+  primaryLanguage String        @default("zh-CN")
+  isActive        Boolean       @default(true)
+  isDefault       Boolean       @default(false)
+  version         Int           @default(1)
+  periods         ClassPeriod[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([universityId, campusId, isActive])
+  @@index([universityId, isDefault])
+}
+
+model ClassPeriod {
+  id              String                        @id @default(cuid())
+  configurationId String
+  configuration   UniversityPeriodConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  periodNumber    Int
+  label           String
+  startTime       String                        @db.VarChar(5)
+  endTime         String                        @db.VarChar(5)
+  displayOrder    Int
+  part            ClassPeriodPart?
+  isBreak         Boolean                       @default(false)
+  isActive        Boolean                       @default(true)
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+
+  @@unique([configurationId, periodNumber])
+  @@index([configurationId, displayOrder])
+}
+
+model CustomPeriodConfiguration {
+  id                   String    @id @default(cuid())
+  ownerId              String
+  owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                 String
+  universityName       String
+  campusName           String?
+  timezone             String    @default("Asia/Shanghai")
+  periods              Json
+  isActive             Boolean   @default(true)
+  submittedForReviewAt DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([ownerId, isActive, updatedAt])
+}
+
+model StudentSchedule {
+  id                          String           @id @default(cuid())
+  ownerId                     String
+  owner                       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  universityId                String?
+  university                  University?      @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  campusId                    String?
+  campus                      Campus?          @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  academicTermId              String?
+  academicTerm                AcademicTerm?    @relation(fields: [academicTermId], references: [id], onDelete: SetNull)
+  title                       String
+  timezone                    String           @default("Asia/Shanghai")
+  periodConfigurationSnapshot Json?
+  confirmedAt                 DateTime?
+  isActive                    Boolean          @default(true)
+  courses                     ScheduleCourse[]
+  imports                     ScheduleImport[]
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  @@index([ownerId, isActive, updatedAt])
+  @@index([universityId])
+  @@index([academicTermId])
+}
+
+model ScheduleCourse {
+  id           String               @id @default(cuid())
+  scheduleId   String
+  schedule     StudentSchedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  courseName   String
+  teacher      String?
+  dayOfWeek    Int
+  specificDate DateTime?            @db.Date
+  startPeriod  Int?
+  endPeriod    Int?
+  startTime    String               @db.VarChar(5)
+  endTime      String               @db.VarChar(5)
+  room         String?
+  building     String?
+  campusLabel  String?
+  startWeek    Int?
+  endWeek      Int?
+  weekPattern  ScheduleWeekPattern  @default(ALL)
+  weeks        Int[]                @default([])
+  language     String?
+  notes        String?              @db.VarChar(2000)
+  color        String               @default("#22A06B") @db.VarChar(9)
+  isOptional   Boolean              @default(false)
+  confidence   Float?
+  source       ScheduleCourseSource @default(MANUAL)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([scheduleId, dayOfWeek, startTime])
+}
+
+model ScheduleImport {
+  id             String                @id @default(cuid())
+  ownerId        String
+  owner          User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  universityId   String?
+  university     University?           @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  campusId       String?
+  campus         Campus?               @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  academicTermId String?
+  academicTerm   AcademicTerm?         @relation(fields: [academicTermId], references: [id], onDelete: SetNull)
+  scheduleId     String?
+  schedule       StudentSchedule?      @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  status         ScheduleImportStatus  @default(UPLOADED)
+  provider       String?
+  model          String?
+  attemptCount   Int                   @default(0)
+  inputTokens    Int?
+  outputTokens   Int?
+  errorCode      String?
+  errorMessage   String?               @db.VarChar(500)
+  retainSource   Boolean               @default(false)
+  files          ScheduleImportFile[]
+  result         ScheduleImportResult?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([ownerId, status, createdAt])
+  @@index([universityId])
+}
+
+model ScheduleImportFile {
+  id           String         @id @default(cuid())
+  importId     String
+  import       ScheduleImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  mediaAssetId String         @unique
+  mediaAsset   MediaAsset     @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  pageCount    Int?
+  createdAt    DateTime       @default(now())
+  deletedAt    DateTime?
+
+  @@index([importId])
+}
+
+model ScheduleImportResult {
+  id            String         @id @default(cuid())
+  importId      String         @unique
+  import        ScheduleImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  extractedJson Json
+  warnings      Json
+  courseCount   Int
+  reviewCount   Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Scholarship {
+  id                    String                 @id @default(cuid())
+  universityId          String?
+  university            University?            @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  title                 String
+  provider              String
+  city                  String?
+  studyLevels           StudyLevel[]
+  fields                String[]               @default([])
+  eligibleNationalities String[]               @default([])
+  fundingType           ScholarshipFundingType
+  deadline              DateTime?              @db.Date
+  applicationUrl        String
+  description           String                 @db.Text
+  isActive              Boolean                @default(true)
+  favorites             ScholarshipFavorite[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([isActive, deadline])
+  @@index([universityId])
+}
+
+model ScholarshipFavorite {
+  id            String                       @id @default(cuid())
+  userId        String
+  user          User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scholarshipId String
+  scholarship   Scholarship                  @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  status        ScholarshipApplicationStatus @default(SAVED)
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+
+  @@unique([userId, scholarshipId])
+  @@index([userId, status, updatedAt])
 }
 
 model Community {
@@ -1112,6 +1407,7 @@ model MediaAsset {
   postMedia            PostMedia?           @relation("PostMedia")
   listingImageFor      ListingImage?        @relation("ListingImageMedia")
   guideCoverFor        Guide?               @relation("GuideCover")
+  scheduleImportFile   ScheduleImportFile?
   rejectionReason      String?              @db.VarChar(500)
   retainedAt           DateTime?
   retentionReason      String?              @db.VarChar(500)

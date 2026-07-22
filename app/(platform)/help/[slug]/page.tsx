@@ -12,10 +12,12 @@ import { formatRelativeDate } from "@/lib/presentation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
-export default async function QuestionPage({
+export async function QuestionDetailContent({
   params,
+  backHref = "/help",
 }: {
   params: Promise<{ slug: string }>;
+  backHref?: string;
 }) {
   const { slug } = await params;
   const currentUser = await requireUser();
@@ -39,7 +41,7 @@ export default async function QuestionPage({
   return (
     <div className="mx-auto max-w-[900px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
       <Button asChild size="sm" variant="ghost">
-        <Link href="/help">
+        <Link href={backHref}>
           <ChevronLeft className="h-4 w-4" /> Help center
         </Link>
       </Button>
@@ -135,4 +137,12 @@ export default async function QuestionPage({
       </div>
     </div>
   );
+}
+
+export default function QuestionPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  return <QuestionDetailContent params={params} />;
 }

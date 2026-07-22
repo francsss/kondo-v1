@@ -15,7 +15,11 @@ const categories = [
   "HEALTH",
 ] as const;
 
-export function QuestionComposer() {
+export function QuestionComposer({
+  basePath = "/help",
+}: {
+  basePath?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,7 +44,7 @@ export function QuestionComposer() {
     if (!response.ok)
       return setError(data.error ?? "We couldn’t publish that question.");
     setOpen(false);
-    router.push(`/help/${data.question.slug}`);
+    router.push(`${basePath}/${data.question.slug}`);
     router.refresh();
   }
 

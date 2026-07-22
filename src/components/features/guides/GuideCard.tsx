@@ -16,6 +16,7 @@ const categoryEmoji: Record<string, string> = {
 
 export function GuideCard({
   guide,
+  hrefBase = "/guides",
 }: {
   guide: {
     slug: string;
@@ -26,6 +27,7 @@ export function GuideCard({
     coverMediaId?: string | null;
     steps: Array<{ progress: Array<{ id: string }> }>;
   };
+  hrefBase?: string;
 }) {
   const completed = guide.steps.filter(
     (step) => step.progress.length > 0,
@@ -55,7 +57,7 @@ export function GuideCard({
           className="h-5 w-5 text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-kondo-green"
         />
       </div>
-      <Link className="mt-5" href={`/guides/${guide.slug}`}>
+      <Link className="mt-5" href={`${hrefBase}/${guide.slug}`}>
         <h2 className="text-lg font-black tracking-[-0.025em] text-kondo-ink group-hover:text-kondo-forest dark:text-white dark:group-hover:text-emerald-300">
           {guide.title}
         </h2>
