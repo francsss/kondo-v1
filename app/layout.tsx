@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { getAppUrl } from "@/lib/app-url";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "@livekit/components-styles";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
         >
           {children}
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
