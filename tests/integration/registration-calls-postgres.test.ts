@@ -186,4 +186,116 @@ postgresDescribe("national registration and call coordination", () => {
       }),
     ).resolves.not.toBeNull();
   });
+
+  it("keeps incompatible users waiting and removes stale queue presence", async () => {
+    const ghana = await prisma.country.findUniqueOrThrow({
+      where: { code: "GH" },
+    });
+    const users = await Promise.all(
+      ["first", "second", "fresh"].map((label) =>
+        prisma.user.create({
+          data: {
+            email: `${label}-${randomUUID()}@${testDomain}`,
+            firstName: "Queue",
+            lastName: label,
+            countryId: ghana.id,
+            gender: "MALE",
+            status: "ACTIVE",
+          },
+        }),
+      ),
+    );
+
+    for (const user of users.slice(0, 2)) {
+      await expect(
+        findMeetMatch({
+          userId: user.id,
+          gender: "MALE",
+          genderPreference: "FEMALE",
+          countryPreferenceId: null,
+        }),
+      ).resolves.toEqual({ state: "WAITING" });
+    }
+    await expect(
+      prisma.callSession.count({
+        where: {
+          kind: "MEET",
+          participants: { some: { userId: { in: users.map(({ id }) => id) } } },
+        },
+      }),
+    ).resolves.toBe(0);
+
+    await prisma.meetQueueEntry.update({
+      where: { userId: users[0]!.id },
+      data: { heartbeatAt: new Date(Date.now() - 60_000) },
+    });
+    await findMeetMatch({
+      userId: users[2]!.id,
+      gender: "MALE",
+      genderPreference: "FEMALE",
+      countryPreferenceId: null,
+    });
+    await expect(
+      prisma.meetQueueEntry.findUnique({ where: { userId: users[0]!.id } }),
+    ).resolves.toBeNull();
+    await Promise.all(users.map(({ id }) => leaveMeetQueue(id)));
+  });
+
+  it("atomically prevents a queued user from being assigned to two calls", async () => {
+    const ghana = await prisma.country.findUniqueOrThrow({
+      where: { code: "GH" },
+    });
+    const users = await Promise.all(
+      ["anchor", "candidate-a", "candidate-b"].map((label) =>
+        prisma.user.create({
+          data: {
+            email: `${label}-${randomUUID()}@${testDomain}`,
+            firstName: "Atomic",
+            lastName: label,
+            countryId: ghana.id,
+            gender: "MALE",
+            status: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await findMeetMatch({
+      userId: users[0]!.id,
+      gender: "MALE",
+      genderPreference: "ALL",
+      countryPreferenceId: null,
+    });
+
+    await Promise.all(
+      users.slice(1).map((user) =>
+        findMeetMatch({
+          userId: user.id,
+          gender: "MALE",
+          genderPreference: "ALL",
+          countryPreferenceId: null,
+        }),
+      ),
+    );
+
+    const calls = await prisma.callSession.findMany({
+      where: {
+        kind: "MEET",
+        participants: { some: { userId: { in: users.map(({ id }) => id) } } },
+      },
+      include: { participants: true },
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.participants).toHaveLength(2);
+    expect(
+      new Set(calls[0]?.participants.map(({ userId }) => userId)).size,
+    ).toBe(2);
+    const duplicateAssignments = await prisma.callParticipant.groupBy({
+      by: ["userId"],
+      where: { userId: { in: users.map(({ id }) => id) } },
+      _count: { callSessionId: true },
+      having: { callSessionId: { _count: { gt: 1 } } },
+    });
+    expect(duplicateAssignments).toHaveLength(0);
+    await Promise.all(users.map(({ id }) => leaveMeetQueue(id)));
+  });
 });

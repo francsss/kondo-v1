@@ -7,11 +7,25 @@ import {
   Prisma,
   UserGender,
 } from "@prisma/client";
+import { callMediaProvider, isLiveKitConfigured } from "@/lib/calls/provider";
+import { logServerError, logServerEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 const QUEUE_STALE_MS = 45_000;
 const CONNECTING_TTL_MS = 15 * 60_000;
 const CALL_TTL_MS = 4 * 60 * 60_000;
+
+type MatchDiagnostics = {
+  staleQueueEntriesRemoved: number;
+  expiredCallsCancelled: number;
+  freshCandidates: number;
+  inactive: number;
+  missingGender: number;
+  blocked: number;
+  occupied: number;
+  genderMismatch: number;
+  countryMismatch: number;
+};
 
 function preferenceAllows(
   preference: MeetGenderPreference,
@@ -48,13 +62,25 @@ export async function findMeetMatch(input: {
   genderPreference: MeetGenderPreference;
   countryPreferenceId: string | null;
 }) {
+  logServerEvent("meet.queue.join.requested", {
+    userId: input.userId,
+    hasCountryPreference: Boolean(input.countryPreferenceId),
+  });
   let lastError: unknown;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      return await prisma.$transaction(
+      const result = await prisma.$transaction(
         async (tx) => {
           const now = new Date();
-          await tx.meetQueueEntry.deleteMany({
+          const expiredCalls = await tx.callSession.updateMany({
+            where: {
+              kind: "MEET",
+              status: { in: ["CONNECTING", "ACTIVE"] },
+              expiresAt: { lte: now },
+            },
+            data: { status: "CANCELLED", endedAt: now },
+          });
+          const staleEntries = await tx.meetQueueEntry.deleteMany({
             where: {
               callSessionId: null,
               heartbeatAt: {
@@ -62,6 +88,17 @@ export async function findMeetMatch(input: {
               },
             },
           });
+          const diagnostics: MatchDiagnostics = {
+            staleQueueEntriesRemoved: staleEntries.count,
+            expiredCallsCancelled: expiredCalls.count,
+            freshCandidates: 0,
+            inactive: 0,
+            missingGender: 0,
+            blocked: 0,
+            occupied: 0,
+            genderMismatch: 0,
+            countryMismatch: 0,
+          };
 
           const user = await tx.user.update({
             where: { id: input.userId },
@@ -84,6 +121,28 @@ export async function findMeetMatch(input: {
             return {
               state: "MATCHED" as const,
               callId: existing.callSession.id,
+              resumed: true,
+              diagnostics,
+            };
+          }
+
+          const occupiedCall = await tx.callParticipant.findFirst({
+            where: {
+              userId: input.userId,
+              status: { not: "LEFT" },
+              callSession: {
+                status: { in: ["CONNECTING", "ACTIVE"] },
+                expiresAt: { gt: now },
+              },
+            },
+            select: { callSessionId: true },
+            orderBy: { createdAt: "desc" },
+          });
+          if (occupiedCall) {
+            return {
+              state: "BUSY" as const,
+              callId: occupiedCall.callSessionId,
+              diagnostics,
             };
           }
 
@@ -111,14 +170,32 @@ export async function findMeetMatch(input: {
               heartbeatAt: {
                 gte: new Date(now.getTime() - QUEUE_STALE_MS),
               },
-              user: { status: "ACTIVE", gender: { not: null } },
             },
             include: {
-              user: { select: { id: true, countryId: true, gender: true } },
+              user: {
+                select: {
+                  id: true,
+                  countryId: true,
+                  gender: true,
+                  status: true,
+                  callParticipations: {
+                    where: {
+                      status: { not: "LEFT" },
+                      callSession: {
+                        status: { in: ["CONNECTING", "ACTIVE"] },
+                        expiresAt: { gt: now },
+                      },
+                    },
+                    select: { callSessionId: true },
+                    take: 1,
+                  },
+                },
+              },
             },
             orderBy: { createdAt: "asc" },
             take: 40,
           });
+          diagnostics.freshCandidates = candidates.length;
           const candidateIds = candidates.map((candidate) => candidate.userId);
           const blocks = candidateIds.length
             ? await tx.userBlock.findMany({
@@ -144,19 +221,48 @@ export async function findMeetMatch(input: {
                 : block.blockerId,
             ),
           );
-          const candidate = candidates.find(
-            (entry) =>
-              !blockedIds.has(entry.userId) &&
-              preferenceAllows(input.genderPreference, entry.user.gender) &&
-              preferenceAllows(entry.genderPreference, user.gender) &&
-              countriesCompatible({
+          let candidate: (typeof candidates)[number] | undefined;
+          for (const entry of candidates) {
+            if (entry.user.status !== "ACTIVE") {
+              diagnostics.inactive += 1;
+              continue;
+            }
+            if (!entry.user.gender) {
+              diagnostics.missingGender += 1;
+              continue;
+            }
+            if (blockedIds.has(entry.userId)) {
+              diagnostics.blocked += 1;
+              continue;
+            }
+            if (entry.user.callParticipations.length > 0) {
+              diagnostics.occupied += 1;
+              continue;
+            }
+            if (
+              !preferenceAllows(input.genderPreference, entry.user.gender) ||
+              !preferenceAllows(entry.genderPreference, user.gender)
+            ) {
+              diagnostics.genderMismatch += 1;
+              continue;
+            }
+            if (
+              !countriesCompatible({
                 firstCountryId: user.countryId,
                 firstPreferenceId: input.countryPreferenceId,
                 secondCountryId: entry.user.countryId,
                 secondPreferenceId: entry.countryPreferenceId,
-              }),
-          );
-          if (!candidate) return { state: "WAITING" as const };
+              })
+            ) {
+              diagnostics.countryMismatch += 1;
+              continue;
+            }
+            candidate = entry;
+            break;
+          }
+          if (!candidate) {
+            return { state: "WAITING" as const, diagnostics };
+          }
 
           const call = await tx.callSession.create({
             data: {
@@ -186,12 +292,51 @@ export async function findMeetMatch(input: {
           if (mine.count !== 1 || theirs.count !== 1) {
             throw new Error("MEET_MATCH_RACE");
           }
-          return { state: "MATCHED" as const, callId: call.id };
+          return {
+            state: "MATCHED" as const,
+            callId: call.id,
+            resumed: false,
+            diagnostics,
+          };
         },
         { isolationLevel: "Serializable", maxWait: 5_000, timeout: 12_000 },
       );
+      if (result.diagnostics.staleQueueEntriesRemoved > 0) {
+        logServerEvent("meet.queue.cleanup", {
+          removed: result.diagnostics.staleQueueEntriesRemoved,
+          expiredCallsCancelled: result.diagnostics.expiredCallsCancelled,
+        });
+      }
+      if (result.state === "MATCHED") {
+        logServerEvent(
+          result.resumed ? "meet.match.resumed" : "meet.match.created",
+          {
+            callId: result.callId,
+            userId: input.userId,
+            candidateFound: true,
+          },
+        );
+        return { state: "MATCHED" as const, callId: result.callId };
+      }
+      if (result.state === "BUSY") {
+        logServerEvent("meet.queue.rejected_busy", {
+          callId: result.callId,
+          userId: input.userId,
+        });
+        return { state: "BUSY" as const, callId: result.callId };
+      }
+      logServerEvent("meet.match.waiting", {
+        userId: input.userId,
+        ...result.diagnostics,
+      });
+      return { state: "WAITING" as const };
     } catch (error) {
       lastError = error;
+      logServerError("meet.match.attempt_failed", error, {
+        userId: input.userId,
+        attempt,
+        retryable: isRetryable(error),
+      });
       if (!isRetryable(error) || attempt === 3) throw error;
     }
   }
@@ -199,16 +344,49 @@ export async function findMeetMatch(input: {
 }
 
 export async function leaveMeetQueue(userId: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const entry = await tx.meetQueueEntry.findUnique({
       where: { userId },
       select: { callSessionId: true },
     });
-    await tx.meetQueueEntry.deleteMany({ where: { userId } });
+    const removed = await tx.meetQueueEntry.deleteMany({ where: { userId } });
     if (entry?.callSessionId) {
-      await markCallParticipant(tx, entry.callSessionId, userId, "LEFT");
+      const call = await markCallParticipant(
+        tx,
+        entry.callSessionId,
+        userId,
+        "LEFT",
+      );
+      return { removed: removed.count, call };
     }
+    return { removed: removed.count, call: null };
   });
+  logServerEvent("meet.queue.leave", {
+    userId,
+    removed: result.removed,
+    callId: result.call?.callId,
+    callEnded: result.call?.ended,
+  });
+  await closeEndedRoom(result.call);
+  return result;
+}
+
+async function closeEndedRoom(
+  call: Awaited<ReturnType<typeof markCallParticipant>> | null,
+) {
+  if (!call?.ended || !call.roomName || !isLiveKitConfigured()) return;
+  try {
+    await callMediaProvider.closeRoom(call.roomName);
+    logServerEvent("calls.room.cleaned", {
+      callId: call.callId,
+      provider: "livekit",
+    });
+  } catch (error) {
+    logServerError("calls.room.cleanup_failed", error, {
+      callId: call.callId,
+      provider: "livekit",
+    });
+  }
 }
 
 async function markCallParticipant(
@@ -226,27 +404,33 @@ async function markCallParticipant(
       leftAt: status === "LEFT" ? now : null,
     },
   });
-  if (!changed.count) return false;
+  if (!changed.count) return null;
   const joined = await tx.callParticipant.count({
     where: { callSessionId: callId, status: "JOINED" },
   });
   const remaining = await tx.callParticipant.count({
     where: { callSessionId: callId, status: { not: "LEFT" } },
   });
-  await tx.callSession.update({
+  const ended = remaining < 2;
+  const call = await tx.callSession.update({
     where: { id: callId },
-    data:
-      remaining < 2
-        ? { status: "ENDED", endedAt: now }
-        : joined >= 2
-          ? {
-              status: "ACTIVE",
-              connectedAt: now,
-              expiresAt: new Date(now.getTime() + CALL_TTL_MS),
-            }
-          : {},
+    data: ended
+      ? { status: "ENDED", endedAt: now }
+      : joined >= 2
+        ? {
+            status: "ACTIVE",
+            connectedAt: now,
+            expiresAt: new Date(now.getTime() + CALL_TTL_MS),
+          }
+        : {},
+    select: { id: true, roomName: true, status: true },
   });
-  return true;
+  return {
+    callId: call.id,
+    roomName: call.roomName,
+    status: call.status,
+    ended,
+  };
 }
 
 export async function updateCallPresence(input: {
@@ -254,9 +438,22 @@ export async function updateCallPresence(input: {
   userId: string;
   status: "JOINED" | "LEFT";
 }) {
-  return prisma.$transaction((tx) =>
+  const result = await prisma.$transaction((tx) =>
     markCallParticipant(tx, input.callId, input.userId, input.status),
   );
+  if (!result) return false;
+  logServerEvent(
+    input.status === "JOINED"
+      ? "calls.participant.connected"
+      : "calls.participant.left",
+    {
+      callId: input.callId,
+      userId: input.userId,
+      callStatus: result.status,
+    },
+  );
+  await closeEndedRoom(result);
+  return true;
 }
 
 export async function createPrivateCall(input: {

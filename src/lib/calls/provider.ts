@@ -1,4 +1,4 @@
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 
 export type CallAccess = {
   token: string;
@@ -7,11 +7,13 @@ export type CallAccess = {
 };
 
 export interface CallMediaProvider {
+  prepareRoom(input: { roomName: string }): Promise<void>;
   createParticipantAccess(input: {
     roomName: string;
     userId: string;
     displayName: string;
   }): Promise<CallAccess>;
+  closeRoom(roomName: string): Promise<void>;
 }
 
 function liveKitConfig() {
@@ -27,7 +29,28 @@ function liveKitConfig() {
   return { serverUrl, apiKey, apiSecret };
 }
 
+function roomService() {
+  const config = liveKitConfig();
+  const apiUrl = new URL(config.serverUrl);
+  apiUrl.protocol = "https:";
+  return new RoomServiceClient(
+    apiUrl.toString(),
+    config.apiKey,
+    config.apiSecret,
+  );
+}
+
 class LiveKitCallProvider implements CallMediaProvider {
+  async prepareRoom(input: { roomName: string }) {
+    await roomService().createRoom({
+      name: input.roomName,
+      emptyTimeout: 5 * 60,
+      departureTimeout: 30,
+      maxParticipants: 2,
+      metadata: JSON.stringify({ provider: "kondo", version: 1 }),
+    });
+  }
+
   async createParticipantAccess(input: {
     roomName: string;
     userId: string;
@@ -53,6 +76,10 @@ class LiveKitCallProvider implements CallMediaProvider {
       serverUrl: config.serverUrl,
       expiresInSeconds,
     };
+  }
+
+  async closeRoom(roomName: string) {
+    await roomService().deleteRoom(roomName);
   }
 }
 

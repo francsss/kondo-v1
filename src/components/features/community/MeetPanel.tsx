@@ -15,6 +15,8 @@ import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
 
 type Gender = "MALE" | "FEMALE";
 type GenderPreference = "ALL" | Gender;
+const POLL_INTERVAL_MS = 2_500;
+const AVAILABILITY_WINDOW_MS = 20_000;
 
 export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
   const [gender, setGender] = useState<Gender | "">(initialGender ?? "");
@@ -24,10 +26,14 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
   const [matching, setMatching] = useState(false);
   const [callId, setCallId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [noAvailability, setNoAvailability] = useState(false);
   const pollingRef = useRef(false);
+  const requestInFlightRef = useRef(false);
+  const pollTimerRef = useRef<number | null>(null);
+  const startedAtRef = useRef(0);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
-  const leaveQueue = useCallback(async () => {
-    pollingRef.current = false;
+  const removeFromQueue = useCallback(async () => {
     await fetch("/api/meet/queue", {
       method: "DELETE",
       credentials: "include",
@@ -35,21 +41,56 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
     }).catch(() => null);
   }, []);
 
-  useEffect(() => () => void leaveQueue(), [leaveQueue]);
+  const stopPolling = useCallback(() => {
+    pollingRef.current = false;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  const leaveQueue = useCallback(async () => {
+    stopPolling();
+    await removeFromQueue();
+  }, [removeFromQueue, stopPolling]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      stopPolling();
+      void removeFromQueue();
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      void leaveQueue();
+    };
+  }, [leaveQueue, removeFromQueue, stopPolling]);
 
   async function poll() {
-    if (!pollingRef.current || !gender) return;
+    if (!pollingRef.current || !gender || requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     const response = await fetch("/api/meet/queue", {
       method: "POST",
       credentials: "include",
+      signal: controller.signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gender,
         genderPreference,
         countryPreferenceCode: countryPreferenceCode || null,
       }),
-    }).catch(() => null);
+    }).catch((reason) => {
+      if (reason instanceof Error && reason.name === "AbortError") return null;
+      return null;
+    });
     const payload = await response?.json().catch(() => null);
+    requestInFlightRef.current = false;
+    requestControllerRef.current = null;
+    if (!pollingRef.current) return;
     if (!response?.ok) {
       pollingRef.current = false;
       setMatching(false);
@@ -62,7 +103,25 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
       setCallId(payload.callId);
       return;
     }
-    if (pollingRef.current) window.setTimeout(poll, 2_500);
+    if (payload.state === "BUSY") {
+      pollingRef.current = false;
+      setMatching(false);
+      setError("You are already connected to another active call.");
+      return;
+    }
+    if (Date.now() - startedAtRef.current >= AVAILABILITY_WINDOW_MS) {
+      pollingRef.current = false;
+      setMatching(false);
+      setNoAvailability(true);
+      await removeFromQueue();
+      return;
+    }
+    if (pollingRef.current) {
+      pollTimerRef.current = window.setTimeout(
+        () => void poll(),
+        POLL_INTERVAL_MS,
+      );
+    }
   }
 
   function start() {
@@ -70,14 +129,18 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
       setError("Select your gender before starting. It remains private.");
       return;
     }
+    if (pollingRef.current || requestInFlightRef.current) return;
     setError("");
+    setNoAvailability(false);
     setMatching(true);
     pollingRef.current = true;
+    startedAtRef.current = Date.now();
     void poll();
   }
 
   async function stop() {
     setMatching(false);
+    setNoAvailability(false);
     await leaveQueue();
   }
 
@@ -186,25 +249,44 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
             {error}
           </p>
         ) : null}
-        <Button
-          className="mt-7"
-          fullWidth
-          onClick={matching ? stop : start}
-          size="lg"
-          type="button"
-          variant={matching ? "secondary" : "primary"}
-        >
-          {matching ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" /> Looking for a
-              match…
-            </>
-          ) : (
-            <>
-              <Video className="h-4 w-4" /> Start Matching
-            </>
-          )}
-        </Button>
+        {noAvailability ? (
+          <div className="mt-7 rounded-2xl border border-border bg-muted/45 p-4">
+            <p className="text-sm font-black text-foreground">
+              No one is available right now.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              You can keep waiting with the same private preferences or cancel.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Button onClick={start} type="button">
+                Continue waiting
+              </Button>
+              <Button onClick={stop} type="button" variant="secondary">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            className="mt-7"
+            fullWidth
+            onClick={matching ? stop : start}
+            size="lg"
+            type="button"
+            variant={matching ? "secondary" : "primary"}
+          >
+            {matching ? (
+              <>
+                <LoaderCircle className="h-4 w-4 animate-spin" /> Looking for a
+                match…
+              </>
+            ) : (
+              <>
+                <Video className="h-4 w-4" /> Start Matching
+              </>
+            )}
+          </Button>
+        )}
         {matching ? (
           <p className="mt-3 text-center text-xs text-muted-foreground">
             Keep this page open. You will connect automatically.
