@@ -170,10 +170,24 @@ async function createFixture() {
     isActive: true,
     verified: true,
   });
+  const memberCitySwitch = await prisma.user.create({
+    data: {
+      email: `member-city-switch-${suffix}@${testDomain}`,
+      firstName: "Module4",
+      lastName: "CitySwitch",
+      role: "MEMBER",
+      status: "ACTIVE",
+      countryId: origin.id,
+      cityId: cityA.id,
+      universityId: universityA.id,
+      onboardingCompletedAt: new Date(),
+    },
+  });
   return {
     admin,
     member,
     memberDraftOnly,
+    memberCitySwitch,
     origin,
     cityA,
     cityB,
@@ -266,6 +280,35 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
     });
     expect(withCity.cityId).toBe(fixture.cityA.id);
     expect(withCity.universityId).toBe(fixture.universityA.id);
+  });
+
+  it("clears a stale university when a member changes city without resending it", async () => {
+    // Regression test: a member who already completed onboarding with
+    // cityA/universityA switches to cityB in one draft save without also
+    // resending universityId (e.g. before picking a new one). The DB has a
+    // trigger that rejects a User row where cityId and the linked
+    // university's cityId disagree, so the draft save must clear the now-
+    // mismatched university itself rather than leaving it dangling or
+    // throwing a raw database error.
+    const before = await prisma.user.findUniqueOrThrow({
+      where: { id: fixture.memberCitySwitch.id },
+      select: { cityId: true, universityId: true },
+    });
+    expect(before.cityId).toBe(fixture.cityA.id);
+    expect(before.universityId).toBe(fixture.universityA.id);
+
+    const draft = await saveOnboardingDraft(fixture.memberCitySwitch.id, {
+      cityId: fixture.cityB.id,
+    });
+    expect(draft.cityId).toBe(fixture.cityB.id);
+    expect(draft.universityId).toBeNull();
+
+    const withNewUniversity = await saveOnboardingDraft(
+      fixture.memberCitySwitch.id,
+      { cityId: fixture.cityB.id, universityId: fixture.universityB.id },
+    );
+    expect(withNewUniversity.cityId).toBe(fixture.cityB.id);
+    expect(withNewUniversity.universityId).toBe(fixture.universityB.id);
   });
 
   it("rejects mismatched, inactive, or unverified universities without changing the user", async () => {

@@ -39,20 +39,25 @@ type RequestMetadata = {
   userAgent?: string | null;
 };
 
-function draftData(input: OnboardingDraftInput): Prisma.UserUpdateInput {
+function draftData(
+  input: OnboardingDraftInput,
+  options: { clearUniversity?: boolean } = {},
+): Prisma.UserUncheckedUpdateInput {
+  // Prisma's relation-nested UserUpdateInput (`city: { connect }`) and its
+  // scalar UserUncheckedUpdateInput (`cityId: ...`) can't be mixed in one
+  // call — combining them makes Prisma validate against the relation-nested
+  // shape and silently reject/drop the scalar field. Using plain scalar IDs
+  // throughout keeps countryId/cityId/universityId in the same UPDATE
+  // statement, which the DB consistency trigger requires when a city change
+  // must also clear a now-mismatched university.
   return {
-    country:
-      input.countryId === undefined
+    countryId: input.countryId === undefined ? undefined : input.countryId,
+    cityId: input.cityId === undefined ? undefined : input.cityId,
+    universityId: options.clearUniversity
+      ? null
+      : input.universityId === undefined
         ? undefined
-        : { connect: { id: input.countryId } },
-    city:
-      input.cityId === undefined
-        ? undefined
-        : { connect: { id: input.cityId } },
-    university:
-      input.universityId === undefined
-        ? undefined
-        : { connect: { id: input.universityId } },
+        : input.universityId,
     degree:
       input.degree === undefined ? undefined : input.degree.trim() || null,
     studyLevel: input.studyLevel,
@@ -68,9 +73,26 @@ export async function saveOnboardingDraft(
 ) {
   return prisma.$transaction(async (tx) => {
     await validateOnboardingReferences(input, tx);
+
+    // A city change must never leave a stale university from a different
+    // city attached. The client always resends both together when the
+    // member actually picks a new university, so a cityId-only draft here
+    // means their previous university (if any) needs to be cleared, not
+    // silently left pointing at the old city.
+    let clearUniversity = false;
+    if (input.cityId !== undefined && input.universityId === undefined) {
+      const current = await tx.user.findUnique({
+        where: { id: userId },
+        select: { university: { select: { cityId: true } } },
+      });
+      if (current?.university && current.university.cityId !== input.cityId) {
+        clearUniversity = true;
+      }
+    }
+
     const updated = await tx.user.update({
       where: { id: userId },
-      data: draftData(input),
+      data: draftData(input, { clearUniversity }),
       select: {
         countryId: true,
         cityId: true,
