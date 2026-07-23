@@ -144,6 +144,51 @@ describe("input validation", () => {
     ).toBe(false);
   });
 
+  it("saves a step-0 onboarding draft with only a country selected", () => {
+    // Regression coverage: the wizard PATCHes a draft after each step, so a
+    // member who has only chosen a country still has cityId/universityId as
+    // "" (unset controlled-select state). That must remain a valid draft.
+    const countryOnly = onboardingDraftSchema.safeParse({
+      countryId: "ckz1234567890123456789012",
+      cityId: "",
+      universityId: "",
+    });
+    expect(countryOnly.success).toBe(true);
+    if (countryOnly.success) {
+      expect(countryOnly.data.cityId).toBeUndefined();
+      expect(countryOnly.data.universityId).toBeUndefined();
+    }
+
+    expect(
+      onboardingDraftSchema.safeParse({
+        countryId: "",
+        cityId: "",
+        universityId: "",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      onboardingDraftSchema.safeParse({
+        countryId: "not-a-cuid",
+        cityId: "",
+        universityId: "",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      onboardingSchema.safeParse({
+        countryId: "ckz1234567890123456789012",
+        cityId: "",
+        universityId: "",
+        degree: "Computer Science",
+        studyLevel: "MASTERS",
+        arrivalDate: "2026-09-01",
+        languages: ["English"],
+        interests: ["Housing"],
+      }).success,
+    ).toBe(false);
+  });
+
   it("normalizes and validates reference-data records", () => {
     const country = referenceCountrySchema.safeParse({
       code: "cn",

@@ -9,7 +9,16 @@ type OnboardingReferences = {
   universityId: string;
 };
 
-export type OnboardingDraftInput = OnboardingReferences & {
+// A draft is saved after every onboarding step, so any reference the member
+// has not reached yet is legitimately absent — only completeOnboarding
+// requires the full triplet.
+type PartialOnboardingReferences = {
+  countryId?: string;
+  cityId?: string;
+  universityId?: string;
+};
+
+export type OnboardingDraftInput = PartialOnboardingReferences & {
   degree?: string;
   studyLevel?: StudyLevel;
   arrivalDate?: Date;
@@ -32,9 +41,18 @@ type RequestMetadata = {
 
 function draftData(input: OnboardingDraftInput): Prisma.UserUpdateInput {
   return {
-    country: { connect: { id: input.countryId } },
-    city: { connect: { id: input.cityId } },
-    university: { connect: { id: input.universityId } },
+    country:
+      input.countryId === undefined
+        ? undefined
+        : { connect: { id: input.countryId } },
+    city:
+      input.cityId === undefined
+        ? undefined
+        : { connect: { id: input.cityId } },
+    university:
+      input.universityId === undefined
+        ? undefined
+        : { connect: { id: input.universityId } },
     degree:
       input.degree === undefined ? undefined : input.degree.trim() || null,
     studyLevel: input.studyLevel,

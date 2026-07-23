@@ -57,6 +57,16 @@ const onboardingReferenceSchema = {
   universityId: z.string().cuid(),
 };
 
+// The onboarding wizard saves a draft after each step, so earlier steps in
+// the flow have not chosen a value yet. The client sends "" for an unset
+// selector (controlled-input convention); treat that as "not provided yet"
+// rather than a malformed id, while still enforcing the cuid format for any
+// id that is actually supplied.
+const optionalReferenceId = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().cuid().optional(),
+);
+
 export const onboardingSchema = z.object({
   ...onboardingReferenceSchema,
   degree: z.string().trim().min(2).max(120),
@@ -67,7 +77,9 @@ export const onboardingSchema = z.object({
 });
 
 export const onboardingDraftSchema = z.object({
-  ...onboardingReferenceSchema,
+  countryId: optionalReferenceId,
+  cityId: optionalReferenceId,
+  universityId: optionalReferenceId,
   degree: z.string().trim().max(120).optional(),
   studyLevel: studyLevelSchema.optional(),
   arrivalDate: z.coerce.date().optional(),

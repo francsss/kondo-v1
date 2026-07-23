@@ -113,6 +113,15 @@ async function createFixture() {
       status: "ACTIVE",
     },
   });
+  const memberDraftOnly = await prisma.user.create({
+    data: {
+      email: `member-draft-${suffix}@${testDomain}`,
+      firstName: "Module4",
+      lastName: "DraftMember",
+      role: "MEMBER",
+      status: "ACTIVE",
+    },
+  });
   const origin = await prisma.country.upsert({
     where: { code: "SC" },
     update: {
@@ -164,6 +173,7 @@ async function createFixture() {
   return {
     admin,
     member,
+    memberDraftOnly,
     origin,
     cityA,
     cityB,
@@ -234,6 +244,28 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
         },
       }),
     ).resolves.toBeTruthy();
+  });
+
+  it("saves a step-0 draft with only a country of origin selected", async () => {
+    // Regression test: the onboarding wizard PATCHes a draft after every
+    // step, so the very first save only has countryId — city/university are
+    // chosen later. This must persist the country without requiring the
+    // still-unselected city/university references.
+    const draft = await saveOnboardingDraft(fixture.memberDraftOnly.id, {
+      countryId: fixture.origin.id,
+    });
+    expect(draft.countryId).toBe(fixture.origin.id);
+    expect(draft.cityId).toBeNull();
+    expect(draft.universityId).toBeNull();
+    expect(draft.onboardingCompletedAt).toBeNull();
+
+    const withCity = await saveOnboardingDraft(fixture.memberDraftOnly.id, {
+      countryId: fixture.origin.id,
+      cityId: fixture.cityA.id,
+      universityId: fixture.universityA.id,
+    });
+    expect(withCity.cityId).toBe(fixture.cityA.id);
+    expect(withCity.universityId).toBe(fixture.universityA.id);
   });
 
   it("rejects mismatched, inactive, or unverified universities without changing the user", async () => {

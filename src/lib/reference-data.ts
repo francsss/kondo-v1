@@ -334,47 +334,53 @@ export async function getOnboardingReferenceData() {
 }
 
 export async function validateOnboardingReferences(
-  input: { countryId: string; cityId: string; universityId: string },
+  input: { countryId?: string; cityId?: string; universityId?: string },
   client: ReferenceClient = prisma,
 ) {
-  const country = await client.country.findFirst({
-    where: {
-      id: input.countryId,
-      isActive: true,
-      code: { in: AFRICAN_COUNTRY_CODES },
-    },
-    select: { id: true },
-  });
-  if (!country) {
-    throw new ReferenceDataError("Select an active country of origin.");
+  if (input.countryId !== undefined) {
+    const country = await client.country.findFirst({
+      where: {
+        id: input.countryId,
+        isActive: true,
+        code: { in: AFRICAN_COUNTRY_CODES },
+      },
+      select: { id: true },
+    });
+    if (!country) {
+      throw new ReferenceDataError("Select an active country of origin.");
+    }
   }
 
-  const city = await client.city.findFirst({
-    where: {
-      id: input.cityId,
-      isActive: true,
-      country: { isActive: true, code: "CN" },
-    },
-    select: { id: true, countryId: true },
-  });
-  if (!city) {
-    throw new ReferenceDataError("Select an active study city.");
+  let city: { id: string; countryId: string } | null = null;
+  if (input.cityId !== undefined) {
+    city = await client.city.findFirst({
+      where: {
+        id: input.cityId,
+        isActive: true,
+        country: { isActive: true, code: "CN" },
+      },
+      select: { id: true, countryId: true },
+    });
+    if (!city) {
+      throw new ReferenceDataError("Select an active study city.");
+    }
   }
 
-  const university = await client.university.findFirst({
-    where: {
-      id: input.universityId,
-      cityId: city.id,
-      countryId: city.countryId,
-      isActive: true,
-      verified: true,
-    },
-    select: { id: true },
-  });
-  if (!university) {
-    throw new ReferenceDataError(
-      "Select an active verified university in the chosen city.",
-    );
+  if (input.universityId !== undefined) {
+    const university = await client.university.findFirst({
+      where: {
+        id: input.universityId,
+        isActive: true,
+        verified: true,
+        ...(city ? { cityId: city.id, countryId: city.countryId } : {}),
+      },
+      select: { id: true },
+    });
+    if (!university) {
+      throw new ReferenceDataError(
+        "Select an active verified university in the chosen city.",
+      );
+    }
   }
 }
 
