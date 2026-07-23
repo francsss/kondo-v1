@@ -38,7 +38,9 @@ export default async function OnboardingPage() {
           universities={universities.map((item) => ({
             id: item.id,
             name: item.name,
-            secondary: item.cityName,
+            secondary: [item.shortName, item.cityName]
+              .filter(Boolean)
+              .join(" · "),
             cityId: item.cityId,
             countryId: item.countryId,
           }))}

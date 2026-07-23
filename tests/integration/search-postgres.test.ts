@@ -63,7 +63,7 @@ async function createFixture() {
   );
   const country = await prisma.country.create({
     data: {
-      code: `S${suffix.slice(0, 1).toUpperCase()}`,
+      code: "S1",
       name: `Module 13 Country ${suffix}`,
       isActive: true,
       verified: true,

@@ -113,12 +113,21 @@ async function createFixture() {
       status: "ACTIVE",
     },
   });
-  const origin = await createReferenceData(admin, "countries", {
-    code: await unusedCountryCode(),
-    name: `${namePrefix} Origin ${suffix}`,
-    emoji: "🌍",
-    isActive: true,
-    verified: true,
+  const origin = await prisma.country.upsert({
+    where: { code: "SC" },
+    update: {
+      name: "Seychelles",
+      emoji: "🇸🇨",
+      isActive: true,
+      verified: true,
+    },
+    create: {
+      code: "SC",
+      name: "Seychelles",
+      emoji: "🇸🇨",
+      isActive: true,
+      verified: true,
+    },
   });
   const cityA = await createReferenceData(admin, "cities", {
     slug: `module4-city-a-${suffix}`,

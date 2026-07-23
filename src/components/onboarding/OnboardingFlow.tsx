@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { cn } from "@/lib/utils";
 
 type Option = { id: string; name: string; secondary?: string };
@@ -64,7 +65,7 @@ export function OnboardingFlow({
   const router = useRouter();
   const initialCityId = cities.some((city) => city.id === initialValues.cityId)
     ? (initialValues.cityId ?? "")
-    : (cities[0]?.id ?? "");
+    : "";
   const initialUniversities = universities.filter(
     (university) => university.cityId === initialCityId,
   );
@@ -72,7 +73,7 @@ export function OnboardingFlow({
     (university) => university.id === initialValues.universityId,
   )
     ? (initialValues.universityId ?? "")
-    : (initialUniversities[0]?.id ?? "");
+    : "";
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -81,7 +82,7 @@ export function OnboardingFlow({
       (country) => country.id === initialValues.countryId,
     )
       ? (initialValues.countryId ?? "")
-      : (countries[0]?.id ?? ""),
+      : "",
     cityId: initialCityId,
     universityId: initialUniversityId,
     degree: initialValues.degree ?? "",
@@ -235,37 +236,58 @@ export function OnboardingFlow({
         </p>
         <div className="mt-8 min-h-[260px]">
           {step === 0 ? (
-            <OptionGrid
+            <SearchableSelect
+              emptyMessage="No African country matches your search."
+              label="Country of origin"
               options={countries}
+              placeholder="Select your country"
+              searchPlaceholder="Search African countries…"
               selected={form.countryId}
               onSelect={(countryId) => setForm({ ...form, countryId })}
             />
           ) : null}
           {step === 1 ? (
             <div className="grid gap-5">
-              <SelectField
+              <SearchableSelect
                 icon={<MapPin />}
                 label="City in China"
                 options={cities}
-                value={form.cityId}
-                onChange={(cityId) => {
+                placeholder="Select your city"
+                searchPlaceholder="Search cities or provinces…"
+                selected={form.cityId}
+                onSelect={(cityId) => {
                   const nextUniversities = universities.filter(
                     (university) => university.cityId === cityId,
                   );
                   setForm({
                     ...form,
                     cityId,
-                    universityId: nextUniversities[0]?.id ?? "",
+                    universityId: nextUniversities.some(
+                      (university) => university.id === form.universityId,
+                    )
+                      ? form.universityId
+                      : "",
                   });
                 }}
               />
-              <SelectField
+              <SearchableSelect
+                disabled={!form.cityId}
+                emptyMessage="No university is registered for this city."
                 icon={<GraduationCap />}
                 label="University"
                 options={availableUniversities}
-                value={form.universityId}
-                onChange={(universityId) => setForm({ ...form, universityId })}
+                placeholder={
+                  form.cityId ? "Select your university" : "Select a city first"
+                }
+                searchPlaceholder="Search universities…"
+                selected={form.universityId}
+                onSelect={(universityId) => setForm({ ...form, universityId })}
               />
+              {form.cityId ? (
+                <p className="-mt-2 text-xs leading-5 text-muted-foreground">
+                  Only universities located in the selected city are shown.
+                </p>
+              ) : null}
             </div>
           ) : null}
           {step === 2 ? (
@@ -396,75 +418,6 @@ export function OnboardingFlow({
   );
 }
 
-function OptionGrid({
-  options,
-  selected,
-  onSelect,
-}: {
-  options: Option[];
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {options.map((option) => (
-        <button
-          className={cn(
-            "rounded-2xl border p-4 text-left transition",
-            selected === option.id
-              ? "border-kondo-green bg-kondo-mint dark:bg-emerald-400/10"
-              : "border-slate-200 hover:border-emerald-200 dark:border-white/10",
-          )}
-          key={option.id}
-          onClick={() => onSelect(option.id)}
-          type="button"
-        >
-          <span className="block font-bold text-kondo-ink dark:text-white">
-            {option.name}
-          </span>
-          {option.secondary ? (
-            <span className="mt-1 block text-xs text-muted-foreground">
-              {option.secondary}
-            </span>
-          ) : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-function SelectField({
-  label,
-  icon,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  options: Option[];
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label>
-      <span className="mb-2 flex items-center gap-2 text-sm font-bold text-kondo-ink dark:text-white">
-        <span className="text-kondo-green [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
-        {label}
-      </span>
-      <select
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
 function InputField({
   label,
   value,

@@ -1,0 +1,1997 @@
+[
+  {
+    "number": 1,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "安徽大学",
+    "name": "Anhui University"
+  },
+  {
+    "number": 2,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "安徽农业大学",
+    "name": "Anhui Agricultural University"
+  },
+  {
+    "number": 3,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "安徽师范大学",
+    "name": "Anhui Normal University"
+  },
+  {
+    "number": 4,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "安徽医科大学",
+    "name": "Anhui Medical University"
+  },
+  {
+    "number": 5,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "合肥大学",
+    "name": "Hefei University"
+  },
+  {
+    "number": 6,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "合肥工业大学",
+    "name": "Hefei University of Technology"
+  },
+  {
+    "number": 7,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "黄山学院",
+    "name": "Huangshan University"
+  },
+  {
+    "number": 8,
+    "provinceNative": "安徽省",
+    "province": "Anhui",
+    "nativeName": "中国科学技术大学",
+    "name": "University of Science and Technology of China"
+  },
+  {
+    "number": 9,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北方工业大学",
+    "name": "North China University of Technology"
+  },
+  {
+    "number": 10,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京大学",
+    "name": "Peking University"
+  },
+  {
+    "number": 11,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京第二外国语学院",
+    "name": "Beijing International Studies University"
+  },
+  {
+    "number": 12,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京电影学院",
+    "name": "Beijing Film Academy"
+  },
+  {
+    "number": 13,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京工商大学",
+    "name": "Beijing Technology and Business University"
+  },
+  {
+    "number": 14,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京工业大学",
+    "name": "Beijing University of Technology"
+  },
+  {
+    "number": 15,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京航空航天大学",
+    "name": "Beihang University"
+  },
+  {
+    "number": 16,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京化工大学",
+    "name": "Beijing University of Chemical Technology"
+  },
+  {
+    "number": 17,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京交通大学",
+    "name": "Beijing Jiaotong University"
+  },
+  {
+    "number": 18,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京科技大学",
+    "name": "University of Science and Technology Beijing"
+  },
+  {
+    "number": 19,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京理工大学",
+    "name": "Beijing Institute of Technology"
+  },
+  {
+    "number": 20,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京林业大学",
+    "name": "Beijing Forestry University"
+  },
+  {
+    "number": 21,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京师范大学",
+    "name": "Beijing Normal University"
+  },
+  {
+    "number": 22,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京体育大学",
+    "name": "Beijing Sport University"
+  },
+  {
+    "number": 23,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京外国语大学",
+    "name": "Beijing Foreign Studies University"
+  },
+  {
+    "number": 24,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京邮电大学",
+    "name": "Beijing University of Posts and Telecommunications"
+  },
+  {
+    "number": 25,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京语言大学",
+    "name": "Beijing Language and Culture University"
+  },
+  {
+    "number": 26,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "北京中医药大学",
+    "name": "Beijing University of Chinese Medicine"
+  },
+  {
+    "number": 27,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "对外经济贸易大学",
+    "name": "University of International Business and Economics"
+  },
+  {
+    "number": 28,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "华北电力大学",
+    "name": "North China Electric Power University"
+  },
+  {
+    "number": 29,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "清华大学",
+    "name": "Tsinghua University"
+  },
+  {
+    "number": 30,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "首都经济贸易大学",
+    "name": "Capital University of Economics and Business"
+  },
+  {
+    "number": 31,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "首都师范大学",
+    "name": "Capital Normal University"
+  },
+  {
+    "number": 32,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "首都体育学院",
+    "name": "Capital Institute of Physical Education"
+  },
+  {
+    "number": 33,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "首都医科大学",
+    "name": "Capital Medical University"
+  },
+  {
+    "number": 34,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "外交学院",
+    "name": "China Foreign Affairs University"
+  },
+  {
+    "number": 35,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国传媒大学",
+    "name": "Communication University of China"
+  },
+  {
+    "number": 36,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国地质大学(北京)",
+    "name": "China University of Geosciences (Beijing)"
+  },
+  {
+    "number": 37,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国科学院大学",
+    "name": "University of Chinese Academy of Sciences"
+  },
+  {
+    "number": 38,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国农业大学",
+    "name": "China Agricultural University"
+  },
+  {
+    "number": 39,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国农业科学院研究生院",
+    "name": "Graduate School of the Chinese Academy of Agricultural Sciences"
+  },
+  {
+    "number": 40,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国青年政治学院",
+    "name": "China Youth University For Political Sciences"
+  },
+  {
+    "number": 41,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国人民大学",
+    "name": "Renmin University of China"
+  },
+  {
+    "number": 42,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国石油大学(北京)",
+    "name": "China University of Petroleum (Beijing)"
+  },
+  {
+    "number": 43,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国音乐学院",
+    "name": "China Conservatory"
+  },
+  {
+    "number": 44,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中国政法大学",
+    "name": "China University of Political Science and Law"
+  },
+  {
+    "number": 45,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中央财经大学",
+    "name": "Central University of Finance and Economics"
+  },
+  {
+    "number": 46,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中央美术学院",
+    "name": "Central Academy of Fine Arts"
+  },
+  {
+    "number": 47,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中央民族大学",
+    "name": "Minzu University of China"
+  },
+  {
+    "number": 48,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中央戏剧学院",
+    "name": "The Central Academy of Drama"
+  },
+  {
+    "number": 49,
+    "provinceNative": "北京市",
+    "province": "Beijing",
+    "nativeName": "中央音乐学院",
+    "name": "Central Conservatory of Music"
+  },
+  {
+    "number": 50,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "四川外国语大学",
+    "name": "Sichuan International Studies University"
+  },
+  {
+    "number": 51,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "西南大学",
+    "name": "Southwest University"
+  },
+  {
+    "number": 52,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "西南政法大学",
+    "name": "Southwest University of Political Science & Law"
+  },
+  {
+    "number": 53,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "重庆大学",
+    "name": "Chongqing University"
+  },
+  {
+    "number": 54,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "重庆交通大学",
+    "name": "Chongqing Jiaotong University"
+  },
+  {
+    "number": 55,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "重庆师范大学",
+    "name": "Chongqing Normal University"
+  },
+  {
+    "number": 56,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "重庆医科大学",
+    "name": "Chongqing Medical University"
+  },
+  {
+    "number": 57,
+    "provinceNative": "重庆市",
+    "province": "Chongqing",
+    "nativeName": "重庆邮电大学",
+    "name": "Chongqing University of Posts and Telecommunications"
+  },
+  {
+    "number": 58,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "福建理工大学",
+    "name": "Fujian University of Technology"
+  },
+  {
+    "number": 59,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "福建农林大学",
+    "name": "Fujian Agriculture and Forestry University"
+  },
+  {
+    "number": 60,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "福建师范大学",
+    "name": "Fujian Normal University"
+  },
+  {
+    "number": 61,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "福建医科大学",
+    "name": "Fujian Medical University"
+  },
+  {
+    "number": 62,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "福州大学",
+    "name": "Fuzhou University"
+  },
+  {
+    "number": 63,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "华侨大学",
+    "name": "Huaqiao University"
+  },
+  {
+    "number": 64,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "武夷学院",
+    "name": "Wuyi University"
+  },
+  {
+    "number": 65,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "厦门大学",
+    "name": "Xiamen University"
+  },
+  {
+    "number": 66,
+    "provinceNative": "福建省",
+    "province": "Fujian",
+    "nativeName": "厦门理工学院",
+    "name": "Xiamen University of Technology"
+  },
+  {
+    "number": 67,
+    "provinceNative": "甘肃省",
+    "province": "Gansu",
+    "nativeName": "甘肃中医药大学",
+    "name": "Gansu University of Chinese Medicine"
+  },
+  {
+    "number": 68,
+    "provinceNative": "甘肃省",
+    "province": "Gansu",
+    "nativeName": "兰州大学",
+    "name": "Lanzhou University"
+  },
+  {
+    "number": 69,
+    "provinceNative": "甘肃省",
+    "province": "Gansu",
+    "nativeName": "兰州交通大学",
+    "name": "Lanzhou Jiaotong University"
+  },
+  {
+    "number": 70,
+    "provinceNative": "甘肃省",
+    "province": "Gansu",
+    "nativeName": "兰州理工大学",
+    "name": "Lanzhou University of Technology"
+  },
+  {
+    "number": 71,
+    "provinceNative": "甘肃省",
+    "province": "Gansu",
+    "nativeName": "西北师范大学",
+    "name": "Northwest Normal University"
+  },
+  {
+    "number": 72,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "广东外语外贸大学",
+    "name": "Guangdong University of Foreign Studies"
+  },
+  {
+    "number": 73,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "广州中医药大学",
+    "name": "Guangzhou University of Chinese Medicine"
+  },
+  {
+    "number": 74,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "华南理工大学",
+    "name": "South China University of Technology"
+  },
+  {
+    "number": 75,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "华南农业大学",
+    "name": "South China Agricultural University"
+  },
+  {
+    "number": 76,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "华南师范大学",
+    "name": "South China Normal University"
+  },
+  {
+    "number": 77,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "暨南大学",
+    "name": "Jinan University"
+  },
+  {
+    "number": 78,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "南方医科大学",
+    "name": "Southern Medical University"
+  },
+  {
+    "number": 79,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "汕头大学",
+    "name": "Shantou University"
+  },
+  {
+    "number": 80,
+    "provinceNative": "广东省",
+    "province": "Guangdong",
+    "nativeName": "中山大学",
+    "name": "Sun Yat-Sen University"
+  },
+  {
+    "number": 81,
+    "provinceNative": "广西壮族自治区",
+    "province": "Guangxi",
+    "nativeName": "广西大学",
+    "name": "Guangxi University"
+  },
+  {
+    "number": 82,
+    "provinceNative": "广西壮族自治区",
+    "province": "Guangxi",
+    "nativeName": "广西民族大学",
+    "name": "Guangxi University for Nationalities"
+  },
+  {
+    "number": 83,
+    "provinceNative": "广西壮族自治区",
+    "province": "Guangxi",
+    "nativeName": "广西师范大学",
+    "name": "Guangxi Normal University"
+  },
+  {
+    "number": 84,
+    "provinceNative": "广西壮族自治区",
+    "province": "Guangxi",
+    "nativeName": "桂林电子科技大学",
+    "name": "Guilin University of Electronic Technology"
+  },
+  {
+    "number": 85,
+    "provinceNative": "广西壮族自治区",
+    "province": "Guangxi",
+    "nativeName": "广西医科大学",
+    "name": "Guangxi Medical University"
+  },
+  {
+    "number": 86,
+    "provinceNative": "广西壮族自治区",
+    "province": "Guangxi",
+    "nativeName": "南宁师范大学",
+    "name": "Nanning Normal University"
+  },
+  {
+    "number": 87,
+    "provinceNative": "贵州省",
+    "province": "Guizhou",
+    "nativeName": "贵州大学",
+    "name": "Guizhou University"
+  },
+  {
+    "number": 88,
+    "provinceNative": "贵州省",
+    "province": "Guizhou",
+    "nativeName": "贵州师范大学",
+    "name": "Guizhou Normal University"
+  },
+  {
+    "number": 89,
+    "provinceNative": "贵州省",
+    "province": "Guizhou",
+    "nativeName": "贵州民族大学",
+    "name": "Guizhou Minzu University"
+  },
+  {
+    "number": 90,
+    "provinceNative": "海南省",
+    "province": "Hainan",
+    "nativeName": "海南大学",
+    "name": "Hainan University"
+  },
+  {
+    "number": 91,
+    "provinceNative": "海南省",
+    "province": "Hainan",
+    "nativeName": "海南师范大学",
+    "name": "Hainan Normal University"
+  },
+  {
+    "number": 92,
+    "provinceNative": "河北省",
+    "province": "Hebei",
+    "nativeName": "河北大学",
+    "name": "Hebei University"
+  },
+  {
+    "number": 93,
+    "provinceNative": "河北省",
+    "province": "Hebei",
+    "nativeName": "河北工业大学",
+    "name": "Hebei University of Technology"
+  },
+  {
+    "number": 94,
+    "provinceNative": "河北省",
+    "province": "Hebei",
+    "nativeName": "河北医科大学",
+    "name": "Hebei Medical University"
+  },
+  {
+    "number": 95,
+    "provinceNative": "河北省",
+    "province": "Hebei",
+    "nativeName": "河北师范大学",
+    "name": "Hebei Normal University"
+  },
+  {
+    "number": 96,
+    "provinceNative": "河北省",
+    "province": "Hebei",
+    "nativeName": "河北经贸大学",
+    "name": "Hebei University of Economics and Business"
+  },
+  {
+    "number": 97,
+    "provinceNative": "河北省",
+    "province": "Hebei",
+    "nativeName": "燕山大学",
+    "name": "Yanshan University"
+  },
+  {
+    "number": 98,
+    "provinceNative": "河南省",
+    "province": "Henan",
+    "nativeName": "郑州大学",
+    "name": "Zhengzhou University"
+  },
+  {
+    "number": 99,
+    "provinceNative": "河南省",
+    "province": "Henan",
+    "nativeName": "河南工业大学",
+    "name": "Henan University of Technology"
+  },
+  {
+    "number": 100,
+    "provinceNative": "河南省",
+    "province": "Henan",
+    "nativeName": "河南中医药大学",
+    "name": "Henan University of Chinese Medicine"
+  },
+  {
+    "number": 101,
+    "provinceNative": "河南省",
+    "province": "Henan",
+    "nativeName": "河南大学",
+    "name": "Henan University"
+  },
+  {
+    "number": 102,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "东北林业大学",
+    "name": "Northeast Forestry University"
+  },
+  {
+    "number": 103,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "东北农业大学",
+    "name": "Northeast Agriculture University"
+  },
+  {
+    "number": 104,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "哈尔滨工程大学",
+    "name": "Harbin Engineering University"
+  },
+  {
+    "number": 105,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "哈尔滨工业大学",
+    "name": "Harbin Institute of Technology"
+  },
+  {
+    "number": 106,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "哈尔滨理工大学",
+    "name": "Harbin University of Science and Technology"
+  },
+  {
+    "number": 107,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "哈尔滨师范大学",
+    "name": "Harbin Normal University"
+  },
+  {
+    "number": 108,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "哈尔滨医科大学",
+    "name": "Harbin Medical University"
+  },
+  {
+    "number": 109,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "黑河学院",
+    "name": "Heihe University"
+  },
+  {
+    "number": 110,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "黑龙江大学",
+    "name": "Heilongjiang University"
+  },
+  {
+    "number": 111,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "黑龙江中医药大学",
+    "name": "Heilongjiang University of Chinese Medicine"
+  },
+  {
+    "number": 112,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "佳木斯大学",
+    "name": "Jiamusi University"
+  },
+  {
+    "number": 113,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "牡丹江师范学院",
+    "name": "Mudanjiang Normal University"
+  },
+  {
+    "number": 114,
+    "provinceNative": "黑龙江省",
+    "province": "Heilongjiang",
+    "nativeName": "齐齐哈尔大学",
+    "name": "Qiqihar University"
+  },
+  {
+    "number": 115,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "长江大学",
+    "name": "Yangtze University"
+  },
+  {
+    "number": 116,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "湖北大学",
+    "name": "Hubei University"
+  },
+  {
+    "number": 117,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "湖北中医药大学",
+    "name": "Hubei University of Chinese Medicine"
+  },
+  {
+    "number": 118,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "华中科技大学",
+    "name": "Huazhong University of Science and Technology"
+  },
+  {
+    "number": 119,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "华中农业大学",
+    "name": "Huazhong Agricultural University"
+  },
+  {
+    "number": 120,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "华中师范大学",
+    "name": "Central China Normal University"
+  },
+  {
+    "number": 121,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "三峡大学",
+    "name": "China Three Gorges University"
+  },
+  {
+    "number": 122,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "武汉大学",
+    "name": "Wuhan University"
+  },
+  {
+    "number": 123,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "武汉纺织大学",
+    "name": "Wuhan Textile University"
+  },
+  {
+    "number": 124,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "武汉理工大学",
+    "name": "Wuhan University of Technology"
+  },
+  {
+    "number": 125,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "武汉体育学院",
+    "name": "Wuhan Sports University"
+  },
+  {
+    "number": 126,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "中国地质大学(武汉)",
+    "name": "China University of Geosciences (Wuhan)"
+  },
+  {
+    "number": 127,
+    "provinceNative": "湖北省",
+    "province": "Hubei",
+    "nativeName": "中南财经政法大学",
+    "name": "Zhongnan University of Economics and Law"
+  },
+  {
+    "number": 128,
+    "provinceNative": "湖南省",
+    "province": "Hunan",
+    "nativeName": "长沙理工大学",
+    "name": "Changsha University of Science and Technology"
+  },
+  {
+    "number": 129,
+    "provinceNative": "湖南省",
+    "province": "Hunan",
+    "nativeName": "湖南大学",
+    "name": "Hunan University"
+  },
+  {
+    "number": 130,
+    "provinceNative": "湖南省",
+    "province": "Hunan",
+    "nativeName": "湖南师范大学",
+    "name": "Hunan Normal University"
+  },
+  {
+    "number": 131,
+    "provinceNative": "湖南省",
+    "province": "Hunan",
+    "nativeName": "湘潭大学",
+    "name": "Xiangtan University"
+  },
+  {
+    "number": 132,
+    "provinceNative": "湖南省",
+    "province": "Hunan",
+    "nativeName": "中南大学",
+    "name": "Central South University"
+  },
+  {
+    "number": 133,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "北华大学",
+    "name": "Beihua University"
+  },
+  {
+    "number": 134,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "长春大学",
+    "name": "Changchun University"
+  },
+  {
+    "number": 135,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "长春理工大学",
+    "name": "Changchun University of Science and Technology"
+  },
+  {
+    "number": 136,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "长春中医药大学",
+    "name": "Changchun University of Chinese Medicine"
+  },
+  {
+    "number": 137,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "东北电力大学",
+    "name": "Northeast Electric Power University"
+  },
+  {
+    "number": 138,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "东北师范大学",
+    "name": "Northeast Normal University"
+  },
+  {
+    "number": 139,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "吉林大学",
+    "name": "Jilin University"
+  },
+  {
+    "number": 140,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "吉林农业大学",
+    "name": "Jilin Agricultural University"
+  },
+  {
+    "number": 141,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "吉林师范大学",
+    "name": "Jilin Normal University"
+  },
+  {
+    "number": 142,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "吉林外国语大学",
+    "name": "Jilin International Studies University"
+  },
+  {
+    "number": 143,
+    "provinceNative": "吉林省",
+    "province": "Jilin",
+    "nativeName": "延边大学",
+    "name": "Yanbian University"
+  },
+  {
+    "number": 144,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "东南大学",
+    "name": "Southeast University"
+  },
+  {
+    "number": 145,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "河海大学",
+    "name": "Hohai University"
+  },
+  {
+    "number": 146,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "江南大学",
+    "name": "Jiangnan University"
+  },
+  {
+    "number": 147,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "江苏大学",
+    "name": "Jiangsu University"
+  },
+  {
+    "number": 148,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "江苏师范大学",
+    "name": "Jiangsu Normal University"
+  },
+  {
+    "number": 149,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京大学",
+    "name": "Nanjing University"
+  },
+  {
+    "number": 150,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京航空航天大学",
+    "name": "Nanjing University of Aeronautics and Astronautics"
+  },
+  {
+    "number": 151,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京理工大学",
+    "name": "Nanjing University of Science and Technology"
+  },
+  {
+    "number": 152,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京农业大学",
+    "name": "Nanjing Agricultural University"
+  },
+  {
+    "number": 153,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京师范大学",
+    "name": "Nanjing Normal University"
+  },
+  {
+    "number": 154,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京信息工程大学",
+    "name": "Nanjing University of Information Science & Technology"
+  },
+  {
+    "number": 155,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京艺术学院",
+    "name": "Nanjing University of the Arts"
+  },
+  {
+    "number": 156,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南京中医药大学",
+    "name": "Nanjing University of Chinese Medicine"
+  },
+  {
+    "number": 157,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "南通大学",
+    "name": "Nantong University"
+  },
+  {
+    "number": 158,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "苏州大学",
+    "name": "Soochow University"
+  },
+  {
+    "number": 159,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "扬州大学",
+    "name": "Yangzhou University"
+  },
+  {
+    "number": 160,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "中国矿业大学",
+    "name": "China University of Mining and Technology"
+  },
+  {
+    "number": 161,
+    "provinceNative": "江苏省",
+    "province": "Jiangsu",
+    "nativeName": "中国药科大学",
+    "name": "China Pharmaceutical University"
+  },
+  {
+    "number": 162,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "赣南师范大学",
+    "name": "Gannan Normal University"
+  },
+  {
+    "number": 163,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "江西财经大学",
+    "name": "Jiangxi University of Finance and Economics"
+  },
+  {
+    "number": 164,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "江西师范大学",
+    "name": "Jiangxi Normal University"
+  },
+  {
+    "number": 165,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "江西农业大学",
+    "name": "Jiangxi Agricultural University"
+  },
+  {
+    "number": 166,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "江西中医药大学",
+    "name": "Jiangxi University of Traditional Chinese Medicine"
+  },
+  {
+    "number": 167,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "景德镇陶瓷大学",
+    "name": "Jingdezhen Ceramic Institute"
+  },
+  {
+    "number": 168,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "南昌大学",
+    "name": "Nanchang University"
+  },
+  {
+    "number": 169,
+    "provinceNative": "江西省",
+    "province": "Jiangxi",
+    "nativeName": "南昌航空大学",
+    "name": "Nanchang Hangkong University"
+  },
+  {
+    "number": 170,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "鞍山师范学院",
+    "name": "Anshan Normal University Liaoning China"
+  },
+  {
+    "number": 171,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "渤海大学",
+    "name": "Bohai University"
+  },
+  {
+    "number": 172,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "大连工业大学",
+    "name": "Dalian Polytechnic University"
+  },
+  {
+    "number": 173,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "大连海事大学",
+    "name": "Dalian Maritime University"
+  },
+  {
+    "number": 174,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "大连交通大学",
+    "name": "Dalian Jiaotong University"
+  },
+  {
+    "number": 175,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "大连理工大学",
+    "name": "Dalian University of Technology"
+  },
+  {
+    "number": 176,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "大连外国语大学",
+    "name": "Dalian University of Foreign Languages"
+  },
+  {
+    "number": 177,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "大连医科大学",
+    "name": "Dalian Medical University"
+  },
+  {
+    "number": 178,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "东北财经大学",
+    "name": "Dongbei University of Finance and Economics"
+  },
+  {
+    "number": 179,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "东北大学",
+    "name": "Northeastern University"
+  },
+  {
+    "number": 180,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "锦州医科大学",
+    "name": "Jinzhou Medical University"
+  },
+  {
+    "number": 181,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁大学",
+    "name": "Liaoning University"
+  },
+  {
+    "number": 182,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁工程技术大学",
+    "name": "Liaoning Technical University"
+  },
+  {
+    "number": 183,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁工业大学",
+    "name": "Liaoning University of Technology"
+  },
+  {
+    "number": 184,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁科技大学",
+    "name": "University of Science and Technology Liaoning"
+  },
+  {
+    "number": 185,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁师范大学",
+    "name": "Liaoning Normal University"
+  },
+  {
+    "number": 186,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁石油化工大学",
+    "name": "Liaoning Shihua University"
+  },
+  {
+    "number": 187,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "辽宁中医药大学",
+    "name": "Liaoning University of Traditional Chinese Medicine"
+  },
+  {
+    "number": 188,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "沈阳工业大学",
+    "name": "Shenyang University of Technology"
+  },
+  {
+    "number": 189,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "沈阳航空航天大学",
+    "name": "Shenyang Aerospace University"
+  },
+  {
+    "number": 190,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "沈阳建筑大学",
+    "name": "Shenyang Jianzhu University"
+  },
+  {
+    "number": 191,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "沈阳理工大学",
+    "name": "Shenyang Ligong University"
+  },
+  {
+    "number": 192,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "沈阳师范大学",
+    "name": "Shenyang Normal University"
+  },
+  {
+    "number": 193,
+    "provinceNative": "辽宁省",
+    "province": "Liaoning",
+    "nativeName": "中国医科大学",
+    "name": "China Medical University"
+  },
+  {
+    "number": 194,
+    "provinceNative": "内蒙古自治区",
+    "province": "Inner Mongolia",
+    "nativeName": "内蒙古大学",
+    "name": "Inner Mongolia University"
+  },
+  {
+    "number": 195,
+    "provinceNative": "内蒙古自治区",
+    "province": "Inner Mongolia",
+    "nativeName": "内蒙古工业大学",
+    "name": "Inner Mongolia University of Technology"
+  },
+  {
+    "number": 196,
+    "provinceNative": "内蒙古自治区",
+    "province": "Inner Mongolia",
+    "nativeName": "内蒙古农业大学",
+    "name": "Inner Mongolia Agricultural University"
+  },
+  {
+    "number": 197,
+    "provinceNative": "内蒙古自治区",
+    "province": "Inner Mongolia",
+    "nativeName": "内蒙古师范大学",
+    "name": "Inner Mongolia Normal University"
+  },
+  {
+    "number": 198,
+    "provinceNative": "内蒙古自治区",
+    "province": "Inner Mongolia",
+    "nativeName": "内蒙古民族大学",
+    "name": "Inner Mongolia University For the Nationalities"
+  },
+  {
+    "number": 199,
+    "provinceNative": "宁夏回族自治区",
+    "province": "Ningxia",
+    "nativeName": "宁夏大学",
+    "name": "Ningxia University"
+  },
+  {
+    "number": 200,
+    "provinceNative": "宁夏回族自治区",
+    "province": "Ningxia",
+    "nativeName": "宁夏医科大学",
+    "name": "Ningxia Medical University"
+  },
+  {
+    "number": 201,
+    "provinceNative": "青海省",
+    "province": "Qinghai",
+    "nativeName": "青海大学",
+    "name": "Qinghai University"
+  },
+  {
+    "number": 202,
+    "provinceNative": "青海省",
+    "province": "Qinghai",
+    "nativeName": "青海民族大学",
+    "name": "Qinghai University For Nationalities"
+  },
+  {
+    "number": 203,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "济南大学",
+    "name": "University of Jinan"
+  },
+  {
+    "number": 204,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "鲁东大学",
+    "name": "Ludong University"
+  },
+  {
+    "number": 205,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "青岛大学",
+    "name": "Qingdao University"
+  },
+  {
+    "number": 206,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "青岛科技大学",
+    "name": "Qingdao University of Science and Technology"
+  },
+  {
+    "number": 207,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "山东大学",
+    "name": "Shandong University"
+  },
+  {
+    "number": 208,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "山东科技大学",
+    "name": "Shandong University of Science and Technology"
+  },
+  {
+    "number": 209,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "山东理工大学",
+    "name": "Shandong University of Technology"
+  },
+  {
+    "number": 210,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "山东师范大学",
+    "name": "Shandong Normal University"
+  },
+  {
+    "number": 211,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "烟台大学",
+    "name": "Yantai University"
+  },
+  {
+    "number": 212,
+    "provinceNative": "山东省",
+    "province": "Shandong",
+    "nativeName": "中国海洋大学",
+    "name": "Ocean University of China"
+  },
+  {
+    "number": 213,
+    "provinceNative": "山西省",
+    "province": "Shanxi",
+    "nativeName": "山西大学",
+    "name": "Shanxi University"
+  },
+  {
+    "number": 214,
+    "provinceNative": "山西省",
+    "province": "Shanxi",
+    "nativeName": "太原理工大学",
+    "name": "Taiyuan University of Technology"
+  },
+  {
+    "number": 215,
+    "provinceNative": "山西省",
+    "province": "Shanxi",
+    "nativeName": "山西中医药大学",
+    "name": "Shanxi University of Traditional Chinese Medicine"
+  },
+  {
+    "number": 216,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "长安大学",
+    "name": "Chang'An University"
+  },
+  {
+    "number": 217,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "陕西师范大学",
+    "name": "Shaanxi Normal University"
+  },
+  {
+    "number": 218,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "陕西中医药大学",
+    "name": "Shaanxi University of Chinese Medicine"
+  },
+  {
+    "number": 219,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西安电子科技大学",
+    "name": "Xidian University"
+  },
+  {
+    "number": 220,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西安交通大学",
+    "name": "Xi'An Jiaotong University"
+  },
+  {
+    "number": 221,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西安石油大学",
+    "name": "Xian Shiyou University"
+  },
+  {
+    "number": 222,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西北大学",
+    "name": "Northwest University"
+  },
+  {
+    "number": 223,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西北工业大学",
+    "name": "Northwestern Polytechnical University"
+  },
+  {
+    "number": 224,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西北农林科技大学",
+    "name": "Northwest A&F University"
+  },
+  {
+    "number": 225,
+    "provinceNative": "陕西省",
+    "province": "Shaanxi",
+    "nativeName": "西安外国语大学",
+    "name": "Xi'An International Studies University"
+  },
+  {
+    "number": 226,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "东华大学",
+    "name": "Donghua University"
+  },
+  {
+    "number": 227,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "复旦大学",
+    "name": "Fudan University"
+  },
+  {
+    "number": 228,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "华东理工大学",
+    "name": "East China University of Science and Technology"
+  },
+  {
+    "number": 229,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "华东师范大学",
+    "name": "East China Normal University"
+  },
+  {
+    "number": 230,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "华东政法大学",
+    "name": "East China University of Political Science and Law"
+  },
+  {
+    "number": 231,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海财经大学",
+    "name": "Shanghai University of Finance and Economics"
+  },
+  {
+    "number": 232,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海大学",
+    "name": "Shanghai University"
+  },
+  {
+    "number": 233,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海对外经贸大学",
+    "name": "Shanghai University of International Business and Economics"
+  },
+  {
+    "number": 234,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海海事大学",
+    "name": "Shanghai Maritime University"
+  },
+  {
+    "number": 235,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海海洋大学",
+    "name": "Shanghai Ocean University"
+  },
+  {
+    "number": 236,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海交通大学",
+    "name": "Shanghai Jiao Tong University"
+  },
+  {
+    "number": 237,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海理工大学",
+    "name": "University of Shanghai For Science and Technology"
+  },
+  {
+    "number": 238,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海师范大学",
+    "name": "Shanghai Normal University"
+  },
+  {
+    "number": 239,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海体育大学",
+    "name": "Shanghai University of Sport"
+  },
+  {
+    "number": 240,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海外国语大学",
+    "name": "Shanghai International Studies University"
+  },
+  {
+    "number": 241,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海音乐学院",
+    "name": "Shanghai Conservatory of Music"
+  },
+  {
+    "number": 242,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海政法学院",
+    "name": "Shanghai University of Political Science and Law"
+  },
+  {
+    "number": 243,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "上海中医药大学",
+    "name": "Shanghai University of Traditional Chinese Medicine"
+  },
+  {
+    "number": 244,
+    "provinceNative": "上海市",
+    "province": "Shanghai",
+    "nativeName": "同济大学",
+    "name": "Tongji University"
+  },
+  {
+    "number": 245,
+    "provinceNative": "四川省",
+    "province": "Sichuan",
+    "nativeName": "成都中医药大学",
+    "name": "Chengdu University of Traditional Chinese Medicine"
+  },
+  {
+    "number": 246,
+    "provinceNative": "四川省",
+    "province": "Sichuan",
+    "nativeName": "电子科技大学",
+    "name": "University of Electronic Science and Technology of China"
+  },
+  {
+    "number": 247,
+    "provinceNative": "四川省",
+    "province": "Sichuan",
+    "nativeName": "四川大学",
+    "name": "Sichuan University"
+  },
+  {
+    "number": 248,
+    "provinceNative": "四川省",
+    "province": "Sichuan",
+    "nativeName": "西南财经大学",
+    "name": "Southwestern University of Finance and Economics"
+  },
+  {
+    "number": 249,
+    "provinceNative": "四川省",
+    "province": "Sichuan",
+    "nativeName": "西南交通大学",
+    "name": "Southwest Jiaotong University"
+  },
+  {
+    "number": 250,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "南开大学",
+    "name": "Nankai University"
+  },
+  {
+    "number": 251,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津大学",
+    "name": "Tianjin University"
+  },
+  {
+    "number": 252,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津财经大学",
+    "name": "Tianjin University of Finance and Economics"
+  },
+  {
+    "number": 253,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津工业大学",
+    "name": "Tiangong University"
+  },
+  {
+    "number": 254,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津科技大学",
+    "name": "Tianjin University of Science and Technology"
+  },
+  {
+    "number": 255,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津理工大学",
+    "name": "Tianjin University of Technology"
+  },
+  {
+    "number": 256,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津师范大学",
+    "name": "Tianjin Normal University"
+  },
+  {
+    "number": 257,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津外国语大学",
+    "name": "Tianjin Foreign Studies University"
+  },
+  {
+    "number": 258,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津医科大学",
+    "name": "Tianjin Medical University"
+  },
+  {
+    "number": 259,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津职业技术师范大学",
+    "name": "Tianjin University of Technology and Education"
+  },
+  {
+    "number": 260,
+    "provinceNative": "天津市",
+    "province": "Tianjin",
+    "nativeName": "天津中医药大学",
+    "name": "Tianjin University of Traditional Chinese Medicine"
+  },
+  {
+    "number": 261,
+    "provinceNative": "新疆维吾尔自治区",
+    "province": "Xinjiang",
+    "nativeName": "石河子大学",
+    "name": "Shihezi University"
+  },
+  {
+    "number": 262,
+    "provinceNative": "新疆维吾尔自治区",
+    "province": "Xinjiang",
+    "nativeName": "新疆大学",
+    "name": "Xinjiang University"
+  },
+  {
+    "number": 263,
+    "provinceNative": "新疆维吾尔自治区",
+    "province": "Xinjiang",
+    "nativeName": "新疆医科大学",
+    "name": "Xinjiang Medical University"
+  },
+  {
+    "number": 264,
+    "provinceNative": "新疆维吾尔自治区",
+    "province": "Xinjiang",
+    "nativeName": "新疆师范大学",
+    "name": "Xinjiang Normal University"
+  },
+  {
+    "number": 265,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "大理大学",
+    "name": "Dali University"
+  },
+  {
+    "number": 266,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "昆明理工大学",
+    "name": "Kunming University of Science and Technology"
+  },
+  {
+    "number": 267,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "昆明医科大学",
+    "name": "Kunming Medical University"
+  },
+  {
+    "number": 268,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "云南财经大学",
+    "name": "Yunnan University of Finance and Economics"
+  },
+  {
+    "number": 269,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "云南大学",
+    "name": "Yunnan University"
+  },
+  {
+    "number": 270,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "云南民族大学",
+    "name": "Yunnan University of Nationalities"
+  },
+  {
+    "number": 271,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "云南农业大学",
+    "name": "Yunnan Agricultural University"
+  },
+  {
+    "number": 272,
+    "provinceNative": "云南省",
+    "province": "Yunnan",
+    "nativeName": "云南师范大学",
+    "name": "Yunnan Normal University"
+  },
+  {
+    "number": 273,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "杭州师范大学",
+    "name": "Hangzhou Normal University"
+  },
+  {
+    "number": 274,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "宁波大学",
+    "name": "Ningbo University"
+  },
+  {
+    "number": 275,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "宁波工程学院",
+    "name": "Ningbo University of Technology"
+  },
+  {
+    "number": 276,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "宁波诺丁汉大学",
+    "name": "University of Nottingham Ningbo China"
+  },
+  {
+    "number": 277,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "温州大学",
+    "name": "Wenzhou University"
+  },
+  {
+    "number": 278,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "温州医科大学",
+    "name": "Wenzhou Medical University"
+  },
+  {
+    "number": 279,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "浙江大学",
+    "name": "Zhejiang University"
+  },
+  {
+    "number": 280,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "浙江工业大学",
+    "name": "Zhejiang University of Technology"
+  },
+  {
+    "number": 281,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "浙江海洋大学",
+    "name": "Zhejiang Ocean University"
+  },
+  {
+    "number": 282,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "浙江科技大学",
+    "name": "Zhejiang University of Science and Technology"
+  },
+  {
+    "number": 283,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "浙江理工大学",
+    "name": "Zhejiang Sci-Tech University"
+  },
+  {
+    "number": 284,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "浙江师范大学",
+    "name": "Zhejiang Normal University"
+  },
+  {
+    "number": 285,
+    "provinceNative": "浙江省",
+    "province": "Zhejiang",
+    "nativeName": "中国美术学院",
+    "name": "China Academy of Art"
+  }
+]

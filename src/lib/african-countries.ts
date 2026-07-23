@@ -57,6 +57,10 @@ export const AFRICAN_COUNTRIES = [
 
 export type AfricanCountryCode = (typeof AFRICAN_COUNTRIES)[number]["code"];
 
+export const AFRICAN_COUNTRY_CODES = AFRICAN_COUNTRIES.map(
+  (country) => country.code,
+);
+
 const byCode = new Map(
   AFRICAN_COUNTRIES.map((country) => [country.code, country]),
 );

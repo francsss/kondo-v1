@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import sharp from "sharp";
+import chinaHigherEducation from "./reference-data/china-higher-education-2026.json";
+import { AFRICAN_COUNTRIES } from "../src/lib/african-countries";
 import { assertDestructiveSeedAllowed } from "../src/lib/seed-safety";
 import { getObjectStorage } from "../src/lib/storage";
 
@@ -99,19 +101,11 @@ async function main() {
   const passwordHash = await bcrypt.hash(password, 12);
 
   const countries = await Promise.all(
-    [
-      ["CN", "China", "🇨🇳"],
-      ["GH", "Ghana", "🇬🇭"],
-      ["NG", "Nigeria", "🇳🇬"],
-      ["CM", "Cameroon", "🇨🇲"],
-      ["KE", "Kenya", "🇰🇪"],
-      ["ZA", "South Africa", "🇿🇦"],
-      ["ET", "Ethiopia", "🇪🇹"],
-      ["RW", "Rwanda", "🇷🇼"],
-    ].map(([code, name, emoji]) =>
-      prisma.country.create({
-        data: { code, name, emoji, isActive: true, verified: true },
-      }),
+    [{ code: "CN", name: "China", emoji: "🇨🇳" }, ...AFRICAN_COUNTRIES].map(
+      ({ code, name, emoji }) =>
+        prisma.country.create({
+          data: { code, name, emoji, isActive: true, verified: true },
+        }),
     ),
   );
   const country = Object.fromEntries(
@@ -198,6 +192,51 @@ async function main() {
       cityId: hangzhou.id,
       verified: true,
     },
+  });
+
+  await prisma.city.createMany({
+    data: chinaHigherEducation.cities.map((city) => ({
+      id: city.id,
+      slug: city.slug,
+      name: city.name,
+      province: city.province,
+      countryId: country.CN.id,
+      isActive: true,
+      verified: true,
+    })),
+    skipDuplicates: true,
+  });
+  const importedCities = await prisma.city.findMany({
+    where: {
+      slug: {
+        in: chinaHigherEducation.cities.map((city) => city.slug),
+      },
+    },
+    select: { id: true, slug: true },
+  });
+  const importedCityBySlug = new Map(
+    importedCities.map((city) => [city.slug, city.id]),
+  );
+  await prisma.university.createMany({
+    data: chinaHigherEducation.universities.map((university) => {
+      const cityId = importedCityBySlug.get(university.citySlug);
+      if (!cityId) {
+        throw new Error(
+          `Seed reference city is missing for ${university.nativeName}.`,
+        );
+      }
+      return {
+        id: university.id,
+        slug: university.slug,
+        name: university.name,
+        shortName: university.nativeName,
+        countryId: country.CN.id,
+        cityId,
+        isActive: true,
+        verified: true,
+      };
+    }),
+    skipDuplicates: true,
   });
 
   const userData = [

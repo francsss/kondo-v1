@@ -6,6 +6,7 @@ import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
 
 export default function RegisterPage() {
@@ -13,6 +14,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [countryCode, setCountryCode] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,30 +108,24 @@ export default function RegisterPage() {
                   autoComplete="email"
                 />
               </div>
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
-                  Country of origin
-                </span>
-                <select
-                  autoComplete="country"
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-card px-4 text-sm text-foreground outline-none transition focus:border-kondo-green dark:border-white/10"
-                  defaultValue=""
-                  name="countryCode"
-                  required
-                >
-                  <option disabled value="">
-                    Select your country
-                  </option>
-                  {AFRICAN_COUNTRIES.map((country) => (
-                    <option key={country.code} value={country.code}>
-                      {country.emoji} {country.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="sm:col-span-2">
+                <input name="countryCode" type="hidden" value={countryCode} />
+                <SearchableSelect
+                  emptyMessage="No African country matches your search."
+                  label="Country of origin"
+                  onSelect={setCountryCode}
+                  options={AFRICAN_COUNTRIES.map((country) => ({
+                    id: country.code,
+                    name: `${country.emoji} ${country.name}`,
+                  }))}
+                  placeholder="Select your country"
+                  searchPlaceholder="Search African countries…"
+                  selected={countryCode}
+                />
                 <span className="mt-1.5 block text-[11px] text-muted-foreground">
                   You will automatically join your official national community.
                 </span>
-              </label>
+              </div>
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
                   Password
@@ -193,7 +189,12 @@ export default function RegisterPage() {
                 </p>
               ) : null}
               <div className="sm:col-span-2">
-                <Button disabled={loading} fullWidth size="lg" type="submit">
+                <Button
+                  disabled={loading || !countryCode}
+                  fullWidth
+                  size="lg"
+                  type="submit"
+                >
                   {loading ? (
                     "Creating your account…"
                   ) : (

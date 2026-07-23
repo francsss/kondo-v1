@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
+import { AFRICAN_COUNTRY_CODES } from "@/lib/african-countries";
 import { hasAdminPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
@@ -283,7 +284,7 @@ export async function listReferenceOptions(actor: ReferenceActor) {
 export async function getOnboardingReferenceData() {
   const [countries, cities, universities] = await Promise.all([
     prisma.country.findMany({
-      where: { isActive: true, code: { not: "CN" } },
+      where: { isActive: true, code: { in: AFRICAN_COUNTRY_CODES } },
       orderBy: { name: "asc" },
       select: { id: true, code: true, name: true, emoji: true },
     }),
@@ -340,7 +341,7 @@ export async function validateOnboardingReferences(
     where: {
       id: input.countryId,
       isActive: true,
-      code: { not: "CN" },
+      code: { in: AFRICAN_COUNTRY_CODES },
     },
     select: { id: true },
   });
