@@ -11,6 +11,7 @@ if (projectToken) {
     capture_pageview: false,
     capture_pageleave: false,
     disable_session_recording: true,
+    disable_surveys: true,
     person_profiles: "identified_only",
     respect_dnt: true,
   });
