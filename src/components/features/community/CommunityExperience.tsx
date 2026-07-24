@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import {
+  AnimatePresence,
   motion,
   useReducedMotion,
   useScroll,
@@ -50,6 +51,7 @@ function CommunityUtilityActions({
   const actionsRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -123,28 +125,44 @@ function CommunityUtilityActions({
         <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
         {!compact ? "More" : null}
       </Button>
-      {menuOpen ? (
-        <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-soft">
-          <Link
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
-            href="/guidelines"
-            onClick={() => setMenuOpen(false)}
+      <AnimatePresence>
+        {menuOpen ? (
+          <motion.div
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="absolute right-0 top-full z-20 mt-2 w-56 origin-top-right rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-soft"
+            exit={{
+              opacity: 0,
+              scale: reducedMotion ? 1 : 0.97,
+              y: reducedMotion ? 0 : -4,
+            }}
+            initial={{
+              opacity: 0,
+              scale: reducedMotion ? 1 : 0.97,
+              y: reducedMotion ? 0 : -4,
+            }}
+            transition={{ duration: reducedMotion ? 0 : 0.16 }}
           >
-            <BookOpen aria-hidden="true" className="h-4 w-4" />
-            Community guidelines
-          </Link>
-          {canModerate ? (
             <Link
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
-              href={`/communities/${community.slug}/manage`}
+              href="/guidelines"
               onClick={() => setMenuOpen(false)}
             >
-              <Settings aria-hidden="true" className="h-4 w-4" />
-              Manage community
+              <BookOpen aria-hidden="true" className="h-4 w-4" />
+              Community guidelines
             </Link>
-          ) : null}
-        </div>
-      ) : null}
+            {canModerate ? (
+              <Link
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+                href={`/communities/${community.slug}/manage`}
+                onClick={() => setMenuOpen(false)}
+              >
+                <Settings aria-hidden="true" className="h-4 w-4" />
+                Manage community
+              </Link>
+            ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

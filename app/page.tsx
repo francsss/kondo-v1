@@ -88,13 +88,23 @@ export default function LandingPage() {
               Safety
             </a>
           </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild className="hidden sm:inline-flex" variant="ghost">
-              <Link href="/login">Sign in</Link>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button
+              asChild
+              className="h-9 px-3 text-xs sm:h-11 sm:px-5 sm:text-sm"
+              variant="ghost"
+            >
+              <Link href="/login">Login</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button
+              asChild
+              className="h-9 px-3 text-xs sm:px-4 sm:text-sm"
+              size="sm"
+            >
               <Link href="/register">
-                Join Kondo <ArrowRight className="h-4 w-4" />
+                <span className="sm:hidden">Join</span>
+                <span className="hidden sm:inline">Join Kondo</span>
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Link>
             </Button>
           </div>

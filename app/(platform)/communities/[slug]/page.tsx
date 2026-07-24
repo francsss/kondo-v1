@@ -1,10 +1,11 @@
+import type { Prisma } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
-import { CommentThread } from "@/components/features/community/CommentThread";
 import { CommunityExperience } from "@/components/features/community/CommunityExperience";
 import { CommunityJoinButton } from "@/components/features/community/CommunityJoinButton";
+import { CommunityPostFocus } from "@/components/features/community/CommunityPostFocus";
 import { ContentReportButton } from "@/components/features/community/ContentReportButton";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { PostComposer } from "@/components/features/community/PostComposer";
@@ -14,6 +15,38 @@ import { Card } from "@/components/ui/Card";
 import { communityVisibilityWhere } from "@/lib/content-visibility";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireUser } from "@/lib/server-auth";
+
+function postIncludeFor(userId: string) {
+  return {
+    author: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        avatarKey: true,
+        country: { select: { emoji: true } },
+        university: { select: { shortName: true, name: true } },
+      },
+    },
+    community: {
+      select: { name: true, slug: true, icon: true, isVerified: true },
+    },
+    media: {
+      orderBy: { order: "asc" as const },
+      select: { media: { select: { id: true, altText: true } } },
+    },
+    reactions: {
+      where: { userId, type: "HELPFUL" as const },
+      select: { id: true },
+    },
+    _count: {
+      select: {
+        comments: { where: { status: "PUBLISHED" as const } },
+        reactions: true,
+      },
+    },
+  } satisfies Prisma.PostInclude;
+}
 
 export async function generateMetadata({
   params,
@@ -64,35 +97,7 @@ export default async function CommunityPage({
       },
       posts: {
         where: { status: "PUBLISHED" },
-        include: {
-          author: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              avatarKey: true,
-              country: { select: { emoji: true } },
-              university: { select: { shortName: true, name: true } },
-            },
-          },
-          community: {
-            select: { name: true, slug: true, icon: true, isVerified: true },
-          },
-          media: {
-            orderBy: { order: "asc" },
-            select: { media: { select: { id: true, altText: true } } },
-          },
-          reactions: {
-            where: { userId: user.id, type: "HELPFUL" },
-            select: { id: true },
-          },
-          _count: {
-            select: {
-              comments: { where: { status: "PUBLISHED" } },
-              reactions: true,
-            },
-          },
-        },
+        include: postIncludeFor(user.id),
         orderBy: [{ pinnedAt: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -125,7 +130,7 @@ export default async function CommunityPage({
           communityId: community.id,
           status: "PUBLISHED",
         },
-        select: { id: true },
+        include: postIncludeFor(user.id),
       })
     : null;
   const comments = selectedPost
@@ -250,44 +255,14 @@ export default async function CommunityPage({
 
             <div className="space-y-5">
               {community.posts.map((post) => (
-                <div className="space-y-3" key={post.id}>
+                <div key={post.id}>
                   <FeedPost
                     canModerate={canModerate}
                     currentUserId={user.id}
+                    focused={selectedPost?.id === post.id}
                     immersive
                     post={post}
                   />
-                  {selectedPost?.id === post.id ? (
-                    <Card
-                      className="scroll-mt-24 rounded-[1.75rem] border-primary/15 bg-card p-4 shadow-soft sm:p-6"
-                      id="comments"
-                    >
-                      <div className="flex items-end justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-                            Post conversation
-                          </p>
-                          <h3 className="mt-1 text-xl font-black text-kondo-ink dark:text-white">
-                            {comments.length}{" "}
-                            {comments.length === 1 ? "comment" : "comments"}
-                          </h3>
-                        </div>
-                        <Link
-                          className="text-xs font-bold text-muted-foreground transition hover:text-foreground"
-                          href={`/communities/${community.slug}`}
-                        >
-                          Close
-                        </Link>
-                      </div>
-                      <CommentThread
-                        canComment={joined}
-                        canModerate={canModerate}
-                        comments={comments}
-                        currentUserId={user.id}
-                        postId={selectedPost.id}
-                      />
-                    </Card>
-                  ) : null}
                 </div>
               ))}
             </div>
@@ -408,6 +383,20 @@ export default async function CommunityPage({
           </aside>
         </div>
       </main>
+      {selectedPost ? (
+        <CommunityPostFocus
+          canComment={joined}
+          canModerate={canModerate}
+          closeHref={
+            page > 1
+              ? `/communities/${community.slug}?page=${page}`
+              : `/communities/${community.slug}`
+          }
+          comments={comments}
+          currentUserId={user.id}
+          post={selectedPost}
+        />
+      ) : null}
     </CommunityExperience>
   );
 }

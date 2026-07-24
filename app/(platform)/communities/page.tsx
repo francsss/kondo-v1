@@ -159,6 +159,7 @@ export default async function CommunitiesPage({
             }
             href={communityHref({ tab: value })}
             key={value}
+            scroll={false}
           >
             <Icon className="h-4 w-4" /> {label}
           </Link>
@@ -218,6 +219,7 @@ export default async function CommunitiesPage({
                 type: normalizedType,
               })}
               key={value}
+              scroll={false}
             >
               {value === "managed" ? "Managed" : "Joined"}
             </Link>
@@ -241,6 +243,7 @@ export default async function CommunitiesPage({
                 type: normalizedType,
               })}
               key={value}
+              scroll={false}
             >
               {value[0].toUpperCase() + value.slice(1)}
             </Link>
@@ -251,7 +254,10 @@ export default async function CommunitiesPage({
       {tab !== "meet" ? (
         <>
           <Card className="mt-6">
-            <form className="flex flex-col gap-3 sm:flex-row">
+            <form
+              action="/communities#community-results"
+              className="flex flex-col gap-3 sm:flex-row"
+            >
               <input name="tab" type="hidden" value={tab} />
               {tab === "my" ? (
                 <input name="scope" type="hidden" value={scope} />
@@ -304,6 +310,7 @@ export default async function CommunitiesPage({
                     q: params.q,
                   })}
                   key={filter.label}
+                  scroll={false}
                 >
                   {filter.label}
                 </Link>
@@ -311,7 +318,10 @@ export default async function CommunitiesPage({
             })}
           </div>
 
-          <section className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <section
+            className="mt-5 grid scroll-mt-24 gap-5 sm:grid-cols-2 xl:grid-cols-3"
+            id="community-results"
+          >
             {result?.communities.map((community) => (
               <CommunityCard community={community} key={community.id} />
             ))}
@@ -338,14 +348,14 @@ export default async function CommunitiesPage({
                   variant="secondary"
                 >
                   <Link
-                    href={communityHref({
+                    href={`${communityHref({
                       tab,
                       scope,
                       sort,
                       type: normalizedType,
                       q: params.q,
                       page: Math.max(1, result.page - 1),
-                    })}
+                    })}#community-results`}
                   >
                     <ChevronLeft className="h-4 w-4" /> Previous
                   </Link>
@@ -357,14 +367,14 @@ export default async function CommunitiesPage({
                   variant="secondary"
                 >
                   <Link
-                    href={communityHref({
+                    href={`${communityHref({
                       tab,
                       scope,
                       sort,
                       type: normalizedType,
                       q: params.q,
                       page: Math.min(result.pageCount, result.page + 1),
-                    })}
+                    })}#community-results`}
                   >
                     Next <ChevronRight className="h-4 w-4" />
                   </Link>

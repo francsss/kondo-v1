@@ -222,6 +222,7 @@ function Tab({
           : "px-1 pb-3 text-muted-foreground hover:text-kondo-green"
       }
       href={href}
+      scroll={false}
     >
       {children}
     </Link>
