@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
+import {
+  captureProductEvent,
+  identifyProductUser,
+  resetProductAnalytics,
+} from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,25 +19,42 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    resetProductAnalytics();
+    captureProductEvent(PRODUCT_EVENTS.LOGIN_STARTED);
+  }, []);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: form.get("email"),
-        password: form.get("password"),
-      }),
-    });
-    const data = await response.json();
-    setLoading(false);
-    if (!response.ok) return setError(data.error ?? "We couldn’t sign you in.");
-    router.replace(data.user.onboardingComplete ? "/home" : "/onboarding");
-    router.refresh();
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: form.get("email"),
+          password: form.get("password"),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error ?? "We couldn’t sign you in.");
+        return;
+      }
+      identifyProductUser(data.user.id, {
+        role: data.user.role,
+        onboarding_completed: data.user.onboardingComplete,
+      });
+      router.replace(data.user.onboardingComplete ? "/home" : "/onboarding");
+      router.refresh();
+    } catch {
+      setError("Kondo could not sign you in. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

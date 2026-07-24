@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ProductAnalyticsLifecycle } from "@/components/analytics/ProductAnalytics";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { getAppUrl } from "@/lib/app-url";
 import { Analytics } from "@vercel/analytics/next";
@@ -58,6 +59,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ProductAnalyticsLifecycle />
           {children}
         </ThemeProvider>
         <Analytics />

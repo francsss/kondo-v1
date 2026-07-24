@@ -12,6 +12,8 @@ import { CallRoomOverlay } from "@/components/features/calls/CallRoomOverlay";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 type Gender = "MALE" | "FEMALE";
 type GenderPreference = "ALL" | Gender;
@@ -32,6 +34,10 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
   const pollTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    captureProductEvent(PRODUCT_EVENTS.MEET_OPENED);
+  }, []);
 
   const removeFromQueue = useCallback(async () => {
     await fetch("/api/meet/queue", {
@@ -101,6 +107,13 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
       pollingRef.current = false;
       setMatching(false);
       setCallId(payload.callId);
+      captureProductEvent(PRODUCT_EVENTS.MEET_MATCHED, {
+        wait_seconds: Math.round((Date.now() - startedAtRef.current) / 1_000),
+        country_filter: countryPreferenceCode || "all",
+      });
+      captureProductEvent(PRODUCT_EVENTS.MEET_CONVERSATION_STARTED, {
+        channel: "video",
+      });
       return;
     }
     if (payload.state === "BUSY") {
@@ -135,6 +148,9 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
     setMatching(true);
     pollingRef.current = true;
     startedAtRef.current = Date.now();
+    captureProductEvent(PRODUCT_EVENTS.MEET_PROFILE_VIEWED, {
+      stage: "matching_preferences",
+    });
     void poll();
   }
 

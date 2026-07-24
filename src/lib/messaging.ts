@@ -5,6 +5,8 @@ import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { attachMediaAsset, MediaError } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import { captureServerProductEvent } from "@/lib/product-analytics-server";
 
 const DUPLICATE_WINDOW_MS = 10_000;
 const DEFAULT_INBOX_PAGE_SIZE = 20;
@@ -334,6 +336,10 @@ export async function createDirectMessage(input: {
   }
 
   const directKey = directConversationKey(input.senderId, input.recipientId);
+  const existingConversation = await prisma.conversation.findUnique({
+    where: { directKey },
+    select: { id: true },
+  });
   const now = new Date();
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -369,14 +375,33 @@ export async function createDirectMessage(input: {
           : undefined,
       });
     });
-    await trackEvent({ name: "MESSAGE_SENT", userId: input.senderId });
-    if (listing) {
-      await trackEvent({
-        name: "LISTING_CONTACTED",
+    await Promise.all([
+      trackEvent({
+        name: "MESSAGE_SENT",
         userId: input.senderId,
-        properties: { listingId: listing.id },
-      });
-    }
+        properties: { messageType: result.message.type },
+      }),
+      !existingConversation
+        ? captureServerProductEvent({
+            distinctId: input.senderId,
+            event: PRODUCT_EVENTS.CONVERSATION_CREATED,
+            properties: { source_type: input.sourceType ?? "direct" },
+          })
+        : Promise.resolve(),
+      result.message.type === "IMAGE"
+        ? captureServerProductEvent({
+            distinctId: input.senderId,
+            event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
+          })
+        : Promise.resolve(),
+      listing
+        ? trackEvent({
+            name: "LISTING_CONTACTED",
+            userId: input.senderId,
+            properties: { listingId: listing.id },
+          })
+        : Promise.resolve(),
+    ]);
     return result;
   } catch (error) {
     if (
@@ -444,7 +469,19 @@ export async function replyToConversation(input: {
         senderName: `${sender.firstName} ${sender.lastName}`,
       }),
     );
-    await trackEvent({ name: "MESSAGE_SENT", userId: input.senderId });
+    await Promise.all([
+      trackEvent({
+        name: "MESSAGE_SENT",
+        userId: input.senderId,
+        properties: { messageType: result.message.type },
+      }),
+      result.message.type === "IMAGE"
+        ? captureServerProductEvent({
+            distinctId: input.senderId,
+            event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
+          })
+        : Promise.resolve(),
+    ]);
     return result;
   } catch (error) {
     if (

@@ -3,6 +3,8 @@
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export function ListingFavoriteButton({
   listingId,
@@ -20,7 +22,13 @@ export function ListingFavoriteButton({
       method: next ? "POST" : "DELETE",
       credentials: "include",
     }).catch(() => null);
-    if (!response?.ok) setFavorite(!next);
+    if (!response?.ok) {
+      setFavorite(!next);
+      return;
+    }
+    if (next) {
+      captureProductEvent(PRODUCT_EVENTS.MARKETPLACE_LISTING_SAVED);
+    }
   }
 
   return (

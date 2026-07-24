@@ -3,6 +3,8 @@
 import { Check, Clock3, LockKeyhole, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export function CommunityJoinButton({
   communityId,
@@ -43,9 +45,18 @@ export function CommunityJoinButton({
       const payload = await response.json().catch(() => null);
       setJoined(payload?.state === "JOINED");
       setPending(payload?.state === "PENDING");
+      if (payload?.state === "JOINED") {
+        captureProductEvent(PRODUCT_EVENTS.COMMUNITY_JOINED, {
+          community_id: communityId,
+          join_policy: joinPolicy,
+        });
+      }
     } else {
       setJoined(false);
       setPending(false);
+      captureProductEvent(PRODUCT_EVENTS.COMMUNITY_LEFT, {
+        community_id: communityId,
+      });
     }
   }
 

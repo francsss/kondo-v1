@@ -23,6 +23,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { formatRelativeDate } from "@/lib/presentation";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 
 export type FeedPostData = {
@@ -88,6 +90,13 @@ export function FeedPost({
     if (!response?.ok) {
       setLiked(!nextLiked);
       setReactionCount((value) => value + (nextLiked ? -1 : 1));
+      return;
+    }
+    if (nextLiked) {
+      captureProductEvent(PRODUCT_EVENTS.COMMUNITY_POST_REACTED, {
+        community_slug: post.community.slug,
+        target_type: "post",
+      });
     }
   }
 
@@ -103,12 +112,20 @@ export function FeedPost({
           text: post.content.slice(0, 180),
           url,
         });
+        captureProductEvent(PRODUCT_EVENTS.COMMUNITY_POST_SHARED, {
+          community_slug: post.community.slug,
+          method: "native_share",
+        });
         return;
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
       }
     }
     await navigator.clipboard.writeText(url);
+    captureProductEvent(PRODUCT_EVENTS.COMMUNITY_POST_SHARED, {
+      community_slug: post.community.slug,
+      method: "copy_link",
+    });
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2_000);
   }

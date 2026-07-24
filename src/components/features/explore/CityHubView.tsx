@@ -5,6 +5,7 @@ import {
   exploreAccentStyles,
 } from "@/components/features/explore/ExploreIcon";
 import type { ExploreCity } from "@/features/explore/types";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export function CityHubView({ city }: { city: ExploreCity }) {
   const aboutSection = city.sections.find(
@@ -106,6 +107,9 @@ export function CityHubView({ city }: { city: ExploreCity }) {
             return (
               <Link
                 className={`group relative overflow-hidden rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-[0_8px_30px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-soft ${index === 0 ? "sm:col-span-2 xl:col-span-1" : ""}`}
+                data-product-destination={section.slug}
+                data-product-event={PRODUCT_EVENTS.EXPLORE_CATEGORY_OPENED}
+                data-product-source={city.slug}
                 href={`/explore/${city.slug}/${section.slug}`}
                 key={section.slug}
               >

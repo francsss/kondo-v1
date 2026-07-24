@@ -11,7 +11,9 @@ import {
   ExploreIcon,
   exploreAccentStyles,
 } from "@/components/features/explore/ExploreIcon";
+import { ExploreSectionAnalytics } from "@/components/features/explore/ExploreAnalytics";
 import type { ExploreCity, ExploreSection } from "@/features/explore/types";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export function CitySectionView({
   city,
@@ -24,6 +26,10 @@ export function CitySectionView({
 
   return (
     <div className="mx-auto max-w-[1280px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+      <ExploreSectionAnalytics
+        citySlug={city.slug}
+        sectionSlug={section.slug}
+      />
       <Link
         className="inline-flex items-center gap-2 text-sm font-black text-muted-foreground transition hover:text-kondo-green dark:text-muted-foreground"
         href={`/explore/${city.slug}`}
@@ -82,6 +88,8 @@ export function CitySectionView({
         {section.entries.map((entry) => (
           <article
             className="flex flex-col rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-[0_8px_30px_rgba(16,24,40,0.04)] sm:p-7"
+            data-explore-entry-id={entry.id}
+            data-explore-entry-type={entry.type}
             id={entry.slug}
             key={entry.id}
           >
@@ -147,6 +155,9 @@ export function CitySectionView({
                 {entry.source ? (
                   <a
                     className="inline-flex shrink-0 items-center gap-1.5 text-xs font-black text-kondo-green hover:underline"
+                    data-product-destination="official_source"
+                    data-product-event={PRODUCT_EVENTS.EXPLORE_CONTACT_CLICKED}
+                    data-product-source={`${city.slug}:${section.slug}:${entry.type}`}
                     href={entry.source.href}
                     rel="noreferrer"
                     target="_blank"

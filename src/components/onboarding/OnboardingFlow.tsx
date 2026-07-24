@@ -10,9 +10,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 
 type Option = { id: string; name: string; secondary?: string };
@@ -48,6 +50,12 @@ const interestEmoji: Record<string, string> = {
   Scholarship: "🏅",
   "Student Guide": "🧭",
 };
+const onboardingStepKeys = [
+  "country",
+  "study_location",
+  "studies",
+  "interests",
+] as const;
 
 export function OnboardingFlow({
   countries,
@@ -77,6 +85,7 @@ export function OnboardingFlow({
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const stepStartedAtRef = useRef(0);
   const [form, setForm] = useState({
     countryId: countries.some(
       (country) => country.id === initialValues.countryId,
@@ -100,6 +109,20 @@ export function OnboardingFlow({
       universities.filter((university) => university.cityId === form.cityId),
     [form.cityId, universities],
   );
+
+  useEffect(() => {
+    if (!completed) {
+      captureProductEvent(PRODUCT_EVENTS.ONBOARDING_STARTED);
+    }
+  }, [completed]);
+
+  useEffect(() => {
+    stepStartedAtRef.current = Date.now();
+    captureProductEvent(PRODUCT_EVENTS.ONBOARDING_STEP_REACHED, {
+      step: onboardingStepKeys[step],
+      step_number: step + 1,
+    });
+  }, [step]);
 
   const steps = [
     {
@@ -145,11 +168,22 @@ export function OnboardingFlow({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        captureProductEvent(PRODUCT_EVENTS.ONBOARDING_VALIDATION_ERROR, {
+          step: onboardingStepKeys[step],
+          step_number: step + 1,
+          status: response.status,
+          error_type: "invalid_step",
+        });
         setError(data.error ?? "Please check your answers.");
         return false;
       }
       return true;
     } catch {
+      captureProductEvent(PRODUCT_EVENTS.ONBOARDING_VALIDATION_ERROR, {
+        step: onboardingStepKeys[step],
+        step_number: step + 1,
+        error_type: "network_error",
+      });
       setError("Kondo could not save your profile. Please try again.");
       return false;
     } finally {
@@ -158,11 +192,31 @@ export function OnboardingFlow({
   }
 
   async function continueToNextStep() {
-    if (await save("PATCH")) setStep((value) => value + 1);
+    if (await save("PATCH")) {
+      captureProductEvent(PRODUCT_EVENTS.ONBOARDING_STEP_COMPLETED, {
+        step: onboardingStepKeys[step],
+        step_number: step + 1,
+        duration_seconds: Math.round(
+          (Date.now() - stepStartedAtRef.current) / 1_000,
+        ),
+      });
+      setStep((value) => value + 1);
+    }
   }
 
   async function finish() {
     if (!(await save("PUT"))) return;
+    captureProductEvent(PRODUCT_EVENTS.ONBOARDING_STEP_COMPLETED, {
+      step: onboardingStepKeys[step],
+      step_number: step + 1,
+      duration_seconds: Math.round(
+        (Date.now() - stepStartedAtRef.current) / 1_000,
+      ),
+    });
+    if (!completed) {
+      captureProductEvent(PRODUCT_EVENTS.ONBOARDING_COMPLETED);
+      window.sessionStorage.setItem("kondo:onboarding-completed", "1");
+    }
     router.push("/home");
     router.refresh();
   }

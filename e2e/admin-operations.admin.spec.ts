@@ -7,6 +7,32 @@ test.describe("admin operations", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 
+  test("shows live presence and remains usable on a mobile viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const heartbeat = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/presence/heartbeat") &&
+        response.request().method() === "POST",
+    );
+    await page.goto("/admin/live");
+    await expect(
+      page.getByRole("heading", { name: "Live users" }).first(),
+    ).toBeVisible();
+    await heartbeat;
+    await page.getByRole("button", { name: /refresh/i }).click();
+    await expect(page.getByText("Online now")).toBeVisible();
+    await expect(page.getByLabel("City")).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+  });
+
   test("can open the City Hub CMS and see profile-derived cities", async ({
     page,
   }) => {

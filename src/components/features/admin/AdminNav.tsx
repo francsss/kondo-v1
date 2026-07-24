@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Images,
   LayoutDashboard,
+  RadioTower,
   MapPin,
   MessageCircleWarning,
   ShoppingBag,
@@ -109,6 +110,12 @@ const items = [
     label: "Scholarships",
     icon: GraduationCap,
     permission: "STUDENT_HUB_CONFIG_VIEW" as const,
+  },
+  {
+    href: "/admin/live",
+    label: "Live users",
+    icon: RadioTower,
+    permission: "ANALYTICS_VIEW" as const,
   },
   {
     href: "/admin/analytics",

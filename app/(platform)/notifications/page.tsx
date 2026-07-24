@@ -10,6 +10,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { MarkAllReadButton } from "@/components/features/notifications/MarkAllReadButton";
+import { NotificationAnalytics } from "@/components/features/notifications/NotificationAnalytics";
 import { NotificationItem } from "@/components/features/notifications/NotificationItem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -47,6 +48,10 @@ export default async function NotificationsPage({
         action={<MarkAllReadButton unreadCount={result.unreadCount} />}
         description="Only the updates that help you respond, connect, or act."
         title="Notifications"
+      />
+      <NotificationAnalytics
+        count={result.notifications.length}
+        unreadCount={result.unreadCount}
       />
       <Card className="mt-8 overflow-hidden p-0">
         {result.notifications.length ? (

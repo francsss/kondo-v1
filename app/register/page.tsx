@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
+import {
+  captureProductEvent,
+  identifyProductUser,
+  resetProductAnalytics,
+} from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,31 +22,65 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("");
 
+  useEffect(() => {
+    resetProductAnalytics();
+    captureProductEvent(PRODUCT_EVENTS.REGISTRATION_STARTED);
+    captureProductEvent(PRODUCT_EVENTS.REGISTRATION_STEP_REACHED, {
+      step: "account_details",
+      step_number: 1,
+    });
+  }, []);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstName: form.get("firstName"),
-        lastName: form.get("lastName"),
-        email: form.get("email"),
-        countryCode: form.get("countryCode"),
-        password: form.get("password"),
-        confirmPassword: form.get("confirmPassword"),
-        acceptedTerms: form.get("acceptedTerms") === "on",
-      }),
-    });
-    const data = await response.json();
-    setLoading(false);
-    if (!response.ok)
-      return setError(data.error ?? "We couldn’t create your account.");
-    router.replace("/onboarding");
-    router.refresh();
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.get("firstName"),
+          lastName: form.get("lastName"),
+          email: form.get("email"),
+          countryCode: form.get("countryCode"),
+          password: form.get("password"),
+          confirmPassword: form.get("confirmPassword"),
+          acceptedTerms: form.get("acceptedTerms") === "on",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        captureProductEvent(PRODUCT_EVENTS.REGISTRATION_VALIDATION_ERROR, {
+          step: "account_details",
+          status: response.status,
+          error_type:
+            response.status === 409
+              ? "account_exists"
+              : response.status === 429
+                ? "rate_limited"
+                : "invalid_form",
+        });
+        setError(data.error ?? "We couldn’t create your account.");
+        return;
+      }
+      identifyProductUser(data.user.id, {
+        role: data.user.role,
+        onboarding_completed: false,
+      });
+      router.replace("/onboarding");
+      router.refresh();
+    } catch {
+      captureProductEvent(PRODUCT_EVENTS.REGISTRATION_VALIDATION_ERROR, {
+        step: "account_details",
+        error_type: "network_error",
+      });
+      setError("Kondo could not create your account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -88,6 +128,20 @@ export default function RegisterPage() {
               action="/api/auth/register"
               className="mt-7 grid gap-5 sm:grid-cols-2"
               method="post"
+              onInvalid={(event) => {
+                const target = event.target;
+                captureProductEvent(
+                  PRODUCT_EVENTS.REGISTRATION_VALIDATION_ERROR,
+                  {
+                    step: "account_details",
+                    field:
+                      target instanceof HTMLInputElement
+                        ? target.name
+                        : "unknown",
+                    error_type: "browser_validation",
+                  },
+                );
+              }}
               onSubmit={submit}
             >
               <Field

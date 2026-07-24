@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Avatar } from "@/components/ui/Avatar";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 type NotificationItemProps = {
   notification: {
     id: string;
+    type: string;
     title: string;
     body: string | null;
     href: string | null;
@@ -36,6 +39,15 @@ export function NotificationItem({
   const [read, setRead] = useState(Boolean(notification.readAt));
 
   function markRead() {
+    captureProductEvent(PRODUCT_EVENTS.NOTIFICATION_OPENED, {
+      notification_type: notification.type,
+      has_action: Boolean(notification.href),
+    });
+    if (notification.href) {
+      captureProductEvent(PRODUCT_EVENTS.NOTIFICATION_ACTIONED, {
+        notification_type: notification.type,
+      });
+    }
     if (read) return;
     setRead(true);
     void fetch(`/api/notifications/${notification.id}/read`, {
@@ -50,7 +62,13 @@ export function NotificationItem({
       method: "DELETE",
       credentials: "include",
     }).catch(() => null);
-    if (response?.ok) router.refresh();
+    if (response?.ok) {
+      captureProductEvent(PRODUCT_EVENTS.NOTIFICATION_ACTIONED, {
+        notification_type: notification.type,
+        action: "dismissed",
+      });
+      router.refresh();
+    }
   }
 
   const content = (

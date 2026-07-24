@@ -1,0 +1,165 @@
+export const PRODUCT_EVENTS = {
+  PAGE_VIEWED: "$pageview",
+  LANDING_VIEWED: "landing_viewed",
+  JOIN_CLICKED: "join_clicked",
+  LOGIN_CLICKED: "login_clicked",
+  LOGIN_STARTED: "login_started",
+  LOGIN_COMPLETED: "login_completed",
+  REGISTRATION_STARTED: "registration_started",
+  REGISTRATION_STEP_REACHED: "registration_form_step_reached",
+  REGISTRATION_VALIDATION_ERROR: "registration_validation_error",
+  REGISTRATION_COMPLETED: "registration_completed",
+  ONBOARDING_STARTED: "onboarding_started",
+  ONBOARDING_STEP_REACHED: "onboarding_step_reached",
+  ONBOARDING_STEP_COMPLETED: "onboarding_step_completed",
+  ONBOARDING_VALIDATION_ERROR: "onboarding_validation_error",
+  ONBOARDING_COMPLETED: "onboarding_completed",
+  HOME_ARRIVED_AFTER_ONBOARDING: "home_arrived_after_onboarding",
+  FEATURE_TIME_SPENT: "feature_time_spent",
+  COMMUNITY_OPENED: "community_opened",
+  COMMUNITY_CREATED: "community_created",
+  COMMUNITY_JOINED: "community_joined",
+  COMMUNITY_LEFT: "community_left",
+  COMMUNITY_POST_PUBLISHED: "community_post_published",
+  COMMUNITY_POST_REACTED: "community_post_reacted",
+  COMMUNITY_COMMENT_CREATED: "community_comment_created",
+  COMMUNITY_REPLY_CREATED: "community_reply_created",
+  COMMUNITY_POST_SHARED: "community_post_shared",
+  MEET_OPENED: "meet_opened",
+  MEET_PROFILE_VIEWED: "meet_profile_viewed",
+  MEET_LIKED: "meet_liked",
+  MEET_MATCHED: "meet_matched",
+  MEET_CONVERSATION_STARTED: "meet_conversation_started",
+  CONVERSATION_CREATED: "conversation_created",
+  MESSAGE_SENT: "message_sent",
+  MESSAGE_IMAGE_SENT: "message_image_sent",
+  MARKETPLACE_OPENED: "marketplace_opened",
+  MARKETPLACE_LISTING_PUBLISHED: "marketplace_listing_published",
+  MARKETPLACE_LISTING_VIEWED: "marketplace_listing_viewed",
+  MARKETPLACE_LISTING_SAVED: "marketplace_listing_saved",
+  MARKETPLACE_VENDOR_CONTACTED: "marketplace_vendor_contacted",
+  STUDENT_HUB_OPENED: "student_hub_opened",
+  STUDENT_HUB_TOOL_SELECTED: "student_hub_tool_selected",
+  STUDENT_HUB_FILE_IMPORT_STARTED: "student_hub_file_import_started",
+  STUDENT_HUB_FILE_IMPORT_SUCCEEDED: "student_hub_file_import_succeeded",
+  STUDENT_HUB_FILE_IMPORT_FAILED: "student_hub_file_import_failed",
+  STUDENT_HUB_GENERATION_STARTED: "student_hub_generation_started",
+  STUDENT_HUB_GENERATION_SUCCEEDED: "student_hub_generation_succeeded",
+  STUDENT_HUB_GENERATION_FAILED: "student_hub_generation_failed",
+  STUDENT_HUB_TOOL_TIME_SPENT: "student_hub_tool_time_spent",
+  EXPLORE_CITY_OPENED: "explore_city_opened",
+  EXPLORE_CATEGORY_OPENED: "explore_category_opened",
+  EXPLORE_COMPANY_VIEWED: "explore_company_viewed",
+  EXPLORE_INTERNSHIP_VIEWED: "explore_internship_viewed",
+  EXPLORE_RESTAURANT_VIEWED: "explore_restaurant_viewed",
+  EXPLORE_HOUSING_VIEWED: "explore_housing_viewed",
+  EXPLORE_EVENT_VIEWED: "explore_event_viewed",
+  EXPLORE_CONTACT_CLICKED: "explore_contact_clicked",
+  NOTIFICATIONS_RECEIVED: "notifications_received",
+  NOTIFICATION_OPENED: "notification_opened",
+  NOTIFICATION_ACTIONED: "notification_actioned",
+  JAVASCRIPT_ERROR: "javascript_error",
+  API_REQUEST_SLOW: "api_request_slow",
+  API_REQUEST_FAILED: "api_request_failed",
+  PAGE_PERFORMANCE_SLOW: "page_performance_slow",
+  UPLOAD_FAILED: "upload_failed",
+  GUIDE_STARTED: "guide_started",
+  GUIDE_STEP_COMPLETED: "guide_step_completed",
+  SEARCH_PERFORMED: "search_performed",
+  SESSION_STARTED: "session_started",
+} as const;
+
+export type ProductEventName =
+  (typeof PRODUCT_EVENTS)[keyof typeof PRODUCT_EVENTS];
+
+export type ProductEventProperties = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+
+const REDACTED_PROPERTY_NAMES = new Set([
+  "email",
+  "message",
+  "message_content",
+  "content",
+  "password",
+  "token",
+  "file_name",
+  "filename",
+  "search_query",
+]);
+
+export function sanitizeProductProperties(
+  properties: ProductEventProperties = {},
+) {
+  return Object.fromEntries(
+    Object.entries(properties)
+      .filter(
+        ([key, value]) =>
+          !REDACTED_PROPERTY_NAMES.has(key.toLowerCase()) &&
+          value !== undefined &&
+          (value === null ||
+            typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean"),
+      )
+      .map(([key, value]) => [
+        key.slice(0, 80),
+        typeof value === "string" ? value.slice(0, 160) : value,
+      ]),
+  );
+}
+
+const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
+  [/^\/messages\/[^/]+/, "/messages/[conversation]"],
+  [/^\/profile\/[^/]+/, "/profile/[member]"],
+  [/^\/communities\/[^/]+\/manage/, "/communities/[community]/manage"],
+  [/^\/communities\/[^/]+/, "/communities/[community]"],
+  [/^\/marketplace\/[^/]+\/edit/, "/marketplace/[listing]/edit"],
+  [/^\/marketplace\/[^/]+/, "/marketplace/[listing]"],
+  [/^\/guides\/[^/]+/, "/guides/[guide]"],
+  [/^\/help\/[^/]+/, "/help/[question]"],
+  [/^\/api\/conversations\/[^/]+/, "/api/conversations/[conversation]"],
+  [/^\/api\/student-hub\/imports\/[^/]+/, "/api/student-hub/imports/[import]"],
+  [/^\/api\/media\/uploads\/[^/]+/, "/api/media/uploads/[upload]"],
+  [/^\/api\/communities\/[^/]+/, "/api/communities/[community]"],
+  [/^\/api\/posts\/[^/]+/, "/api/posts/[post]"],
+  [/^\/api\/marketplace\/[^/]+/, "/api/marketplace/[listing]"],
+  [/^\/api\/notifications\/[^/]+/, "/api/notifications/[notification]"],
+];
+
+export function normalizeAnalyticsRoute(input: string) {
+  let pathname = "/";
+  try {
+    pathname = new URL(input, "https://kondo.invalid").pathname;
+  } catch {
+    pathname = input.split(/[?#]/, 1)[0] || "/";
+  }
+  for (const [pattern, replacement] of DYNAMIC_ROUTE_PATTERNS) {
+    if (pattern.test(pathname)) return replacement;
+  }
+  return pathname.slice(0, 240);
+}
+
+export function productAreaForPath(pathname: string) {
+  if (pathname.startsWith("/communities")) return "communities";
+  if (pathname.startsWith("/marketplace")) return "marketplace";
+  if (
+    pathname.startsWith("/student-hub") ||
+    pathname.startsWith("/guides") ||
+    pathname.startsWith("/help")
+  )
+    return "student_hub";
+  if (pathname.startsWith("/messages")) return "messages";
+  if (pathname.startsWith("/explore")) return "explore";
+  if (pathname.startsWith("/notifications")) return "notifications";
+  if (pathname.startsWith("/profile")) return "profile";
+  if (pathname.startsWith("/settings")) return "settings";
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname === "/home") return "home";
+  if (pathname === "/") return "landing";
+  if (pathname === "/register") return "registration";
+  if (pathname === "/login") return "login";
+  if (pathname === "/onboarding") return "onboarding";
+  return "other";
+}

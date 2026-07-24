@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -25,6 +25,8 @@ import {
   formatImportFileSize,
   validateScheduleImportFiles,
 } from "@/lib/schedule-import-client";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { DAY_NAMES } from "@/lib/student-schedule";
 
 type University = {
@@ -131,6 +133,13 @@ const emptyCourse: ReviewCourse = {
   source: "MANUAL" as const,
 };
 
+function importFileKind(files: File[]) {
+  const kinds = new Set(
+    files.map((file) => (file.type === "application/pdf" ? "pdf" : "image")),
+  );
+  return kinds.size > 1 ? "mixed" : (kinds.values().next().value ?? "unknown");
+}
+
 async function api(url: string, body: unknown, method = "POST") {
   const response = await fetch(url, {
     method,
@@ -205,6 +214,17 @@ export function ScheduleWorkspace({
     [mode, schedule, today],
   );
 
+  useEffect(() => {
+    const startedAt = performance.now();
+    return () => {
+      captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_TOOL_TIME_SPENT, {
+        tool: "timetable",
+        duration_seconds:
+          Math.round((performance.now() - startedAt) / 100) / 10,
+      });
+    };
+  }, []);
+
   function updateReview(
     index: number,
     field: keyof ReviewCourse,
@@ -252,6 +272,15 @@ export function ScheduleWorkspace({
     const stageTimers: Array<ReturnType<typeof setTimeout>> = [];
     const uploadedMediaIds: string[] = [];
     let importCreated = false;
+    const operationStartedAt = performance.now();
+    captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_FILE_IMPORT_STARTED, {
+      tool: "timetable",
+      file_type: pendingImportId
+        ? "previously_uploaded"
+        : importFileKind(selectedImportFiles),
+      file_count: selectedImportFiles.length,
+      retry: Boolean(pendingImportId),
+    });
     try {
       let currentImportId = pendingImportId;
       if (!currentImportId) {
@@ -298,8 +327,19 @@ export function ScheduleWorkspace({
         currentImportId = (created.import as { id: string }).id;
         importCreated = true;
         setPendingImportId(currentImportId);
+        captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_FILE_IMPORT_SUCCEEDED, {
+          tool: "timetable",
+          file_type: importFileKind(selectedImportFiles),
+          file_count: selectedImportFiles.length,
+          duration_ms: Math.round(performance.now() - operationStartedAt),
+        });
       }
       setAnalysisStage("Reading document...");
+      const generationStartedAt = performance.now();
+      captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_GENERATION_STARTED, {
+        tool: "timetable",
+        retry: Boolean(pendingImportId),
+      });
       stageTimers.push(
         setTimeout(
           () => setAnalysisStage("Running text extraction and OCR..."),
@@ -315,6 +355,11 @@ export function ScheduleWorkspace({
         {},
       );
       const generated = analyzed.schedule as { id?: string } | undefined;
+      captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_GENERATION_SUCCEEDED, {
+        tool: "timetable",
+        result: analyzed.saved === true ? "saved" : "review_required",
+        duration_ms: Math.round(performance.now() - generationStartedAt),
+      });
       if (analyzed.saved === true && generated?.id) {
         setShowImport(false);
         setPendingImportId("");
@@ -330,6 +375,22 @@ export function ScheduleWorkspace({
       setReview(analyzed.result as Review);
       setShowImport(false);
     } catch (cause) {
+      captureProductEvent(
+        importCreated || pendingImportId
+          ? PRODUCT_EVENTS.STUDENT_HUB_GENERATION_FAILED
+          : PRODUCT_EVENTS.STUDENT_HUB_FILE_IMPORT_FAILED,
+        {
+          tool: "timetable",
+          error_type:
+            cause instanceof ApiRequestError
+              ? (cause.code ?? "api_error")
+              : cause instanceof Error
+                ? cause.name
+                : "unknown",
+          retryable: cause instanceof ApiRequestError ? cause.retryable : false,
+          duration_ms: Math.round(performance.now() - operationStartedAt),
+        },
+      );
       setImportError(
         cause instanceof Error
           ? cause.message
@@ -489,11 +550,26 @@ export function ScheduleWorkspace({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setShowImport(true)}>
+          <Button
+            onClick={() => {
+              captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED, {
+                tool: "timetable_import",
+              });
+              setShowImport(true);
+            }}
+          >
             <Upload className="h-4 w-4" />
             Import PDF or image
           </Button>
-          <Button onClick={() => setShowManual(true)} variant="secondary">
+          <Button
+            onClick={() => {
+              captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED, {
+                tool: "timetable_manual",
+              });
+              setShowManual(true);
+            }}
+            variant="secondary"
+          >
             <Plus className="h-4 w-4" />
             Add manually
           </Button>

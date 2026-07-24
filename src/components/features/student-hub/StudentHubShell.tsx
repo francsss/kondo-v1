@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
+import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -45,6 +48,8 @@ function StudentHubTabs({
                 ? "text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
+            data-product-event={PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED}
+            data-product-source={label.toLowerCase().replaceAll(" ", "_")}
             href={href}
             key={href}
           >
@@ -65,10 +70,27 @@ function StudentHubTabs({
   );
 }
 
-export function StudentHubShell({ children }: { children: React.ReactNode }) {
+type StudentHubUser = {
+  id: string;
+  role: string;
+  country?: { code: string; name: string } | null;
+  city?: { slug: string; name: string } | null;
+  university?: { slug: string; name: string } | null;
+  onboardingCompletedAt?: Date | null;
+};
+
+export function StudentHubShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: StudentHubUser;
+}) {
   const pathname = usePathname();
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <PresenceHeartbeat />
+      <ProductAnalyticsIdentity user={user} />
       <header className="sticky top-0 z-50 border-b border-border bg-background/90 shadow-[0_8px_28px_rgb(var(--foreground)/0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto grid h-16 max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6 lg:px-8">
           <Link

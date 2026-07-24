@@ -22,15 +22,19 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LucideIcon } from "lucide-react";
+import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
+import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { canAccessAdmin } from "@/lib/authorization";
 import { usesImmersiveAppShell } from "@/lib/app-shell";
+import { resetProductAnalytics } from "@/lib/product-analytics-client";
 import { cn } from "@/lib/utils";
 
 type ShellUser = {
+  id: string;
   firstName: string;
   lastName: string;
   role: string;
@@ -41,8 +45,13 @@ type ShellUser = {
   } | null;
   notificationUnreadCount?: number;
   messageUnreadCount?: number;
-  country?: { emoji: string | null } | null;
-  university?: { shortName: string | null; name: string } | null;
+  country?: { code: string; name: string; emoji: string | null } | null;
+  city?: { slug: string; name: string } | null;
+  university?: {
+    slug: string;
+    shortName: string | null;
+    name: string;
+  } | null;
   onboardingCompletedAt?: Date | null;
 };
 
@@ -219,13 +228,18 @@ export function AppShell({
       method: "POST",
       credentials: "include",
     }).catch(() => null);
-    if (response?.ok) window.location.assign("/login");
+    if (response?.ok) {
+      resetProductAnalytics();
+      window.location.assign("/login");
+    }
   }
 
   if (usesImmersiveAppShell(pathname)) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
+        <PresenceHeartbeat />
+        <ProductAnalyticsIdentity user={user} />
         {children}
       </div>
     );
@@ -234,6 +248,8 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
+      <PresenceHeartbeat />
+      <ProductAnalyticsIdentity user={user} />
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col">
         <div className="px-2">
           <KondoLogo href="/home" />

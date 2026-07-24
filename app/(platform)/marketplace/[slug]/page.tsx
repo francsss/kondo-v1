@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { formatPrice } from "@/lib/presentation";
+import { trackEvent } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
@@ -48,6 +49,15 @@ export default async function ListingDetailPage({
     },
   });
   if (!listing) notFound();
+  await trackEvent({
+    name: "LISTING_VIEWED",
+    userId: user.id,
+    properties: {
+      listingId: listing.id,
+      categoryId: listing.categoryId,
+      cityId: listing.cityId,
+    },
+  });
   const owner = listing.sellerId === user.id;
   return (
     <div className="mx-auto max-w-[1120px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">

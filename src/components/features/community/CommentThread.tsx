@@ -16,6 +16,8 @@ import { MessageUserButton } from "@/components/features/messages/MessageUserBut
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { formatRelativeDate } from "@/lib/presentation";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 
 export type CommentItem = {
@@ -123,6 +125,14 @@ export function CommentThread({
       parentId: replyTo?.id,
     });
     if (ok) {
+      captureProductEvent(
+        replyTo
+          ? PRODUCT_EVENTS.COMMUNITY_REPLY_CREATED
+          : PRODUCT_EVENTS.COMMUNITY_COMMENT_CREATED,
+        {
+          target_type: "post",
+        },
+      );
       setContent("");
       setReplyTo(null);
     }
@@ -364,6 +374,12 @@ function CommentRow({
     if (!ok) {
       setReacted(!next);
       setReactionCount((count) => count + (next ? -1 : 1));
+      return;
+    }
+    if (next) {
+      captureProductEvent(PRODUCT_EVENTS.COMMUNITY_POST_REACTED, {
+        target_type: "comment",
+      });
     }
   }
 

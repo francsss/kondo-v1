@@ -6,6 +6,8 @@ import { useState } from "react";
 import { formatPrice } from "@/lib/presentation";
 import { cn } from "@/lib/utils";
 import { MediaImage } from "@/components/ui/MediaImage";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 const categoryStyles: Record<string, string> = {
   Housing:
@@ -53,6 +55,13 @@ export function ListingCard({
     if (!response?.ok) {
       setFavorite(!next);
       setFavoriteCount((value) => value + (next ? -1 : 1));
+      return;
+    }
+    if (next) {
+      captureProductEvent(PRODUCT_EVENTS.MARKETPLACE_LISTING_SAVED, {
+        category: listing.category.name,
+        city: listing.city.name,
+      });
     }
   }
 

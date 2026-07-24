@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export const metadata: Metadata = {
   title: "The digital home for African students in China",
@@ -94,14 +95,24 @@ export default function LandingPage() {
               className="h-9 px-3 text-xs sm:h-11 sm:px-5 sm:text-sm"
               variant="ghost"
             >
-              <Link href="/login">Login</Link>
+              <Link
+                data-product-event={PRODUCT_EVENTS.LOGIN_CLICKED}
+                data-product-source="landing_header"
+                href="/login"
+              >
+                Login
+              </Link>
             </Button>
             <Button
               asChild
               className="h-9 px-3 text-xs sm:px-4 sm:text-sm"
               size="sm"
             >
-              <Link href="/register">
+              <Link
+                data-product-event={PRODUCT_EVENTS.JOIN_CLICKED}
+                data-product-source="landing_header"
+                href="/register"
+              >
                 <span className="sm:hidden">Join</span>
                 <span className="hidden sm:inline">Join Kondo</span>
                 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -136,7 +147,11 @@ export default function LandingPage() {
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="/register">
+              <Link
+                data-product-event={PRODUCT_EVENTS.JOIN_CLICKED}
+                data-product-source="landing_hero"
+                href="/register"
+              >
                 Create your free account <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -407,7 +422,11 @@ export default function LandingPage() {
             studies, and friendships in China.
           </p>
           <Button asChild className="mt-8" size="lg">
-            <Link href="/register">
+            <Link
+              data-product-event={PRODUCT_EVENTS.JOIN_CLICKED}
+              data-product-source="landing_footer"
+              href="/register"
+            >
               Join Kondo for free <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

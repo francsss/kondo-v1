@@ -489,6 +489,7 @@ model User {
   preference                       UserPreference?
   auditLogs                        AuditLog[]                  @relation("AuditActor")
   analyticsEvents                  AnalyticsEvent[]
+  presence                         UserPresence?
   accounts                         OAuthAccount[]
   sessions                         Session[]
   emailVerificationTokens          EmailVerificationToken[]
@@ -1698,6 +1699,23 @@ model AnalyticsEvent {
   @@index([name, createdAt])
   @@index([userId, createdAt])
   @@index([sessionId])
+}
+
+model UserPresence {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientSessionId String   @db.VarChar(64)
+  connectedAt     DateTime
+  lastSeen        DateTime
+  currentPath     String   @db.VarChar(240)
+  device          String   @db.VarChar(32)
+  browser         String   @db.VarChar(32)
+  operatingSystem String   @db.VarChar(32)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([lastSeen])
+  @@index([connectedAt])
 }
 
 model OAuthAccount {
