@@ -27,6 +27,7 @@ import { KondoLogo } from "@/components/KondoLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { canAccessAdmin } from "@/lib/authorization";
+import { usesImmersiveAppShell } from "@/lib/app-shell";
 import { cn } from "@/lib/utils";
 
 type ShellUser = {
@@ -221,7 +222,7 @@ export function AppShell({
     if (response?.ok) window.location.assign("/login");
   }
 
-  if (/^\/messages\/[^/]+$/.test(pathname)) {
+  if (usesImmersiveAppShell(pathname)) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />

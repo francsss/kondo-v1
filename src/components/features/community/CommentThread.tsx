@@ -1,12 +1,20 @@
 "use client";
 
-import { Flag, Heart, MessageCircleReply, Pencil, Trash2 } from "lucide-react";
+import {
+  Flag,
+  Heart,
+  MessageCircleReply,
+  Pencil,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MessageUserButton } from "@/components/features/messages/MessageUserButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { formatRelativeDate } from "@/lib/presentation";
+import { cn } from "@/lib/utils";
 
 type CommentItem = {
   id: string;
@@ -79,17 +87,25 @@ export function CommentThread({
   return (
     <div>
       {canComment ? (
-        <form className="mt-5" onSubmit={submit}>
+        <form
+          className="mt-5 rounded-2xl border border-border bg-muted/35 p-3 sm:p-4"
+          onSubmit={submit}
+        >
           {replyTo ? (
-            <div className="mb-2 flex items-center justify-between rounded-xl bg-kondo-mint/60 px-3 py-2 text-xs font-semibold text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
+            <div className="mb-3 flex items-center justify-between rounded-xl bg-kondo-mint/60 px-3 py-2 text-xs font-semibold text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
               Replying to a comment
-              <button onClick={() => setReplyTo(null)} type="button">
+              <button
+                className="font-black underline-offset-2 hover:underline"
+                onClick={() => setReplyTo(null)}
+                type="button"
+              >
                 Cancel
               </button>
             </div>
           ) : null}
           <textarea
-            className="min-h-24 w-full rounded-2xl border border-slate-200 bg-transparent p-4 text-sm outline-none focus:border-kondo-green dark:border-white/10"
+            aria-label="Write a comment"
+            className="min-h-24 w-full resize-y rounded-2xl border border-border bg-card p-4 text-sm leading-6 shadow-sm outline-none transition focus:border-kondo-green"
             maxLength={5000}
             onChange={(event) => setContent(event.target.value)}
             placeholder="Add to the conversation…"
@@ -97,8 +113,17 @@ export function CommentThread({
             value={content}
           />
           <div className="mt-2 flex items-center justify-between">
-            {error ? <p className="text-xs text-red-600">{error}</p> : <span />}
+            {error ? (
+              <p className="text-xs font-semibold text-red-600" role="alert">
+                {error}
+              </p>
+            ) : (
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                Keep it helpful and respectful.
+              </p>
+            )}
             <Button disabled={pending} size="sm" type="submit">
+              <Send aria-hidden="true" className="h-3.5 w-3.5" />
               {pending ? "Posting…" : "Comment"}
             </Button>
           </div>
@@ -110,7 +135,7 @@ export function CommentThread({
       )}
 
       {comments.length ? (
-        <div className="mt-5 divide-y divide-slate-100 dark:divide-white/10">
+        <div className="mt-5 space-y-2.5">
           {comments.map((comment) => (
             <CommentRow
               canModerate={canModerate}
@@ -183,11 +208,14 @@ function CommentRow({
 
   return (
     <article
-      className={`flex gap-3 py-4 first:pt-0 last:pb-0 ${
-        comment.parentId ? "ml-8 border-l-2 border-kondo-mint pl-4" : ""
-      }`}
+      className={cn(
+        "flex gap-3 rounded-2xl bg-muted/35 p-3.5 sm:p-4",
+        comment.parentId &&
+          "ml-4 border-l-2 border-kondo-green/30 bg-secondary/35 sm:ml-8",
+      )}
     >
       <Avatar
+        className="h-9 w-9"
         firstName={comment.author.firstName}
         lastName={comment.author.lastName}
       />
@@ -203,7 +231,7 @@ function CommentRow({
             {comment.editedAt ? " · edited" : ""}
           </span>
         </div>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground/80">
           {comment.content}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-1">

@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  BadgeCheck,
-  ChevronLeft,
-  ChevronRight,
-  MessageCircle,
-  Settings,
-  Users,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { CommentThread } from "@/components/features/community/CommentThread";
+import { CommunityExperience } from "@/components/features/community/CommunityExperience";
 import { CommunityJoinButton } from "@/components/features/community/CommunityJoinButton";
 import { ContentReportButton } from "@/components/features/community/ContentReportButton";
 import { FeedPost } from "@/components/features/community/FeedPost";
@@ -17,7 +11,6 @@ import { PostComposer } from "@/components/features/community/PostComposer";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { MediaImage } from "@/components/ui/MediaImage";
 import { communityVisibilityWhere } from "@/lib/content-visibility";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireUser } from "@/lib/server-auth";
@@ -161,212 +154,260 @@ export default async function CommunityPage({
   const pageCount = Math.max(1, Math.ceil(community._count.posts / pageSize));
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
-      <section className="noise relative overflow-hidden rounded-4xl bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#238164] p-7 text-white shadow-lift sm:p-10">
-        {community.coverMediaId ? (
-          <>
-            <MediaImage
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-30"
-              height={720}
-              mediaId={community.coverMediaId}
-              priority
-              sizes="(min-width: 1180px) 1180px, 100vw"
-              width={1440}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-kondo-navy/95 via-kondo-forest/85 to-kondo-forest/40" />
-          </>
-        ) : null}
-        <div
-          aria-hidden="true"
-          className="absolute -right-16 -top-28 h-80 w-80 rounded-full border-[52px] border-white/5"
-        />
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="grid h-16 w-16 place-items-center rounded-3xl bg-white text-3xl shadow-lg">
-                {community.icon}
-              </span>
-              {community.status !== "ACTIVE" ? (
-                <span className="rounded-full bg-amber-300/15 px-3 py-1 text-xs font-black text-amber-200">
-                  {community.status.replaceAll("_", " ")}
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-5 flex items-center gap-2">
-              <h1 className="text-3xl font-black tracking-[-0.045em] sm:text-4xl">
-                {community.name}
-              </h1>
-              {community.isVerified ? (
-                <BadgeCheck
-                  aria-label="Verified"
-                  className="h-6 w-6 text-kondo-lime"
-                />
-              ) : null}
-              {community.isOfficial ? (
-                <span className="rounded-full bg-kondo-lime/15 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-kondo-lime">
-                  Official
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
-              {community.description}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-4 text-xs font-bold text-white/60">
-              <span className="inline-flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                {community._count.members.toLocaleString()} members
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <MessageCircle className="h-4 w-4" />
-                {community._count.posts} posts
-              </span>
-              <span>{community.joinPolicy.replaceAll("_", " ")}</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {canModerate ? (
-              <Button
-                asChild
-                className="bg-white/10 text-white shadow-none hover:bg-white/20"
-                size="sm"
-              >
-                <Link href={`/communities/${community.slug}/manage`}>
-                  <Settings className="h-4 w-4" /> Manage
-                </Link>
-              </Button>
-            ) : null}
-            {community.status === "ACTIVE" ? (
-              <CommunityJoinButton
-                communityId={community.id}
-                initialJoined={joined}
-                initialPending={Boolean(community.accessRequests.length)}
-                inverse
-                joinPolicy={community.joinPolicy}
-              />
-            ) : null}
-            {!canModerate ? (
-              <ContentReportButton
-                endpoint={`/api/communities/${community.id}/report`}
-                inverse
-              />
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_290px]">
-        <div className="space-y-5">
-          <Card className="flex items-center gap-3 p-4">
-            <Avatar firstName={user.firstName} lastName={user.lastName} />
-            {joined && community.status === "ACTIVE" ? (
-              <PostComposer
-                communities={[
-                  {
-                    id: community.id,
-                    name: community.name,
-                    icon: community.icon,
-                    canAnnounce: canModerate,
-                  },
-                ]}
-                defaultCommunityId={community.id}
-                triggerLabel={`Start a conversation in ${community.name}…`}
-                triggerVariant="composer"
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Join this active community to start a conversation.
-              </p>
-            )}
-          </Card>
-          {community.posts.map((post) => (
-            <FeedPost
-              canModerate={canModerate}
-              currentUserId={user.id}
-              key={post.id}
-              post={post}
-            />
-          ))}
-          {!community.posts.length ? (
-            <Card className="py-14 text-center text-sm text-muted-foreground">
-              No published posts on this page.
-            </Card>
+    <CommunityExperience
+      canModerate={canModerate}
+      community={{
+        name: community.name,
+        slug: community.slug,
+        description: community.description,
+        icon: community.icon,
+        coverMediaId: community.coverMediaId,
+        isVerified: community.isVerified,
+        isOfficial: community.isOfficial,
+        status: community.status,
+        joinPolicy: community.joinPolicy,
+        memberCount: community._count.members,
+        postCount: community._count.posts,
+      }}
+      primaryActions={
+        <>
+          {canModerate ? (
+            <Button asChild size="sm" variant="secondary">
+              <Link href={`/communities/${community.slug}/manage`}>
+                <Settings aria-hidden="true" className="h-4 w-4" />
+                Manage
+              </Link>
+            </Button>
           ) : null}
-          {pageCount > 1 ? (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Page {page} of {pageCount}
-              </p>
-              <div className="flex gap-2">
-                <Button asChild size="sm" variant="secondary">
-                  <Link
-                    href={`/communities/${slug}?page=${Math.max(1, page - 1)}`}
-                  >
-                    <ChevronLeft className="h-4 w-4" /> Previous
-                  </Link>
-                </Button>
-                <Button asChild size="sm" variant="secondary">
-                  <Link
-                    href={`/communities/${slug}?page=${Math.min(pageCount, page + 1)}`}
-                  >
-                    Next <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+          {community.status === "ACTIVE" ? (
+            <CommunityJoinButton
+              communityId={community.id}
+              initialJoined={joined}
+              initialPending={Boolean(community.accessRequests.length)}
+              joinPolicy={community.joinPolicy}
+            />
+          ) : null}
+          {!canModerate ? (
+            <ContentReportButton
+              endpoint={`/api/communities/${community.id}/report`}
+            />
+          ) : null}
+        </>
+      }
+    >
+      <main className="mx-auto max-w-[1480px] px-3 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-10">
+        <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,860px)_340px] xl:justify-center xl:gap-9">
+          <section
+            aria-labelledby="community-feed-heading"
+            className="min-w-0 scroll-mt-24"
+            id="feed"
+          >
+            <div className="mb-5 flex items-end justify-between gap-4 px-1">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+                  Community feed
+                </p>
+                <h2
+                  className="mt-1 text-2xl font-black tracking-[-0.035em] text-kondo-ink dark:text-white sm:text-3xl"
+                  id="community-feed-heading"
+                >
+                  Latest conversations
+                </h2>
               </div>
-            </div>
-          ) : null}
-          {selectedPost ? (
-            <Card id="comments">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-                Post conversation
+              <p className="hidden text-xs font-semibold text-muted-foreground sm:block">
+                {community._count.posts.toLocaleString()}{" "}
+                {community._count.posts === 1 ? "post" : "posts"}
               </p>
-              <h2 className="mt-1 text-lg font-black text-kondo-ink dark:text-white">
-                {comments.length}{" "}
-                {comments.length === 1 ? "comment" : "comments"}
-              </h2>
-              <CommentThread
-                canComment={joined}
-                canModerate={canModerate}
-                comments={comments}
-                currentUserId={user.id}
-                postId={selectedPost.id}
+            </div>
+
+            <Card className="mb-5 flex items-center gap-3 rounded-[1.75rem] p-3.5 shadow-sm sm:p-4">
+              <Avatar
+                className="h-10 w-10"
+                firstName={user.firstName}
+                lastName={user.lastName}
+                mediaId={user.avatarMediaId}
               />
-            </Card>
-          ) : null}
-        </div>
-        <aside className="space-y-5">
-          <Card>
-            <h2 className="font-black text-kondo-ink dark:text-white">
-              Community care
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Be generous, protect privacy, and keep advice grounded in lived
-              experience.
-            </p>
-            <Link
-              className="mt-3 inline-flex text-xs font-black text-kondo-green hover:underline"
-              href="/guidelines"
-            >
-              Read the guidelines
-            </Link>
-          </Card>
-          <Card>
-            <h2 className="font-black text-kondo-ink dark:text-white">
-              New members
-            </h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {community.members.map((member) => (
-                <Avatar
-                  className="h-11 w-11"
-                  firstName={member.user.firstName}
-                  key={member.id}
-                  lastName={member.user.lastName}
+              {joined && community.status === "ACTIVE" ? (
+                <PostComposer
+                  communities={[
+                    {
+                      id: community.id,
+                      name: community.name,
+                      icon: community.icon,
+                      canAnnounce: canModerate,
+                    },
+                  ]}
+                  defaultCommunityId={community.id}
+                  triggerLabel={`Start a conversation in ${community.name}…`}
+                  triggerVariant="composer"
                 />
+              ) : (
+                <p className="px-2 text-sm text-muted-foreground">
+                  Join this active community to start a conversation.
+                </p>
+              )}
+            </Card>
+
+            <div className="space-y-5">
+              {community.posts.map((post) => (
+                <div className="space-y-3" key={post.id}>
+                  <FeedPost
+                    canModerate={canModerate}
+                    currentUserId={user.id}
+                    immersive
+                    post={post}
+                  />
+                  {selectedPost?.id === post.id ? (
+                    <Card
+                      className="scroll-mt-24 rounded-[1.75rem] border-primary/15 bg-card p-4 shadow-soft sm:p-6"
+                      id="comments"
+                    >
+                      <div className="flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+                            Post conversation
+                          </p>
+                          <h3 className="mt-1 text-xl font-black text-kondo-ink dark:text-white">
+                            {comments.length}{" "}
+                            {comments.length === 1 ? "comment" : "comments"}
+                          </h3>
+                        </div>
+                        <Link
+                          className="text-xs font-bold text-muted-foreground transition hover:text-foreground"
+                          href={`/communities/${community.slug}`}
+                        >
+                          Close
+                        </Link>
+                      </div>
+                      <CommentThread
+                        canComment={joined}
+                        canModerate={canModerate}
+                        comments={comments}
+                        currentUserId={user.id}
+                        postId={selectedPost.id}
+                      />
+                    </Card>
+                  ) : null}
+                </div>
               ))}
             </div>
-          </Card>
-        </aside>
-      </div>
-    </div>
+
+            {!community.posts.length ? (
+              <Card className="py-16 text-center">
+                <p className="text-base font-black text-foreground">
+                  The conversation starts here.
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Be the first member to share something useful.
+                </p>
+              </Card>
+            ) : null}
+
+            {pageCount > 1 ? (
+              <div className="mt-6 flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Page {page} of {pageCount}
+                </p>
+                <div className="flex gap-2">
+                  <Button asChild size="sm" variant="secondary">
+                    <Link
+                      href={`/communities/${slug}?page=${Math.max(1, page - 1)}`}
+                    >
+                      <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                      Previous
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link
+                      href={`/communities/${slug}?page=${Math.min(pageCount, page + 1)}`}
+                    >
+                      Next
+                      <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <aside className="space-y-5 xl:sticky xl:top-24">
+            <Card className="scroll-mt-24 rounded-[1.75rem] p-6" id="about">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+                About
+              </p>
+              <h2 className="mt-2 text-xl font-black text-kondo-ink dark:text-white">
+                A space built on trust
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {community.description}
+              </p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-muted/60 p-3.5">
+                  <p className="text-xl font-black text-foreground">
+                    {community._count.members.toLocaleString()}
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                    Members
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-muted/60 p-3.5">
+                  <p className="text-xl font-black text-foreground">
+                    {community._count.posts.toLocaleString()}
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                    Posts
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 border-t border-border pt-5">
+                <p className="text-sm font-black text-foreground">
+                  Community care
+                </p>
+                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                  Be generous, protect privacy, and keep advice grounded in
+                  lived experience.
+                </p>
+                <Link
+                  className="mt-3 inline-flex text-xs font-black text-kondo-green hover:underline"
+                  href="/guidelines"
+                >
+                  Read the guidelines
+                </Link>
+              </div>
+            </Card>
+
+            <Card className="scroll-mt-24 rounded-[1.75rem] p-6" id="members">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+                    Members
+                  </p>
+                  <h2 className="mt-1 text-lg font-black text-kondo-ink dark:text-white">
+                    New around here
+                  </h2>
+                </div>
+                <span className="text-xs font-bold text-muted-foreground">
+                  {community._count.members.toLocaleString()} total
+                </span>
+              </div>
+              <div className="mt-5 space-y-3">
+                {community.members.map((member) => (
+                  <div className="flex items-center gap-3" key={member.id}>
+                    <Avatar
+                      className="h-10 w-10"
+                      firstName={member.user.firstName}
+                      lastName={member.user.lastName}
+                    />
+                    <p className="min-w-0 truncate text-sm font-bold text-foreground">
+                      {member.user.firstName} {member.user.lastName}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </aside>
+        </div>
+      </main>
+    </CommunityExperience>
   );
 }
