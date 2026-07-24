@@ -30,11 +30,20 @@ function contentSafetyScan(bytes: Uint8Array, detectedMime: string) {
   if (text.includes("EICAR-STANDARD-ANTIVIRUS-TEST-FILE")) {
     throw new MediaPolicyError("The file failed the content safety scan.");
   }
+  // PDF stream bodies contain compressed image/font bytes. Scanning those
+  // bytes as text creates false positives (for example a harmless JPEG stream
+  // can randomly contain "/JS"). Active-action names are meaningful in PDF
+  // dictionaries, which live outside stream bodies.
+  const pdfStructure =
+    detectedMime === "application/pdf"
+      ? text.replace(
+          /\bstream\r?\n[\s\S]*?\r?\nendstream\b/g,
+          "stream endstream",
+        )
+      : text;
   if (
     detectedMime === "application/pdf" &&
-    ["/JavaScript", "/JS", "/Launch", "/EmbeddedFile"].some((marker) =>
-      text.includes(marker),
-    )
+    /\/(?:JavaScript|JS|Launch|EmbeddedFile)\b/.test(pdfStructure)
   ) {
     throw new MediaPolicyError(
       "PDF files with scripts, launch actions, or embedded files are not allowed.",

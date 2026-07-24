@@ -107,6 +107,21 @@ describe("media security primitives", () => {
     ).rejects.toThrow("does not match its declared MIME");
   });
 
+  it("does not treat compressed PDF stream bytes as active actions", async () => {
+    const safePdfWithBinaryMarker = new TextEncoder().encode(
+      "%PDF-1.7\n1 0 obj\n<< /Length 5 >>\nstream\n6#/JS\nendstream\nendobj\n%%EOF",
+    );
+    await expect(
+      validateUploadedMedia({
+        purpose: "SCHEDULE_IMPORT",
+        bytes: safePdfWithBinaryMarker,
+        declaredMime: "application/pdf",
+        extension: "pdf",
+        expectedSizeBytes: safePdfWithBinaryMarker.byteLength,
+      }),
+    ).resolves.toMatchObject({ detectedMime: "application/pdf" });
+  });
+
   it("accepts private timetable images and safe PDFs under the schedule limits", async () => {
     expect(
       validateMediaIntent({

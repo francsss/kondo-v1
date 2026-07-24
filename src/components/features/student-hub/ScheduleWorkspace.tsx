@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -21,6 +21,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { uploadMediaFile } from "@/lib/client-media";
+import {
+  formatImportFileSize,
+  validateScheduleImportFiles,
+} from "@/lib/schedule-import-client";
 import { DAY_NAMES } from "@/lib/student-schedule";
 
 type University = {
@@ -178,6 +182,15 @@ export function ScheduleWorkspace({
   const [review, setReview] = useState<Review | null>(null);
   const [importId, setImportId] = useState("");
   const [pendingImportId, setPendingImportId] = useState("");
+  const [selectedImportFiles, setSelectedImportFiles] = useState<File[]>([]);
+  const [importConsent, setImportConsent] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({
+    current: 0,
+    total: 0,
+    percent: 0,
+    fileName: "",
+  });
+  const importSubmitLock = useRef(false);
   const [manual, setManual] = useState({ ...emptyCourse });
   const schedule =
     schedules.find((item) => item.id === selectedSchedule) ?? schedules[0];
@@ -211,37 +224,79 @@ export function ScheduleWorkspace({
 
   async function importSchedule(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || importSubmitLock.current) return;
+    if (!importConsent) {
+      setImportError(
+        "Confirm that you understand how Kondo securely processes your timetable.",
+      );
+      return;
+    }
+    const selectionError = pendingImportId
+      ? null
+      : validateScheduleImportFiles(selectedImportFiles);
+    if (selectionError) {
+      setImportError(selectionError);
+      return;
+    }
+    importSubmitLock.current = true;
     setBusy(true);
     setImportError("");
     setSuccess("");
     setAnalysisStage("Preparing upload...");
+    setUploadProgress({
+      current: 0,
+      total: selectedImportFiles.length,
+      percent: 0,
+      fileName: "",
+    });
     const stageTimers: Array<ReturnType<typeof setTimeout>> = [];
+    const uploadedMediaIds: string[] = [];
+    let importCreated = false;
     try {
       let currentImportId = pendingImportId;
       if (!currentImportId) {
         const form = new FormData(event.currentTarget);
-        const files = form
-          .getAll("files")
-          .filter(
-            (item): item is File => item instanceof File && item.size > 0,
+        if (!form.get("universityId")) {
+          throw new Error("Choose your university before continuing.");
+        }
+        for (const [index, file] of selectedImportFiles.entries()) {
+          setAnalysisStage(
+            `Uploading ${index + 1} of ${selectedImportFiles.length}...`,
           );
-        if (!files.length)
-          throw new Error("Choose at least one PDF or timetable image.");
-        setAnalysisStage("Uploading document...");
-        const mediaIds = [];
-        for (const file of files)
-          mediaIds.push(
-            await uploadMediaFile(file, { purpose: "SCHEDULE_IMPORT" }),
+          setUploadProgress({
+            current: index + 1,
+            total: selectedImportFiles.length,
+            percent: Math.round((index / selectedImportFiles.length) * 100),
+            fileName: file.name,
+          });
+          uploadedMediaIds.push(
+            await uploadMediaFile(file, {
+              purpose: "SCHEDULE_IMPORT",
+              onProgress: (fileProgress) => {
+                setUploadProgress({
+                  current: index + 1,
+                  total: selectedImportFiles.length,
+                  percent: Math.round(
+                    ((index + fileProgress / 100) /
+                      selectedImportFiles.length) *
+                      100,
+                  ),
+                  fileName: file.name,
+                });
+              },
+            }),
           );
+        }
+        setAnalysisStage("Validating uploaded files...");
         const created = await api("/api/student-hub/imports", {
           universityId: form.get("universityId"),
           campusId: form.get("campusId") || null,
           academicTermId: form.get("academicTermId") || null,
-          mediaIds,
+          mediaIds: uploadedMediaIds,
           retainSource: form.get("retainSource") === "on",
         });
         currentImportId = (created.import as { id: string }).id;
+        importCreated = true;
         setPendingImportId(currentImportId);
       }
       setAnalysisStage("Reading document...");
@@ -264,6 +319,8 @@ export function ScheduleWorkspace({
         setShowImport(false);
         setPendingImportId("");
         setImportId("");
+        setSelectedImportFiles([]);
+        setImportConsent(false);
         router.push(
           `/student-hub/tools/timetables/${generated.id}?generated=1`,
         );
@@ -278,10 +335,22 @@ export function ScheduleWorkspace({
           ? cause.message
           : "The timetable could not be analyzed.",
       );
+      if (!pendingImportId && !importCreated && uploadedMediaIds.length) {
+        await Promise.allSettled(
+          uploadedMediaIds.map((mediaId) =>
+            fetch(`/api/media/${mediaId}`, {
+              method: "DELETE",
+              credentials: "include",
+            }),
+          ),
+        );
+      }
     } finally {
       stageTimers.forEach((timer) => clearTimeout(timer));
       setAnalysisStage("");
+      setUploadProgress((current) => ({ ...current, percent: 0 }));
       setBusy(false);
+      importSubmitLock.current = false;
     }
   }
 
@@ -590,16 +659,7 @@ export function ScheduleWorkspace({
           title="Import your timetable"
           onClose={() => !busy && setShowImport(false)}
         >
-          <form
-            aria-busy={busy}
-            onChange={() => {
-              if (!busy) {
-                setPendingImportId("");
-                setImportError("");
-              }
-            }}
-            onSubmit={importSchedule}
-          >
+          <form aria-busy={busy} onSubmit={importSchedule}>
             <fieldset
               className="space-y-4 disabled:cursor-wait disabled:opacity-70"
               disabled={busy}
@@ -618,21 +678,86 @@ export function ScheduleWorkspace({
                   className="mt-4 block w-full text-xs"
                   multiple
                   name="files"
-                  required={!pendingImportId}
+                  onChange={(event) => {
+                    const files = Array.from(event.currentTarget.files ?? []);
+                    setSelectedImportFiles(files);
+                    setPendingImportId("");
+                    setImportError(validateScheduleImportFiles(files) ?? "");
+                  }}
                   type="file"
                 />
               </label>
+              {selectedImportFiles.length ? (
+                <div
+                  className="space-y-2 rounded-2xl bg-muted/70 p-3"
+                  aria-label="Selected files"
+                >
+                  {selectedImportFiles.map((file, index) => (
+                    <div
+                      className="flex items-center justify-between gap-3 text-xs"
+                      key={`${file.name}-${file.size}-${index}`}
+                    >
+                      <span className="min-w-0 truncate font-bold">
+                        {file.name}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {formatImportFileSize(file.size)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : pendingImportId ? (
+                <div className="rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">
+                  Your files are securely uploaded and ready for another
+                  analysis attempt.
+                </div>
+              ) : null}
               <label className="flex items-start gap-3 text-xs text-muted-foreground">
                 <input className="mt-0.5" name="retainSource" type="checkbox" />
                 Keep my source files after confirmation. Otherwise Kondo deletes
                 them.
               </label>
               <label className="flex items-start gap-3 text-xs text-muted-foreground">
-                <input className="mt-0.5" required type="checkbox" />I
-                understand that Kondo extracts text securely, then sends only
+                <input
+                  checked={importConsent}
+                  className="mt-0.5"
+                  onChange={(event) => {
+                    setImportConsent(event.target.checked);
+                    if (event.target.checked) setImportError("");
+                  }}
+                  type="checkbox"
+                />
+                I understand that Kondo extracts text securely, then sends only
                 that text to its configured AI provider. Results that need
                 correction will be shown for review before saving.
               </label>
+              {busy && uploadProgress.percent > 0 ? (
+                <div className="space-y-2" aria-live="polite">
+                  <div className="flex items-center justify-between gap-4 text-xs font-bold">
+                    <span className="min-w-0 truncate">
+                      {uploadProgress.fileName}
+                    </span>
+                    <span className="shrink-0">{uploadProgress.percent}%</span>
+                  </div>
+                  <div
+                    aria-label="Upload progress"
+                    aria-valuemax={100}
+                    aria-valuemin={0}
+                    aria-valuenow={uploadProgress.percent}
+                    className="h-2 overflow-hidden rounded-full bg-muted"
+                    role="progressbar"
+                  >
+                    <div
+                      className="h-full rounded-full bg-kondo-green transition-[width] duration-200"
+                      style={{ width: `${uploadProgress.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    File {uploadProgress.current} of {uploadProgress.total}.
+                    Keep this window open until the upload finishes.
+                  </p>
+                </div>
+              ) : null}
               {importError ? (
                 <div
                   className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 dark:bg-red-400/10 dark:text-red-300"

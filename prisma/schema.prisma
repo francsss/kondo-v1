@@ -283,6 +283,7 @@ enum ReportEvidenceKind {
   PROFILE_SNAPSHOT
   COMMUNITY_CONTENT_SNAPSHOT
   MARKETPLACE_LISTING_SNAPSHOT
+  SCHOLARSHIP_AGENT_SNAPSHOT
 }
 
 enum MediaKind {
@@ -333,6 +334,12 @@ enum ScholarshipFundingType {
   PARTIAL
 }
 
+enum ScholarshipStatus {
+  OPEN
+  OPENING_SOON
+  CLOSED
+}
+
 enum ScholarshipApplicationStatus {
   SAVED
   PREPARING
@@ -340,6 +347,12 @@ enum ScholarshipApplicationStatus {
   INTERVIEW
   ACCEPTED
   REJECTED
+}
+
+enum ScholarshipAgentAvailability {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
 }
 
 enum MediaVisibility {
@@ -492,19 +505,21 @@ model User {
 }
 
 model Country {
-  id                   String           @id @default(cuid())
-  code                 String           @unique @db.Char(2)
-  name                 String           @unique
+  id                   String             @id @default(cuid())
+  code                 String             @unique @db.Char(2)
+  name                 String             @unique
   emoji                String?
-  isActive             Boolean          @default(true)
-  verified             Boolean          @default(false)
+  isActive             Boolean            @default(true)
+  verified             Boolean            @default(false)
   users                User[]
   cities               City[]
   universities         University[]
   communities          Community[]
-  meetQueuePreferences MeetQueueEntry[] @relation("MeetCountryPreference")
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  scholarships         Scholarship[]
+  scholarshipAgents    ScholarshipAgent[]
+  meetQueuePreferences MeetQueueEntry[]   @relation("MeetCountryPreference")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   @@index([isActive, name])
 }
@@ -566,6 +581,7 @@ model University {
   studentSchedules     StudentSchedule[]
   scheduleImports      ScheduleImport[]
   scholarships         Scholarship[]
+  scholarshipLinks     ScholarshipUniversity[]
   createdAt            DateTime                        @default(now())
   updatedAt            DateTime                        @updatedAt
 
@@ -782,26 +798,51 @@ model ScheduleImportResult {
 }
 
 model Scholarship {
-  id                    String                 @id @default(cuid())
+  id                    String                  @id @default(cuid())
+  slug                  String                  @unique
   universityId          String?
-  university            University?            @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  university            University?             @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  universities          ScholarshipUniversity[]
+  countryId             String?
+  country               Country?                @relation(fields: [countryId], references: [id], onDelete: SetNull)
   title                 String
   provider              String
   city                  String?
   studyLevels           StudyLevel[]
-  fields                String[]               @default([])
-  eligibleNationalities String[]               @default([])
+  fields                String[]                @default([])
+  eligibleNationalities String[]                @default([])
   fundingType           ScholarshipFundingType
-  deadline              DateTime?              @db.Date
+  status                ScholarshipStatus       @default(OPEN)
+  opensAt               DateTime?               @db.Date
+  closesAt              DateTime?               @db.Date
+  deadline              DateTime?               @db.Date
   applicationUrl        String
-  description           String                 @db.Text
-  isActive              Boolean                @default(true)
+  description           String                  @db.Text
+  eligibilityCriteria   String[]                @default([])
+  requiredDocuments     String[]                @default([])
+  coverage              String[]                @default([])
+  applicationSteps      String[]                @default([])
+  isFeatured            Boolean                 @default(false)
+  lastVerifiedAt        DateTime?
+  isActive              Boolean                 @default(true)
   favorites             ScholarshipFavorite[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
-  @@index([isActive, deadline])
+  @@index([isActive, status, closesAt])
   @@index([universityId])
+  @@index([countryId])
+}
+
+model ScholarshipUniversity {
+  scholarshipId String
+  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  universityId  String
+  university    University  @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@id([scholarshipId, universityId])
+  @@index([universityId, scholarshipId])
 }
 
 model ScholarshipFavorite {
@@ -816,6 +857,35 @@ model ScholarshipFavorite {
 
   @@unique([userId, scholarshipId])
   @@index([userId, status, updatedAt])
+}
+
+model ScholarshipAgent {
+  id            String                       @id @default(cuid())
+  slug          String                       @unique
+  logoUrl       String?
+  name          String
+  company       String?
+  countryId     String?
+  country       Country?                     @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  languages     String[]                     @default([])
+  specialties   String[]                     @default([])
+  services      String[]                     @default([])
+  feeDetails    String?                      @db.VarChar(500)
+  whatsapp      String?
+  wechat        String?
+  email         String?
+  website       String?
+  availability  ScholarshipAgentAvailability @default(AVAILABLE)
+  averageRating Float?
+  biography     String                       @default("") @db.Text
+  verified      Boolean                      @default(false)
+  verifiedAt    DateTime?
+  isActive      Boolean                      @default(true)
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+
+  @@index([isActive, verified, availability, name])
+  @@index([countryId])
 }
 
 model Community {

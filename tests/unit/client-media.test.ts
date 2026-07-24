@@ -78,4 +78,66 @@ describe("browser media upload pipeline", () => {
     ).rejects.toThrow("Could not reach media storage");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("reports upload progress and prevents completion before storage succeeds", async () => {
+    const progress: number[] = [];
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          media: { id: "media-3" },
+          upload: {
+            url: "/api/media/uploads/media-3/content",
+            method: "PUT",
+            headers: { "Content-Type": "image/png" },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ media: { id: "media-3" } }));
+    class FakeXMLHttpRequest {
+      status = 204;
+      responseText = "";
+      withCredentials = false;
+      upload = {
+        addEventListener: (
+          type: string,
+          listener: (event: ProgressEvent) => void,
+        ) => {
+          if (type === "progress") {
+            listener({
+              lengthComputable: true,
+              loaded: 1,
+              total: 2,
+            } as ProgressEvent);
+          }
+        },
+      };
+      private listeners = new Map<string, () => void>();
+      open() {}
+      setRequestHeader() {}
+      addEventListener(type: string, listener: () => void) {
+        this.listeners.set(type, listener);
+      }
+      send() {
+        this.listeners.get("load")?.();
+      }
+      abort() {
+        this.listeners.get("abort")?.();
+      }
+    }
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
+
+    await expect(
+      uploadMediaFile(file, {
+        purpose: "SCHEDULE_IMPORT",
+        onProgress: (value) => progress.push(value),
+      }),
+    ).resolves.toBe("media-3");
+
+    expect(progress[0]).toBe(2);
+    expect(progress).toContain(48);
+    expect(progress.at(-1)).toBe(100);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

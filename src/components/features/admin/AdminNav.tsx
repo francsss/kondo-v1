@@ -105,6 +105,12 @@ const items = [
     permission: "STUDENT_HUB_CONFIG_VIEW" as const,
   },
   {
+    href: "/admin/scholarships",
+    label: "Scholarships",
+    icon: GraduationCap,
+    permission: "STUDENT_HUB_CONFIG_VIEW" as const,
+  },
+  {
     href: "/admin/analytics",
     label: "Analytics",
     icon: BarChart3,

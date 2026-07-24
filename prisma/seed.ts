@@ -78,6 +78,9 @@ async function clearDatabase() {
   await prisma.guideProgress.deleteMany();
   await prisma.guideStep.deleteMany();
   await prisma.guide.deleteMany();
+  await prisma.scholarshipFavorite.deleteMany();
+  await prisma.scholarship.deleteMany();
+  await prisma.scholarshipAgent.deleteMany();
   await prisma.listingFavorite.deleteMany();
   await prisma.listingImage.deleteMany();
   await prisma.marketplaceListing.deleteMany();

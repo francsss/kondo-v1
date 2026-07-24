@@ -1,46 +1,160 @@
 import type { Metadata } from "next";
+import type { Prisma, ScholarshipStatus } from "@prisma/client";
 import Link from "next/link";
 import {
-  ArrowUpRight,
+  ArrowRight,
+  BadgeCheck,
   CalendarDays,
   GraduationCap,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { ScholarshipActions } from "@/components/features/student-hub/ScholarshipActions";
+import { ScholarshipNav } from "@/components/features/student-hub/ScholarshipNav";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
+import { effectiveScholarshipStatus } from "@/lib/scholarships";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Scholarships" };
 
+const studyLevels = [
+  "LANGUAGE",
+  "BACHELORS",
+  "MASTERS",
+  "DOCTORATE",
+  "EXCHANGE",
+  "OTHER",
+] as const;
+
+function statusWhere(status: string | undefined) {
+  const now = new Date();
+  if (status === "CLOSED") {
+    return {
+      OR: [
+        { status: "CLOSED" as ScholarshipStatus },
+        { closesAt: { lt: now } },
+      ],
+    };
+  }
+  if (status === "OPENING_SOON") {
+    return {
+      OR: [
+        { status: "OPENING_SOON" as ScholarshipStatus },
+        { opensAt: { gt: now } },
+      ],
+      AND: [{ OR: [{ closesAt: null }, { closesAt: { gte: now } }] }],
+    };
+  }
+  if (status === "OPEN") {
+    return {
+      status: "OPEN" as ScholarshipStatus,
+      OR: [{ opensAt: null }, { opensAt: { lte: now } }],
+      AND: [{ OR: [{ closesAt: null }, { closesAt: { gte: now } }] }],
+    };
+  }
+  return {};
+}
+
+function remainingLabel(closesAt: Date | null) {
+  if (!closesAt) return "No fixed deadline";
+  const days = Math.ceil(
+    (closesAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+  );
+  if (days < 0) return "Deadline passed";
+  if (days === 0) return "Closes today";
+  if (days === 1) return "1 day left";
+  return `${days} days left`;
+}
+
 export default async function ScholarshipsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; funding?: string; saved?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    funding?: string;
+    saved?: string;
+    country?: string;
+    university?: string;
+    level?: string;
+    field?: string;
+    status?: string;
+  }>;
 }) {
   const user = await requireUser();
-  const { q = "", funding, saved } = await searchParams;
-  const scholarships = await prisma.scholarship.findMany({
-    where: {
-      isActive: true,
-      ...(funding ? { fundingType: funding as "FULL" | "PARTIAL" } : {}),
-      ...(saved ? { favorites: { some: { userId: user.id } } } : {}),
-      ...(q
+  const {
+    q = "",
+    funding,
+    saved,
+    country,
+    university,
+    level,
+    field,
+    status,
+  } = await searchParams;
+  const where: Prisma.ScholarshipWhereInput = {
+    isActive: true,
+    ...(funding === "FULL" || funding === "PARTIAL"
+      ? { fundingType: funding }
+      : {}),
+    ...(saved ? { favorites: { some: { userId: user.id } } } : {}),
+    ...(country ? { countryId: country } : {}),
+    ...(university
+      ? { universities: { some: { universityId: university } } }
+      : {}),
+    ...(level && studyLevels.includes(level as (typeof studyLevels)[number])
+      ? { studyLevels: { has: level as (typeof studyLevels)[number] } }
+      : {}),
+    ...(field ? { fields: { has: field } } : {}),
+    AND: [
+      statusWhere(status),
+      q
         ? {
             OR: [
               { title: { contains: q, mode: "insensitive" } },
               { provider: { contains: q, mode: "insensitive" } },
               { city: { contains: q, mode: "insensitive" } },
+              { fields: { has: q } },
             ],
           }
-        : {}),
-    },
-    include: {
-      university: { select: { name: true } },
-      favorites: { where: { userId: user.id }, select: { status: true } },
-    },
-    orderBy: [{ deadline: "asc" }, { createdAt: "desc" }],
-  });
+        : {},
+    ],
+  };
+  const [scholarships, countries, universities, fieldRows] = await Promise.all([
+    prisma.scholarship.findMany({
+      where,
+      include: {
+        country: { select: { name: true } },
+        universities: {
+          include: { university: { select: { name: true } } },
+        },
+        favorites: { where: { userId: user.id }, select: { status: true } },
+      },
+      orderBy: [
+        { isFeatured: "desc" },
+        { closesAt: { sort: "asc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
+    }),
+    prisma.country.findMany({
+      where: { isActive: true, scholarships: { some: { isActive: true } } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.university.findMany({
+      where: {
+        isActive: true,
+        scholarshipLinks: { some: { scholarship: { isActive: true } } },
+      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.scholarship.findMany({
+      where: { isActive: true },
+      select: { fields: true },
+    }),
+  ]);
+  const fields = [...new Set(fieldRows.flatMap((item) => item.fields))].sort();
   return (
     <div className="mx-auto max-w-[1240px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
       <div>
@@ -51,105 +165,203 @@ export default async function ScholarshipsPage({
           Funding opportunities, without the noise.
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Verified opportunities can be saved and tracked from discovery to
-          decision.
+          Discover verified opportunities, understand every requirement, and
+          track your application from preparation to decision.
         </p>
       </div>
-      <Card className="mt-7">
-        <form className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
-          <label className="flex h-11 items-center gap-3 rounded-2xl border border-border px-4">
+      <ScholarshipNav active="opportunities" />
+      <Card className="mt-6">
+        <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex h-11 items-center gap-3 rounded-2xl border border-border px-4 md:col-span-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               aria-label="Search scholarships"
               className="w-full bg-transparent text-sm outline-none"
               defaultValue={q}
               name="q"
-              placeholder="University, city or scholarship"
+              placeholder="Scholarship, provider, city or field"
             />
           </label>
-          <select
-            className="h-11 rounded-2xl border border-border bg-background px-3 text-sm"
-            defaultValue={funding ?? ""}
+          <FilterSelect
+            defaultValue={country}
+            label="Destination"
+            name="country"
+            options={countries.map((item) => [item.id, item.name])}
+          />
+          <FilterSelect
+            defaultValue={university}
+            label="University"
+            name="university"
+            options={universities.map((item) => [item.id, item.name])}
+          />
+          <FilterSelect
+            defaultValue={level}
+            label="Study level"
+            name="level"
+            options={studyLevels.map((item) => [
+              item,
+              `${item[0]}${item.slice(1).toLowerCase()}`,
+            ])}
+          />
+          <FilterSelect
+            defaultValue={field}
+            label="Field"
+            name="field"
+            options={fields.map((item) => [item, item])}
+          />
+          <FilterSelect
+            defaultValue={funding}
+            label="Funding"
             name="funding"
-          >
-            <option value="">All funding types</option>
-            <option value="FULL">Full funding</option>
-            <option value="PARTIAL">Partial funding</option>
-          </select>
+            options={[
+              ["FULL", "Full funding"],
+              ["PARTIAL", "Partial funding"],
+            ]}
+          />
+          <FilterSelect
+            defaultValue={status}
+            label="Status"
+            name="status"
+            options={[
+              ["OPEN", "Open"],
+              ["OPENING_SOON", "Opening soon"],
+              ["CLOSED", "Closed"],
+            ]}
+          />
+          {saved ? <input name="saved" type="hidden" value="1" /> : null}
           <button className="h-11 rounded-full bg-kondo-ink px-6 text-sm font-black text-white dark:bg-emerald-400 dark:text-kondo-ink">
-            Filter
+            Apply filters
           </button>
-        </form>
-        <div className="mt-3">
           <Link
-            className="text-xs font-black text-kondo-green"
+            className="grid h-11 place-items-center rounded-full border border-border text-sm font-black"
             href={
               saved
                 ? "/student-hub/scholarships"
                 : "/student-hub/scholarships?saved=1"
             }
           >
-            {saved ? "Show all opportunities" : "Show saved opportunities"}
+            {saved ? "Show all" : "Saved only"}
           </Link>
-        </div>
+        </form>
       </Card>
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
-        {scholarships.map((item) => (
-          <Card className="flex h-full flex-col" key={item.id}>
-            <div className="flex items-start justify-between gap-4">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
-                <GraduationCap className="h-5 w-5" />
-              </span>
-              <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-wide">
-                {item.fundingType.replaceAll("_", " ")}
-              </span>
-            </div>
-            <h2 className="mt-5 text-lg font-black">{item.title}</h2>
-            <p className="mt-1 text-sm font-bold text-kondo-green">
-              {item.provider}
-            </p>
-            <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
-              {item.description}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>{item.university?.name ?? "Multiple universities"}</span>
-              {item.city ? <span>· {item.city}</span> : null}
-              {item.deadline ? (
-                <span className="inline-flex items-center gap-1">
-                  · <CalendarDays className="h-3.5 w-3.5" />
-                  {item.deadline.toLocaleDateString()}
+        {scholarships.map((item) => {
+          const effectiveStatus = effectiveScholarshipStatus(item);
+          const linkedUniversities = item.universities.map(
+            ({ university: linked }) => linked.name,
+          );
+          return (
+            <Card className="group flex h-full flex-col" key={item.id}>
+              <div className="flex items-start justify-between gap-4">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
+                  <GraduationCap className="h-5 w-5" />
                 </span>
-              ) : null}
-            </div>
-            <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
-              <ScholarshipActions
-                id={item.id}
-                initialStatus={item.favorites[0]?.status ?? null}
-              />
-              <a
-                className="inline-flex items-center gap-1 text-sm font-black text-kondo-green"
-                href={item.applicationUrl}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Official page <ArrowUpRight className="h-4 w-4" />
-              </a>
-            </div>
-          </Card>
-        ))}
+                <div className="flex flex-wrap justify-end gap-2">
+                  {item.isFeatured ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">
+                      <Sparkles className="h-3 w-3" />
+                      Featured
+                    </span>
+                  ) : null}
+                  <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-wide">
+                    {effectiveStatus.replaceAll("_", " ")}
+                  </span>
+                </div>
+              </div>
+              <h2 className="mt-5 text-lg font-black">{item.title}</h2>
+              <p className="mt-1 flex items-center gap-1 text-sm font-bold text-kondo-green">
+                {item.provider}
+                {item.lastVerifiedAt ? (
+                  <BadgeCheck
+                    aria-label="Information verified by Kondo"
+                    className="h-4 w-4"
+                  />
+                ) : null}
+              </p>
+              <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                {item.description}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-muted px-3 py-1 text-xs font-bold">
+                  {item.fundingType === "FULL"
+                    ? "Full funding"
+                    : "Partial funding"}
+                </span>
+                {item.fields.slice(0, 2).map((studyField) => (
+                  <span
+                    className="rounded-full bg-muted px-3 py-1 text-xs"
+                    key={studyField}
+                  >
+                    {studyField}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-4 text-xs leading-5 text-muted-foreground">
+                <p>
+                  {linkedUniversities.length
+                    ? linkedUniversities.slice(0, 2).join(" · ")
+                    : (item.country?.name ?? "Multiple destinations")}
+                </p>
+                <p className="mt-1 inline-flex items-center gap-1 font-bold">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  {remainingLabel(item.closesAt)}
+                </p>
+              </div>
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
+                <ScholarshipActions
+                  id={item.id}
+                  initialStatus={item.favorites[0]?.status ?? null}
+                />
+                <Link
+                  className="inline-flex items-center gap-1 text-sm font-black text-kondo-green transition group-hover:gap-2"
+                  href={`/student-hub/scholarships/${item.slug}`}
+                >
+                  View details <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </Card>
+          );
+        })}
       </section>
       {!scholarships.length ? (
         <Card className="mt-6 py-16 text-center">
           <GraduationCap className="mx-auto h-9 w-9 text-kondo-green" />
           <h2 className="mt-4 text-xl font-black">
-            No opportunity matches this view yet.
+            No opportunity matches these filters.
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Administrators can add verified scholarships without placeholder
-            data.
+            Try a broader destination, level, or funding type.
           </p>
         </Card>
       ) : null}
     </div>
+  );
+}
+
+function FilterSelect({
+  name,
+  label,
+  defaultValue,
+  options,
+}: {
+  name: string;
+  label: string;
+  defaultValue?: string;
+  options: Array<readonly [string, string]>;
+}) {
+  return (
+    <select
+      aria-label={label}
+      className="h-11 min-w-0 rounded-2xl border border-border bg-background px-3 text-sm"
+      defaultValue={defaultValue ?? ""}
+      name={name}
+    >
+      <option value="">All {label.toLowerCase()}</option>
+      {options.map(([value, optionLabel]) => (
+        <option key={value} value={value}>
+          {optionLabel}
+        </option>
+      ))}
+    </select>
   );
 }
