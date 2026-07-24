@@ -6,7 +6,7 @@ test.describe("public landing and authentication", () => {
   }) => {
     await page.goto("/");
     await expect(
-      page.getByRole("link", { name: "Sign in" }).first(),
+      page.getByRole("link", { name: /login|sign in/i }).first(),
     ).toBeVisible();
     await expect(
       page
@@ -24,6 +24,11 @@ test.describe("public landing and authentication", () => {
     await page
       .locator('input[name="email"]')
       .fill(`e2e-${Date.now()}@example.com`);
+    await page.getByRole("button", { name: "Country of origin" }).click();
+    await page
+      .getByRole("textbox", { name: "Search African countries…" })
+      .fill("Ghana");
+    await page.getByRole("option", { name: /ghana/i }).click();
     await page.locator('input[name="password"]').fill("weak");
     await page.locator('input[name="confirmPassword"]').fill("weak");
     await page.locator('input[name="acceptedTerms"]').check();
