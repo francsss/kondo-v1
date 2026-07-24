@@ -48,6 +48,7 @@ route-specific worker secret and remains compatible with Vercel Cron `GET`.
 | ------------------------------------- | ------------------ | ---------------------------------------------------- | --------------------------------------------- |
 | `/api/internal/notifications/process` | Every five minutes | Drains the notification outbox.                      | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
 | `/api/internal/notifications/digest`  | Daily, 08:13 UTC   | Sends due email digests.                             | `CRON_SECRET` or `NOTIFICATION_WORKER_SECRET` |
+| `/api/internal/stories/publish`       | Every five minutes | Publishes due scheduled Student Stories.             | `CRON_SECRET`                                 |
 | `/api/internal/marketplace/expire`    | Hourly, minute 17  | Expires stale marketplace listings.                  | `CRON_SECRET` or `MARKETPLACE_WORKER_SECRET`  |
 | `/api/internal/media/cleanup`         | Hourly, minute 37  | Deletes orphaned media and retries provider deletes. | `CRON_SECRET` or `MEDIA_WORKER_SECRET`        |
 

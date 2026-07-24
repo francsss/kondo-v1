@@ -37,5 +37,7 @@ describe("product analytics privacy", () => {
     expect(productAreaForPath("/student-hub/tools")).toBe("student_hub");
     expect(productAreaForPath("/explore/jiaxing/jobs")).toBe("explore");
     expect(productAreaForPath("/messages/conversation-id")).toBe("messages");
+    expect(productAreaForPath("/stories")).toBe("student_stories");
+    expect(productAreaForPath("/stories/submit")).toBe("student_stories");
   });
 });

@@ -58,6 +58,38 @@ export const PRODUCT_EVENTS = {
   NOTIFICATIONS_RECEIVED: "notifications_received",
   NOTIFICATION_OPENED: "notification_opened",
   NOTIFICATION_ACTIONED: "notification_actioned",
+  STORY_OPENED: "story_opened",
+  STORY_STARTED: "story_started",
+  STORY_COMPLETED: "story_completed",
+  STORY_SKIPPED: "story_skipped",
+  STORY_LIKED: "story_liked",
+  STORY_UNLIKED: "story_unliked",
+  STORY_COMMENTED: "story_commented",
+  STORY_SHARED: "story_shared",
+  STORY_SAVED: "story_saved",
+  STORY_UNSAVED: "story_unsaved",
+  STORY_REPORTED: "story_reported",
+  STORY_ENTITY_CLICKED: "story_entity_clicked",
+  CREATOR_PROFILE_OPENED: "creator_profile_opened",
+  CREATOR_FOLLOWED: "creator_followed",
+  PUBLISH_REQUEST_STARTED: "publish_request_started",
+  PUBLISH_REQUEST_SUBMITTED: "publish_request_submitted",
+  PUBLISH_REQUEST_REVISION_REQUESTED: "publish_request_revision_requested",
+  PUBLISH_REQUEST_RESUBMITTED: "publish_request_resubmitted",
+  PUBLISH_REQUEST_APPROVED: "publish_request_approved",
+  PUBLISH_REQUEST_REJECTED: "publish_request_rejected",
+  OFFICIAL_PROFILE_OPENED: "official_profile_opened",
+  OFFICIAL_MARK_CLICKED: "official_mark_clicked",
+  VERIFICATION_INFO_OPENED: "verification_info_opened",
+  VERIFICATION_REQUEST_STARTED: "verification_request_started",
+  VERIFICATION_REQUEST_SUBMITTED: "verification_request_submitted",
+  VERIFICATION_REQUEST_MORE_INFO_REQUESTED:
+    "verification_request_more_info_requested",
+  VERIFICATION_REQUEST_APPROVED: "verification_request_approved",
+  VERIFICATION_REQUEST_REJECTED: "verification_request_rejected",
+  OFFICIAL_STATUS_SUSPENDED: "official_status_suspended",
+  OFFICIAL_STATUS_REVOKED: "official_status_revoked",
+  OFFICIAL_PROFILE_REPORTED: "official_profile_reported",
   JAVASCRIPT_ERROR: "javascript_error",
   API_REQUEST_SLOW: "api_request_slow",
   API_REQUEST_FAILED: "api_request_failed",
@@ -113,6 +145,7 @@ export function sanitizeProductProperties(
 const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
   [/^\/messages\/[^/]+/, "/messages/[conversation]"],
   [/^\/profile\/[^/]+/, "/profile/[member]"],
+  [/^\/stories\/[^/]+/, "/stories/[story-action]"],
   [/^\/communities\/[^/]+\/manage/, "/communities/[community]/manage"],
   [/^\/communities\/[^/]+/, "/communities/[community]"],
   [/^\/marketplace\/[^/]+\/edit/, "/marketplace/[listing]/edit"],
@@ -126,6 +159,7 @@ const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
   [/^\/api\/posts\/[^/]+/, "/api/posts/[post]"],
   [/^\/api\/marketplace\/[^/]+/, "/api/marketplace/[listing]"],
   [/^\/api\/notifications\/[^/]+/, "/api/notifications/[notification]"],
+  [/^\/api\/stories\/[^/]+/, "/api/stories/[story]"],
 ];
 
 export function normalizeAnalyticsRoute(input: string) {
@@ -153,6 +187,7 @@ export function productAreaForPath(pathname: string) {
   if (pathname.startsWith("/messages")) return "messages";
   if (pathname.startsWith("/explore")) return "explore";
   if (pathname.startsWith("/notifications")) return "notifications";
+  if (pathname.startsWith("/stories")) return "student_stories";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/settings")) return "settings";
   if (pathname.startsWith("/admin")) return "admin";

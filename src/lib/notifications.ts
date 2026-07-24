@@ -78,6 +78,7 @@ const safeRoutePrefixes = [
   "/student-hub",
   "/settings",
   "/explore",
+  "/stories",
   "/home",
   "/language",
   "/onboarding",

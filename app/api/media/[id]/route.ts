@@ -27,7 +27,10 @@ export async function GET(
     const media = await getMediaForDelivery((await params).id, user);
     const storage = getObjectStorageForProvider(media.storageProvider);
     const isPublic = media.visibility === "PUBLIC";
-    const disposition = media.kind === "IMAGE" ? "inline" : "attachment";
+    const disposition =
+      media.kind === "IMAGE" || media.kind === "VIDEO"
+        ? "inline"
+        : "attachment";
     const contentType = media.detectedMime ?? "application/octet-stream";
     const contentDisposition = `${disposition}; filename*=UTF-8''${encodeURIComponent(media.originalFileName)}`;
     const readTarget = await storage.createReadTarget({

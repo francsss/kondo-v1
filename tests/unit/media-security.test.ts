@@ -5,7 +5,11 @@ import {
   createMediaUploadToken,
   verifyMediaUploadToken,
 } from "@/lib/media-token";
-import { detectMediaMime, validateUploadedMedia } from "@/lib/media-validation";
+import {
+  detectMediaMime,
+  detectMp4DurationSeconds,
+  validateUploadedMedia,
+} from "@/lib/media-validation";
 
 describe("media security primitives", () => {
   it("requires matching extensions, MIME policy, size limits, and alt text", () => {
@@ -139,5 +143,41 @@ describe("media security primitives", () => {
         sizeBytes: 2_000_000,
       }),
     ).toMatchObject({ kind: "IMAGE", policy: { visibility: "PRIVATE" } });
+  });
+
+  it("validates Student Story media intent and MP4 duration metadata", () => {
+    expect(
+      validateMediaIntent({
+        purpose: "STORY_VIDEO",
+        fileName: "student-life.mp4",
+        mimeType: "video/mp4",
+        sizeBytes: 5_000_000,
+      }),
+    ).toMatchObject({
+      kind: "VIDEO",
+      policy: { visibility: "PUBLIC", maxBytes: 25 * 1024 * 1024 },
+    });
+    expect(
+      validateMediaIntent({
+        purpose: "VERIFICATION_DOCUMENT",
+        fileName: "authority.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 500_000,
+      }),
+    ).toMatchObject({
+      kind: "DOCUMENT",
+      policy: { visibility: "PRIVATE" },
+    });
+
+    const bytes = new Uint8Array(32);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(0, 32);
+    bytes.set(new TextEncoder().encode("mvhd"), 4);
+    view.setUint32(20, 1_000);
+    view.setUint32(24, 179_500);
+    expect(detectMp4DurationSeconds(bytes)).toBe(180);
+
+    view.setUint32(20, 0);
+    expect(detectMp4DurationSeconds(bytes)).toBeNull();
   });
 });

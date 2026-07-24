@@ -140,6 +140,9 @@ export const mediaUploadIntentSchema = z
       "MESSAGE_IMAGE",
       "MESSAGE_DOCUMENT",
       "SCHEDULE_IMPORT",
+      "STORY_VIDEO",
+      "STORY_POSTER",
+      "VERIFICATION_DOCUMENT",
     ]),
     fileName: z.string().trim().min(1).max(255),
     mimeType: z.string().trim().min(3).max(120),
@@ -147,13 +150,14 @@ export const mediaUploadIntentSchema = z
       .number()
       .int()
       .positive()
-      .max(15 * 1024 * 1024),
+      .max(25 * 1024 * 1024),
     altText: z.string().trim().min(2).max(240).nullable().optional(),
     replacesId: z.string().cuid().optional(),
   })
   .superRefine((value, context) => {
     if (
       value.purpose !== "SCHEDULE_IMPORT" &&
+      value.purpose !== "STORY_VIDEO" &&
       value.sizeBytes > 10 * 1024 * 1024
     ) {
       context.addIssue({

@@ -8,6 +8,7 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { resolvePublishedCity } from "@/lib/city-hub";
 import { requireUser } from "@/lib/server-auth";
+import { getContextualStories } from "@/lib/stories";
 
 type PageProps = { params: Promise<{ city: string }> };
 
@@ -41,5 +42,10 @@ export default async function ExploreCityPage({ params }: PageProps) {
     properties: { city: city.slug },
   });
 
-  return <CityHubView city={city} />;
+  const stories = await getContextualStories(user, {
+    citySlug: city.slug,
+    limit: 6,
+  });
+
+  return <CityHubView city={city} stories={stories} />;
 }

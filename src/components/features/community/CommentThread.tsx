@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageUserButton } from "@/components/features/messages/MessageUserButton";
+import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { formatRelativeDate } from "@/lib/presentation";
@@ -30,6 +31,11 @@ export type CommentItem = {
     id: string;
     firstName: string;
     lastName: string;
+    avatarMediaId?: string | null;
+    officialProfileStatus?: string;
+    officialOrganizationType?: string | null;
+    officialOrganizationName?: string | null;
+    officialVerifiedAt?: Date | string | null;
     country: { emoji: string | null } | null;
     university: { shortName: string | null } | null;
   };
@@ -412,9 +418,15 @@ function CommentRow({
       )}
     >
       <Avatar
-        className={cn("h-9 w-9", depth > 0 && "h-8 w-8")}
+        className={cn(
+          "h-9 w-9",
+          depth > 0 && "h-8 w-8",
+          comment.author.officialProfileStatus === "APPROVED" &&
+            "ring-[3px] ring-kondo-lime",
+        )}
         firstName={comment.author.firstName}
         lastName={comment.author.lastName}
+        mediaId={comment.author.avatarMediaId}
       />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -422,6 +434,13 @@ function CommentRow({
             {comment.author.firstName} {comment.author.lastName}{" "}
             {comment.author.country?.emoji}
           </p>
+          {comment.author.officialProfileStatus === "APPROVED" ? (
+            <OfficialMark
+              organizationName={comment.author.officialOrganizationName}
+              organizationType={comment.author.officialOrganizationType}
+              verifiedAt={comment.author.officialVerifiedAt}
+            />
+          ) : null}
           <span className="text-[11px] font-semibold text-muted-foreground">
             {comment.author.university?.shortName ?? "Kondo member"} ·{" "}
             {formatRelativeDate(comment.createdAt)}

@@ -26,6 +26,7 @@
     "notifications:digest": "tsx scripts/send-email-digests.ts",
     "marketplace:expire": "tsx scripts/expire-listings.ts",
     "community-requests:expire": "tsx scripts/expire-community-requests.ts",
+    "stories:publish": "tsx scripts/publish-scheduled-stories.ts",
     "posthog:setup": "node scripts/setup-posthog-dashboards.mjs",
     "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts"
   },

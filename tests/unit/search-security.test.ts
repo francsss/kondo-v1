@@ -115,6 +115,10 @@ describe("search result minimization", () => {
       username: "ama",
       firstName: "Ama",
       lastName: "Mensah",
+      officialProfileStatus: "NOT_VERIFIED",
+      officialOrganizationType: null,
+      officialOrganizationName: null,
+      officialVerifiedAt: null,
       countryEmoji: "🇬🇭",
       affiliation: "JXU",
     });
@@ -123,6 +127,10 @@ describe("search result minimization", () => {
       username: "ama",
       firstName: "Ama",
       lastName: "Mensah",
+      officialProfileStatus: "NOT_VERIFIED",
+      officialOrganizationType: null,
+      officialOrganizationName: null,
+      officialVerifiedAt: null,
     });
     expect(JSON.stringify(result)).not.toContain("private@example.com");
     expect(JSON.stringify(result)).not.toContain("passwordHash");

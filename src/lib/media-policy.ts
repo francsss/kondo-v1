@@ -107,6 +107,35 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     maxHeight: 12_000,
     altRequired: false,
   },
+  STORY_VIDEO: {
+    kind: "VIDEO",
+    visibility: "PUBLIC",
+    maxBytes: 25 * 1024 * 1024,
+    mimeExtensions: {
+      "video/mp4": ["mp4"],
+    },
+    altRequired: false,
+  },
+  STORY_POSTER: {
+    kind: "IMAGE",
+    visibility: "PUBLIC",
+    maxBytes: 8 * 1024 * 1024,
+    mimeExtensions: imageTypes,
+    minWidth: 360,
+    minHeight: 640,
+    maxWidth: 8192,
+    maxHeight: 8192,
+    altRequired: true,
+  },
+  VERIFICATION_DOCUMENT: {
+    kind: "DOCUMENT",
+    visibility: "PRIVATE",
+    maxBytes: 10 * 1024 * 1024,
+    mimeExtensions: {
+      "application/pdf": ["pdf"],
+    },
+    altRequired: false,
+  },
 };
 
 export class MediaPolicyError extends Error {

@@ -9,6 +9,7 @@ import {
   LogOut,
   LockKeyhole,
   Palette,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -66,6 +67,13 @@ const settings = [
     title: "Account",
     description: "Sign out or request an export or account deletion.",
     icon: LogOut,
+  },
+  {
+    href: "/settings/official-profile",
+    title: "Official profile",
+    description:
+      "Request Kondo recognition for an institution or organization you represent.",
+    icon: ShieldCheck,
   },
 ] as const;
 

@@ -22,7 +22,50 @@ export function detectMediaMime(bytes: Uint8Array) {
   if (new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-") {
     return "application/pdf";
   }
+  if (
+    bytes.length >= 12 &&
+    new TextDecoder().decode(bytes.slice(4, 8)) === "ftyp"
+  ) {
+    return "video/mp4";
+  }
   return null;
+}
+
+function readUint64(view: DataView, offset: number) {
+  const high = view.getUint32(offset);
+  const low = view.getUint32(offset + 4);
+  return high * 2 ** 32 + low;
+}
+
+export function detectMp4DurationSeconds(bytes: Uint8Array) {
+  const marker = new TextEncoder().encode("mvhd");
+  let markerOffset = -1;
+  for (let index = 4; index <= bytes.length - marker.length; index += 1) {
+    if (marker.every((value, offset) => bytes[index + offset] === value)) {
+      markerOffset = index;
+      break;
+    }
+  }
+  if (markerOffset < 4) return null;
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const boxStart = markerOffset - 4;
+  const boxSize = view.getUint32(boxStart);
+  const payload = markerOffset + 4;
+  if (boxSize < 28 || boxStart + boxSize > bytes.length) return null;
+
+  const version = view.getUint8(payload);
+  const timescaleOffset = version === 1 ? payload + 20 : payload + 12;
+  const durationOffset = version === 1 ? payload + 24 : payload + 16;
+  const required = durationOffset + (version === 1 ? 8 : 4);
+  if (required > boxStart + boxSize || required > bytes.length) return null;
+  const timescale = view.getUint32(timescaleOffset);
+  const duration =
+    version === 1
+      ? readUint64(view, durationOffset)
+      : view.getUint32(durationOffset);
+  if (!timescale || !Number.isFinite(duration)) return null;
+  return Math.max(1, Math.ceil(duration / timescale));
 }
 
 function contentSafetyScan(bytes: Uint8Array, detectedMime: string) {
@@ -82,6 +125,7 @@ export async function validateUploadedMedia(input: {
 
   let width: number | null = null;
   let height: number | null = null;
+  let durationSeconds: number | null = null;
   if (detectedMime.startsWith("image/")) {
     try {
       const decoder = sharp(input.bytes, {
@@ -112,7 +156,7 @@ export async function validateUploadedMedia(input: {
       if (error instanceof MediaPolicyError) throw error;
       throw new MediaPolicyError("The image could not be decoded safely.");
     }
-  } else {
+  } else if (detectedMime === "application/pdf") {
     const tail = new TextDecoder("latin1").decode(input.bytes.slice(-2048));
     if (!tail.includes("%%EOF")) {
       throw new MediaPolicyError("The PDF file is incomplete or invalid.");
@@ -126,12 +170,25 @@ export async function validateUploadedMedia(input: {
         );
       }
     }
+  } else if (detectedMime === "video/mp4") {
+    durationSeconds = detectMp4DurationSeconds(input.bytes);
+    if (!durationSeconds) {
+      throw new MediaPolicyError(
+        "The MP4 duration could not be verified. Export the video again and retry.",
+      );
+    }
+    if (durationSeconds > 180) {
+      throw new MediaPolicyError(
+        "Student Stories must be 3 minutes or shorter.",
+      );
+    }
   }
 
   return {
     detectedMime,
     width,
     height,
+    durationSeconds,
     checksumSha256: createHash("sha256").update(input.bytes).digest("hex"),
   };
 }

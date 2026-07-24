@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -99,6 +100,10 @@ function renderItem(category: Category, item: Record<string, unknown>) {
         lastName: string;
         countryEmoji: string | null;
         affiliation: string | null;
+        officialProfileStatus: string;
+        officialOrganizationType: string | null;
+        officialOrganizationName: string | null;
+        officialVerifiedAt: string | Date | null;
       };
       return (
         <Link href={`/profile/${user.username ?? user.id}`} key={user.id}>
@@ -108,9 +113,18 @@ function renderItem(category: Category, item: Record<string, unknown>) {
               <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
                 Student
               </p>
-              <h2 className="mt-1 font-bold text-kondo-ink dark:text-white">
-                {user.firstName} {user.lastName}
-              </h2>
+              <div className="mt-1 flex items-center gap-1.5">
+                <h2 className="font-bold text-kondo-ink dark:text-white">
+                  {user.firstName} {user.lastName}
+                </h2>
+                {user.officialProfileStatus === "APPROVED" ? (
+                  <OfficialMark
+                    organizationName={user.officialOrganizationName}
+                    organizationType={user.officialOrganizationType}
+                    verifiedAt={user.officialVerifiedAt}
+                  />
+                ) : null}
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {user.countryEmoji} {user.affiliation}
               </p>

@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { toSafePublicOfficialFields } from "@/lib/serializers";
 import {
   activeListingWhere,
   communityVisibilityWhere,
@@ -23,6 +24,11 @@ export async function getHomeData(userId: string) {
               firstName: true,
               lastName: true,
               avatarKey: true,
+              avatarMediaId: true,
+              officialProfileStatus: true,
+              officialOrganizationType: true,
+              officialOrganizationName: true,
+              officialVerifiedAt: true,
               country: { select: { emoji: true } },
               university: { select: { shortName: true, name: true } },
             },
@@ -112,7 +118,19 @@ export async function getHomeData(userId: string) {
       }),
     ]);
 
-  return { posts, communities, listings, guides, upcomingEvents };
+  return {
+    posts: posts.map((post) => ({
+      ...post,
+      author: {
+        ...post.author,
+        ...toSafePublicOfficialFields(post.author),
+      },
+    })),
+    communities,
+    listings,
+    guides,
+    upcomingEvents,
+  };
 }
 
 export async function getCommunityDirectory(

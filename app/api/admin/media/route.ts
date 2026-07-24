@@ -16,6 +16,10 @@ const PURPOSES = [
   "GUIDE_COVER",
   "MESSAGE_IMAGE",
   "MESSAGE_DOCUMENT",
+  "SCHEDULE_IMPORT",
+  "STORY_VIDEO",
+  "STORY_POSTER",
+  "VERIFICATION_DOCUMENT",
 ];
 
 export async function GET(request: NextRequest) {

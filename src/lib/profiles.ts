@@ -16,6 +16,7 @@ import {
   publishedQuestionWhere,
 } from "@/lib/content-visibility";
 import { attachMediaAsset, finalizeMediaStorageDeletion } from "@/lib/media";
+import { publicOfficialProfile } from "@/lib/official-profiles";
 import { prisma } from "@/lib/prisma";
 
 type ProfileActor = {
@@ -88,6 +89,10 @@ const profileBaseSelect = {
   username: true,
   bio: true,
   status: true,
+  officialProfileStatus: true,
+  officialOrganizationType: true,
+  officialOrganizationName: true,
+  officialVerifiedAt: true,
   profileAudience: true,
   locationAudience: true,
   educationAudience: true,
@@ -299,6 +304,7 @@ export async function getPublicProfile(
     firstName: user.firstName,
     lastName: user.lastName,
     fullName: `${user.firstName} ${user.lastName}`,
+    official: publicOfficialProfile(user),
     bio: user.bio,
     avatar:
       user.avatarMedia?.status === "ACTIVE" &&

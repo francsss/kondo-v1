@@ -32,6 +32,10 @@ export const safePublicUserSelect = {
   username: true,
   firstName: true,
   lastName: true,
+  officialProfileStatus: true,
+  officialOrganizationType: true,
+  officialOrganizationName: true,
+  officialVerifiedAt: true,
 } satisfies Prisma.UserSelect;
 
 type SafePublicUserSource = Prisma.UserGetPayload<{
@@ -43,7 +47,26 @@ export type SafePublicUser = {
   username: string | null;
   firstName: string;
   lastName: string;
+  officialProfileStatus: string;
+  officialOrganizationType: string | null;
+  officialOrganizationName: string | null;
+  officialVerifiedAt: Date | null;
 };
+
+export function toSafePublicOfficialFields(input: {
+  officialProfileStatus: string;
+  officialOrganizationType: string | null;
+  officialOrganizationName: string | null;
+  officialVerifiedAt: Date | null;
+}) {
+  const approved = input.officialProfileStatus === "APPROVED";
+  return {
+    officialProfileStatus: approved ? ("APPROVED" as const) : "NOT_VERIFIED",
+    officialOrganizationType: approved ? input.officialOrganizationType : null,
+    officialOrganizationName: approved ? input.officialOrganizationName : null,
+    officialVerifiedAt: approved ? input.officialVerifiedAt : null,
+  };
+}
 
 export function toSafePublicUser(user: SafePublicUserSource): SafePublicUser {
   return {
@@ -51,6 +74,7 @@ export function toSafePublicUser(user: SafePublicUserSource): SafePublicUser {
     username: user.username,
     firstName: user.firstName,
     lastName: user.lastName,
+    ...toSafePublicOfficialFields(user),
   };
 }
 

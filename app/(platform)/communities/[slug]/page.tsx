@@ -10,13 +10,16 @@ import { CommunityRequestsPanel } from "@/components/features/community/Communit
 import { ContentReportButton } from "@/components/features/community/ContentReportButton";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { PostComposer } from "@/components/features/community/PostComposer";
+import { StoryPreviewRail } from "@/components/features/stories/StoryPreviewRail";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { communityVisibilityWhere } from "@/lib/content-visibility";
 import { getCommunityRequestOverview } from "@/lib/community-requests";
 import { prisma } from "@/lib/prisma";
+import { toSafePublicOfficialFields } from "@/lib/serializers";
 import { getCurrentUser, requireUser } from "@/lib/server-auth";
+import { getContextualStories } from "@/lib/stories";
 
 function postIncludeFor(userId: string) {
   return {
@@ -26,6 +29,11 @@ function postIncludeFor(userId: string) {
         firstName: true,
         lastName: true,
         avatarKey: true,
+        avatarMediaId: true,
+        officialProfileStatus: true,
+        officialOrganizationType: true,
+        officialOrganizationName: true,
+        officialVerifiedAt: true,
         country: { select: { emoji: true } },
         university: { select: { shortName: true, name: true } },
       },
@@ -126,18 +134,24 @@ export default async function CommunityPage({
   });
   const joined = Boolean(membership);
   const canModerate = ["OWNER", "MODERATOR"].includes(membership?.role ?? "");
-  const requestOverview = joined
-    ? await getCommunityRequestOverview({
-        communityId: community.id,
-        userId: user.id,
-        includeLists: activeSection === "requests",
-      })
-    : {
-        communityRequests: [],
-        myRequests: [],
-        urgentCount: 0,
-        spotlightRequest: null,
-      };
+  const [requestOverview, communityStories] = await Promise.all([
+    joined
+      ? getCommunityRequestOverview({
+          communityId: community.id,
+          userId: user.id,
+          includeLists: activeSection === "requests",
+        })
+      : Promise.resolve({
+          communityRequests: [],
+          myRequests: [],
+          urgentCount: 0,
+          spotlightRequest: null,
+        }),
+    getContextualStories(user, {
+      communityId: community.id,
+      limit: 5,
+    }),
+  ]);
   const selectedPost =
     query.post && activeSection === "feed"
       ? await prisma.post.findFirst({
@@ -158,6 +172,11 @@ export default async function CommunityPage({
               id: true,
               firstName: true,
               lastName: true,
+              avatarMediaId: true,
+              officialProfileStatus: true,
+              officialOrganizationType: true,
+              officialOrganizationName: true,
+              officialVerifiedAt: true,
               country: { select: { emoji: true } },
               university: { select: { shortName: true } },
             },
@@ -173,6 +192,29 @@ export default async function CommunityPage({
       })
     : [];
   const pageCount = Math.max(1, Math.ceil(community._count.posts / pageSize));
+  const safePosts = community.posts.map((post) => ({
+    ...post,
+    author: {
+      ...post.author,
+      ...toSafePublicOfficialFields(post.author),
+    },
+  }));
+  const safeSelectedPost = selectedPost
+    ? {
+        ...selectedPost,
+        author: {
+          ...selectedPost.author,
+          ...toSafePublicOfficialFields(selectedPost.author),
+        },
+      }
+    : null;
+  const safeComments = comments.map((comment) => ({
+    ...comment,
+    author: {
+      ...comment.author,
+      ...toSafePublicOfficialFields(comment.author),
+    },
+  }));
 
   return (
     <CommunityExperience
@@ -273,13 +315,25 @@ export default async function CommunityPage({
                 )}
               </Card>
 
+              {communityStories.length ? (
+                <div className="mb-5">
+                  <StoryPreviewRail
+                    compact
+                    entryPoint="community"
+                    eyebrow={`Stories in ${community.name}`}
+                    stories={communityStories}
+                    title="Watch what members want others to know."
+                  />
+                </div>
+              ) : null}
+
               <div className="space-y-5">
-                {community.posts.map((post) => (
+                {safePosts.map((post) => (
                   <div key={post.id}>
                     <FeedPost
                       canModerate={canModerate}
                       currentUserId={user.id}
-                      focused={selectedPost?.id === post.id}
+                      focused={safeSelectedPost?.id === post.id}
                       immersive
                       post={post}
                     />
@@ -413,7 +467,7 @@ export default async function CommunityPage({
           myRequests={requestOverview.myRequests}
         />
       )}
-      {selectedPost ? (
+      {safeSelectedPost ? (
         <CommunityPostFocus
           canComment={joined}
           canModerate={canModerate}
@@ -422,9 +476,9 @@ export default async function CommunityPage({
               ? `/communities/${community.slug}?page=${page}`
               : `/communities/${community.slug}`
           }
-          comments={comments}
+          comments={safeComments}
           currentUserId={user.id}
-          post={selectedPost}
+          post={safeSelectedPost}
         />
       ) : null}
     </CommunityExperience>

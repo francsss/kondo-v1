@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
+  Clapperboard,
   Compass,
   GraduationCap,
   Home,
@@ -25,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
+import { RestoreStoryScroll } from "@/components/features/stories/RestoreStoryScroll";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +40,8 @@ type ShellUser = {
   firstName: string;
   lastName: string;
   role: string;
+  storyCreatorStatus?: string;
+  officialProfileStatus?: string;
   avatarMediaId?: string | null;
   preference?: {
     theme: "LIGHT" | "DARK" | "SYSTEM";
@@ -73,6 +77,10 @@ const navigation: NavigationItem[] = [
     aliases: ["/guides", "/help"],
   },
   { href: "/messages", label: "Messages", icon: MessageCircle },
+];
+
+const secondaryNavigation: NavigationItem[] = [
+  { href: "/stories", label: "Student Stories", icon: Clapperboard },
 ];
 
 export function ThemeToggle() {
@@ -240,6 +248,7 @@ export function AppShell({
         <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
         <PresenceHeartbeat />
         <ProductAnalyticsIdentity user={user} />
+        <RestoreStoryScroll />
         {children}
       </div>
     );
@@ -250,6 +259,7 @@ export function AppShell({
       <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
       <PresenceHeartbeat />
       <ProductAnalyticsIdentity user={user} />
+      <RestoreStoryScroll />
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col">
         <div className="px-2">
           <KondoLogo href="/home" />
@@ -427,6 +437,19 @@ export function AppShell({
                 onNavigate={() => setMenuOpen(false)}
               />
             ))}
+            <div className="my-3 border-t border-border pt-3">
+              <p className="px-3.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+                More from Kondo
+              </p>
+              {secondaryNavigation.map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  pathname={pathname}
+                  onNavigate={() => setMenuOpen(false)}
+                />
+              ))}
+            </div>
             {isAdmin ? (
               <NavLink
                 href="/admin"

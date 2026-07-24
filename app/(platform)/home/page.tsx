@@ -5,12 +5,14 @@ import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIn
 import { PostComposer } from "@/components/features/community/PostComposer";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
+import { StoryPreviewRail } from "@/components/features/stories/StoryPreviewRail";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { getHomeData } from "@/lib/platform-queries";
 import { getHomeActivityStream } from "@/lib/home-activity";
 import { requireUser } from "@/lib/server-auth";
+import { getStoryFeed } from "@/lib/stories";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -28,8 +30,15 @@ export default async function HomePage() {
     hour: "numeric",
     minute: "2-digit",
   }).format(now);
-  const [{ posts, communities, listings, guides, upcomingEvents }, activities] =
-    await Promise.all([getHomeData(user.id), getHomeActivityStream(user)]);
+  const [
+    { posts, communities, listings, guides, upcomingEvents },
+    activities,
+    stories,
+  ] = await Promise.all([
+    getHomeData(user.id),
+    getHomeActivityStream(user),
+    getStoryFeed(user, { limit: 6 }),
+  ]);
   const firstGuide = guides[0];
   const completedSteps =
     firstGuide?.steps.filter((step) => step.progress.length > 0).length ?? 0;
@@ -98,6 +107,15 @@ export default async function HomePage() {
           />
         </Card>
       ) : null}
+
+      <div className="mt-7">
+        <StoryPreviewRail
+          compact
+          entryPoint="home"
+          stories={stories}
+          title="A quick visual guide to something useful today."
+        />
+      </div>
 
       <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">

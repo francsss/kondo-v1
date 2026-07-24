@@ -4,10 +4,18 @@ import {
   ExploreIcon,
   exploreAccentStyles,
 } from "@/components/features/explore/ExploreIcon";
+import { StoryPreviewRail } from "@/components/features/stories/StoryPreviewRail";
 import type { ExploreCity } from "@/features/explore/types";
+import type { StoryFeedItem } from "@/lib/stories";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
-export function CityHubView({ city }: { city: ExploreCity }) {
+export function CityHubView({
+  city,
+  stories = [],
+}: {
+  city: ExploreCity;
+  stories?: StoryFeedItem[];
+}) {
   const aboutSection = city.sections.find(
     (section) => section.slug === "about",
   );
@@ -85,6 +93,17 @@ export function CityHubView({ city }: { city: ExploreCity }) {
           </aside>
         </div>
       </section>
+
+      {stories.length ? (
+        <div className="mt-8">
+          <StoryPreviewRail
+            entryPoint="city"
+            eyebrow={`Stories from ${city.name}`}
+            stories={stories}
+            title={`See ${city.name} through useful student experiences.`}
+          />
+        </div>
+      ) : null}
 
       <section className="mt-10" id="city-sections">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">

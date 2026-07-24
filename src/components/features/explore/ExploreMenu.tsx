@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   EllipsisVertical,
+  Clapperboard,
   Languages,
   MapPinned,
   Megaphone,
@@ -40,6 +41,13 @@ const menuItems = [
     label: "Language",
     description: "Language and localization",
     icon: Languages,
+    featured: false,
+  },
+  {
+    href: "/stories",
+    label: "Student Stories",
+    description: "Useful videos from student life in China",
+    icon: Clapperboard,
     featured: false,
   },
 ] as const;

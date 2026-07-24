@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { BookmarkButton } from "@/components/features/bookmarks/BookmarkButton";
+import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
 import { MessageUserButton } from "@/components/features/messages/MessageUserButton";
 import { PostActions } from "@/components/features/community/PostActions";
 import {
@@ -37,6 +38,11 @@ export type FeedPostData = {
     id: string;
     firstName: string;
     lastName: string;
+    avatarMediaId?: string | null;
+    officialProfileStatus?: string;
+    officialOrganizationType?: string | null;
+    officialOrganizationName?: string | null;
+    officialVerifiedAt?: Date | string | null;
     country: { emoji: string | null } | null;
     university: { shortName: string | null; name: string } | null;
   };
@@ -155,15 +161,27 @@ export function FeedPost({
         <article className={cn("p-5 sm:p-6", immersive && "sm:p-7")}>
           <div className="flex items-start gap-3">
             <Avatar
-              className={immersive ? "h-11 w-11" : undefined}
+              className={cn(
+                immersive ? "h-11 w-11" : undefined,
+                post.author.officialProfileStatus === "APPROVED" &&
+                  "ring-[3px] ring-kondo-lime",
+              )}
               firstName={post.author.firstName}
               lastName={post.author.lastName}
+              mediaId={post.author.avatarMediaId}
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="font-bold text-kondo-ink dark:text-white">
                   {post.author.firstName} {post.author.lastName}
                 </span>
+                {post.author.officialProfileStatus === "APPROVED" ? (
+                  <OfficialMark
+                    organizationName={post.author.officialOrganizationName}
+                    organizationType={post.author.officialOrganizationType}
+                    verifiedAt={post.author.officialVerifiedAt}
+                  />
+                ) : null}
                 <span aria-label="Country" className="text-sm">
                   {post.author.country?.emoji}
                 </span>

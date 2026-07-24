@@ -8,11 +8,14 @@ import {
 } from "lucide-react";
 import { MessageUserButton } from "@/components/features/messages/MessageUserButton";
 import { ProfileSafetyActions } from "@/components/features/profile/ProfileSafetyActions";
+import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
+import { StoryPreviewRail } from "@/components/features/stories/StoryPreviewRail";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { getPublicProfile } from "@/lib/profiles";
 import { formatPrice, formatRelativeDate } from "@/lib/presentation";
+import type { StoryFeedItem } from "@/lib/stories";
 
 type Profile = Awaited<ReturnType<typeof getPublicProfile>>;
 type ActivityItem = NonNullable<Profile["activity"]>[number];
@@ -29,11 +32,13 @@ export function ProfileView({
   currentUserId,
   tab = "activity",
   saved = [],
+  stories = [],
 }: {
   profile: Profile;
   currentUserId: string;
   tab?: "activity" | "marketplace" | "saved";
   saved?: SavedItem[];
+  stories?: StoryFeedItem[];
 }) {
   const own = profile.viewer.isOwner;
   return (
@@ -43,7 +48,9 @@ export function ProfileView({
         <div className="relative px-6 pb-7 sm:px-8">
           <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <Avatar
-              className="h-24 w-24 border-4 border-card text-2xl"
+              className={`h-24 w-24 border-4 border-card text-2xl ${
+                profile.official ? "ring-[3px] ring-kondo-lime" : ""
+              }`}
               firstName={profile.firstName}
               lastName={profile.lastName}
               mediaId={profile.avatar?.id}
@@ -64,9 +71,20 @@ export function ProfileView({
             </div>
           </div>
           <div className="mt-5">
-            <h1 className="text-3xl font-black tracking-[-0.04em] text-kondo-ink dark:text-white">
-              {profile.fullName}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-black tracking-[-0.04em] text-kondo-ink dark:text-white">
+                {profile.fullName}
+              </h1>
+              {profile.official ? (
+                <OfficialMark
+                  organizationName={profile.official.organizationName}
+                  organizationType={profile.official.type}
+                  size="md"
+                  verifiedAt={profile.official.verifiedAt}
+                  withLabel
+                />
+              ) : null}
+            </div>
             {profile.username ? (
               <p className="mt-1 text-sm font-semibold text-kondo-green">
                 @{profile.username}
@@ -102,6 +120,18 @@ export function ProfileView({
           </div>
         </div>
       </section>
+
+      {stories.length ? (
+        <div className="mt-7">
+          <StoryPreviewRail
+            compact
+            entryPoint="creator_profile"
+            eyebrow={`Stories by ${profile.firstName}`}
+            stories={stories}
+            title="Useful experiences shared with Kondo."
+          />
+        </div>
+      ) : null}
 
       <div className="mt-7 grid gap-7 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="space-y-5">

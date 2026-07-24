@@ -5,6 +5,7 @@ describe("usesImmersiveAppShell", () => {
   it("uses the immersive shell for community details and conversations", () => {
     expect(usesImmersiveAppShell("/communities/housing-roommates")).toBe(true);
     expect(usesImmersiveAppShell("/messages/conversation-id")).toBe(true);
+    expect(usesImmersiveAppShell("/stories")).toBe(true);
   });
 
   it("keeps platform navigation on community lists and management pages", () => {
@@ -13,5 +14,7 @@ describe("usesImmersiveAppShell", () => {
       false,
     );
     expect(usesImmersiveAppShell("/home")).toBe(false);
+    expect(usesImmersiveAppShell("/stories/submit")).toBe(false);
+    expect(usesImmersiveAppShell("/stories/report")).toBe(false);
   });
 });

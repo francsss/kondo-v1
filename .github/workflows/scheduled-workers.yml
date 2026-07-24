@@ -46,6 +46,19 @@ jobs:
           --header "Authorization: Bearer ${CRON_SECRET}"
           "${PRODUCTION_APP_URL}/api/internal/community-requests/expire"
 
+  stories:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '3/5 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Publish scheduled Student Stories
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/stories/publish"
+
   marketplace:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 * * * *'
     runs-on: ubuntu-latest

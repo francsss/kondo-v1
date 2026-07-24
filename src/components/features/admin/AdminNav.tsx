@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookOpenText,
   Building2,
+  Clapperboard,
   Database,
   FileSearch,
   Files,
@@ -12,6 +13,7 @@ import {
   LayoutDashboard,
   RadioTower,
   MapPin,
+  Landmark,
   MessageCircleWarning,
   ShoppingBag,
   ScrollText,
@@ -128,6 +130,18 @@ const items = [
     label: "Settings",
     icon: Settings2,
     permission: "PLATFORM_SETTINGS_VIEW" as const,
+  },
+  {
+    href: "/admin/stories",
+    label: "Student Stories",
+    icon: Clapperboard,
+    permission: "STORY_CMS_VIEW" as const,
+  },
+  {
+    href: "/admin/official-profiles",
+    label: "Official profiles",
+    icon: Landmark,
+    permission: "OFFICIAL_PROFILE_VIEW" as const,
   },
 ];
 
