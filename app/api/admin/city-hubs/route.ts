@@ -8,12 +8,19 @@ import {
   CityHubError,
   createCityHub,
   listAdminCityHubs,
+  type CityHubSort,
   type CityHubStatus,
 } from "@/lib/city-hub";
 import { getRequestMeta, hasTrustedOrigin } from "@/lib/request";
 import { cityHubCreateSchema } from "@/lib/validation";
 
 const STATUSES: readonly CityHubStatus[] = ["DRAFT", "REVIEW", "PUBLISHED"];
+const SORTS: readonly CityHubSort[] = [
+  "students",
+  "needs-content",
+  "activity",
+  "recent",
+];
 
 export async function GET(request: NextRequest) {
   const auth = await authorizeAdminApi("CITY_CMS_VIEW");
@@ -23,6 +30,10 @@ export async function GET(request: NextRequest) {
   const status = STATUSES.includes(statusParam as CityHubStatus)
     ? (statusParam as CityHubStatus)
     : undefined;
+  const sortParam = params.get("sort");
+  const sort = SORTS.includes(sortParam as CityHubSort)
+    ? (sortParam as CityHubSort)
+    : undefined;
   try {
     return adminJson(
       await listAdminCityHubs(auth.user, {
@@ -30,6 +41,7 @@ export async function GET(request: NextRequest) {
         pageSize: Number(params.get("pageSize") ?? 20),
         query: params.get("q")?.trim() || undefined,
         status,
+        sort,
       }),
     );
   } catch (error) {

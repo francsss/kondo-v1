@@ -1,12 +1,13 @@
 import { Prisma } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
-import { getExploreCity } from "@/features/explore/registry";
+import { getExploreCity, listExploreCities } from "@/features/explore/registry";
 import type {
   ExploreCity,
   ExploreEntry,
   ExploreSection,
 } from "@/features/explore/types";
+import { cityHubContentMetrics } from "@/lib/city-hub-metrics";
 import { logServerError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { exploreCityPayloadSchema } from "@/lib/validation";
@@ -15,6 +16,7 @@ type Actor = { id: string; role: AppRole | string };
 type RequestMeta = { ipAddress?: string | null; userAgent?: string | null };
 
 export type CityHubStatus = "DRAFT" | "REVIEW" | "PUBLISHED";
+export type CityHubSort = "students" | "needs-content" | "activity" | "recent";
 
 export class CityHubError extends Error {
   constructor(
@@ -43,12 +45,18 @@ const TRANSITION_ACTION: Record<CityHubStatus, string> = {
   PUBLISHED: "CITY_HUB_PUBLISHED",
 };
 
-function scaffoldDraft(slug: string, name: string): ExploreCity {
+function scaffoldDraft(input: {
+  slug: string;
+  name: string;
+  province: string | null;
+  country: string;
+}): ExploreCity {
+  const { slug, name } = input;
   return {
     slug,
     name,
-    province: "",
-    country: "China",
+    province: input.province?.trim() || "China",
+    country: input.country,
     eyebrow: `Kondo city guide · ${name}`,
     title: `${name}, open by design.`,
     tagline: `Discover ${name}.`,
@@ -71,6 +79,82 @@ function scaffoldDraft(slug: string, name: string): ExploreCity {
         cityValue: "Present local employers to international students.",
         entries: [],
       },
+      {
+        slug: "jobs",
+        title: "Jobs & Internships",
+        shortTitle: "Jobs",
+        eyebrow: `Opportunities in ${name}`,
+        summary: "Find internships, jobs, and student project pathways.",
+        description:
+          "Add verified opportunities, requirements, deadlines, and application links.",
+        icon: "jobs",
+        accent: "blue",
+        signal: "Opportunity board",
+        studentValue: "Move from local discovery to practical experience.",
+        cityValue: "Connect local organisations with international talent.",
+        entries: [],
+      },
+      {
+        slug: "restaurants",
+        title: "Restaurants & Food",
+        shortTitle: "Food",
+        eyebrow: `Eat well in ${name}`,
+        summary:
+          "Discover reliable places to eat and student-friendly options.",
+        description:
+          "Add restaurants, cafés, dietary information, prices, and practical directions.",
+        icon: "services",
+        accent: "amber",
+        signal: "Local dining guide",
+        studentValue: "Find trusted food options without trial and error.",
+        cityValue: "Help local businesses welcome international students.",
+        entries: [],
+      },
+      {
+        slug: "housing",
+        title: "Housing",
+        shortTitle: "Housing",
+        eyebrow: `Live in ${name}`,
+        summary: "Understand neighbourhoods, rent, and accommodation options.",
+        description:
+          "Add verified housing guidance, providers, prices, and tenant resources.",
+        icon: "services",
+        accent: "violet",
+        signal: "Housing essentials",
+        studentValue: "Make safer, better-informed accommodation decisions.",
+        cityValue: "Improve access to reliable housing information.",
+        entries: [],
+      },
+      {
+        slug: "events",
+        title: "Events",
+        shortTitle: "Events",
+        eyebrow: `What's happening in ${name}`,
+        summary: "Follow campus, cultural, professional, and city events.",
+        description:
+          "Add dates, venues, organisers, registration details, and updates.",
+        icon: "events",
+        accent: "rose",
+        signal: "City calendar",
+        studentValue: "Join useful events and build local connections.",
+        cityValue: "Increase participation in city and campus life.",
+        entries: [],
+      },
+      {
+        slug: "services",
+        title: "Useful Places & Services",
+        shortTitle: "Services",
+        eyebrow: `Everyday ${name}`,
+        summary: "Find essential services and useful places with confidence.",
+        description:
+          "Add healthcare, transport, administration, shopping, emergency, and daily-life resources.",
+        icon: "services",
+        accent: "cyan",
+        signal: "Practical city guide",
+        studentValue: "Solve everyday needs faster and more safely.",
+        cityValue: "Make local services easier to understand and access.",
+        entries: [],
+      },
     ],
   };
 }
@@ -82,6 +166,7 @@ export async function listAdminCityHubs(
     pageSize?: number;
     query?: string;
     status?: CityHubStatus;
+    sort?: CityHubSort;
   } = {},
 ) {
   if (!hasAdminPermission(actor.role, "CITY_CMS_VIEW")) {
@@ -89,41 +174,140 @@ export async function listAdminCityHubs(
   }
   const page = Math.max(1, Math.floor(input.page ?? 1));
   const pageSize = Math.min(50, Math.max(5, Math.floor(input.pageSize ?? 20)));
-  const where: Prisma.CityHubWhereInput = {
-    status: input.status,
+  const sort = input.sort ?? "students";
+  const cityWhere: Prisma.CityWhereInput = {
+    isActive: true,
+    country: { isActive: true, code: "CN" },
+    users: { some: { status: "ACTIVE" } },
     ...(input.query
       ? {
           OR: [
             { name: { contains: input.query, mode: "insensitive" } },
             { slug: { contains: input.query, mode: "insensitive" } },
+            { province: { contains: input.query, mode: "insensitive" } },
           ],
         }
       : {}),
   };
-  const [total, hubs] = await Promise.all([
-    prisma.cityHub.count({ where }),
-    prisma.cityHub.findMany({
-      where,
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        status: true,
-        version: true,
-        publishedAt: true,
-        updatedAt: true,
+  const cities = await prisma.city.findMany({
+    where: cityWhere,
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      province: true,
+      createdAt: true,
+      country: { select: { name: true } },
+      cityHub: {
+        select: {
+          id: true,
+          slug: true,
+          status: true,
+          version: true,
+          draft: true,
+          publishedAt: true,
+          updatedAt: true,
+        },
       },
-      orderBy: { updatedAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-  ]);
+      _count: {
+        select: { users: { where: { status: "ACTIVE" } } },
+      },
+    },
+  });
+  const cityIds = cities.map((city) => city.id);
+  const activeSince = new Date();
+  activeSince.setDate(activeSince.getDate() - 30);
+  const activeUserGroups = cityIds.length
+    ? await prisma.user.groupBy({
+        by: ["cityId"],
+        where: {
+          cityId: { in: cityIds },
+          status: "ACTIVE",
+          lastActiveAt: { gte: activeSince },
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const activeUsersByCity = new Map(
+    activeUserGroups.flatMap((group) =>
+      group.cityId ? [[group.cityId, group._count._all] as const] : [],
+    ),
+  );
+
+  const records = cities
+    .map((city) => {
+      const hub = city.cityHub;
+      const parsed = hub ? exploreCityPayloadSchema.safeParse(hub.draft) : null;
+      const metrics = cityHubContentMetrics(
+        parsed?.success ? (parsed.data as ExploreCity) : null,
+      );
+      return {
+        cityId: city.id,
+        slug: hub?.slug ?? city.slug,
+        name: city.name,
+        province: city.province,
+        country: city.country.name,
+        userCount: city._count.users,
+        activeUserCount: activeUsersByCity.get(city.id) ?? 0,
+        createdAt: city.createdAt.toISOString(),
+        hubId: hub?.id ?? null,
+        status: (hub?.status as CityHubStatus | undefined) ?? null,
+        version: hub?.version ?? null,
+        publishedAt: hub?.publishedAt?.toISOString() ?? null,
+        updatedAt: hub?.updatedAt.toISOString() ?? null,
+        ...metrics,
+      };
+    })
+    .filter((record) => !input.status || record.status === input.status);
+
+  records.sort((left, right) => {
+    if (sort === "needs-content") {
+      return (
+        left.totalEntries - right.totalEntries ||
+        left.completion - right.completion ||
+        right.userCount - left.userCount ||
+        left.name.localeCompare(right.name)
+      );
+    }
+    if (sort === "activity") {
+      return (
+        right.activeUserCount - left.activeUserCount ||
+        right.userCount - left.userCount ||
+        right.totalEntries - left.totalEntries ||
+        left.name.localeCompare(right.name)
+      );
+    }
+    if (sort === "recent") {
+      return (
+        new Date(right.createdAt).getTime() -
+          new Date(left.createdAt).getTime() ||
+        left.name.localeCompare(right.name)
+      );
+    }
+    return (
+      right.userCount - left.userCount ||
+      right.activeUserCount - left.activeUserCount ||
+      left.name.localeCompare(right.name)
+    );
+  });
+
+  const total = records.length;
+  const pageRecords = records.slice((page - 1) * pageSize, page * pageSize);
   return {
-    records: hubs.map((hub) => ({
-      ...hub,
-      publishedAt: hub.publishedAt?.toISOString() ?? null,
-      updatedAt: hub.updatedAt.toISOString(),
-    })),
+    records: pageRecords,
+    summary: {
+      activeCities: total,
+      students: records.reduce((totalUsers, city) => {
+        return totalUsers + city.userCount;
+      }, 0),
+      citiesWithoutContent: records.filter((city) => city.totalEntries === 0)
+        .length,
+      averageCompletion: total
+        ? Math.round(
+            records.reduce((sum, city) => sum + city.completion, 0) / total,
+          )
+        : 0,
+    },
     page,
     pageSize,
     pageCount: Math.max(1, Math.ceil(total / pageSize)),
@@ -457,41 +641,79 @@ export async function deleteCityHubEntry(input: {
 
 export async function createCityHub(input: {
   actor: Actor;
-  data: { slug: string; name: string; seedFromRegistry?: boolean };
+  data: { cityId: string };
   meta?: RequestMeta;
 }) {
   if (!hasAdminPermission(input.actor.role, "CITY_CMS_MANAGE")) {
     throw new CityHubError("Access denied.", 403);
   }
-  const slug = input.data.slug;
-  const existing = await prisma.cityHub.findUnique({
-    where: { slug },
+  const city = await prisma.city.findFirst({
+    where: {
+      id: input.data.cityId,
+      isActive: true,
+      country: { isActive: true, code: "CN" },
+      users: { some: { status: "ACTIVE" } },
+    },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      province: true,
+      country: { select: { name: true } },
+    },
+  });
+  if (!city) {
+    throw new CityHubError(
+      "A city becomes available after at least one active member selects it.",
+      404,
+    );
+  }
+  const registryCity =
+    getExploreCity(city.slug) ??
+    listExploreCities().find(
+      (candidate) =>
+        candidate.name.trim().toLocaleLowerCase() ===
+        city.name.trim().toLocaleLowerCase(),
+    );
+  const slug = registryCity?.slug ?? city.slug;
+  const existing = await prisma.cityHub.findFirst({
+    where: {
+      OR: [{ cityId: city.id }, { slug }],
+    },
     select: { id: true },
   });
   if (existing) {
-    throw new CityHubError("A city hub already exists for that slug.", 409);
+    throw new CityHubError(
+      "A content workspace already exists for this city.",
+      409,
+    );
   }
 
   let draft: ExploreCity;
-  if (input.data.seedFromRegistry) {
-    const registryCity = getExploreCity(slug);
-    if (!registryCity) {
-      throw new CityHubError(
-        "No registry content exists for that slug to seed from.",
-        404,
-      );
-    }
+  if (registryCity) {
     // Normalise the readonly registry object into a validated plain payload.
-    draft = exploreCityPayloadSchema.parse(registryCity) as ExploreCity;
+    draft = exploreCityPayloadSchema.parse({
+      ...registryCity,
+      slug,
+      name: city.name,
+      province: city.province?.trim() || registryCity.province,
+      country: city.country.name,
+    }) as ExploreCity;
   } else {
-    draft = scaffoldDraft(slug, input.data.name);
+    draft = scaffoldDraft({
+      slug,
+      name: city.name,
+      province: city.province,
+      country: city.country.name,
+    });
   }
 
   return prisma.$transaction(async (tx) => {
     const hub = await tx.cityHub.create({
       data: {
         slug,
-        name: input.data.name,
+        name: city.name,
+        cityId: city.id,
         status: "DRAFT",
         draft: draft as unknown as Prisma.InputJsonValue,
         createdById: input.actor.id,
@@ -506,7 +728,8 @@ export async function createCityHub(input: {
       entityId: hub.id,
       newValue: {
         slug: hub.slug,
-        seeded: Boolean(input.data.seedFromRegistry),
+        cityId: city.id,
+        seeded: Boolean(registryCity),
       },
       ...input.meta,
     });

@@ -7,6 +7,7 @@ import {
   deleteCityHubEntry,
   deleteCityHub,
   getAdminCityHub,
+  listAdminCityHubs,
   resolvePublishedCity,
   setCityHubStatus,
   unpublishCityHub,
@@ -41,6 +42,49 @@ async function cleanup() {
 
 async function createFixture() {
   const suffix = randomUUID().replaceAll("-", "");
+  const country = await prisma.country.upsert({
+    where: { code: "CN" },
+    update: { isActive: true },
+    create: {
+      code: "CN",
+      name: "China",
+      isActive: true,
+      verified: true,
+    },
+  });
+  const [city, unusedCity] = await Promise.all([
+    prisma.city.upsert({
+      where: {
+        countryId_name: { countryId: country.id, name: "Jiaxing" },
+      },
+      update: { isActive: true },
+      create: {
+        slug: CITY_SLUG,
+        name: "Jiaxing",
+        province: "Zhejiang",
+        countryId: country.id,
+        isActive: true,
+        verified: true,
+      },
+    }),
+    prisma.city.upsert({
+      where: {
+        countryId_name: {
+          countryId: country.id,
+          name: "Module 20 Unused City",
+        },
+      },
+      update: { isActive: true },
+      create: {
+        slug: "module20-unused-city",
+        name: "Module 20 Unused City",
+        province: "Zhejiang",
+        countryId: country.id,
+        isActive: true,
+        verified: true,
+      },
+    }),
+  ]);
   const [admin, moderator, member] = await Promise.all(
     [
       ["admin", "ADMIN"],
@@ -55,17 +99,18 @@ async function createFixture() {
           lastName: "City20",
           role: role as "ADMIN" | "MODERATOR" | "MEMBER",
           status: "ACTIVE",
+          cityId: city.id,
         },
       }),
     ),
   );
-  return { admin, moderator, member };
+  return { admin, moderator, member, city, unusedCity };
 }
 
 async function createDraftHub() {
   const { hub } = await createCityHub({
     actor: fixture.admin,
-    data: { slug: CITY_SLUG, name: "Jiaxing", seedFromRegistry: true },
+    data: { cityId: fixture.city.id },
   });
   return hub.id;
 }
@@ -115,6 +160,32 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
         where: { action: "CITY_HUB_CREATED", entityId: hubId },
       }),
     ).resolves.toBe(1);
+  });
+
+  it("derives the CMS city list from member selections and rejects unused cities", async () => {
+    const visible = await listAdminCityHubs(fixture.admin, {
+      query: "Jiaxing",
+    });
+    expect(visible.records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          cityId: fixture.city.id,
+          name: "Jiaxing",
+          userCount: 3,
+        }),
+      ]),
+    );
+
+    const hidden = await listAdminCityHubs(fixture.admin, {
+      query: "Module 20 Unused City",
+    });
+    expect(hidden.total).toBe(0);
+    await expect(
+      createCityHub({
+        actor: fixture.admin,
+        data: { cityId: fixture.unusedCity.id },
+      }),
+    ).rejects.toMatchObject({ status: 404 });
   });
 
   it("runs the full draft -> review -> published lifecycle and serves published content publicly", async () => {
@@ -421,7 +492,7 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
     await expect(
       createCityHub({
         actor: fixture.member,
-        data: { slug: "other-city", name: "Other" },
+        data: { cityId: fixture.city.id },
       }),
     ).rejects.toMatchObject({ status: 403 });
 
@@ -474,7 +545,7 @@ postgresDescribe("Module 20 PostgreSQL city hub editorial", () => {
     // A fresh draft hub can be deleted.
     const { hub: draftHub } = await createCityHub({
       actor: fixture.admin,
-      data: { slug: "draft-only", name: "Draft Only" },
+      data: { cityId: fixture.city.id },
     });
     await expect(
       deleteCityHub({ actor: fixture.admin, hubId: draftHub.id }),

@@ -554,6 +554,7 @@ model City {
   universities University[]
   communities  Community[]
   listings     MarketplaceListing[]
+  cityHub      CityHub?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
@@ -1240,6 +1241,8 @@ model CityHub {
   id          String        @id @default(cuid())
   slug        String        @unique
   name        String
+  cityId      String?       @unique
+  city        City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
   status      CityHubStatus @default(DRAFT)
   draft       Json
   published   Json?

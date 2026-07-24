@@ -873,17 +873,9 @@ export const exploreCityPayloadSchema = z.object({
 });
 
 export const cityHubCreateSchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1)
-    .max(80)
-    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and dashes only."),
-  name: z.string().trim().min(1).max(120),
-  // When true and a static registry city matches the slug, the new hub's draft
-  // is seeded from that registry content instead of an empty scaffold.
-  seedFromRegistry: z.boolean().optional(),
+  // The server resolves every other field from the active onboarding city.
+  // This prevents administrators from creating orphan or misspelled hubs.
+  cityId: z.string().trim().min(1).max(80),
 });
 
 export const cityHubDetailsUpdateSchema = z.object({
