@@ -12,15 +12,19 @@ import {
   exploreAccentStyles,
 } from "@/components/features/explore/ExploreIcon";
 import { ExploreSectionAnalytics } from "@/components/features/explore/ExploreAnalytics";
+import { StoryPreviewRail } from "@/components/features/stories/StoryPreviewRail";
 import type { ExploreCity, ExploreSection } from "@/features/explore/types";
+import type { StoryFeedItem } from "@/lib/stories";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export function CitySectionView({
   city,
   section,
+  stories = [],
 }: {
   city: ExploreCity;
   section: ExploreSection;
+  stories?: StoryFeedItem[];
 }) {
   const styles = exploreAccentStyles[section.accent];
 
@@ -83,6 +87,18 @@ export function CitySectionView({
           </Link>
         ))}
       </nav>
+
+      {stories.length ? (
+        <div className="mt-8">
+          <StoryPreviewRail
+            compact
+            entryPoint={`city_${section.slug}`}
+            eyebrow={`Stories · ${section.shortTitle}`}
+            stories={stories}
+            title={`See what students are sharing about ${section.shortTitle.toLowerCase()} in ${city.name}.`}
+          />
+        </div>
+      ) : null}
 
       <section className="mt-8 grid gap-5 md:grid-cols-2">
         {section.entries.map((entry) => (

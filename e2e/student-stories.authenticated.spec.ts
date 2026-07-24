@@ -53,6 +53,11 @@ test.describe("Student Stories access and responsive navigation", () => {
       await expect(
         page.getByRole("heading", { name: heading }).first(),
       ).toBeVisible();
+      if (path === "/stories/submit") {
+        await expect(
+          page.getByRole("combobox", { name: "Related resource" }),
+        ).toBeVisible();
+      }
       await expect
         .poll(() =>
           page.evaluate(
@@ -61,5 +66,20 @@ test.describe("Student Stories access and responsive navigation", () => {
         )
         .toBe(true);
     }
+  });
+
+  test("keeps city resource pages responsive with contextual Stories support", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/explore/jiaxing/events");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
   });
 });

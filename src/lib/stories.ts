@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   Prisma,
   type StoryCreatorStatus,
+  type StoryEntityType,
   type StoryStatus,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
@@ -352,6 +353,7 @@ export async function getContextualStories(
     communityId?: string;
     universityId?: string;
     creatorId?: string;
+    entityType?: StoryEntityType;
     limit?: number;
   },
 ) {
@@ -381,7 +383,15 @@ export async function getContextualStories(
   if (!contextFilters.length) return [];
 
   const records = await prisma.story.findMany({
-    where: { AND: [visibleStoryWhere(actor), { OR: contextFilters }] },
+    where: {
+      AND: [
+        visibleStoryWhere(actor),
+        { OR: contextFilters },
+        input.entityType
+          ? { entityLinks: { some: { type: input.entityType } } }
+          : {},
+      ],
+    },
     include: storyFeedInclude(actor.id),
     orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
     take: limit,

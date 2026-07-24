@@ -54,6 +54,9 @@ type EditingStory = {
     cityId: string | null;
     universityId: string | null;
     communityId: string | null;
+    externalEntityId: string | null;
+    externalLabel: string | null;
+    externalHref: string | null;
   }>;
 } | null;
 
@@ -100,6 +103,16 @@ export function StorySubmissionWorkspace({
     editing?.entityLinks.find((link) => link.type === "COMMUNITY")
       ?.communityId ?? "",
   );
+  const editingExternal = editing?.entityLinks.find((link) =>
+    ["COMPANY", "INTERNSHIP", "EVENT"].includes(link.type),
+  );
+  const [externalType, setExternalType] = useState(editingExternal?.type ?? "");
+  const [externalLabel, setExternalLabel] = useState(
+    editingExternal?.externalLabel ?? "",
+  );
+  const [externalHref, setExternalHref] = useState(
+    editingExternal?.externalHref ?? "",
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -120,6 +133,9 @@ export function StorySubmissionWorkspace({
       setCityId(draft.cityId ?? "");
       setUniversityId(draft.universityId ?? "");
       setCommunityId(draft.communityId ?? "");
+      setExternalType(draft.externalType ?? "");
+      setExternalLabel(draft.externalLabel ?? "");
+      setExternalHref(draft.externalHref ?? "");
     }, 0);
     return () => window.clearTimeout(timer);
   }, [editing]);
@@ -138,6 +154,9 @@ export function StorySubmissionWorkspace({
           cityId,
           universityId,
           communityId,
+          externalType,
+          externalLabel,
+          externalHref,
         }),
       );
     }, 250);
@@ -149,6 +168,9 @@ export function StorySubmissionWorkspace({
     communityId,
     description,
     editing,
+    externalHref,
+    externalLabel,
+    externalType,
     language,
     title,
     universityId,
@@ -229,6 +251,17 @@ export function StorySubmissionWorkspace({
       setError("Confirm the privacy and rights checklist.");
       return;
     }
+    if (
+      externalType &&
+      (!externalLabel.trim() ||
+        !externalHref.startsWith("/") ||
+        externalHref.startsWith("//"))
+    ) {
+      setError(
+        "Add the Kondo name and internal page for the connected opportunity.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     setSuccess("");
@@ -262,6 +295,25 @@ export function StorySubmissionWorkspace({
         cityId ? { type: "CITY", entityId: cityId } : null,
         universityId ? { type: "UNIVERSITY", entityId: universityId } : null,
         communityId ? { type: "COMMUNITY", entityId: communityId } : null,
+        externalType
+          ? {
+              type: externalType,
+              entityId:
+                externalHref
+                  .split("#")[0]
+                  .split("?")[0]
+                  .split("/")
+                  .filter(Boolean)
+                  .at(-1)
+                  ?.slice(0, 160) ||
+                externalLabel
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-")
+                  .slice(0, 160),
+              label: externalLabel,
+              href: externalHref,
+            }
+          : null,
       ].filter(Boolean);
       const body = {
         categoryId,
@@ -486,6 +538,40 @@ export function StorySubmissionWorkspace({
                 options={options.communities}
                 value={communityId}
               />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)]">
+              <Field label="Related resource">
+                <select
+                  className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm"
+                  onChange={(event) => setExternalType(event.target.value)}
+                  value={externalType}
+                >
+                  <option value="">Optional</option>
+                  <option value="COMPANY">Company</option>
+                  <option value="INTERNSHIP">Internship</option>
+                  <option value="EVENT">Event</option>
+                </select>
+              </Field>
+              <Field label="Kondo resource name">
+                <input
+                  className="h-11 w-full rounded-2xl border border-border bg-transparent px-4 text-sm disabled:opacity-50"
+                  disabled={!externalType}
+                  maxLength={160}
+                  onChange={(event) => setExternalLabel(event.target.value)}
+                  placeholder="e.g. Welcome Week"
+                  value={externalLabel}
+                />
+              </Field>
+              <Field label="Kondo page">
+                <input
+                  className="h-11 w-full rounded-2xl border border-border bg-transparent px-4 text-sm disabled:opacity-50"
+                  disabled={!externalType}
+                  maxLength={500}
+                  onChange={(event) => setExternalHref(event.target.value)}
+                  placeholder="/explore/jiaxing/events#welcome-week"
+                  value={externalHref}
+                />
+              </Field>
             </div>
           </div>
 
