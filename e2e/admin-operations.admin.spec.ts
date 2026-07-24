@@ -7,16 +7,19 @@ test.describe("admin operations", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 
-  test("can open the City Hub CMS and see the create form", async ({
+  test("can open the City Hub CMS and see profile-derived cities", async ({
     page,
   }) => {
     await page.goto("/admin/city-hubs");
     await expect(page).toHaveURL(/\/admin\/city-hubs/);
     await expect(
-      page.getByRole("heading", { name: /city hubs/i }).first(),
+      page.getByRole("heading", { name: /city content/i }).first(),
     ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Beijing" })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /create draft city hub/i }),
+      page.getByRole("button", {
+        name: "Prepare Beijing content workspace",
+      }),
     ).toBeVisible();
   });
 
@@ -24,14 +27,12 @@ test.describe("admin operations", () => {
     browser,
     page,
   }) => {
-    const slug = `e2e-city-${Date.now()}`;
     await page.goto("/admin/city-hubs");
-    await page.getByLabel("Slug").fill(slug);
-    await page.getByLabel("City name").fill("E2E City");
     await page
-      .getByLabel("Seed draft from the matching registry city")
-      .uncheck();
-    await page.getByRole("button", { name: /create draft city hub/i }).click();
+      .getByRole("button", {
+        name: "Prepare Beijing content workspace",
+      })
+      .click();
 
     await expect(page).toHaveURL(/\/admin\/city-hubs\/[^/]+$/);
     await expect(

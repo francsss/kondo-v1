@@ -162,6 +162,9 @@ export function CityHubSectionEditor({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
   const [dirtyEditors, setDirtyEditors] = useState<Set<string>>(new Set());
+  const [entries, setEntries] = useState<ExploreEntry[]>(() => [
+    ...section.entries,
+  ]);
   const editable = status === "DRAFT";
   const sectionDirty = !valuesMatch(value, savedValue);
   const isDirty = sectionDirty || dirtyEditors.size > 0;
@@ -342,13 +345,13 @@ export function CityHubSectionEditor({
             {section.shortTitle} entries
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {section.entries.length} entries. Every entry has its own save and
-            delete operation.
+            {entries.length} entries. Every entry has its own save and delete
+            operation.
           </p>
         </div>
       </div>
 
-      {editable && section.entries.length < 50 ? (
+      {editable && entries.length < 50 ? (
         <details className="rounded-3xl border border-dashed border-kondo-green/40 bg-emerald-50/40 p-5 dark:bg-emerald-400/5">
           <summary className="flex cursor-pointer list-none items-center gap-2 font-black text-kondo-green">
             <Plus className="h-4 w-4" /> Add a {section.shortTitle} entry
@@ -359,6 +362,20 @@ export function CityHubSectionEditor({
               defaultType={defaultEntryType(section.icon)}
               hubId={hubId}
               onDirtyChange={reportEditorDirty}
+              onDeleted={(entryId) =>
+                setEntries((current) =>
+                  current.filter((entry) => entry.id !== entryId),
+                )
+              }
+              onSaved={(savedEntry) =>
+                setEntries((current) =>
+                  current.some((entry) => entry.id === savedEntry.id)
+                    ? current.map((entry) =>
+                        entry.id === savedEntry.id ? savedEntry : entry,
+                      )
+                    : [...current, savedEntry],
+                )
+              }
               onVersionChange={updateVersion}
               sectionSlug={section.slug}
               status={status}
@@ -369,12 +386,24 @@ export function CityHubSectionEditor({
       ) : null}
 
       <div className="space-y-4">
-        {section.entries.map((entry) => (
+        {entries.map((entry) => (
           <Card key={entry.id}>
             <EntryEditor
               entry={entry}
               hubId={hubId}
               onDirtyChange={reportEditorDirty}
+              onDeleted={(entryId) =>
+                setEntries((current) =>
+                  current.filter((candidate) => candidate.id !== entryId),
+                )
+              }
+              onSaved={(savedEntry) =>
+                setEntries((current) =>
+                  current.map((candidate) =>
+                    candidate.id === savedEntry.id ? savedEntry : candidate,
+                  ),
+                )
+              }
               onVersionChange={updateVersion}
               sectionSlug={section.slug}
               status={status}
@@ -382,7 +411,7 @@ export function CityHubSectionEditor({
             />
           </Card>
         ))}
-        {!section.entries.length ? (
+        {!entries.length ? (
           <Card className="py-14 text-center text-sm text-muted-foreground">
             No entries in this section yet. You can create one without editing
             any other City Hub section.
@@ -404,6 +433,8 @@ function EntryEditor({
   defaultType = "story",
   create = false,
   onDirtyChange,
+  onDeleted,
+  onSaved,
   onVersionChange,
 }: {
   hubId: string;
@@ -414,6 +445,8 @@ function EntryEditor({
   defaultType?: ExploreEntryType;
   create?: boolean;
   onDirtyChange: (editorId: string, dirty: boolean) => void;
+  onDeleted: (entryId: string) => void;
+  onSaved: (entry: ExploreEntry) => void;
   onVersionChange: (version: number) => void;
 }) {
   const router = useRouter();
@@ -486,11 +519,13 @@ function EntryEditor({
           : "Entry changes saved to the City Hub draft.",
       );
       if (create) {
+        onSaved(submittedValue);
         const resetValue = initialEntry(defaultType);
         setValue(resetValue);
         setSavedValue(resetValue);
         setCreateEntryId(crypto.randomUUID());
       } else {
+        onSaved(submittedValue);
         setValue(structuredClone(submittedValue));
         setSavedValue(structuredClone(submittedValue));
       }
@@ -524,10 +559,11 @@ function EntryEditor({
       if (!response.ok) {
         throw new Error(data?.error ?? "Could not delete this entry.");
       }
-      onDirtyChange(editorId, false);
       onVersionChange(data.hub.version);
       setSaveState("success");
       setMessage("Entry deleted from the City Hub draft.");
+      onDirtyChange(editorId, false);
+      onDeleted(entry.id);
       router.refresh();
     } catch (error) {
       setSaveState("error");
