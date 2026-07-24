@@ -3,10 +3,12 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   BadgeCheck,
   BookOpen,
   Check,
   ChevronDown,
+  HandHeart,
   MessageCircle,
   MoreHorizontal,
   Settings,
@@ -20,7 +22,8 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { cn } from "@/lib/utils";
@@ -39,6 +42,37 @@ type CommunityIdentity = {
   postCount: number;
 };
 
+function UrgentRequestBadge({
+  count,
+  compact = false,
+}: {
+  count: number;
+  compact?: boolean;
+}) {
+  const reducedMotion = useReducedMotion();
+  if (!count) return null;
+  return (
+    <motion.span
+      animate={
+        reducedMotion
+          ? undefined
+          : { opacity: [0.75, 1, 1], scale: [0.9, 1.12, 1] }
+      }
+      aria-label={`${count} urgent ${count === 1 ? "request" : "requests"}`}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-red-600 font-black text-white shadow-sm",
+        compact
+          ? "h-4 min-w-4 px-1 text-[9px]"
+          : "h-5 min-w-5 px-1.5 text-[10px]",
+      )}
+      initial={reducedMotion ? false : { opacity: 0.75, scale: 0.9 }}
+      transition={{ duration: reducedMotion ? 0 : 0.5, ease: "easeOut" }}
+    >
+      {count > 99 ? "99+" : count}
+    </motion.span>
+  );
+}
+
 function CommunityUtilityActions({
   community,
   canModerate,
@@ -49,7 +83,14 @@ function CommunityUtilityActions({
   compact?: boolean;
 }) {
   const actionsRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ right: 12, top: 0 });
   const [copied, setCopied] = useState(false);
   const reducedMotion = useReducedMotion();
 
@@ -64,19 +105,41 @@ function CommunityUtilityActions({
       if (
         event instanceof PointerEvent &&
         event.target instanceof Node &&
-        !actionsRef.current?.contains(event.target)
+        !actionsRef.current?.contains(event.target) &&
+        !menuRef.current?.contains(event.target)
       ) {
         setMenuOpen(false);
       }
     }
 
+    function closeOnScroll() {
+      setMenuOpen(false);
+    }
+
     document.addEventListener("pointerdown", closeMenu);
     document.addEventListener("keydown", closeMenu);
+    window.addEventListener("resize", closeOnScroll);
+    window.addEventListener("scroll", closeOnScroll, true);
     return () => {
       document.removeEventListener("pointerdown", closeMenu);
       document.removeEventListener("keydown", closeMenu);
+      window.removeEventListener("resize", closeOnScroll);
+      window.removeEventListener("scroll", closeOnScroll, true);
     };
   }, [menuOpen]);
+
+  function toggleMenu() {
+    if (!menuOpen) {
+      const rect = actionsRef.current?.getBoundingClientRect();
+      if (rect) {
+        setMenuPosition({
+          right: Math.max(12, window.innerWidth - rect.right),
+          top: rect.bottom + 8,
+        });
+      }
+    }
+    setMenuOpen((open) => !open);
+  }
 
   async function share() {
     const url = window.location.href;
@@ -116,8 +179,9 @@ function CommunityUtilityActions({
       </Button>
       <Button
         aria-expanded={menuOpen}
+        aria-haspopup="menu"
         aria-label="More community actions"
-        onClick={() => setMenuOpen((open) => !open)}
+        onClick={toggleMenu}
         size={compact ? "icon" : "sm"}
         type="button"
         variant="secondary"
@@ -125,44 +189,54 @@ function CommunityUtilityActions({
         <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
         {!compact ? "More" : null}
       </Button>
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.div
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="absolute right-0 top-full z-20 mt-2 w-56 origin-top-right rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-soft"
-            exit={{
-              opacity: 0,
-              scale: reducedMotion ? 1 : 0.97,
-              y: reducedMotion ? 0 : -4,
-            }}
-            initial={{
-              opacity: 0,
-              scale: reducedMotion ? 1 : 0.97,
-              y: reducedMotion ? 0 : -4,
-            }}
-            transition={{ duration: reducedMotion ? 0 : 0.16 }}
-          >
-            <Link
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
-              href="/guidelines"
-              onClick={() => setMenuOpen(false)}
-            >
-              <BookOpen aria-hidden="true" className="h-4 w-4" />
-              Community guidelines
-            </Link>
-            {canModerate ? (
-              <Link
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
-                href={`/communities/${community.slug}/manage`}
-                onClick={() => setMenuOpen(false)}
-              >
-                <Settings aria-hidden="true" className="h-4 w-4" />
-                Manage community
-              </Link>
-            ) : null}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {mounted
+        ? createPortal(
+            <AnimatePresence>
+              {menuOpen ? (
+                <motion.div
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="fixed z-[120] w-56 origin-top-right rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-soft"
+                  exit={{
+                    opacity: 0,
+                    scale: reducedMotion ? 1 : 0.97,
+                    y: reducedMotion ? 0 : -4,
+                  }}
+                  initial={{
+                    opacity: 0,
+                    scale: reducedMotion ? 1 : 0.97,
+                    y: reducedMotion ? 0 : -4,
+                  }}
+                  ref={menuRef}
+                  role="menu"
+                  style={menuPosition}
+                  transition={{ duration: reducedMotion ? 0 : 0.16 }}
+                >
+                  <Link
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+                    href="/guidelines"
+                    onClick={() => setMenuOpen(false)}
+                    role="menuitem"
+                  >
+                    <BookOpen aria-hidden="true" className="h-4 w-4" />
+                    Community guidelines
+                  </Link>
+                  {canModerate ? (
+                    <Link
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+                      href={`/communities/${community.slug}/manage`}
+                      onClick={() => setMenuOpen(false)}
+                      role="menuitem"
+                    >
+                      <Settings aria-hidden="true" className="h-4 w-4" />
+                      Manage community
+                    </Link>
+                  ) : null}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -171,11 +245,17 @@ export function CommunityExperience({
   community,
   canModerate,
   primaryActions,
+  activeSection = "feed",
+  urgentRequestCount = 0,
+  spotlightRequest,
   children,
 }: {
   community: CommunityIdentity;
   canModerate: boolean;
   primaryActions: React.ReactNode;
+  activeSection?: "feed" | "requests";
+  urgentRequestCount?: number;
+  spotlightRequest?: { id: string } | null;
   children: React.ReactNode;
 }) {
   const coverRef = useRef<HTMLDivElement>(null);
@@ -268,19 +348,31 @@ export function CommunityExperience({
             aria-label="Community quick navigation"
             className="ml-5 hidden items-center gap-1 lg:flex"
           >
-            {[
-              ["#feed", "Feed"],
-              ["#about", "About"],
-              ["#members", "Members"],
-            ].map(([href, label]) => (
-              <a
-                className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                href={href}
-                key={href}
-              >
-                {label}
-              </a>
-            ))}
+            <Link
+              className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              href={`/communities/${community.slug}#feed`}
+            >
+              Feed
+            </Link>
+            <Link
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              href={`/communities/${community.slug}?tab=requests#requests`}
+            >
+              Requests
+              <UrgentRequestBadge compact count={urgentRequestCount} />
+            </Link>
+            <Link
+              className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              href={`/communities/${community.slug}#about`}
+            >
+              About
+            </Link>
+            <Link
+              className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              href={`/communities/${community.slug}#members`}
+            >
+              Members
+            </Link>
           </nav>
           <div className="ml-auto">
             <CommunityUtilityActions
@@ -397,7 +489,7 @@ export function CommunityExperience({
                   </span>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <div className="scrollbar-none flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 lg:justify-end">
                 {primaryActions}
                 <CommunityUtilityActions
                   canModerate={canModerate}
@@ -408,30 +500,86 @@ export function CommunityExperience({
           </div>
         </div>
 
+        <AnimatePresence>
+          {spotlightRequest ? (
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="border-b border-border bg-card px-3 py-3 sm:px-6"
+              initial={{
+                opacity: 0,
+                y: reducedMotion ? 0 : 7,
+              }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.28,
+                ease: "easeOut",
+              }}
+            >
+              <Link
+                className="mx-auto flex max-w-[1480px] items-center gap-3 rounded-2xl border border-red-100 bg-red-50/70 px-3.5 py-3 transition hover:border-red-200 hover:bg-red-50 dark:border-red-400/10 dark:bg-red-400/5 dark:hover:bg-red-400/10 sm:px-4"
+                href={`/communities/${community.slug}?tab=requests#request-${spotlightRequest.id}`}
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-red-600 shadow-sm dark:bg-white/10 dark:text-red-300">
+                  <HandHeart aria-hidden="true" className="h-[18px] w-[18px]" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-red-700 dark:text-red-300">
+                    Community Spotlight
+                  </span>
+                  <span className="mt-0.5 block truncate text-sm font-bold text-foreground">
+                    Someone in this community needs urgent help.
+                  </span>
+                </span>
+                <span className="hidden shrink-0 items-center gap-1 text-xs font-black text-red-700 dark:text-red-300 sm:inline-flex">
+                  View Request
+                  <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         <nav
           aria-label="Community navigation"
           className="border-b border-border bg-background/95 backdrop-blur"
         >
           <div className="scrollbar-none mx-auto flex max-w-[1480px] items-center gap-1 overflow-x-auto px-3 sm:px-6 lg:px-9">
-            <a
-              aria-current="page"
-              className="relative inline-flex h-14 shrink-0 items-center px-3 text-sm font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
-              href="#feed"
+            <Link
+              aria-current={activeSection === "feed" ? "page" : undefined}
+              className={cn(
+                "relative inline-flex h-14 shrink-0 items-center px-3 text-sm transition",
+                activeSection === "feed"
+                  ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+                  : "font-bold text-muted-foreground hover:text-foreground",
+              )}
+              href={`/communities/${community.slug}#feed`}
             >
               Feed
-            </a>
-            <a
+            </Link>
+            <Link
+              aria-current={activeSection === "requests" ? "page" : undefined}
+              className={cn(
+                "relative inline-flex h-14 shrink-0 items-center gap-2 px-3 text-sm transition",
+                activeSection === "requests"
+                  ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+                  : "font-bold text-muted-foreground hover:text-foreground",
+              )}
+              href={`/communities/${community.slug}?tab=requests#requests`}
+            >
+              Requests
+              <UrgentRequestBadge count={urgentRequestCount} />
+            </Link>
+            <Link
               className="inline-flex h-14 shrink-0 items-center px-3 text-sm font-bold text-muted-foreground transition hover:text-foreground"
-              href="#about"
+              href={`/communities/${community.slug}#about`}
             >
               About
-            </a>
-            <a
+            </Link>
+            <Link
               className="inline-flex h-14 shrink-0 items-center px-3 text-sm font-bold text-muted-foreground transition hover:text-foreground"
-              href="#members"
+              href={`/communities/${community.slug}#members`}
             >
               Members
-            </a>
+            </Link>
             <Link
               className="inline-flex h-14 shrink-0 items-center px-3 text-sm font-bold text-muted-foreground transition hover:text-foreground"
               href="/guidelines"

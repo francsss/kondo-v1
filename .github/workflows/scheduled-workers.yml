@@ -33,6 +33,19 @@ jobs:
           --header "Authorization: Bearer ${CRON_SECRET}"
           "${PRODUCTION_APP_URL}/api/internal/notifications/process"
 
+  community-requests:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '3/5 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Close expired community requests
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/community-requests/expire"
+
   marketplace:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 * * * *'
     runs-on: ubuntu-latest

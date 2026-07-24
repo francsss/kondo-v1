@@ -112,6 +112,27 @@ enum MembershipRole {
   OWNER
 }
 
+enum CommunityRequestStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum CommunityRequestPriority {
+  URGENT
+  IMPORTANT
+  NORMAL
+}
+
+enum CommunityRequestCategory {
+  ACADEMIC
+  HOUSING
+  TRANSPORT
+  DOCUMENTS
+  HEALTH
+  OTHER
+}
+
 enum PostType {
   DISCUSSION
   QUESTION
@@ -408,6 +429,8 @@ model User {
   communityAccessSubjects          CommunityAccessRequest[]    @relation("CommunityAccessSubject")
   createdCommunityAccessRequests   CommunityAccessRequest[]    @relation("CommunityAccessCreator")
   resolvedCommunityAccessRequests  CommunityAccessRequest[]    @relation("CommunityAccessResolver")
+  communityRequests                CommunityRequest[]          @relation("CommunityRequestCreator")
+  communityRequestHelpOffers       CommunityRequestHelpOffer[]
   posts                            Post[]
   comments                         Comment[]
   reactions                        Reaction[]
@@ -822,6 +845,7 @@ model Community {
   university     University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
   members        CommunityMember[]
   accessRequests CommunityAccessRequest[]
+  requests       CommunityRequest[]
   posts          Post[]
   moderatedAt    DateTime?
   removedAt      DateTime?
@@ -874,6 +898,39 @@ model CommunityAccessRequest {
   @@unique([communityId, userId, type])
   @@index([communityId, status, createdAt])
   @@index([userId, status, createdAt])
+}
+
+model CommunityRequest {
+  id          String                      @id @default(cuid())
+  communityId String
+  community   Community                   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  creatorId   String
+  creator     User                        @relation("CommunityRequestCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  category    CommunityRequestCategory
+  priority    CommunityRequestPriority    @default(NORMAL)
+  status      CommunityRequestStatus      @default(OPEN)
+  title       String                      @db.VarChar(140)
+  description String                      @db.VarChar(500)
+  expiresAt   DateTime
+  closedAt    DateTime?
+  helpOffers  CommunityRequestHelpOffer[]
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+
+  @@index([communityId, status, expiresAt])
+  @@index([communityId, priority, status, expiresAt])
+  @@index([creatorId, createdAt])
+}
+
+model CommunityRequestHelpOffer {
+  requestId String
+  request   CommunityRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@id([requestId, userId])
+  @@index([userId, createdAt])
 }
 
 model Post {

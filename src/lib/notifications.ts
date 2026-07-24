@@ -14,6 +14,8 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
   "MARKETPLACE_CONTACT",
   "MODERATION_RESULT",
   "ADMIN_ANNOUNCEMENT",
+  "COMMUNITY_REQUEST_HELP",
+  "COMMUNITY_REQUEST_CLOSED",
 ] as const;
 
 export type NotificationTemplateKey =
@@ -61,6 +63,8 @@ const allowedTemplateTokens: Record<
   MARKETPLACE_CONTACT: ["actorName", "listingTitle"],
   MODERATION_RESULT: ["outcome"],
   ADMIN_ANNOUNCEMENT: ["title", "body"],
+  COMMUNITY_REQUEST_HELP: ["actorName", "requestTitle"],
+  COMMUNITY_REQUEST_CLOSED: ["requestTitle"],
 };
 
 const safeRoutePrefixes = [
@@ -357,6 +361,53 @@ async function deliverClaimedJob(jobId: string) {
     });
     return "COMPLETED" as const;
   });
+}
+
+export async function processNotificationJobNow(jobId: string) {
+  const claimed = await prisma.notificationJob.updateMany({
+    where: {
+      id: jobId,
+      status: "PENDING",
+      availableAt: { lte: new Date() },
+      attempts: { lt: 3 },
+    },
+    data: {
+      status: "PROCESSING",
+      attempts: { increment: 1 },
+      lockedAt: new Date(),
+    },
+  });
+  if (!claimed.count) {
+    const current = await prisma.notificationJob.findUnique({
+      where: { id: jobId },
+      select: { status: true },
+    });
+    return current?.status ?? "SKIPPED";
+  }
+
+  const job = await prisma.notificationJob.findUniqueOrThrow({
+    where: { id: jobId },
+    select: { attempts: true, announcementId: true },
+  });
+  try {
+    const result = await deliverClaimedJob(jobId);
+    if (job.announcementId) {
+      await completeAnnouncementIfFinished(job.announcementId);
+    }
+    return result;
+  } catch {
+    const terminal = job.attempts >= 3;
+    await prisma.notificationJob.updateMany({
+      where: { id: jobId, status: "PROCESSING" },
+      data: {
+        status: terminal ? "FAILED" : "PENDING",
+        availableAt: new Date(Date.now() + job.attempts * 60_000),
+        lockedAt: null,
+        lastErrorCode: "PROCESSING_ERROR",
+      },
+    });
+    return terminal ? "FAILED" : "PENDING";
+  }
 }
 
 export async function processNotificationJobs(limit = 100) {

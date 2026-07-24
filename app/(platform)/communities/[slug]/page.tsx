@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { CommunityExperience } from "@/components/features/community/CommunityExperience";
 import { CommunityJoinButton } from "@/components/features/community/CommunityJoinButton";
 import { CommunityPostFocus } from "@/components/features/community/CommunityPostFocus";
+import { CommunityRequestsPanel } from "@/components/features/community/CommunityRequestsPanel";
 import { ContentReportButton } from "@/components/features/community/ContentReportButton";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { PostComposer } from "@/components/features/community/PostComposer";
@@ -13,6 +14,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { communityVisibilityWhere } from "@/lib/content-visibility";
+import { getCommunityRequestOverview } from "@/lib/community-requests";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireUser } from "@/lib/server-auth";
 
@@ -75,11 +77,12 @@ export default async function CommunityPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ post?: string; page?: string }>;
+  searchParams: Promise<{ post?: string; page?: string; tab?: string }>;
 }) {
   const user = await requireUser();
   const { slug } = await params;
   const query = await searchParams;
+  const activeSection = query.tab === "requests" ? "requests" : "feed";
   const page = Math.max(1, Number(query.page ?? 1) || 1);
   const pageSize = 12;
   const community = await prisma.community.findFirst({
@@ -99,8 +102,8 @@ export default async function CommunityPage({
         where: { status: "PUBLISHED" },
         include: postIncludeFor(user.id),
         orderBy: [{ pinnedAt: "desc" }, { createdAt: "desc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: activeSection === "feed" ? (page - 1) * pageSize : 0,
+        take: activeSection === "feed" ? pageSize : 0,
       },
       accessRequests: {
         where: { userId: user.id, status: "PENDING" },
@@ -123,16 +126,29 @@ export default async function CommunityPage({
   });
   const joined = Boolean(membership);
   const canModerate = ["OWNER", "MODERATOR"].includes(membership?.role ?? "");
-  const selectedPost = query.post
-    ? await prisma.post.findFirst({
-        where: {
-          id: query.post,
-          communityId: community.id,
-          status: "PUBLISHED",
-        },
-        include: postIncludeFor(user.id),
+  const requestOverview = joined
+    ? await getCommunityRequestOverview({
+        communityId: community.id,
+        userId: user.id,
+        includeLists: activeSection === "requests",
       })
-    : null;
+    : {
+        communityRequests: [],
+        myRequests: [],
+        urgentCount: 0,
+        spotlightRequest: null,
+      };
+  const selectedPost =
+    query.post && activeSection === "feed"
+      ? await prisma.post.findFirst({
+          where: {
+            id: query.post,
+            communityId: community.id,
+            status: "PUBLISHED",
+          },
+          include: postIncludeFor(user.id),
+        })
+      : null;
   const comments = selectedPost
     ? await prisma.comment.findMany({
         where: { postId: selectedPost.id, status: "PUBLISHED" },
@@ -160,6 +176,7 @@ export default async function CommunityPage({
 
   return (
     <CommunityExperience
+      activeSection={activeSection}
       canModerate={canModerate}
       community={{
         name: community.name,
@@ -199,190 +216,203 @@ export default async function CommunityPage({
           ) : null}
         </>
       }
+      spotlightRequest={requestOverview.spotlightRequest}
+      urgentRequestCount={requestOverview.urgentCount}
     >
-      <main className="mx-auto max-w-[1480px] px-3 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-10">
-        <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,860px)_340px] xl:justify-center xl:gap-9">
-          <section
-            aria-labelledby="community-feed-heading"
-            className="min-w-0 scroll-mt-24"
-            id="feed"
-          >
-            <div className="mb-5 flex items-end justify-between gap-4 px-1">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-                  Community feed
-                </p>
-                <h2
-                  className="mt-1 text-2xl font-black tracking-[-0.035em] text-kondo-ink dark:text-white sm:text-3xl"
-                  id="community-feed-heading"
-                >
-                  Latest conversations
-                </h2>
-              </div>
-              <p className="hidden text-xs font-semibold text-muted-foreground sm:block">
-                {community._count.posts.toLocaleString()}{" "}
-                {community._count.posts === 1 ? "post" : "posts"}
-              </p>
-            </div>
-
-            <Card className="mb-5 flex items-center gap-3 rounded-[1.75rem] p-3.5 shadow-sm sm:p-4">
-              <Avatar
-                className="h-10 w-10"
-                firstName={user.firstName}
-                lastName={user.lastName}
-                mediaId={user.avatarMediaId}
-              />
-              {joined && community.status === "ACTIVE" ? (
-                <PostComposer
-                  communities={[
-                    {
-                      id: community.id,
-                      name: community.name,
-                      icon: community.icon,
-                      canAnnounce: canModerate,
-                    },
-                  ]}
-                  defaultCommunityId={community.id}
-                  triggerLabel={`Start a conversation in ${community.name}…`}
-                  triggerVariant="composer"
-                />
-              ) : (
-                <p className="px-2 text-sm text-muted-foreground">
-                  Join this active community to start a conversation.
-                </p>
-              )}
-            </Card>
-
-            <div className="space-y-5">
-              {community.posts.map((post) => (
-                <div key={post.id}>
-                  <FeedPost
-                    canModerate={canModerate}
-                    currentUserId={user.id}
-                    focused={selectedPost?.id === post.id}
-                    immersive
-                    post={post}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {!community.posts.length ? (
-              <Card className="py-16 text-center">
-                <p className="text-base font-black text-foreground">
-                  The conversation starts here.
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Be the first member to share something useful.
-                </p>
-              </Card>
-            ) : null}
-
-            {pageCount > 1 ? (
-              <div className="mt-6 flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Page {page} of {pageCount}
-                </p>
-                <div className="flex gap-2">
-                  <Button asChild size="sm" variant="secondary">
-                    <Link
-                      href={`/communities/${slug}?page=${Math.max(1, page - 1)}`}
-                    >
-                      <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-                      Previous
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" variant="secondary">
-                    <Link
-                      href={`/communities/${slug}?page=${Math.min(pageCount, page + 1)}`}
-                    >
-                      Next
-                      <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <aside className="space-y-5 xl:sticky xl:top-24">
-            <Card className="scroll-mt-24 rounded-[1.75rem] p-6" id="about">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-                About
-              </p>
-              <h2 className="mt-2 text-xl font-black text-kondo-ink dark:text-white">
-                A space built on trust
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {community.description}
-              </p>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-muted/60 p-3.5">
-                  <p className="text-xl font-black text-foreground">
-                    {community._count.members.toLocaleString()}
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
-                    Members
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-muted/60 p-3.5">
-                  <p className="text-xl font-black text-foreground">
-                    {community._count.posts.toLocaleString()}
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
-                    Posts
-                  </p>
-                </div>
-              </div>
-              <div className="mt-5 border-t border-border pt-5">
-                <p className="text-sm font-black text-foreground">
-                  Community care
-                </p>
-                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-                  Be generous, protect privacy, and keep advice grounded in
-                  lived experience.
-                </p>
-                <Link
-                  className="mt-3 inline-flex text-xs font-black text-kondo-green hover:underline"
-                  href="/guidelines"
-                >
-                  Read the guidelines
-                </Link>
-              </div>
-            </Card>
-
-            <Card className="scroll-mt-24 rounded-[1.75rem] p-6" id="members">
-              <div className="flex items-center justify-between gap-3">
+      {activeSection === "feed" ? (
+        <main className="mx-auto max-w-[1480px] px-3 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-10">
+          <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,860px)_340px] xl:justify-center xl:gap-9">
+            <section
+              aria-labelledby="community-feed-heading"
+              className="min-w-0 scroll-mt-24"
+              id="feed"
+            >
+              <div className="mb-5 flex items-end justify-between gap-4 px-1">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-                    Members
+                    Community feed
                   </p>
-                  <h2 className="mt-1 text-lg font-black text-kondo-ink dark:text-white">
-                    New around here
+                  <h2
+                    className="mt-1 text-2xl font-black tracking-[-0.035em] text-kondo-ink dark:text-white sm:text-3xl"
+                    id="community-feed-heading"
+                  >
+                    Latest conversations
                   </h2>
                 </div>
-                <span className="text-xs font-bold text-muted-foreground">
-                  {community._count.members.toLocaleString()} total
-                </span>
+                <p className="hidden text-xs font-semibold text-muted-foreground sm:block">
+                  {community._count.posts.toLocaleString()}{" "}
+                  {community._count.posts === 1 ? "post" : "posts"}
+                </p>
               </div>
-              <div className="mt-5 space-y-3">
-                {community.members.map((member) => (
-                  <div className="flex items-center gap-3" key={member.id}>
-                    <Avatar
-                      className="h-10 w-10"
-                      firstName={member.user.firstName}
-                      lastName={member.user.lastName}
+
+              <Card className="mb-5 flex items-center gap-3 rounded-[1.75rem] p-3.5 shadow-sm sm:p-4">
+                <Avatar
+                  className="h-10 w-10"
+                  firstName={user.firstName}
+                  lastName={user.lastName}
+                  mediaId={user.avatarMediaId}
+                />
+                {joined && community.status === "ACTIVE" ? (
+                  <PostComposer
+                    communities={[
+                      {
+                        id: community.id,
+                        name: community.name,
+                        icon: community.icon,
+                        canAnnounce: canModerate,
+                      },
+                    ]}
+                    defaultCommunityId={community.id}
+                    triggerLabel={`Start a conversation in ${community.name}…`}
+                    triggerVariant="composer"
+                  />
+                ) : (
+                  <p className="px-2 text-sm text-muted-foreground">
+                    Join this active community to start a conversation.
+                  </p>
+                )}
+              </Card>
+
+              <div className="space-y-5">
+                {community.posts.map((post) => (
+                  <div key={post.id}>
+                    <FeedPost
+                      canModerate={canModerate}
+                      currentUserId={user.id}
+                      focused={selectedPost?.id === post.id}
+                      immersive
+                      post={post}
                     />
-                    <p className="min-w-0 truncate text-sm font-bold text-foreground">
-                      {member.user.firstName} {member.user.lastName}
-                    </p>
                   </div>
                 ))}
               </div>
-            </Card>
-          </aside>
-        </div>
-      </main>
+
+              {!community.posts.length ? (
+                <Card className="py-16 text-center">
+                  <p className="text-base font-black text-foreground">
+                    The conversation starts here.
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Be the first member to share something useful.
+                  </p>
+                </Card>
+              ) : null}
+
+              {pageCount > 1 ? (
+                <div className="mt-6 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    Page {page} of {pageCount}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button asChild size="sm" variant="secondary">
+                      <Link
+                        href={`/communities/${slug}?page=${Math.max(1, page - 1)}`}
+                      >
+                        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                        Previous
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" variant="secondary">
+                      <Link
+                        href={`/communities/${slug}?page=${Math.min(pageCount, page + 1)}`}
+                      >
+                        Next
+                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <aside className="space-y-5 xl:sticky xl:top-24">
+              <Card className="scroll-mt-24 rounded-[1.75rem] p-6" id="about">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+                  About
+                </p>
+                <h2 className="mt-2 text-xl font-black text-kondo-ink dark:text-white">
+                  A space built on trust
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {community.description}
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-muted/60 p-3.5">
+                    <p className="text-xl font-black text-foreground">
+                      {community._count.members.toLocaleString()}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                      Members
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-muted/60 p-3.5">
+                    <p className="text-xl font-black text-foreground">
+                      {community._count.posts.toLocaleString()}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                      Posts
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 border-t border-border pt-5">
+                  <p className="text-sm font-black text-foreground">
+                    Community care
+                  </p>
+                  <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                    Be generous, protect privacy, and keep advice grounded in
+                    lived experience.
+                  </p>
+                  <Link
+                    className="mt-3 inline-flex text-xs font-black text-kondo-green hover:underline"
+                    href="/guidelines"
+                  >
+                    Read the guidelines
+                  </Link>
+                </div>
+              </Card>
+
+              <Card className="scroll-mt-24 rounded-[1.75rem] p-6" id="members">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+                      Members
+                    </p>
+                    <h2 className="mt-1 text-lg font-black text-kondo-ink dark:text-white">
+                      New around here
+                    </h2>
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {community._count.members.toLocaleString()} total
+                  </span>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {community.members.map((member) => (
+                    <div className="flex items-center gap-3" key={member.id}>
+                      <Avatar
+                        className="h-10 w-10"
+                        firstName={member.user.firstName}
+                        lastName={member.user.lastName}
+                      />
+                      <p className="min-w-0 truncate text-sm font-bold text-foreground">
+                        {member.user.firstName} {member.user.lastName}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </aside>
+          </div>
+        </main>
+      ) : (
+        <CommunityRequestsPanel
+          canCreate={joined && community.status === "ACTIVE"}
+          communityId={community.id}
+          communityName={community.name}
+          communityRequests={requestOverview.communityRequests}
+          isMember={joined}
+          myRequests={requestOverview.myRequests}
+        />
+      )}
       {selectedPost ? (
         <CommunityPostFocus
           canComment={joined}

@@ -450,6 +450,43 @@ export const updateCommentSchema = z.object({
   content: z.string().trim().min(1).max(5_000),
 });
 
+export const createCommunityRequestSchema = z
+  .object({
+    category: z.enum([
+      "ACADEMIC",
+      "HOUSING",
+      "TRANSPORT",
+      "DOCUMENTS",
+      "HEALTH",
+      "OTHER",
+    ]),
+    priority: z.enum(["URGENT", "IMPORTANT", "NORMAL"]).default("NORMAL"),
+    title: z.string().trim().min(3).max(140),
+    description: z.string().trim().min(10).max(500),
+    expiresAt: z.coerce.date(),
+  })
+  .superRefine((data, context) => {
+    const now = Date.now();
+    if (data.expiresAt.getTime() < now + 15 * 60_000) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Expiration must be at least 15 minutes from now.",
+        path: ["expiresAt"],
+      });
+    }
+    if (data.expiresAt.getTime() > now + 30 * 24 * 60 * 60_000) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Requests can remain active for up to 30 days.",
+        path: ["expiresAt"],
+      });
+    }
+  });
+
+export const closeCommunityRequestSchema = z.object({
+  status: z.literal("CLOSED"),
+});
+
 export const adminCommunityUpdateSchema = z.object({
   status: z
     .enum(["PENDING_REVIEW", "ACTIVE", "ARCHIVED", "REMOVED"])

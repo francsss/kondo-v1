@@ -25,6 +25,7 @@
     "notifications:process": "tsx scripts/process-notifications.ts",
     "notifications:digest": "tsx scripts/send-email-digests.ts",
     "marketplace:expire": "tsx scripts/expire-listings.ts",
+    "community-requests:expire": "tsx scripts/expire-community-requests.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts"
   },
   "dependencies": {
