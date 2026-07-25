@@ -286,6 +286,20 @@ enum ReportEvidenceKind {
   SCHOLARSHIP_AGENT_SNAPSHOT
 }
 
+enum PetFeedbackCategory {
+  BUG
+  SUGGESTION
+  IDEA
+  EXPERIENCE
+  OTHER
+}
+
+enum PetFeedbackStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
 enum MediaKind {
   IMAGE
   DOCUMENT
@@ -557,6 +571,9 @@ model User {
   reopenedReports                  Report[]                      @relation("ReportReopenedBy")
   reportNotes                      ReportNote[]
   reportEvidenceCaptures           ReportEvidence[]
+  submittedPetFeedbacks            PetFeedback[]                 @relation("PetFeedbackAuthor")
+  resolvedPetFeedbacks             PetFeedback[]                 @relation("PetFeedbackResolver")
+  petFeedbackNotes                 PetFeedbackNote[]             @relation("PetFeedbackNoteAuthor")
   ownedMedia                       MediaAsset[]                  @relation("MediaOwner")
   removedMedia                     MediaAsset[]                  @relation("MediaRemovedBy")
   accountRequests                  AccountRequest[]              @relation("AccountRequestOwner")
@@ -1860,6 +1877,43 @@ model ReportEvidence {
 
   @@index([reportId, capturedAt])
   @@index([capturedById, capturedAt])
+}
+
+model PetFeedback {
+  id               String              @id @default(cuid())
+  userId           String?
+  user             User?               @relation("PetFeedbackAuthor", fields: [userId], references: [id], onDelete: SetNull)
+  category         PetFeedbackCategory
+  message          String              @db.VarChar(2000)
+  pagePath         String              @db.VarChar(240)
+  pageArea         String              @db.VarChar(40)
+  submittedAfterMs Int?
+  status           PetFeedbackStatus   @default(NEW)
+  version          Int                 @default(1)
+  resolvedAt       DateTime?
+  resolvedById     String?
+  resolvedBy       User?               @relation("PetFeedbackResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  notes            PetFeedbackNote[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category, createdAt])
+  @@index([pageArea, createdAt])
+  @@index([userId, createdAt])
+}
+
+model PetFeedbackNote {
+  id         String      @id @default(cuid())
+  feedbackId String
+  feedback   PetFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  authorId   String?
+  author     User?       @relation("PetFeedbackNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  body       String      @db.VarChar(2000)
+  createdAt  DateTime    @default(now())
+
+  @@index([feedbackId, createdAt])
+  @@index([authorId, createdAt])
 }
 
 model MediaAsset {

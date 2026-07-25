@@ -15,6 +15,7 @@ import {
   MapPin,
   Landmark,
   MessageCircleWarning,
+  MessageSquareHeart,
   ShoppingBag,
   ScrollText,
   Settings2,
@@ -46,6 +47,12 @@ const items = [
     label: "Reports",
     icon: FileSearch,
     permission: "REPORT_LIST" as const,
+  },
+  {
+    href: "/admin/feedback",
+    label: "MVP feedback",
+    icon: MessageSquareHeart,
+    permission: "FEEDBACK_VIEW" as const,
   },
   {
     href: "/admin/audit",

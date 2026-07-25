@@ -293,6 +293,53 @@ const dashboards = [
       },
     ],
   },
+  {
+    name: "Kondo · MVP feedback",
+    description:
+      "Kondo Pet visibility, click-through, feedback conversion, completion time, and cancellation.",
+    insights: [
+      {
+        name: "Kondo · Pet display → feedback submitted",
+        description:
+          "Primary Kondo Pet funnel for click-through and successful feedback submission.",
+        query: funnel([
+          ["pet_displayed", "Pet displayed"],
+          ["pet_clicked", "Pet clicked"],
+          ["feedback_modal_opened", "Feedback opened"],
+          ["feedback_submitted", "Feedback submitted"],
+        ]),
+      },
+      {
+        name: "Kondo · Pet engagement by area",
+        description:
+          "Displays, clicks, submissions, and cancellations broken down by product area.",
+        query: trends(
+          [
+            event("pet_displayed", "Displayed"),
+            event("pet_clicked", "Clicked"),
+            event("feedback_submitted", "Submitted"),
+            event("feedback_cancelled", "Cancelled"),
+          ],
+          { breakdown: "area", display: "ActionsBarValue" },
+        ),
+      },
+      {
+        name: "Kondo · Average feedback completion time",
+        description:
+          "Average time from opening the feedback modal to a successful submission.",
+        query: trends(
+          [
+            event("feedback_submitted", "Average milliseconds", {
+              math: "avg",
+              math_property: "duration_ms",
+              math_property_type: "event",
+            }),
+          ],
+          { breakdown: "category", display: "ActionsBarValue" },
+        ),
+      },
+    ],
+  },
 ];
 
 async function getAll(path) {

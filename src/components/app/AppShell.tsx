@@ -26,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
+import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { RestoreStoryScroll } from "@/components/features/stories/RestoreStoryScroll";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -82,6 +83,8 @@ const navigation: NavigationItem[] = [
 const secondaryNavigation: NavigationItem[] = [
   { href: "/stories", label: "Student Stories", icon: Clapperboard },
 ];
+
+const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -250,6 +253,7 @@ export function AppShell({
         <ProductAnalyticsIdentity user={user} />
         <RestoreStoryScroll />
         {children}
+        <KondoPet enabled={kondoPetEnabled} />
       </div>
     );
   }
@@ -260,6 +264,7 @@ export function AppShell({
       <PresenceHeartbeat />
       <ProductAnalyticsIdentity user={user} />
       <RestoreStoryScroll />
+      <KondoPet enabled={kondoPetEnabled} />
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col">
         <div className="px-2">
           <KondoLogo href="/home" />

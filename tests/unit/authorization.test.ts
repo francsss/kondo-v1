@@ -73,6 +73,8 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("ADMIN", "GUIDE_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("ADMIN", "STUDENT_HUB_CONFIG_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "STUDENT_HUB_CONFIG_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "FEEDBACK_VIEW")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "FEEDBACK_MANAGE")).toBe(true);
     expect(hasAdminPermission("MODERATOR", "REFERENCE_DATA_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "MEDIA_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "USER_VIEW")).toBe(false);
@@ -81,6 +83,7 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("MODERATOR", "COMMUNITY_CMS_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "MARKETPLACE_CMS_VIEW")).toBe(false);
     expect(hasAdminPermission("MODERATOR", "GUIDE_CMS_VIEW")).toBe(false);
+    expect(hasAdminPermission("MODERATOR", "FEEDBACK_VIEW")).toBe(false);
 
     expect(
       hasAdminPermission("SUPER_ADMIN", "AUDIT_VIEW_SECURITY_METADATA"),

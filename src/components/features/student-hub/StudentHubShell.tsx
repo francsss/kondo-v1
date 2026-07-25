@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
+import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,8 @@ const tabs = [
   { href: "/student-hub/scholarships", label: "Scholarships" },
   { href: "/student-hub/help", label: "Help" },
 ] as const;
+
+const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
 function isActiveTab(pathname: string, href: (typeof tabs)[number]["href"]) {
   return href === "/student-hub"
@@ -109,6 +112,7 @@ export function StudentHubShell({
         </div>
       </header>
       <main>{children}</main>
+      <KondoPet enabled={kondoPetEnabled} />
     </div>
   );
 }
