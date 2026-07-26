@@ -62,10 +62,15 @@
 
   html {
     scroll-behavior: smooth;
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   body {
     margin: 0;
+    min-height: 100dvh;
+    max-width: 100%;
+    overflow-x: clip;
     @apply bg-background text-foreground;
     font-family:
       Inter,
@@ -93,6 +98,13 @@
     @apply text-foreground transition-colors duration-200 placeholder:text-muted-foreground;
   }
 
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
   select option {
     @apply bg-card text-card-foreground;
   }
@@ -100,6 +112,19 @@
   :disabled {
     @apply cursor-not-allowed;
   }
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    /* iOS zooms focused controls whose computed font size is below 16px. */
+    font-size: 16px !important;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 a {

@@ -329,6 +329,12 @@ async function main() {
       prisma.user.create({
         data: {
           ...data,
+          gender:
+            data.firstName === "Amina" ||
+            data.firstName === "Ama" ||
+            data.firstName === "Wambui"
+              ? "FEMALE"
+              : "MALE",
           passwordHash,
           status: "ACTIVE",
           bio: `African student in China studying ${data.degree}. Always happy to share what I learn.`,
@@ -340,6 +346,36 @@ async function main() {
     ),
   );
   const [admin, moderator, ama, kwame, chidi, wambui] = users;
+  await prisma.meetDiscoveryProfile.createMany({
+    data: users.map((user) => ({
+      userId: user.id,
+      gender: user.id === ama.id || user.id === wambui.id ? "FEMALE" : "MALE",
+      interestedIn: "ALL",
+      birthYear: 2000,
+      minimumAge: 18,
+      maximumAge: 40,
+      preferredLanguages: user.languages,
+      lookingFor: [
+        "FRIENDS",
+        "STUDY",
+        "LANGUAGE",
+        "SPORTS",
+        "CITY",
+        "NETWORKING",
+        "COUNTRY",
+        "RELATIONSHIP",
+      ],
+      distanceRange: "CITY",
+      nearbyVisibility: true,
+      showAge: true,
+      showNationality: true,
+      showUniversity: true,
+      showRelationshipStatus: true,
+      showLanguages: true,
+      showInterests: true,
+      completedAt: new Date(),
+    })),
+  });
 
   const communityData = [
     {

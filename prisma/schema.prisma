@@ -245,6 +245,31 @@ enum MeetMode {
   LOOKING_FOR
 }
 
+enum MeetDistanceRange {
+  KM_5
+  KM_10
+  KM_20
+  CITY
+  OTHER_CITY
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingProvider {
+  ALIPAY
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
 enum CallKind {
   MEET
   VIDEO
@@ -533,7 +558,7 @@ model User {
   degree                           String?
   studyLevel                       StudyLevel?
   studentJourney                   StudentJourney?
-  nearbyDiscoveryEnabled           Boolean                       @default(false)
+  nearbyDiscoveryEnabled           Boolean                       @default(true)
   meetIntents                      String[]                      @default([])
   studyYear                        Int?
   arrivalDate                      DateTime?
@@ -585,6 +610,8 @@ model User {
   conversationMemberships          ConversationParticipant[]
   sentMessages                     Message[]                     @relation("MessageSender")
   meetQueueEntry                   MeetQueueEntry?
+  meetDiscoveryProfile             MeetDiscoveryProfile?
+  subscriptions                    UserSubscription[]
   createdCallSessions              CallSession[]                 @relation("CallSessionCreator")
   callParticipations               CallParticipant[]
   blockedUsers                     UserBlock[]                   @relation("Blocker")
@@ -867,30 +894,32 @@ model ScheduleCourse {
 }
 
 model ScheduleImport {
-  id             String                @id @default(cuid())
-  ownerId        String
-  owner          User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  universityId   String?
-  university     University?           @relation(fields: [universityId], references: [id], onDelete: SetNull)
-  campusId       String?
-  campus         Campus?               @relation(fields: [campusId], references: [id], onDelete: SetNull)
-  academicTermId String?
-  academicTerm   AcademicTerm?         @relation(fields: [academicTermId], references: [id], onDelete: SetNull)
-  scheduleId     String?
-  schedule       StudentSchedule?      @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
-  status         ScheduleImportStatus  @default(UPLOADED)
-  provider       String?
-  model          String?
-  attemptCount   Int                   @default(0)
-  inputTokens    Int?
-  outputTokens   Int?
-  errorCode      String?
-  errorMessage   String?               @db.VarChar(500)
-  retainSource   Boolean               @default(false)
-  files          ScheduleImportFile[]
-  result         ScheduleImportResult?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id                    String                @id @default(cuid())
+  ownerId               String
+  owner                 User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  universityId          String?
+  university            University?           @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  campusId              String?
+  campus                Campus?               @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  academicTermId        String?
+  academicTerm          AcademicTerm?         @relation(fields: [academicTermId], references: [id], onDelete: SetNull)
+  scheduleId            String?
+  schedule              StudentSchedule?      @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  status                ScheduleImportStatus  @default(UPLOADED)
+  provider              String?
+  model                 String?
+  attemptCount          Int                   @default(0)
+  inputTokens           Int?
+  outputTokens          Int?
+  errorCode             String?
+  errorMessage          String?               @db.VarChar(500)
+  processingStage       String?               @db.VarChar(48)
+  processingDiagnostics Json?
+  retainSource          Boolean               @default(false)
+  files                 ScheduleImportFile[]
+  result                ScheduleImportResult?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
   @@index([ownerId, status, createdAt])
   @@index([universityId])
@@ -915,6 +944,7 @@ model ScheduleImportResult {
   import        ScheduleImport @relation(fields: [importId], references: [id], onDelete: Cascade)
   extractedJson Json
   warnings      Json
+  diagnostics   Json?
   courseCount   Int
   reviewCount   Int
   createdAt     DateTime       @default(now())
@@ -1836,6 +1866,73 @@ model MeetQueueEntry {
   @@index([heartbeatAt])
   @@index([mode, heartbeatAt])
   @@index([countryPreferenceId])
+}
+
+model MeetDiscoveryProfile {
+  userId                 String               @id
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender                 UserGender
+  interestedIn           MeetGenderPreference @default(ALL)
+  birthYear              Int?
+  minimumAge             Int                  @default(18)
+  maximumAge             Int                  @default(40)
+  preferredLanguages     String[]             @default([])
+  lookingFor             String[]             @default([])
+  distanceRange          MeetDistanceRange    @default(CITY)
+  otherCityId            String?
+  nearbyVisibility       Boolean              @default(true)
+  showAge                Boolean              @default(true)
+  showNationality        Boolean              @default(true)
+  showUniversity         Boolean              @default(true)
+  showRelationshipStatus Boolean              @default(true)
+  showLanguages          Boolean              @default(true)
+  showInterests          Boolean              @default(true)
+  completedAt            DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  @@index([gender, nearbyVisibility, completedAt])
+  @@index([distanceRange, otherCityId])
+}
+
+model SubscriptionPlan {
+  id              String             @id @default(cuid())
+  key             String             @unique @db.VarChar(80)
+  name            String             @db.VarChar(120)
+  description     String             @db.VarChar(500)
+  active          Boolean            @default(true)
+  priceMinor      Int?
+  currency        String             @default("CNY") @db.VarChar(3)
+  billingInterval BillingInterval    @default(MONTHLY)
+  featureKeys     String[]           @default([])
+  displayOrder    Int                @default(0)
+  subscriptions   UserSubscription[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([active, displayOrder])
+}
+
+model UserSubscription {
+  id                      String             @id @default(cuid())
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId                  String
+  plan                    SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status                  SubscriptionStatus @default(PENDING)
+  billingProvider         BillingProvider?
+  providerCustomerRef     String?            @db.VarChar(191)
+  providerSubscriptionRef String?            @unique @db.VarChar(191)
+  currentPeriodStartsAt   DateTime?
+  currentPeriodEndsAt     DateTime?
+  cancelAtPeriodEnd       Boolean            @default(false)
+  cancelledAt             DateTime?
+  metadata                Json?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([userId, status, currentPeriodEndsAt])
+  @@index([planId, status])
 }
 
 model CallSession {

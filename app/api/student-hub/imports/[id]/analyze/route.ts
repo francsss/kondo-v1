@@ -7,6 +7,7 @@ import {
   getScheduleAnalysisProvider,
   ScheduleAnalysisError,
 } from "@/lib/schedule-ai";
+import { validateExtractedSchedule } from "@/lib/schedule-validation";
 import {
   parseScheduleForPersistence,
   ScheduleImportStateError,
@@ -72,6 +73,8 @@ export async function POST(
     where: { id, ownerId: user.id, status: scheduleImport.status },
     data: {
       status: "ANALYZING",
+      processingStage: "FILE_VALIDATION",
+      processingDiagnostics: undefined,
       attemptCount: { increment: 1 },
       errorCode: null,
       errorMessage: null,
@@ -101,19 +104,36 @@ export async function POST(
       },
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
     });
+    if (!configuration || configuration.periods.length === 0) {
+      throw new ScheduleAnalysisError(
+        "PERIOD_CONFIG_MISSING",
+        "The class-period configuration for this university is missing. Ask an administrator to configure the timetable periods before retrying.",
+        422,
+        false,
+      );
+    }
+    await prisma.scheduleImport.update({
+      where: { id },
+      data: { processingStage: "TEXT_EXTRACTION" },
+    });
     const analysis = await getScheduleAnalysisProvider().analyze(
       scheduleImport.files.map(({ mediaAsset }) => mediaAsset),
       {
         university: scheduleImport.university?.name ?? "Unknown university",
         campus: scheduleImport.campus?.name,
         term: scheduleImport.academicTerm?.name,
-        timezone: configuration?.timezone ?? "Asia/Shanghai",
-        periods: configuration?.periods ?? [],
+        timezone: configuration.timezone,
+        periods: configuration.periods,
       },
     );
+    await prisma.scheduleImport.update({
+      where: { id },
+      data: { processingStage: "STRUCTURE_VALIDATION" },
+    });
+    const validated = validateExtractedSchedule(analysis.extraction);
     const normalized = normalizeExtractedSchedule(
-      analysis.extraction,
-      configuration?.periods ?? [],
+      validated.schedule,
+      configuration.periods,
     );
     const reviewCount = normalized.courses.filter(
       (course) => course.uncertainFields.length > 0 || course.confidence < 0.75,
@@ -135,12 +155,20 @@ export async function POST(
           warnings: normalized.warnings,
           courseCount: normalized.courses.length,
           reviewCount,
+          diagnostics: {
+            documents: analysis.diagnostics,
+            validation: validated.diagnostics,
+          },
         },
         update: {
           extractedJson: normalized,
           warnings: normalized.warnings,
           courseCount: normalized.courses.length,
           reviewCount,
+          diagnostics: {
+            documents: analysis.diagnostics,
+            validation: validated.diagnostics,
+          },
         },
       }),
       prisma.scheduleImport.update({
@@ -151,6 +179,11 @@ export async function POST(
           model: analysis.model,
           inputTokens: analysis.inputTokens,
           outputTokens: analysis.outputTokens,
+          processingStage: "REVIEW",
+          processingDiagnostics: {
+            documents: analysis.diagnostics,
+            validation: validated.diagnostics,
+          },
         },
       }),
     ]);
@@ -186,6 +219,10 @@ export async function POST(
       where: { id, ownerId: user.id },
       data: {
         status: "FAILED",
+        processingStage: "FAILED",
+        processingDiagnostics: failure
+          ? { code: failure.code, retryable: failure.retryable }
+          : { code: "ANALYSIS_FAILED", retryable: false },
         errorCode: failure?.code ?? "ANALYSIS_FAILED",
         errorMessage:
           failure?.userMessage ?? "The timetable could not be analyzed.",

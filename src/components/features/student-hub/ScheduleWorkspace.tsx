@@ -111,6 +111,15 @@ class ApiRequestError extends Error {
 
 const input =
   "h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none transition focus:border-kondo-green";
+const analysisSteps = [
+  "1. File and quality validation",
+  "2. OCR / text extraction",
+  "3. Academic structure identification",
+  "4. Configuration, duplicate and conflict validation",
+  "5. Preview preparation",
+  "6. Explicit confirmation",
+  "7. Schedule generation",
+] as const;
 const emptyCourse: ReviewCourse = {
   courseName: "",
   teacher: "",
@@ -335,21 +344,21 @@ export function ScheduleWorkspace({
           duration_ms: Math.round(performance.now() - operationStartedAt),
         });
       }
-      setAnalysisStage("Reading document...");
+      setAnalysisStage(analysisSteps[0]);
       const generationStartedAt = performance.now();
       captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_GENERATION_STARTED, {
         tool: "timetable",
         retry: Boolean(pendingImportId),
       });
       stageTimers.push(
-        setTimeout(
-          () => setAnalysisStage("Running text extraction and OCR..."),
-          4_000,
-        ),
-        setTimeout(
-          () => setAnalysisStage("Structuring your timetable..."),
-          15_000,
-        ),
+        ...analysisSteps
+          .slice(1, 5)
+          .map((step, index) =>
+            setTimeout(
+              () => setAnalysisStage(step),
+              [1_000, 5_000, 12_000, 20_000, 32_000, 45_000][index],
+            ),
+          ),
       );
       const analyzed = await api(
         `/api/student-hub/imports/${currentImportId}/analyze`,
@@ -824,6 +833,42 @@ export function ScheduleWorkspace({
                   </p>
                 </div>
               ) : null}
+              {busy && analysisSteps.includes(analysisStage as never) ? (
+                <ol
+                  aria-label="Timetable analysis progress"
+                  className="grid gap-1.5 rounded-2xl border border-border bg-muted/35 p-4 sm:grid-cols-2"
+                >
+                  {analysisSteps.slice(0, 5).map((step, index) => {
+                    const activeIndex = analysisSteps.indexOf(
+                      analysisStage as (typeof analysisSteps)[number],
+                    );
+                    const completed = index < activeIndex;
+                    const active = index === activeIndex;
+                    return (
+                      <li
+                        aria-current={active ? "step" : undefined}
+                        className={
+                          active
+                            ? "flex items-center gap-2 text-xs font-black text-kondo-green"
+                            : completed
+                              ? "flex items-center gap-2 text-xs font-bold text-foreground"
+                              : "flex items-center gap-2 text-xs text-muted-foreground"
+                        }
+                        key={step}
+                      >
+                        {completed ? (
+                          <Check className="h-3.5 w-3.5 shrink-0" />
+                        ) : active ? (
+                          <LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-border" />
+                        )}
+                        {step}
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : null}
               {importError ? (
                 <div
                   className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 dark:bg-red-400/10 dark:text-red-300"
@@ -882,12 +927,12 @@ export function ScheduleWorkspace({
         </Modal>
       ) : null}
       {review ? (
-        <div className="fixed inset-0 z-[80] overflow-y-auto bg-kondo-navy/70 p-3 backdrop-blur-sm sm:p-6">
+        <div className="fixed inset-0 z-[80] h-[var(--visual-viewport-height,100dvh)] overflow-y-auto bg-kondo-navy/70 p-3 backdrop-blur-sm sm:p-6">
           <div className="mx-auto max-w-5xl rounded-4xl bg-card p-5 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-                  Review required
+                  Stage 6 of 7 · Review required
                 </p>
                 <h2 className="mt-2 text-2xl font-black">
                   Check before anything is saved
@@ -1027,7 +1072,7 @@ export function ScheduleWorkspace({
                 ) : (
                   <Check className="h-4 w-4" />
                 )}
-                Confirm and save
+                {busy ? "Generating schedule…" : "Confirm and save"}
               </Button>
             </div>
           </div>
@@ -1047,8 +1092,8 @@ function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-kondo-navy/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-4xl border border-border bg-card p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[70] grid h-[var(--visual-viewport-height,100dvh)] place-items-start overflow-y-auto bg-kondo-navy/60 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm sm:place-items-center sm:p-4">
+      <div className="w-full max-w-2xl rounded-4xl border border-border bg-card p-5 shadow-2xl sm:p-6">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-black">{title}</h2>
           <Button

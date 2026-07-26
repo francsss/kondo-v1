@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getCommunityDirectory } from "@/lib/platform-queries";
+import { getPremiumAccess } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
@@ -75,46 +76,67 @@ export default async function CommunitiesPage({
     ? (normalizedType as CommunityType)
     : undefined;
 
-  const [countries, cities, universities, result, joinedSummary] =
-    await Promise.all([
-      prisma.country.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true },
-        orderBy: { name: "asc" },
-      }),
-      prisma.city.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, country: { select: { name: true } } },
-        orderBy: { name: "asc" },
-      }),
-      prisma.university.findMany({
-        where: { isActive: true, verified: true },
-        select: { id: true, name: true, city: { select: { name: true } } },
-        orderBy: { name: "asc" },
-      }),
-      tab === "meet"
-        ? Promise.resolve(null)
-        : getCommunityDirectory(user.id, {
-            page: Number(params.page ?? 1),
-            type,
-            query: params.q,
-            membership:
-              tab === "my"
-                ? scope === "managed"
-                  ? "MANAGED"
-                  : "JOINED"
-                : undefined,
-            sort:
-              tab === "discover"
-                ? sort === "popular"
-                  ? "POPULAR"
-                  : sort === "recent"
-                    ? "RECENT"
-                    : "RECOMMENDED"
-                : undefined,
-          }),
-      getCommunityDirectory(user.id, { joined: true, pageSize: 5 }),
-    ]);
+  const [
+    countries,
+    cities,
+    universities,
+    result,
+    joinedSummary,
+    meetProfile,
+    premiumAccess,
+  ] = await Promise.all([
+    prisma.country.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.city.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, country: { select: { name: true } } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.university.findMany({
+      where: { isActive: true, verified: true },
+      select: { id: true, name: true, city: { select: { name: true } } },
+      orderBy: { name: "asc" },
+    }),
+    tab === "meet"
+      ? Promise.resolve(null)
+      : getCommunityDirectory(user.id, {
+          page: Number(params.page ?? 1),
+          type,
+          query: params.q,
+          membership:
+            tab === "my"
+              ? scope === "managed"
+                ? "MANAGED"
+                : "JOINED"
+              : undefined,
+          sort:
+            tab === "discover"
+              ? sort === "popular"
+                ? "POPULAR"
+                : sort === "recent"
+                  ? "RECENT"
+                  : "RECOMMENDED"
+              : undefined,
+        }),
+    getCommunityDirectory(user.id, { joined: true, pageSize: 5 }),
+    tab === "meet"
+      ? prisma.meetDiscoveryProfile.findUnique({
+          where: { userId: user.id },
+        })
+      : Promise.resolve(null),
+    tab === "meet"
+      ? getPremiumAccess(user.id)
+      : Promise.resolve({
+          active: false,
+          status: null,
+          planName: null,
+          featureKeys: [],
+          expiresAt: null,
+        }),
+  ]);
 
   const referenceCities = cities.map((city) => ({
     id: city.id,
@@ -169,10 +191,18 @@ export default async function CommunitiesPage({
       {tab === "meet" ? (
         <section className="mt-8">
           <MeetPanel
+            cityOptions={referenceCities}
             cityName={user.city?.name ?? null}
+            countryName={user.country?.name ?? null}
             initialGender={user.gender}
             initialIntents={user.meetIntents}
+            initialLanguages={user.languages}
             initialNearbyEnabled={user.nearbyDiscoveryEnabled}
+            initialProfile={meetProfile}
+            premiumAccess={premiumAccess}
+            universityName={
+              user.university?.shortName ?? user.university?.name ?? null
+            }
           />
         </section>
       ) : null}

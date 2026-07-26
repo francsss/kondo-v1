@@ -46,6 +46,7 @@ export const ADMIN_PERMISSIONS = [
   "STUDENT_HUB_CONFIG_MANAGE",
   "ANALYTICS_VIEW",
   "PLATFORM_SETTINGS_VIEW",
+  "PLATFORM_SETTINGS_MANAGE",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -106,6 +107,7 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly AdminPermission[]> = {
     "STUDENT_HUB_CONFIG_MANAGE",
     "ANALYTICS_VIEW",
     "PLATFORM_SETTINGS_VIEW",
+    "PLATFORM_SETTINGS_MANAGE",
   ],
   SUPER_ADMIN: ADMIN_PERMISSIONS,
 };

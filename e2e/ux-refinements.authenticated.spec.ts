@@ -1,6 +1,48 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("premium UX refinements", () => {
+  test("keeps mobile forms inside the viewport with non-zooming controls", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/marketplace?view=exchange");
+    await page.getByRole("button", { name: "Create an offer" }).click();
+
+    const amount = page.getByPlaceholder("500");
+    const note = page.getByPlaceholder(
+      "Add a public meeting area or useful context. Never post bank details.",
+    );
+    await expect(amount).toBeVisible();
+    await amount.focus();
+    await amount.fill("500");
+    await note.fill("Safe campus meeting point");
+
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    for (const control of [amount, note]) {
+      expect(
+        Number.parseFloat(
+          await control.evaluate(
+            (element) => getComputedStyle(element).fontSize,
+          ),
+        ),
+      ).toBeGreaterThanOrEqual(16);
+      expect(
+        await control.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.left >= 0 && bounds.right <= window.innerWidth + 1;
+        }),
+      ).toBe(true);
+    }
+
+    expect(
+      await page.locator('meta[name="viewport"]').getAttribute("content"),
+    ).not.toMatch(/maximum-scale|user-scalable=no/);
+  });
+
   test("keeps sub-navigation on one row and scrolls only when space runs out", async ({
     page,
   }) => {
@@ -117,9 +159,7 @@ test.describe("premium UX refinements", () => {
       page.getByRole("button", { name: "Start Random Matching" }),
     ).toHaveCount(0);
 
-    await page
-      .getByRole("checkbox", { name: "Appear in approximate discovery" })
-      .check();
+    await expect(page.getByText("Approximate discovery enabled")).toBeVisible();
     await page.getByRole("button", { name: "Explore people" }).click();
     await expect(page.getByText("Approximate map · never exact")).toBeVisible();
   });

@@ -412,7 +412,7 @@ export function AppShell({
           id="mobile-navigation"
           role="dialog"
           className={cn(
-            "h-full w-[min(84vw,320px)] bg-card p-5 text-card-foreground shadow-2xl transition-transform duration-300",
+            "safe-bottom h-[var(--visual-viewport-height,100dvh)] w-[min(84vw,320px)] max-w-full overflow-y-auto bg-card p-5 text-card-foreground shadow-2xl transition-transform duration-300",
             menuOpen ? "translate-x-0" : "-translate-x-full",
           )}
           onClick={(event) => event.stopPropagation()}

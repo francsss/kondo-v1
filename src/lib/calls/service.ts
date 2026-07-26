@@ -116,8 +116,12 @@ export async function findMeetMatch(input: {
             data: {
               gender: input.gender,
               lastActiveAt: now,
-              nearbyDiscoveryEnabled: nearbyEnabled,
-              meetIntents: { set: intents },
+              ...(mode === "RANDOM"
+                ? {}
+                : {
+                    nearbyDiscoveryEnabled: nearbyEnabled,
+                    meetIntents: { set: intents },
+                  }),
             },
             select: {
               id: true,

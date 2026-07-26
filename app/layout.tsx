@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ProductAnalyticsLifecycle } from "@/components/analytics/ProductAnalytics";
+import { MobileViewportStabilizer } from "@/components/app/MobileViewportStabilizer";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { getAppUrl } from "@/lib/app-url";
 import { Analytics } from "@vercel/analytics/next";
@@ -44,6 +45,16 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f7f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c1412" },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -59,6 +70,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <MobileViewportStabilizer />
           <ProductAnalyticsLifecycle />
           {children}
         </ThemeProvider>

@@ -7,8 +7,6 @@ import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
 
 const matchSchema = z.object({
-  gender: z.enum(["MALE", "FEMALE"]),
-  genderPreference: z.enum(["ALL", "MALE", "FEMALE"]),
   countryPreferenceCode: z.string().length(2).nullable().default(null),
   mode: z.literal("RANDOM").default("RANDOM"),
 });
@@ -23,6 +21,18 @@ export async function POST(request: NextRequest) {
     return jsonError(parsed.error.issues[0]?.message ?? "Invalid preferences.");
   }
   try {
+    const profile = await prisma.meetDiscoveryProfile.findUnique({
+      where: { userId: user.id },
+    });
+    if (!profile?.completedAt) {
+      return Response.json(
+        {
+          error: "Complete your Meet Discovery Profile before matching.",
+          code: "MEET_PROFILE_REQUIRED",
+        },
+        { status: 428 },
+      );
+    }
     const countryReference = parsed.data.countryPreferenceCode
       ? getAfricanCountry(parsed.data.countryPreferenceCode)
       : null;
@@ -39,12 +49,12 @@ export async function POST(request: NextRequest) {
       : null;
     const result = await findMeetMatch({
       userId: user.id,
-      gender: parsed.data.gender,
-      genderPreference: parsed.data.genderPreference,
+      gender: profile.gender,
+      genderPreference: profile.interestedIn,
       countryPreferenceId: country?.id ?? null,
       mode: "RANDOM",
-      nearbyEnabled: false,
-      intents: [],
+      nearbyEnabled: profile.nearbyVisibility,
+      intents: profile.lookingFor,
     });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

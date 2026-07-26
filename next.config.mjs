@@ -2,6 +2,8 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+const hasSecurePublicOrigin =
+  process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ?? false;
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const configuredDevOrigins = (process.env.KONDO_DEV_ORIGINS ?? "")
   .split(",")
@@ -20,7 +22,9 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
+  ...(!isDevelopment && hasSecurePublicOrigin
+    ? ["upgrade-insecure-requests"]
+    : []),
 ].join("; ");
 
 /** @type {import('next').NextConfig} */

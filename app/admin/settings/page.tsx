@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BellRing, Database, Settings2, ShoppingBag } from "lucide-react";
+import {
+  BellRing,
+  Crown,
+  Database,
+  Settings2,
+  ShoppingBag,
+} from "lucide-react";
 import { AdminNav } from "@/components/features/admin/AdminNav";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -21,6 +27,13 @@ export default async function AdminSettingsPage() {
     ]);
 
   const groups = [
+    {
+      href: "/admin/settings/premium",
+      label: "Premium plans",
+      description:
+        "Configure public pricing metadata and gated Meet features without exposing billing secrets.",
+      icon: Crown,
+    },
     {
       href: "/admin/reference-data",
       label: "Supported locations",

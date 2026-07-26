@@ -10,6 +10,10 @@ import {
   extractDocumentText,
 } from "@/lib/document-ocr";
 import { logServerError, logServerEvent } from "@/lib/logger";
+import {
+  assessExtractedDocument,
+  type DocumentQualityDiagnostic,
+} from "@/lib/schedule-validation";
 import { getObjectStorageForProvider } from "@/lib/storage";
 
 type ScheduleFile = Pick<
@@ -38,6 +42,7 @@ export type ScheduleAnalysis = {
   model: string;
   inputTokens: number | null;
   outputTokens: number | null;
+  diagnostics: DocumentQualityDiagnostic[];
 };
 
 export interface ScheduleAnalysisProvider {
@@ -56,6 +61,11 @@ export type ScheduleAnalysisErrorCode =
   | "AI_PROVIDER_UNAVAILABLE"
   | "AI_DOCUMENT_REJECTED"
   | "AI_INVALID_RESPONSE"
+  | "DOCUMENT_TOO_BLURRY"
+  | "NO_TIMETABLE_DETECTED"
+  | "NO_COURSE_NAMES"
+  | "TIMETABLE_RECONSTRUCTION_FAILED"
+  | "PERIOD_CONFIG_MISSING"
   | "DOCUMENT_TEXT_EXTRACTION_FAILED"
   | "STORAGE_READ_FAILED";
 
@@ -180,6 +190,7 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
     );
 
     const extractedDocuments: string[] = [];
+    const diagnostics: DocumentQualityDiagnostic[] = [];
 
     for (const file of files) {
       logServerEvent("student-hub.schedule-analysis.file-read.started", {
@@ -225,6 +236,34 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
               : Math.round(extracted.confidence),
           warningCount: extracted.warnings.length,
           attempts: extracted.attempts.join(","),
+        });
+        const quality = assessExtractedDocument({
+          text: extracted.text,
+          confidence: extracted.confidence,
+        });
+        logServerEvent("student-hub.schedule-analysis.quality-checked", {
+          fileName: file.originalFileName,
+          accepted: quality.ok,
+          usefulCharacterCount: quality.usefulCharacters,
+          timetableSignalCount: quality.signalCount,
+        });
+        if (!quality.ok) {
+          throw new ScheduleAnalysisError(
+            quality.code,
+            quality.message,
+            422,
+            true,
+          );
+        }
+        diagnostics.push({
+          fileName: file.originalFileName,
+          mimeType: mime,
+          method: extracted.method,
+          pageCount: extracted.pageCount,
+          characterCount: extracted.characterCount,
+          confidence: extracted.confidence,
+          warnings: extracted.warnings,
+          attempts: extracted.attempts,
         });
         extractedDocuments.push(
           [
@@ -402,8 +441,8 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
           );
           if (parsed.courses.length === 0) {
             throw new ScheduleAnalysisError(
-              "AI_INVALID_RESPONSE",
-              "No courses could be structured from the extracted timetable text.",
+              "NO_COURSE_NAMES",
+              "Text extraction succeeded, but no course names were found. Make sure the uploaded page includes the timetable grid and course labels, then try again.",
               422,
               true,
             );
@@ -429,8 +468,8 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
               },
             );
             throw new ScheduleAnalysisError(
-              "AI_INVALID_RESPONSE",
-              "The timetable text was extracted, but the structured result was invalid. Please try again.",
+              "TIMETABLE_RECONSTRUCTION_FAILED",
+              "Text extraction succeeded, but timetable reconstruction failed because the academic fields were inconsistent. Try a less-cropped document or correct the source layout.",
               502,
               true,
             );
@@ -456,6 +495,7 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
             typeof usage.completion_tokens === "number"
               ? usage.completion_tokens
               : null,
+          diagnostics,
         };
       } catch (error) {
         if (error instanceof ScheduleAnalysisError) {
