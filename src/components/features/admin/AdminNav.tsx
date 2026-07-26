@@ -160,10 +160,7 @@ export function AdminNav({
   currentPath: string;
 }) {
   return (
-    <nav
-      aria-label="Admin navigation"
-      className="scrollbar-none mt-7 flex gap-2 overflow-x-auto pb-1"
-    >
+    <nav aria-label="Admin navigation" className="subnav-row mt-7 gap-2 pb-1">
       {items
         .filter((item) => hasAdminPermission(role, item.permission))
         .map(({ href, label, icon: Icon }) => {
@@ -175,8 +172,8 @@ export function AdminNav({
               aria-current={active ? "page" : undefined}
               className={
                 active
-                  ? "inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                  : "inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-muted-foreground transition hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
+                  ? "inline-flex items-center justify-center gap-2 rounded-full bg-kondo-ink px-3 py-2 text-xs font-bold text-white transition duration-200 dark:bg-emerald-400 dark:text-kondo-ink sm:px-4 sm:text-sm"
+                  : "inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-muted-foreground transition duration-200 hover:-translate-y-0.5 hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground sm:px-4 sm:text-sm"
               }
               href={href}
               key={href}

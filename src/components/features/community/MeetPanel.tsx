@@ -263,7 +263,7 @@ export function MeetPanel({
     <>
       <nav
         aria-label="Meet modes"
-        className="mx-auto mb-7 grid max-w-5xl grid-cols-3 border-b border-border"
+        className="subnav-row mx-auto mb-7 max-w-5xl border-b border-border"
       >
         {[
           { value: "RANDOM" as const, label: "Random", icon: Radio },

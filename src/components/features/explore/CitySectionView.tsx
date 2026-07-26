@@ -69,15 +69,15 @@ export function CitySectionView({
 
       <nav
         aria-label={`${city.name} guide sections`}
-        className="scrollbar-none mt-6 flex gap-2 overflow-x-auto pb-1"
+        className="subnav-row mt-6 gap-2 pb-1"
       >
         {city.sections.map((item) => (
           <Link
             aria-current={item.slug === section.slug ? "page" : undefined}
             className={
               item.slug === section.slug
-                ? "inline-flex shrink-0 items-center gap-2 rounded-full bg-kondo-ink px-4 py-2.5 text-xs font-black text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-muted-foreground transition hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
+                ? "inline-flex items-center justify-center gap-2 rounded-full bg-kondo-ink px-3 py-2.5 text-xs font-black text-white transition duration-200 dark:bg-emerald-400 dark:text-kondo-ink sm:px-4"
+                : "inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2.5 text-xs font-black text-muted-foreground transition duration-200 hover:-translate-y-0.5 hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground sm:px-4"
             }
             href={`/explore/${city.slug}/${item.slug}`}
             key={item.slug}

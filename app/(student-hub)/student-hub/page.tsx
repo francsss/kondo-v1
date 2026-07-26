@@ -84,7 +84,10 @@ export default async function StudentGuidePage({
         <Compass className="absolute -bottom-12 right-10 hidden h-56 w-56 rotate-12 text-white/8 lg:block" />
       </section>
       <div className="mt-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <nav
+          aria-label="Student Hub guide categories"
+          className="subnav-row flex-1 gap-2 pb-1"
+        >
           {categories.map(([label, value]) => (
             <Link
               className={
@@ -98,7 +101,7 @@ export default async function StudentGuidePage({
               {label}
             </Link>
           ))}
-        </div>
+        </nav>
         <Button asChild size="sm" variant="secondary">
           <Link href={saved ? "/student-hub" : "/student-hub?saved=1"}>
             <Bookmark className="h-4 w-4" />

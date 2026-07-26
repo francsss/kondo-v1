@@ -46,13 +46,13 @@ export default async function AdminCityHubSectionPage({
 
       <nav
         aria-label="City Hub sections"
-        className="scrollbar-none mt-7 flex gap-2 overflow-x-auto pb-1"
+        className="subnav-row mt-7 gap-2 pb-1"
       >
         {draft.sections.map((candidate) => (
           <Link
             aria-current={candidate.slug === section.slug ? "page" : undefined}
             className={cn(
-              "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition",
+              "inline-flex items-center justify-center rounded-full border px-3 py-2 text-xs font-bold transition duration-200 sm:px-4 sm:text-sm",
               candidate.slug === section.slug
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-slate-200 bg-white text-muted-foreground hover:border-kondo-green hover:text-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground",

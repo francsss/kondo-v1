@@ -163,6 +163,38 @@ textarea {
   }
 }
 
+@layer components {
+  .subnav-row {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+
+  .subnav-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .subnav-row > * {
+    min-width: 0;
+    flex: 1 0 max-content;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 639px) {
+    .subnav-row {
+      scroll-snap-type: x proximity;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

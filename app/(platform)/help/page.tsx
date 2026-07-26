@@ -72,7 +72,7 @@ export default async function HelpPage({
         </div>
       </section>
 
-      <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <nav aria-label="Help categories" className="subnav-row mt-6 gap-2 pb-1">
         {categories.map(([label, emoji]) => (
           <Link
             className={
@@ -88,7 +88,7 @@ export default async function HelpPage({
             {label.slice(1).toLowerCase()}
           </Link>
         ))}
-      </div>
+      </nav>
 
       <section className="mt-8 grid gap-4">
         {visibleQuestions.map((question) => {

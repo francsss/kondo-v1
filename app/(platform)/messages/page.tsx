@@ -53,7 +53,10 @@ export default async function MessagesPage({
         title="Messages"
       />
 
-      <div className="mt-7 flex flex-wrap items-center gap-2">
+      <nav
+        aria-label="Conversation folders"
+        className="subnav-row mt-7 max-w-sm gap-2"
+      >
         <Button asChild size="sm" variant={archived ? "secondary" : "primary"}>
           <Link href={inboxHref({ query: q })}>
             <Inbox className="h-4 w-4" /> Inbox
@@ -64,7 +67,7 @@ export default async function MessagesPage({
             <Archive className="h-4 w-4" /> Archived
           </Link>
         </Button>
-      </div>
+      </nav>
 
       <form className="mt-4 flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm dark:border-white/10 dark:bg-white/5">
         <Search className="h-4 w-4 text-muted-foreground" />

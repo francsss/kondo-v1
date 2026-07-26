@@ -59,7 +59,7 @@ export default async function SellerDashboard({
       />
       <nav
         aria-label="Listing status"
-        className="mt-7 grid grid-cols-4 border-b border-border sm:grid-cols-7"
+        className="subnav-row mt-7 border-b border-border"
       >
         <Link
           className={

@@ -53,7 +53,10 @@ export default async function AdminReferenceDataPage({
       />
       <AdminNav currentPath="/admin/reference-data" role={user.role} />
 
-      <div className="mt-7 flex flex-wrap gap-2">
+      <nav
+        aria-label="Reference data sections"
+        className="subnav-row mt-7 max-w-xl gap-2"
+      >
         {(["countries", "cities", "universities"] as const).map((item) => (
           <Button
             asChild
@@ -65,7 +68,7 @@ export default async function AdminReferenceDataPage({
             </Link>
           </Button>
         ))}
-      </div>
+      </nav>
 
       <Card className="mt-5">
         <form className="flex flex-col gap-3 sm:flex-row">

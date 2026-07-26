@@ -48,7 +48,7 @@ function MarketplaceNavigation({
   return (
     <nav
       aria-label="Marketplace sections"
-      className="mb-7 grid grid-cols-3 border-b border-border"
+      className="subnav-row mb-7 border-b border-border"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;

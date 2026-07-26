@@ -38,11 +38,11 @@ function StudentHubTabs({
       aria-label={mobile ? "Student Hub mobile" : "Student Hub"}
       className={cn(
         mobile
-          ? "grid grid-cols-6 border-t border-border/70 pt-2"
-          : "hidden items-center border-b border-border md:flex",
+          ? "subnav-row border-t border-border/70 pt-1"
+          : "subnav-row hidden border-b border-border md:flex",
       )}
     >
-      {tabs.map(({ href, label }, index) => {
+      {tabs.map(({ href, label }) => {
         const active = isActiveTab(pathname, href);
         return (
           <Link
@@ -50,11 +50,8 @@ function StudentHubTabs({
             className={cn(
               "relative isolate inline-flex items-center justify-center whitespace-nowrap font-bold transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               mobile
-                ? cn(
-                    "min-h-9 px-1 text-[11px]",
-                    index < 3 ? "col-span-2" : "col-span-3",
-                  )
-                : "h-11 px-4 text-sm",
+                ? "min-h-10 px-3 text-xs"
+                : "h-11 px-3 text-[13px] lg:px-5 lg:text-sm",
               active
                 ? "text-kondo-green"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -103,7 +100,7 @@ export function StudentHubShell({
       <PresenceHeartbeat />
       <ProductAnalyticsIdentity user={user} />
       <header className="sticky top-0 z-50 border-b border-border bg-background/90 shadow-[0_8px_28px_rgb(var(--foreground)/0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto grid h-16 max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto grid h-16 max-w-[1440px] grid-cols-[auto_minmax(0,1fr)] items-center gap-4 px-4 sm:px-6 lg:gap-8 lg:px-8">
           <Link
             aria-label="Back to Kondo"
             className="group inline-flex w-fit items-center gap-2 rounded-full px-2 py-2 text-sm font-bold text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -115,7 +112,7 @@ export function StudentHubShell({
           </Link>
           <StudentHubTabs pathname={pathname} />
         </div>
-        <div className="px-4 pb-2 md:hidden">
+        <div className="px-4 pb-2 sm:px-6 md:hidden">
           <StudentHubTabs mobile pathname={pathname} />
         </div>
       </header>

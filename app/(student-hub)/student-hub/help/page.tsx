@@ -85,7 +85,10 @@ export default async function StudentHelpPage({
           ) : null}
         </form>
       </section>
-      <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <nav
+        aria-label="Student Hub help categories"
+        className="subnav-row mt-6 gap-2 pb-1"
+      >
         {categories.map(([value, emoji]) => (
           <Link
             className={
@@ -100,8 +103,11 @@ export default async function StudentHelpPage({
             {value.slice(1).toLowerCase()}
           </Link>
         ))}
-      </div>
-      <div className="mt-5 flex gap-4 border-b border-border text-sm">
+      </nav>
+      <nav
+        aria-label="Question filters"
+        className="subnav-row mt-5 max-w-2xl gap-4 border-b border-border text-sm"
+      >
         {[
           ["recent", "Recent"],
           ["popular", "Popular"],
@@ -120,7 +126,7 @@ export default async function StudentHelpPage({
             {label}
           </Link>
         ))}
-      </div>
+      </nav>
       <section className="mt-6 space-y-4">
         {visible.map((question) => {
           const answer =

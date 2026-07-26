@@ -9,7 +9,7 @@ export function ScholarshipNav({
   return (
     <nav
       aria-label="Scholarship ecosystem"
-      className="mt-6 grid max-w-xl grid-cols-2 border-b border-border"
+      className="subnav-row mt-6 max-w-xl border-b border-border"
     >
       <Link
         aria-current={active === "opportunities" ? "page" : undefined}

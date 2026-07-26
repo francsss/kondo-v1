@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("premium UX refinements", () => {
-  test("keeps primary sub-sections discoverable without horizontal tab scrolling", async ({
+  test("keeps sub-navigation on one row and scrolls only when space runs out", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -21,9 +21,19 @@ test.describe("premium UX refinements", () => {
         (element) => element.scrollWidth <= element.clientWidth + 1,
       ),
     ).toBe(true);
+    expect(
+      await communityNavigation.evaluate(
+        (element) =>
+          new Set(
+            Array.from(element.children).map(
+              (child) => child.getBoundingClientRect().top,
+            ),
+          ).size,
+      ),
+    ).toBe(1);
 
     await page.goto("/student-hub");
-    const studentNavigation = page.getByRole("navigation", {
+    const mobileStudentNavigation = page.getByRole("navigation", {
       name: "Student Hub mobile",
     });
     for (const label of [
@@ -34,9 +44,46 @@ test.describe("premium UX refinements", () => {
       "Tools",
     ]) {
       await expect(
-        studentNavigation.getByRole("link", { name: label }),
+        mobileStudentNavigation.getByRole("link", { name: label }),
       ).toBeVisible();
     }
+    expect(
+      await mobileStudentNavigation.evaluate(
+        (element) =>
+          new Set(
+            Array.from(element.children).map(
+              (child) => child.getBoundingClientRect().top,
+            ),
+          ).size,
+      ),
+    ).toBe(1);
+    expect(
+      await mobileStudentNavigation.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    ).toBe(true);
+
+    await page.setViewportSize({ width: 768, height: 900 });
+    const tabletStudentNavigation = page.getByRole("navigation", {
+      name: "Student Hub",
+      exact: true,
+    });
+    await expect(tabletStudentNavigation).toBeVisible();
+    expect(
+      await tabletStudentNavigation.evaluate(
+        (element) =>
+          new Set(
+            Array.from(element.children).map(
+              (child) => child.getBoundingClientRect().top,
+            ),
+          ).size,
+      ),
+    ).toBe(1);
+    expect(
+      await tabletStudentNavigation.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth + 1,
+      ),
+    ).toBe(true);
   });
 
   test("uses searchable smart selectors for exchange offers", async ({

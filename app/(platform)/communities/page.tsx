@@ -147,7 +147,7 @@ export default async function CommunitiesPage({
 
       <nav
         aria-label="Community sections"
-        className="mt-8 grid grid-cols-3 border-b border-border"
+        className="subnav-row mt-8 border-b border-border"
       >
         {tabs.map(({ value, label, icon: Icon }) => (
           <Link
@@ -209,7 +209,10 @@ export default async function CommunitiesPage({
       ) : null}
 
       {tab === "my" ? (
-        <div className="mt-7 grid max-w-sm grid-cols-2 border-b border-border">
+        <nav
+          aria-label="Your community groups"
+          className="subnav-row mt-7 max-w-sm border-b border-border"
+        >
           {(["managed", "joined"] as const).map((value) => (
             <Link
               className={
@@ -229,11 +232,14 @@ export default async function CommunitiesPage({
               {value === "managed" ? "Managed" : "Joined"}
             </Link>
           ))}
-        </div>
+        </nav>
       ) : null}
 
       {tab === "discover" ? (
-        <div className="mt-7 flex flex-wrap gap-2">
+        <nav
+          aria-label="Community discovery order"
+          className="subnav-row mt-7 max-w-lg gap-2"
+        >
           {(["recommended", "popular", "recent"] as const).map((value) => (
             <Link
               className={
@@ -253,7 +259,7 @@ export default async function CommunitiesPage({
               {value[0].toUpperCase() + value.slice(1)}
             </Link>
           ))}
-        </div>
+        </nav>
       ) : null}
 
       {tab !== "meet" ? (
@@ -289,7 +295,10 @@ export default async function CommunitiesPage({
             </form>
           </Card>
 
-          <div className="mt-5 grid grid-cols-5 border-b border-border">
+          <nav
+            aria-label="Community types"
+            className="subnav-row mt-5 border-b border-border"
+          >
             {[
               { label: "All", value: undefined },
               { label: "University", value: "UNIVERSITY" },
@@ -321,7 +330,7 @@ export default async function CommunitiesPage({
                 </Link>
               );
             })}
-          </div>
+          </nav>
 
           <section
             className="mt-5 grid scroll-mt-24 gap-5 sm:grid-cols-2 xl:grid-cols-3"

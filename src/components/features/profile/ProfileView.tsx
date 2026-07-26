@@ -184,7 +184,10 @@ export function ProfileView({
 
         <section>
           {own ? (
-            <div className="flex flex-wrap gap-6 border-b border-slate-200 text-sm font-bold dark:border-white/10">
+            <nav
+              aria-label="Profile sections"
+              className="subnav-row gap-6 border-b border-slate-200 text-sm font-bold dark:border-white/10"
+            >
               <Tab active={tab === "activity"} href="/profile">
                 Activity
               </Tab>
@@ -197,7 +200,7 @@ export function ProfileView({
               <Tab active={tab === "saved"} href="/profile?tab=saved">
                 Saved
               </Tab>
-            </div>
+            </nav>
           ) : (
             <h2 className="text-xl font-black text-kondo-ink dark:text-white">
               Recent activity

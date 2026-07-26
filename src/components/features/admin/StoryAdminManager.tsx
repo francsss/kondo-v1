@@ -158,23 +158,33 @@ export function StoryAdminManager({
 
   return (
     <div className="mt-7">
-      <div className="flex flex-wrap gap-2">
+      <div
+        aria-label="Story management sections"
+        className="subnav-row gap-2"
+        role="tablist"
+      >
         <Button
+          aria-selected={tab === "queue"}
           onClick={() => setTab("queue")}
+          role="tab"
           type="button"
           variant={tab === "queue" ? "primary" : "secondary"}
         >
           <ShieldAlert className="h-4 w-4" /> Videos & moderation
         </Button>
         <Button
+          aria-selected={tab === "categories"}
           onClick={() => setTab("categories")}
+          role="tab"
           type="button"
           variant={tab === "categories" ? "primary" : "secondary"}
         >
           <Plus className="h-4 w-4" /> Categories
         </Button>
         <Button
+          aria-selected={tab === "creators"}
           onClick={() => setTab("creators")}
+          role="tab"
           type="button"
           variant={tab === "creators" ? "primary" : "secondary"}
         >

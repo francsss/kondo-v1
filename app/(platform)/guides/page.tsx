@@ -86,14 +86,14 @@ export default async function GuidesPage({
         </div>
       </section>
 
-      <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <nav aria-label="Guide categories" className="subnav-row mt-7 gap-2 pb-1">
         {categories.map((category) => (
           <Link
             className={
               selectedCategory === category.value ||
               (!selectedCategory && !category.value)
-                ? "rounded-2xl bg-kondo-ink px-3 py-2.5 text-center text-xs font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink sm:text-sm"
-                : "rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-center text-xs font-bold text-muted-foreground transition hover:-translate-y-0.5 hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground sm:text-sm"
+                ? "rounded-2xl bg-kondo-ink px-3 py-2.5 text-center text-xs font-bold text-white transition duration-200 dark:bg-emerald-400 dark:text-kondo-ink sm:text-sm"
+                : "rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-center text-xs font-bold text-muted-foreground transition duration-200 hover:-translate-y-0.5 hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground sm:text-sm"
             }
             href={
               category.value ? `/guides?category=${category.value}` : "/guides"
@@ -103,7 +103,7 @@ export default async function GuidesPage({
             {category.label}
           </Link>
         ))}
-      </div>
+      </nav>
 
       <section className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {visibleGuides.map((guide) => (
