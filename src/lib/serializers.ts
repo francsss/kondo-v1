@@ -85,6 +85,8 @@ export type SearchResultsDto = {
     name: string;
     icon: string | null;
     memberCount: number;
+    isOfficial: boolean;
+    isVerified: boolean;
   }>;
   listings: Array<{
     id: string;
@@ -120,5 +122,31 @@ export type SearchResultsDto = {
       name: string;
     };
     author: SafePublicUser;
+  }>;
+  universities: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    shortName: string | null;
+    cityName: string;
+  }>;
+  countries: Array<{
+    id: string;
+    code: string;
+    name: string;
+    emoji: string | null;
+  }>;
+  cities: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    province: string | null;
+  }>;
+  opportunities: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    provider: string;
+    status: string;
   }>;
 };

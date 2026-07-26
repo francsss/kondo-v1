@@ -31,9 +31,9 @@ import {
 const categories = [
   { value: "BUG", label: "Bug" },
   { value: "SUGGESTION", label: "Suggestion" },
-  { value: "IDEA", label: "Idée" },
-  { value: "EXPERIENCE", label: "Expérience" },
-  { value: "OTHER", label: "Autre" },
+  { value: "IDEA", label: "Idea" },
+  { value: "EXPERIENCE", label: "Experience" },
+  { value: "OTHER", label: "Other" },
 ] as const;
 
 type FeedbackCategory = (typeof categories)[number]["value"];
@@ -227,7 +227,7 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.error ?? "Votre avis n’a pas pu être envoyé.");
+        throw new Error(payload?.error ?? "Your feedback could not be sent.");
       }
       captureProductEvent(PRODUCT_EVENTS.FEEDBACK_SUBMITTED, {
         ...analyticsProperties,
@@ -255,7 +255,7 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
       setError(
         submissionError instanceof Error
           ? submissionError.message
-          : "Une erreur est survenue. Réessayez dans un instant.",
+          : "Something went wrong. Please try again in a moment.",
       );
     } finally {
       setPending(false);
@@ -281,10 +281,10 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
               initial={reducedMotion ? false : { opacity: 0, x: 8 }}
               transition={{ delay: reducedMotion ? 0 : 0.18 }}
             >
-              Une idée pour améliorer Kondo&nbsp;?
+              Have an idea for Kondo?
             </motion.p>
             <motion.button
-              aria-label="Donner votre avis à Kondo"
+              aria-label="Share feedback with Kondo"
               className="group relative grid h-[84px] w-[84px] place-items-center rounded-[28px] border border-emerald-200/80 bg-gradient-to-br from-white/95 to-emerald-50/95 p-1.5 shadow-[0_16px_45px_rgba(16,80,64,0.22)] outline-none backdrop-blur transition focus-visible:ring-4 focus-visible:ring-emerald-300/50 dark:border-emerald-400/20 dark:from-slate-900/95 dark:to-emerald-950/95 sm:h-24 sm:w-24"
               onClick={openFeedback}
               type="button"
@@ -330,7 +330,7 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
         {modalOpen ? (
           <motion.div
             animate={{ opacity: 1 }}
-            aria-label="Partager votre avis"
+            aria-label="Share your feedback"
             aria-modal="true"
             className="fixed inset-0 z-[80] grid items-end bg-slate-950/45 p-0 backdrop-blur-sm sm:place-items-center sm:p-5"
             exit={{ opacity: 0 }}
@@ -355,7 +355,7 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
               }}
             >
               <Button
-                aria-label="Fermer"
+                aria-label="Close"
                 className="absolute right-4 top-4 rounded-full"
                 disabled={pending}
                 onClick={cancelFeedback}
@@ -372,10 +372,10 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
                     <CheckCircle2 className="h-7 w-7" />
                   </span>
                   <h2 className="mt-5 text-xl font-black tracking-tight text-kondo-ink dark:text-white">
-                    Merci, votre avis compte.
+                    Thank you. Your feedback matters.
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    L’équipe Kondo pourra maintenant l’étudier.
+                    The Kondo team can now review it.
                   </p>
                 </div>
               ) : (
@@ -396,14 +396,14 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
                         Kondo Pet
                       </p>
                       <h2 className="mt-1 text-xl font-black leading-6 tracking-[-0.03em] text-kondo-ink dark:text-white sm:text-2xl">
-                        Votre avis nous aide à améliorer Kondo
+                        Your feedback helps us improve Kondo
                       </h2>
                     </div>
                   </div>
 
                   <label className="mt-6 block">
                     <span className="text-xs font-black text-kondo-ink dark:text-white">
-                      Type de retour
+                      Feedback type
                     </span>
                     <select
                       className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none transition focus:border-kondo-green focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-400/10"
@@ -422,14 +422,14 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
 
                   <label className="mt-4 block">
                     <span className="text-xs font-black text-kondo-ink dark:text-white">
-                      Votre retour
+                      Your feedback
                     </span>
                     <textarea
                       className="mt-2 min-h-32 w-full resize-y rounded-2xl border border-border bg-background p-4 text-sm leading-6 outline-none transition placeholder:text-muted-foreground/70 focus:border-kondo-green focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-400/10"
                       maxLength={2000}
                       minLength={4}
                       onChange={(event) => setMessage(event.target.value)}
-                      placeholder="Ce que vous aimez, un problème rencontré ou une idée…"
+                      placeholder="What you enjoy, an issue you found, or an idea…"
                       ref={textareaRef}
                       required
                       value={message}
@@ -450,7 +450,7 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
 
                   <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
                     <p className="mr-auto text-[10px] leading-4 text-muted-foreground">
-                      Votre texte reste dans Kondo et n’est jamais envoyé à
+                      Your message stays inside Kondo and is never sent to
                       PostHog.
                     </p>
                     <Button
@@ -463,7 +463,7 @@ export function KondoPet({ enabled }: { enabled: boolean }) {
                       ) : (
                         <Send className="h-4 w-4" />
                       )}
-                      {pending ? "Envoi…" : "Envoyer"}
+                      {pending ? "Sending…" : "Send"}
                     </Button>
                   </div>
                 </form>

@@ -159,6 +159,22 @@ describe("media security primitives", () => {
     });
     expect(
       validateMediaIntent({
+        purpose: "STORY_VIDEO",
+        fileName: "iphone-story.mov",
+        mimeType: "video/quicktime",
+        sizeBytes: 8_000_000,
+      }),
+    ).toMatchObject({ kind: "VIDEO" });
+    expect(
+      validateMediaIntent({
+        purpose: "STORY_VIDEO",
+        fileName: "android-story.m4v",
+        mimeType: "video/x-m4v",
+        sizeBytes: 8_000_000,
+      }),
+    ).toMatchObject({ kind: "VIDEO" });
+    expect(
+      validateMediaIntent({
         purpose: "VERIFICATION_DOCUMENT",
         fileName: "authority.pdf",
         mimeType: "application/pdf",

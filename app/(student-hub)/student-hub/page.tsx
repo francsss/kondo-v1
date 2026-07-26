@@ -29,15 +29,30 @@ export default async function StudentGuidePage({
   const user = await requireUser();
   const { category, q = "", saved } = await searchParams;
   const guides = await getGuideLibrary(user.id);
-  const visible = guides.filter(
-    (guide) =>
-      (!category || guide.category === category) &&
-      (!saved || guide.bookmarked) &&
-      (!q ||
-        `${guide.title} ${guide.summary}`
-          .toLowerCase()
-          .includes(q.toLowerCase())),
-  );
+  const journeyPriority =
+    user.studentJourney === "INCOMING_STUDENT"
+      ? ["BEFORE_DEPARTURE", "ARRIVAL", "RESIDENCY", "HEALTH"]
+      : user.studentJourney === "ALUMNI"
+        ? ["MONEY", "UNIVERSITY", "DAILY_LIFE"]
+        : ["UNIVERSITY", "DAILY_LIFE", "HEALTH", "TRANSPORT"];
+  const visible = guides
+    .filter(
+      (guide) =>
+        (!category || guide.category === category) &&
+        (!saved || guide.bookmarked) &&
+        (!q ||
+          `${guide.title} ${guide.summary}`
+            .toLowerCase()
+            .includes(q.toLowerCase())),
+    )
+    .sort((left, right) => {
+      const leftRank = journeyPriority.indexOf(left.category);
+      const rightRank = journeyPriority.indexOf(right.category);
+      return (
+        (leftRank < 0 ? journeyPriority.length : leftRank) -
+        (rightRank < 0 ? journeyPriority.length : rightRank)
+      );
+    });
   return (
     <div className="mx-auto max-w-[1320px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
       <section className="noise relative overflow-hidden rounded-4xl bg-gradient-to-br from-kondo-navy via-kondo-forest to-emerald-700 p-7 text-white shadow-lift sm:p-10">

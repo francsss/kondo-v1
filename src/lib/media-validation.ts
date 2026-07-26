@@ -26,6 +26,9 @@ export function detectMediaMime(bytes: Uint8Array) {
     bytes.length >= 12 &&
     new TextDecoder().decode(bytes.slice(4, 8)) === "ftyp"
   ) {
+    const brand = new TextDecoder("latin1").decode(bytes.slice(8, 12));
+    if (brand === "qt  ") return "video/quicktime";
+    if (/^M4V/i.test(brand)) return "video/x-m4v";
     return "video/mp4";
   }
   return null;
@@ -111,12 +114,24 @@ export async function validateUploadedMedia(input: {
     throw new MediaPolicyError("The uploaded file exceeds the size limit.");
   }
   const detectedMime = detectMediaMime(input.bytes);
-  if (!detectedMime || detectedMime !== input.declaredMime) {
+  const declaredMime = input.declaredMime.toLowerCase();
+  const compatibleVideoDeclaration =
+    policy.kind === "VIDEO" &&
+    Boolean(detectedMime?.startsWith("video/")) &&
+    declaredMime.startsWith("video/") &&
+    Boolean(policy.mimeExtensions[declaredMime]?.includes(input.extension));
+  if (
+    !detectedMime ||
+    (detectedMime !== declaredMime && !compatibleVideoDeclaration)
+  ) {
     throw new MediaPolicyError(
       "The uploaded file content does not match its declared MIME type.",
     );
   }
-  if (!policy.mimeExtensions[detectedMime]?.includes(input.extension)) {
+  if (
+    !policy.mimeExtensions[detectedMime]?.includes(input.extension) &&
+    !policy.mimeExtensions[declaredMime]?.includes(input.extension)
+  ) {
     throw new MediaPolicyError(
       "The uploaded file content does not match its extension.",
     );
@@ -170,11 +185,11 @@ export async function validateUploadedMedia(input: {
         );
       }
     }
-  } else if (detectedMime === "video/mp4") {
+  } else if (detectedMime.startsWith("video/")) {
     durationSeconds = detectMp4DurationSeconds(input.bytes);
     if (!durationSeconds) {
       throw new MediaPolicyError(
-        "The MP4 duration could not be verified. Export the video again and retry.",
+        "The video duration could not be verified. Export the video again and retry.",
       );
     }
     if (durationSeconds > 180) {

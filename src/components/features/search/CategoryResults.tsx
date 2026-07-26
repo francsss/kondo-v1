@@ -40,6 +40,14 @@ function renderItem(category: Category, item: Record<string, unknown>) {
           key={item.id as string}
           label="Community"
           title={`${(item.icon as string | null) ?? "✦"} ${item.name}`}
+          badge={
+            item.isOfficial === true || item.isVerified === true ? (
+              <OfficialMark
+                organizationName={item.name as string}
+                organizationType="COMMUNITY"
+              />
+            ) : undefined
+          }
         />
       );
     case "listings":

@@ -354,23 +354,11 @@ export function ScheduleWorkspace({
         `/api/student-hub/imports/${currentImportId}/analyze`,
         {},
       );
-      const generated = analyzed.schedule as { id?: string } | undefined;
       captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_GENERATION_SUCCEEDED, {
         tool: "timetable",
-        result: analyzed.saved === true ? "saved" : "review_required",
+        result: "review_required",
         duration_ms: Math.round(performance.now() - generationStartedAt),
       });
-      if (analyzed.saved === true && generated?.id) {
-        setShowImport(false);
-        setPendingImportId("");
-        setImportId("");
-        setSelectedImportFiles([]);
-        setImportConsent(false);
-        router.push(
-          `/student-hub/tools/timetables/${generated.id}?generated=1`,
-        );
-        return;
-      }
       setImportId(currentImportId);
       setReview(analyzed.result as Review);
       setShowImport(false);
@@ -805,7 +793,8 @@ export function ScheduleWorkspace({
                 />
                 I understand that Kondo extracts text securely, then sends only
                 that text to its configured AI provider. Results that need
-                correction will be shown for review before saving.
+                correction is shown for review. Nothing is saved to your
+                timetable until you explicitly confirm it.
               </label>
               {busy && uploadProgress.percent > 0 ? (
                 <div className="space-y-2" aria-live="polite">

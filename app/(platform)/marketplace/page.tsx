@@ -5,10 +5,13 @@ import {
   ChevronRight,
   LayoutDashboard,
   Plus,
+  Repeat2,
   Search,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
+import { PeerMarketplaceBoard } from "@/components/features/marketplace/PeerMarketplaceBoard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -16,6 +19,58 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Marketplace" };
+
+function MarketplaceNavigation({
+  active,
+}: {
+  active: "marketplace" | "exchange" | "skills";
+}) {
+  const tabs = [
+    {
+      value: "marketplace",
+      label: "Marketplace",
+      href: "/marketplace",
+      icon: LayoutDashboard,
+    },
+    {
+      value: "exchange",
+      label: "Community Exchange",
+      href: "/marketplace?view=exchange",
+      icon: Repeat2,
+    },
+    {
+      value: "skills",
+      label: "Student Skills",
+      href: "/marketplace?view=skills",
+      icon: Sparkles,
+    },
+  ] as const;
+  return (
+    <nav
+      aria-label="Marketplace sections"
+      className="scrollbar-none mb-7 flex gap-2 overflow-x-auto"
+    >
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        return (
+          <Link
+            aria-current={active === tab.value ? "page" : undefined}
+            className={
+              active === tab.value
+                ? "inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-sm font-black text-primary-foreground shadow-sm"
+                : "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-black text-muted-foreground transition hover:text-foreground"
+            }
+            href={tab.href}
+            key={tab.value}
+          >
+            <Icon className="h-4 w-4" />
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 function href(input: Record<string, string | undefined>, page?: number) {
   const params = new URLSearchParams();
@@ -34,6 +89,86 @@ export default async function MarketplacePage({
 }) {
   const params = await searchParams;
   const user = await requireUser();
+  const view =
+    params.view === "exchange" || params.view === "skills"
+      ? params.view
+      : "marketplace";
+  if (view !== "marketplace") {
+    const [cities, exchangeOffers, skillOffers] = await Promise.all([
+      prisma.city.findMany({
+        where: { isActive: true, country: { code: "CN" } },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      view === "exchange"
+        ? prisma.communityExchangeOffer.findMany({
+            where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
+            select: {
+              id: true,
+              haveCurrency: true,
+              needCurrency: true,
+              haveAmount: true,
+              needAmount: true,
+              note: true,
+              createdAt: true,
+              city: { select: { name: true } },
+              owner: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  university: { select: { name: true, shortName: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 60,
+          })
+        : Promise.resolve([]),
+      view === "skills"
+        ? prisma.studentSkillOffer.findMany({
+            where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
+            select: {
+              id: true,
+              title: true,
+              category: true,
+              description: true,
+              availability: true,
+              createdAt: true,
+              city: { select: { name: true } },
+              owner: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  university: { select: { name: true, shortName: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 60,
+          })
+        : Promise.resolve([]),
+    ]);
+    return (
+      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+        <MarketplaceNavigation active={view} />
+        <PeerMarketplaceBoard
+          cities={cities}
+          currentUserId={user.id}
+          exchangeOffers={exchangeOffers.map((offer) => ({
+            ...offer,
+            createdAt: offer.createdAt.toISOString(),
+          }))}
+          skillOffers={skillOffers.map((offer) => ({
+            ...offer,
+            createdAt: offer.createdAt.toISOString(),
+          }))}
+          type={view}
+        />
+      </div>
+    );
+  }
   const page = Math.max(1, Number(params.page ?? 1) || 1);
   const pageSize = 16;
   const min = Number(params.min);
@@ -124,6 +259,7 @@ export default async function MarketplacePage({
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+      <MarketplaceNavigation active="marketplace" />
       <PageHeader
         action={
           <div className="flex flex-wrap gap-2">

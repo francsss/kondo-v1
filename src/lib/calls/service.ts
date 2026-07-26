@@ -4,6 +4,7 @@ import {
   CallParticipantStatus,
   CallStatus,
   MeetGenderPreference,
+  MeetMode,
   Prisma,
   UserGender,
 } from "@prisma/client";
@@ -25,6 +26,8 @@ type MatchDiagnostics = {
   occupied: number;
   genderMismatch: number;
   countryMismatch: number;
+  nearbyMismatch: number;
+  intentMismatch: number;
 };
 
 function preferenceAllows(
@@ -61,7 +64,13 @@ export async function findMeetMatch(input: {
   gender: UserGender;
   genderPreference: MeetGenderPreference;
   countryPreferenceId: string | null;
+  mode?: MeetMode;
+  intents?: string[];
+  nearbyEnabled?: boolean;
 }) {
+  const mode = input.mode ?? "RANDOM";
+  const intents = input.intents ?? [];
+  const nearbyEnabled = input.nearbyEnabled ?? false;
   logServerEvent("meet.queue.join.requested", {
     userId: input.userId,
     hasCountryPreference: Boolean(input.countryPreferenceId),
@@ -98,12 +107,26 @@ export async function findMeetMatch(input: {
             occupied: 0,
             genderMismatch: 0,
             countryMismatch: 0,
+            nearbyMismatch: 0,
+            intentMismatch: 0,
           };
 
           const user = await tx.user.update({
             where: { id: input.userId },
-            data: { gender: input.gender, lastActiveAt: now },
-            select: { id: true, countryId: true, gender: true },
+            data: {
+              gender: input.gender,
+              lastActiveAt: now,
+              nearbyDiscoveryEnabled: nearbyEnabled,
+              meetIntents: { set: intents },
+            },
+            select: {
+              id: true,
+              countryId: true,
+              cityId: true,
+              gender: true,
+              nearbyDiscoveryEnabled: true,
+              meetIntents: true,
+            },
           });
           const existing = await tx.meetQueueEntry.findUnique({
             where: { userId: input.userId },
@@ -151,11 +174,15 @@ export async function findMeetMatch(input: {
             create: {
               userId: input.userId,
               genderPreference: input.genderPreference,
+              mode,
+              intents,
               countryPreferenceId: input.countryPreferenceId,
               heartbeatAt: now,
             },
             update: {
               genderPreference: input.genderPreference,
+              mode,
+              intents: { set: intents },
               countryPreferenceId: input.countryPreferenceId,
               callSessionId: null,
               heartbeatAt: now,
@@ -166,6 +193,7 @@ export async function findMeetMatch(input: {
           const candidates = await tx.meetQueueEntry.findMany({
             where: {
               userId: { not: input.userId },
+              mode,
               callSessionId: null,
               heartbeatAt: {
                 gte: new Date(now.getTime() - QUEUE_STALE_MS),
@@ -176,8 +204,11 @@ export async function findMeetMatch(input: {
                 select: {
                   id: true,
                   countryId: true,
+                  cityId: true,
                   gender: true,
                   status: true,
+                  nearbyDiscoveryEnabled: true,
+                  meetIntents: true,
                   callParticipations: {
                     where: {
                       status: { not: "LEFT" },
@@ -255,6 +286,23 @@ export async function findMeetMatch(input: {
               })
             ) {
               diagnostics.countryMismatch += 1;
+              continue;
+            }
+            if (
+              mode === "NEARBY" &&
+              (!nearbyEnabled ||
+                !entry.user.nearbyDiscoveryEnabled ||
+                !user.cityId ||
+                user.cityId !== entry.user.cityId)
+            ) {
+              diagnostics.nearbyMismatch += 1;
+              continue;
+            }
+            if (
+              mode === "LOOKING_FOR" &&
+              !intents.some((intent) => entry.user.meetIntents.includes(intent))
+            ) {
+              diagnostics.intentMismatch += 1;
               continue;
             }
             candidate = entry;

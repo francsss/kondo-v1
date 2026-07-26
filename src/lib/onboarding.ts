@@ -1,4 +1,4 @@
-import type { Prisma, StudyLevel } from "@prisma/client";
+import type { Prisma, StudentJourney, StudyLevel } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { validateOnboardingReferences } from "@/lib/reference-data";
@@ -19,6 +19,7 @@ type PartialOnboardingReferences = {
 };
 
 export type OnboardingDraftInput = PartialOnboardingReferences & {
+  studentJourney?: StudentJourney;
   degree?: string;
   studyLevel?: StudyLevel;
   arrivalDate?: Date;
@@ -27,6 +28,7 @@ export type OnboardingDraftInput = PartialOnboardingReferences & {
 };
 
 export type OnboardingInput = OnboardingReferences & {
+  studentJourney: StudentJourney;
   degree: string;
   studyLevel: StudyLevel;
   arrivalDate: Date;
@@ -51,6 +53,7 @@ function draftData(
   // statement, which the DB consistency trigger requires when a city change
   // must also clear a now-mismatched university.
   return {
+    studentJourney: input.studentJourney,
     countryId: input.countryId === undefined ? undefined : input.countryId,
     cityId: input.cityId === undefined ? undefined : input.cityId,
     universityId: options.clearUniversity
@@ -94,6 +97,7 @@ export async function saveOnboardingDraft(
       where: { id: userId },
       data: draftData(input, { clearUniversity }),
       select: {
+        studentJourney: true,
         countryId: true,
         cityId: true,
         universityId: true,
@@ -124,6 +128,7 @@ export async function completeOnboarding(
     const previous = await tx.user.findUnique({
       where: { id: userId },
       select: {
+        studentJourney: true,
         countryId: true,
         cityId: true,
         universityId: true,
@@ -145,6 +150,7 @@ export async function completeOnboarding(
         onboardingCompletedAt: completedAt,
       },
       select: {
+        studentJourney: true,
         countryId: true,
         cityId: true,
         universityId: true,
@@ -158,6 +164,7 @@ export async function completeOnboarding(
     });
 
     const oldValue = {
+      studentJourney: previous.studentJourney,
       countryId: previous.countryId,
       cityId: previous.cityId,
       universityId: previous.universityId,
@@ -168,6 +175,7 @@ export async function completeOnboarding(
       interests: previous.interests,
     };
     const newValue = {
+      studentJourney: updated.studentJourney,
       countryId: updated.countryId,
       cityId: updated.cityId,
       universityId: updated.universityId,

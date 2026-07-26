@@ -2,22 +2,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   communityFindMany: vi.fn(),
+  countryFindMany: vi.fn(),
+  cityFindMany: vi.fn(),
   guideFindMany: vi.fn(),
   listingFindMany: vi.fn(),
   postFindMany: vi.fn(),
   questionFindMany: vi.fn(),
   userFindMany: vi.fn(),
+  universityFindMany: vi.fn(),
+  scholarshipFindMany: vi.fn(),
   queryRaw: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     community: { findMany: mocks.communityFindMany },
+    country: { findMany: mocks.countryFindMany },
+    city: { findMany: mocks.cityFindMany },
     guide: { findMany: mocks.guideFindMany },
     marketplaceListing: { findMany: mocks.listingFindMany },
     post: { findMany: mocks.postFindMany },
     question: { findMany: mocks.questionFindMany },
     user: { findMany: mocks.userFindMany },
+    university: { findMany: mocks.universityFindMany },
+    scholarship: { findMany: mocks.scholarshipFindMany },
     $queryRaw: mocks.queryRaw,
   },
 }));
@@ -39,12 +47,18 @@ describe("search result minimization", () => {
   });
 
   it("returns explicit DTOs without private or internal user fields", async () => {
+    mocks.countryFindMany.mockResolvedValue([]);
+    mocks.cityFindMany.mockResolvedValue([]);
+    mocks.universityFindMany.mockResolvedValue([]);
+    mocks.scholarshipFindMany.mockResolvedValue([]);
     mocks.communityFindMany.mockResolvedValue([
       {
         id: "community-1",
         slug: "public-community",
         name: "Public Community",
         icon: "🌍",
+        isOfficial: false,
+        isVerified: false,
         _count: { members: 12 },
       },
     ]);

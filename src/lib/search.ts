@@ -154,6 +154,10 @@ export async function searchKondo(
       questions: [],
       users: [],
       posts: [],
+      universities: [],
+      countries: [],
+      cities: [],
+      opportunities: [],
     };
   }
 
@@ -181,91 +185,167 @@ export async function searchKondo(
     rankedIds("posts", term, overfetchLimit),
   ]);
 
-  const [communities, listings, guides, questions, users, posts] =
-    await Promise.all([
-      prisma.community.findMany({
-        where: {
-          AND: [
-            communityVisibilityWhere({ id: userId }),
-            { id: { in: communityRanks.map((row) => row.id) } },
-          ],
+  const [
+    communities,
+    listings,
+    guides,
+    questions,
+    users,
+    posts,
+    universities,
+    countries,
+    cities,
+    opportunities,
+  ] = await Promise.all([
+    prisma.community.findMany({
+      where: {
+        AND: [
+          communityVisibilityWhere({ id: userId }),
+          { id: { in: communityRanks.map((row) => row.id) } },
+        ],
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        icon: true,
+        isOfficial: true,
+        isVerified: true,
+        _count: { select: { members: true } },
+      },
+    }),
+    prisma.marketplaceListing.findMany({
+      where: {
+        ...activeListingWhere(),
+        id: { in: listingRanks.map((row) => row.id) },
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        priceFen: true,
+        city: { select: { name: true } },
+      },
+    }),
+    prisma.guide.findMany({
+      where: {
+        ...publishedGuideWhere,
+        id: { in: guideRanks.map((row) => row.id) },
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        estimatedMinutes: true,
+      },
+    }),
+    prisma.question.findMany({
+      where: {
+        ...publishedQuestionWhere,
+        id: { in: questionRanks.map((row) => row.id) },
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        _count: {
+          select: { answers: { where: { status: "PUBLISHED" } } },
         },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          icon: true,
-          _count: { select: { members: true } },
-        },
-      }),
-      prisma.marketplaceListing.findMany({
-        where: {
-          ...activeListingWhere(),
-          id: { in: listingRanks.map((row) => row.id) },
-        },
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          priceFen: true,
-          city: { select: { name: true } },
-        },
-      }),
-      prisma.guide.findMany({
-        where: {
-          ...publishedGuideWhere,
-          id: { in: guideRanks.map((row) => row.id) },
-        },
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          estimatedMinutes: true,
-        },
-      }),
-      prisma.question.findMany({
-        where: {
-          ...publishedQuestionWhere,
-          id: { in: questionRanks.map((row) => row.id) },
-        },
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          _count: {
-            select: { answers: { where: { status: "PUBLISHED" } } },
-          },
-        },
-      }),
-      prisma.user.findMany({
-        where: {
-          status: "ACTIVE",
-          id: { in: userRanks.map((row) => row.id) },
-        },
-        select: {
-          ...safePublicUserSelect,
-          degree: true,
-          country: { select: { emoji: true } },
-          university: { select: { shortName: true } },
-        },
-      }),
-      prisma.post.findMany({
-        where: {
-          AND: [
-            publishedPostVisibilityWhere({ id: userId }),
-            { author: { status: "ACTIVE" } },
-            { id: { in: postRanks.map((row) => row.id) } },
-          ],
-        },
-        select: {
-          id: true,
-          title: true,
-          content: true,
-          community: { select: { slug: true, name: true } },
-          author: { select: safePublicUserSelect },
-        },
-      }),
-    ]);
+      },
+    }),
+    prisma.user.findMany({
+      where: {
+        status: "ACTIVE",
+        id: { in: userRanks.map((row) => row.id) },
+      },
+      select: {
+        ...safePublicUserSelect,
+        degree: true,
+        country: { select: { emoji: true } },
+        university: { select: { shortName: true } },
+      },
+    }),
+    prisma.post.findMany({
+      where: {
+        AND: [
+          publishedPostVisibilityWhere({ id: userId }),
+          { author: { status: "ACTIVE" } },
+          { id: { in: postRanks.map((row) => row.id) } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        community: { select: { slug: true, name: true } },
+        author: { select: safePublicUserSelect },
+      },
+    }),
+    prisma.university.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { shortName: { contains: term, mode: "insensitive" } },
+          { city: { name: { contains: term, mode: "insensitive" } } },
+        ],
+      },
+      orderBy: [{ verified: "desc" }, { name: "asc" }],
+      take: previewLimit,
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        shortName: true,
+        city: { select: { name: true } },
+      },
+    }),
+    prisma.country.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { code: { equals: term, mode: "insensitive" } },
+        ],
+      },
+      orderBy: { name: "asc" },
+      take: previewLimit,
+      select: { id: true, code: true, name: true, emoji: true },
+    }),
+    prisma.city.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { province: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      orderBy: [{ verified: "desc" }, { name: "asc" }],
+      take: previewLimit,
+      select: { id: true, slug: true, name: true, province: true },
+    }),
+    prisma.scholarship.findMany({
+      where: {
+        isActive: true,
+        status: { in: ["OPEN", "OPENING_SOON"] },
+        OR: [
+          { title: { contains: term, mode: "insensitive" } },
+          { provider: { contains: term, mode: "insensitive" } },
+          { city: { contains: term, mode: "insensitive" } },
+          { fields: { has: term } },
+        ],
+      },
+      orderBy: [{ isFeatured: "desc" }, { deadline: "asc" }],
+      take: previewLimit,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        provider: true,
+        status: true,
+      },
+    }),
+  ]);
 
   return {
     communities: orderByRank(communities, communityRanks)
@@ -276,6 +356,8 @@ export async function searchKondo(
         name: community.name,
         icon: community.icon,
         memberCount: community._count.members,
+        isOfficial: community.isOfficial,
+        isVerified: community.isVerified,
       })),
     listings: orderByRank(listings, listingRanks).map((listing) => ({
       id: listing.id,
@@ -305,6 +387,16 @@ export async function searchKondo(
         community: post.community,
         author: toSafePublicUser(post.author),
       })),
+    universities: universities.map((university) => ({
+      id: university.id,
+      slug: university.slug,
+      name: university.name,
+      shortName: university.shortName,
+      cityName: university.city.name,
+    })),
+    countries,
+    cities,
+    opportunities,
   };
 }
 
@@ -388,6 +480,8 @@ async function fetchCategoryItems(
           slug: true,
           name: true,
           icon: true,
+          isOfficial: true,
+          isVerified: true,
           _count: { select: { members: true } },
         },
       });
@@ -397,6 +491,8 @@ async function fetchCategoryItems(
         name: community.name,
         icon: community.icon,
         memberCount: community._count.members,
+        isOfficial: community.isOfficial,
+        isVerified: community.isVerified,
       }));
     }
     case "listings": {

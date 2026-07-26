@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIntro";
 import { PostComposer } from "@/components/features/community/PostComposer";
@@ -39,7 +40,20 @@ export default async function HomePage() {
     getHomeActivityStream(user),
     getStoryFeed(user, { limit: 6 }),
   ]);
-  const firstGuide = guides[0];
+  const guidePriority =
+    user.studentJourney === "INCOMING_STUDENT"
+      ? ["BEFORE_DEPARTURE", "ARRIVAL", "RESIDENCY"]
+      : user.studentJourney === "ALUMNI"
+        ? ["MONEY", "UNIVERSITY"]
+        : ["UNIVERSITY", "DAILY_LIFE"];
+  const firstGuide = [...guides].sort((left, right) => {
+    const leftRank = guidePriority.indexOf(left.category);
+    const rightRank = guidePriority.indexOf(right.category);
+    return (
+      (leftRank < 0 ? guidePriority.length : leftRank) -
+      (rightRank < 0 ? guidePriority.length : rightRank)
+    );
+  })[0];
   const completedSteps =
     firstGuide?.steps.filter((step) => step.progress.length > 0).length ?? 0;
   const guideProgress = firstGuide?.steps.length
@@ -108,15 +122,6 @@ export default async function HomePage() {
         </Card>
       ) : null}
 
-      <div className="mt-7">
-        <StoryPreviewRail
-          compact
-          entryPoint="home"
-          stories={stories}
-          title="A quick visual guide to something useful today."
-        />
-      </div>
-
       <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
           <Card className="flex items-center gap-3 p-4">
@@ -146,23 +151,41 @@ export default async function HomePage() {
           </div>
 
           {posts.length ? (
-            posts.map((post) => (
-              <FeedPost currentUserId={user.id} key={post.id} post={post} />
+            posts.map((post, index) => (
+              <Fragment key={post.id}>
+                <FeedPost currentUserId={user.id} post={post} />
+                {index === Math.min(1, posts.length - 1) ? (
+                  <StoryPreviewRail
+                    compact
+                    entryPoint="home"
+                    stories={stories}
+                    title="A quick visual guide to something useful today."
+                  />
+                ) : null}
+              </Fragment>
             ))
           ) : (
-            <Card className="py-14 text-center">
-              <p className="text-3xl">🌱</p>
-              <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
-                Your feed is ready to grow
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                Join a few communities and the conversations that matter to you
-                will appear here.
-              </p>
-              <Button asChild className="mt-5" variant="soft">
-                <Link href="/communities">Explore communities</Link>
-              </Button>
-            </Card>
+            <>
+              <Card className="py-14 text-center">
+                <p className="text-3xl">🌱</p>
+                <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
+                  Your feed is ready to grow
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                  Join a few communities and the conversations that matter to
+                  you will appear here.
+                </p>
+                <Button asChild className="mt-5" variant="soft">
+                  <Link href="/communities">Explore communities</Link>
+                </Button>
+              </Card>
+              <StoryPreviewRail
+                compact
+                entryPoint="home"
+                stories={stories}
+                title="A quick visual guide to something useful today."
+              />
+            </>
           )}
         </div>
 

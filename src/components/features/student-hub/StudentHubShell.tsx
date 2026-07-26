@@ -11,10 +11,11 @@ import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/student-hub", label: "Guide" },
-  { href: "/student-hub/tools", label: "My Tools" },
+  { href: "/student-hub", label: "Guides" },
   { href: "/student-hub/scholarships", label: "Scholarships" },
-  { href: "/student-hub/help", label: "Help" },
+  { href: "/student-hub/internships", label: "Internships" },
+  { href: "/student-hub/opportunities", label: "Opportunities" },
+  { href: "/student-hub/tools", label: "Tools" },
 ] as const;
 
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";

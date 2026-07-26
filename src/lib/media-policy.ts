@@ -113,6 +113,10 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     maxBytes: 25 * 1024 * 1024,
     mimeExtensions: {
       "video/mp4": ["mp4"],
+      "video/quicktime": ["mov", "qt"],
+      "video/x-m4v": ["m4v"],
+      "video/hevc": ["hevc", "h265", "mov", "mp4"],
+      "video/h265": ["hevc", "h265", "mov", "mp4"],
     },
     altRequired: false,
   },

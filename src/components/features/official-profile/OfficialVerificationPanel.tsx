@@ -43,6 +43,9 @@ type VerificationState = {
 const organizationTypes = [
   ["UNIVERSITY", "University"],
   ["STUDENT_ASSOCIATION", "Recognized student association"],
+  ["EMBASSY", "Embassy or consular mission"],
+  ["ORGANIZATION", "Trusted organization"],
+  ["ADMINISTRATOR", "Authorized administrator"],
   ["COMMUNITY", "Official community"],
   ["COMPANY", "Company"],
   ["EVENT_ORGANIZER", "Event organizer"],

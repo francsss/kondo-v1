@@ -26,6 +26,7 @@ export default async function OnboardingPage() {
           }))}
           completed={Boolean(user.onboardingCompletedAt)}
           initialValues={{
+            studentJourney: user.studentJourney,
             countryId: user.countryId,
             cityId: user.cityId,
             universityId: user.universityId,

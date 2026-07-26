@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BadgeCheck, MessageCircle, Users } from "lucide-react";
+import { MessageCircle, Users } from "lucide-react";
 import { CommunityJoinButton } from "@/components/features/community/CommunityJoinButton";
+import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
 import { Card } from "@/components/ui/Card";
 import { MediaImage } from "@/components/ui/MediaImage";
 
@@ -54,10 +55,10 @@ export function CommunityCard({
               <h2 className="font-black tracking-[-0.02em] text-kondo-ink dark:text-white">
                 {community.name}
               </h2>
-              {community.isVerified ? (
-                <BadgeCheck
-                  aria-label="Verified community"
-                  className="h-4 w-4 text-kondo-green"
+              {community.isVerified || community.isOfficial ? (
+                <OfficialMark
+                  organizationName={community.name}
+                  organizationType="COMMUNITY"
                 />
               ) : null}
             </Link>

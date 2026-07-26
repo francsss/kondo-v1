@@ -51,6 +51,12 @@ const studyLevelSchema = z.enum([
   "OTHER",
 ]);
 
+const studentJourneySchema = z.enum([
+  "CURRENT_STUDENT",
+  "INCOMING_STUDENT",
+  "ALUMNI",
+]);
+
 const onboardingReferenceSchema = {
   countryId: z.string().cuid(),
   cityId: z.string().cuid(),
@@ -69,6 +75,7 @@ const optionalReferenceId = z.preprocess(
 
 export const onboardingSchema = z.object({
   ...onboardingReferenceSchema,
+  studentJourney: studentJourneySchema,
   degree: z.string().trim().min(2).max(120),
   studyLevel: studyLevelSchema,
   arrivalDate: z.coerce.date(),
@@ -77,6 +84,7 @@ export const onboardingSchema = z.object({
 });
 
 export const onboardingDraftSchema = z.object({
+  studentJourney: studentJourneySchema.optional(),
   countryId: optionalReferenceId,
   cityId: optionalReferenceId,
   universityId: optionalReferenceId,
@@ -172,6 +180,42 @@ export const mediaUploadIntentSchema = z
 
 export const mediaAltTextSchema = z.object({
   altText: z.string().trim().min(2).max(240),
+});
+
+const peerOfferCityId = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.string().cuid().optional(),
+);
+const peerAmount = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z
+    .string()
+    .trim()
+    .max(40)
+    .regex(/^[0-9][0-9., ]*$/, "Use a valid amount.")
+    .optional(),
+);
+
+export const communityExchangeOfferSchema = z
+  .object({
+    cityId: peerOfferCityId,
+    haveCurrency: z.string().trim().toUpperCase().min(2).max(12),
+    needCurrency: z.string().trim().toUpperCase().min(2).max(12),
+    haveAmount: peerAmount,
+    needAmount: peerAmount,
+    note: z.string().trim().max(500).optional(),
+  })
+  .refine((value) => value.haveCurrency !== value.needCurrency, {
+    message: "Choose two different currencies.",
+    path: ["needCurrency"],
+  });
+
+export const studentSkillOfferSchema = z.object({
+  cityId: peerOfferCityId,
+  title: z.string().trim().min(4).max(120),
+  category: z.string().trim().min(2).max(60),
+  description: z.string().trim().min(10).max(700),
+  availability: z.string().trim().max(160).optional(),
 });
 
 export const mediaAdminRemoveSchema = z.object({

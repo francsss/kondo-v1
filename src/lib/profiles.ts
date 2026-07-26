@@ -1256,7 +1256,7 @@ export async function updateUserRoleAsAdmin(input: {
   return prisma.$transaction(async (tx) => {
     const target = await tx.user.findUnique({
       where: { id: input.userId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, officialOrganizationType: true },
     });
     if (!target) throw new ProfileError("Account not found.", 404);
     if (target.role === input.role) {
@@ -1265,7 +1265,24 @@ export async function updateUserRoleAsAdmin(input: {
 
     const updated = await tx.user.update({
       where: { id: target.id },
-      data: { role: input.role },
+      data: {
+        role: input.role,
+        ...(input.role === "ADMIN" || input.role === "SUPER_ADMIN"
+          ? {
+              officialProfileStatus: "APPROVED",
+              officialOrganizationType: "ADMINISTRATOR",
+              officialOrganizationName: "Kondo Administrator",
+              officialVerifiedAt: new Date(),
+            }
+          : target.officialOrganizationType === "ADMINISTRATOR"
+            ? {
+                officialProfileStatus: "NOT_VERIFIED",
+                officialOrganizationType: null,
+                officialOrganizationName: null,
+                officialVerifiedAt: null,
+              }
+            : {}),
+      },
       select: { role: true },
     });
     const revoked = await tx.session.deleteMany({

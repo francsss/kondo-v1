@@ -2,10 +2,12 @@
 
 import {
   LoaderCircle,
+  MapPin,
   Radio,
   ShieldCheck,
   Sparkles,
   Video,
+  UsersRound,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CallRoomOverlay } from "@/components/features/calls/CallRoomOverlay";
@@ -17,14 +19,38 @@ import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 type Gender = "MALE" | "FEMALE";
 type GenderPreference = "ALL" | Gender;
+type MeetMode = "RANDOM" | "NEARBY" | "LOOKING_FOR";
+const meetIntents = [
+  ["FRIENDS", "Friends"],
+  ["STUDY", "Study partner"],
+  ["LANGUAGE", "Language exchange"],
+  ["SPORTS", "Sports"],
+  ["CITY", "Explore the city"],
+  ["NETWORKING", "Networking"],
+  ["COUNTRY", "Same country"],
+  ["RELATIONSHIP", "Relationship"],
+] as const;
 const POLL_INTERVAL_MS = 2_500;
 const AVAILABILITY_WINDOW_MS = 20_000;
 
-export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
+export function MeetPanel({
+  initialGender,
+  initialNearbyEnabled,
+  initialIntents,
+  cityName,
+}: {
+  initialGender: Gender | null;
+  initialNearbyEnabled: boolean;
+  initialIntents: string[];
+  cityName: string | null;
+}) {
   const [gender, setGender] = useState<Gender | "">(initialGender ?? "");
   const [genderPreference, setGenderPreference] =
     useState<GenderPreference>("ALL");
   const [countryPreferenceCode, setCountryPreferenceCode] = useState("");
+  const [mode, setMode] = useState<MeetMode>("RANDOM");
+  const [nearbyEnabled, setNearbyEnabled] = useState(initialNearbyEnabled);
+  const [intents, setIntents] = useState<string[]>(initialIntents);
   const [matching, setMatching] = useState(false);
   const [callId, setCallId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -88,6 +114,9 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
         gender,
         genderPreference,
         countryPreferenceCode: countryPreferenceCode || null,
+        mode,
+        nearbyEnabled,
+        intents,
       }),
     }).catch((reason) => {
       if (reason instanceof Error && reason.name === "AbortError") return null;
@@ -142,6 +171,14 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
       setError("Select your gender before starting. It remains private.");
       return;
     }
+    if (mode === "NEARBY" && !nearbyEnabled) {
+      setError("Enable approximate nearby discovery before starting.");
+      return;
+    }
+    if (mode === "LOOKING_FOR" && !intents.length) {
+      setError("Choose at least one reason for meeting.");
+      return;
+    }
     if (pollingRef.current || requestInFlightRef.current) return;
     setError("");
     setNoAvailability(false);
@@ -161,163 +198,264 @@ export function MeetPanel({ initialGender }: { initialGender: Gender | null }) {
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-      <Card className="overflow-hidden bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#1d7a61] p-8 text-white shadow-lift sm:p-10">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-kondo-lime">
-          <Radio className="h-3.5 w-3.5" /> LIVE MEET
-        </span>
-        <h2 className="mt-6 max-w-md text-3xl font-black tracking-tight sm:text-4xl">
-          Meet someone new on Kondo.
-        </h2>
-        <p className="mt-4 max-w-lg text-sm leading-7 text-white/65">
-          Choose who you would like to meet. Kondo only connects mutually
-          compatible preferences and never reveals the other person’s choices.
-        </p>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-3xl bg-white/8 p-4">
-            <Video className="h-5 w-5 text-kondo-lime" />
-            <p className="mt-3 text-sm font-black">Real video</p>
-            <p className="mt-1 text-xs leading-5 text-white/55">
-              Secure media rooms powered by LiveKit Cloud.
-            </p>
-          </div>
-          <div className="rounded-3xl bg-white/8 p-4">
-            <ShieldCheck className="h-5 w-5 text-kondo-lime" />
-            <p className="mt-3 text-sm font-black">Safety first</p>
-            <p className="mt-1 text-xs leading-5 text-white/55">
-              Block, report, or leave instantly at any time.
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6 sm:p-8">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="font-black text-foreground">Matching preferences</h2>
-            <p className="text-xs text-muted-foreground">
-              Your choices stay private.
-            </p>
-          </div>
-        </div>
-        <div className="mt-7 space-y-5">
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-foreground">
-              I am
-            </span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm"
-              disabled={matching}
-              onChange={(event) => setGender(event.target.value as Gender)}
-              value={gender}
-            >
-              <option disabled value="">
-                Select privately
-              </option>
-              <option value="MALE">Man</option>
-              <option value="FEMALE">Woman</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-foreground">
-              Meet
-            </span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm"
-              disabled={matching}
-              onChange={(event) =>
-                setGenderPreference(event.target.value as GenderPreference)
+    <>
+      <nav
+        aria-label="Meet modes"
+        className="scrollbar-none mx-auto mb-6 flex max-w-5xl gap-2 overflow-x-auto rounded-3xl border border-border bg-card p-1.5"
+      >
+        {[
+          { value: "RANDOM" as const, label: "Random", icon: Radio },
+          { value: "NEARBY" as const, label: "Nearby", icon: MapPin },
+          {
+            value: "LOOKING_FOR" as const,
+            label: "Looking For",
+            icon: UsersRound,
+          },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              aria-pressed={mode === item.value}
+              className={
+                mode === item.value
+                  ? "inline-flex min-w-fit flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground"
+                  : "inline-flex min-w-fit flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-muted-foreground hover:bg-muted"
               }
-              value={genderPreference}
-            >
-              <option value="ALL">Everyone</option>
-              <option value="MALE">Men</option>
-              <option value="FEMALE">Women</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-foreground">
-              Country
-            </span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm"
               disabled={matching}
-              onChange={(event) => setCountryPreferenceCode(event.target.value)}
-              value={countryPreferenceCode}
+              key={item.value}
+              onClick={() => {
+                setMode(item.value);
+                setError("");
+              }}
+              type="button"
             >
-              <option value="">All countries</option>
-              {AFRICAN_COUNTRIES.map((country) => (
-                <option key={country.code} value={country.code}>
-                  {country.emoji} {country.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {error ? (
-          <p
-            className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
-            role="alert"
-          >
-            {error}
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <Card className="overflow-hidden bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#1d7a61] p-8 text-white shadow-lift sm:p-10">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-kondo-lime">
+            <Radio className="h-3.5 w-3.5" /> LIVE MEET
+          </span>
+          <h2 className="mt-6 max-w-md text-3xl font-black tracking-tight sm:text-4xl">
+            Meet someone new on Kondo.
+          </h2>
+          <p className="mt-4 max-w-lg text-sm leading-7 text-white/65">
+            Choose who you would like to meet. Kondo only connects mutually
+            compatible preferences and never reveals the other person’s choices.
           </p>
-        ) : null}
-        {noAvailability ? (
-          <div className="mt-7 rounded-2xl border border-border bg-muted/45 p-4">
-            <p className="text-sm font-black text-foreground">
-              No one is available right now.
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              You can keep waiting with the same private preferences or cancel.
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button onClick={start} type="button">
-                Continue waiting
-              </Button>
-              <Button onClick={stop} type="button" variant="secondary">
-                Cancel
-              </Button>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl bg-white/8 p-4">
+              <Video className="h-5 w-5 text-kondo-lime" />
+              <p className="mt-3 text-sm font-black">Real video</p>
+              <p className="mt-1 text-xs leading-5 text-white/55">
+                Secure media rooms powered by LiveKit Cloud.
+              </p>
+            </div>
+            <div className="rounded-3xl bg-white/8 p-4">
+              <ShieldCheck className="h-5 w-5 text-kondo-lime" />
+              <p className="mt-3 text-sm font-black">Safety first</p>
+              <p className="mt-1 text-xs leading-5 text-white/55">
+                Block, report, or leave instantly at any time.
+              </p>
             </div>
           </div>
-        ) : (
-          <Button
-            className="mt-7"
-            fullWidth
-            onClick={matching ? stop : start}
-            size="lg"
-            type="button"
-            variant={matching ? "secondary" : "primary"}
-          >
-            {matching ? (
-              <>
-                <LoaderCircle className="h-4 w-4 animate-spin" /> Looking for a
-                match…
-              </>
-            ) : (
-              <>
-                <Video className="h-4 w-4" /> Start Matching
-              </>
-            )}
-          </Button>
-        )}
-        {matching ? (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Keep this page open. You will connect automatically.
-          </p>
+        </Card>
+
+        <Card className="p-6 sm:p-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-black text-foreground">
+                Matching preferences
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Your choices stay private.
+              </p>
+            </div>
+          </div>
+          <div className="mt-7 space-y-5">
+            {mode === "NEARBY" ? (
+              <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                <input
+                  checked={nearbyEnabled}
+                  className="mt-1"
+                  disabled={matching}
+                  onChange={(event) => setNearbyEnabled(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>
+                  <span className="block text-sm font-black">
+                    Use approximate nearby discovery
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    Match within {cityName ?? "your selected city"}. Kondo never
+                    shares precise coordinates or your private filters.
+                  </span>
+                </span>
+              </label>
+            ) : null}
+            {mode === "LOOKING_FOR" ? (
+              <fieldset>
+                <legend className="mb-2 text-sm font-bold text-foreground">
+                  I’m looking for
+                </legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {meetIntents.map(([value, label]) => {
+                    const selected = intents.includes(value);
+                    return (
+                      <button
+                        aria-pressed={selected}
+                        className={
+                          selected
+                            ? "rounded-2xl border border-kondo-green bg-kondo-mint p-3 text-left text-xs font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+                            : "rounded-2xl border border-border p-3 text-left text-xs font-bold text-muted-foreground"
+                        }
+                        disabled={matching}
+                        key={value}
+                        onClick={() =>
+                          setIntents((current) =>
+                            selected
+                              ? current.filter((item) => item !== value)
+                              : [...current, value],
+                          )
+                        }
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                  These choices improve mutual matching and are never shown to
+                  the other participant.
+                </p>
+              </fieldset>
+            ) : null}
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-foreground">
+                I am
+              </span>
+              <select
+                className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm"
+                disabled={matching}
+                onChange={(event) => setGender(event.target.value as Gender)}
+                value={gender}
+              >
+                <option disabled value="">
+                  Select privately
+                </option>
+                <option value="MALE">Man</option>
+                <option value="FEMALE">Woman</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-foreground">
+                Meet
+              </span>
+              <select
+                className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm"
+                disabled={matching}
+                onChange={(event) =>
+                  setGenderPreference(event.target.value as GenderPreference)
+                }
+                value={genderPreference}
+              >
+                <option value="ALL">Everyone</option>
+                <option value="MALE">Men</option>
+                <option value="FEMALE">Women</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-foreground">
+                Country
+              </span>
+              <select
+                className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm"
+                disabled={matching}
+                onChange={(event) =>
+                  setCountryPreferenceCode(event.target.value)
+                }
+                value={countryPreferenceCode}
+              >
+                <option value="">All countries</option>
+                {AFRICAN_COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.emoji} {country.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {error ? (
+            <p
+              className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+          {noAvailability ? (
+            <div className="mt-7 rounded-2xl border border-border bg-muted/45 p-4">
+              <p className="text-sm font-black text-foreground">
+                No one is available right now.
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                You can keep waiting with the same private preferences or
+                cancel.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Button onClick={start} type="button">
+                  Continue waiting
+                </Button>
+                <Button onClick={stop} type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              className="mt-7"
+              fullWidth
+              onClick={matching ? stop : start}
+              size="lg"
+              type="button"
+              variant={matching ? "secondary" : "primary"}
+            >
+              {matching ? (
+                <>
+                  <LoaderCircle className="h-4 w-4 animate-spin" /> Looking for
+                  a match…
+                </>
+              ) : (
+                <>
+                  <Video className="h-4 w-4" /> Start Matching
+                </>
+              )}
+            </Button>
+          )}
+          {matching ? (
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Keep this page open. You will connect automatically.
+            </p>
+          ) : null}
+        </Card>
+        {callId ? (
+          <CallRoomOverlay
+            callId={callId}
+            onClose={() => {
+              setCallId(null);
+              void leaveQueue();
+            }}
+          />
         ) : null}
-      </Card>
-      {callId ? (
-        <CallRoomOverlay
-          callId={callId}
-          onClose={() => {
-            setCallId(null);
-            void leaveQueue();
-          }}
-        />
-      ) : null}
-    </div>
+      </div>
+    </>
   );
 }

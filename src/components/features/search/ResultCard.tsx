@@ -7,12 +7,14 @@ export function ResultCard({
   label,
   title,
   detail,
+  badge,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   title: string;
   detail: string;
+  badge?: React.ReactNode;
 }) {
   return (
     <Link href={href}>
@@ -24,8 +26,9 @@ export function ResultCard({
           <span className="text-[10px] font-black uppercase tracking-wider text-kondo-green">
             {label}
           </span>
-          <span className="mt-1 block font-bold text-kondo-ink dark:text-white">
-            {title}
+          <span className="mt-1 flex items-center gap-1.5 font-bold text-kondo-ink dark:text-white">
+            <span>{title}</span>
+            {badge}
           </span>
           <span className="mt-1 block text-xs text-muted-foreground">
             {detail}

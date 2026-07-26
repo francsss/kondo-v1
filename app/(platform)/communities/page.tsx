@@ -168,7 +168,12 @@ export default async function CommunitiesPage({
 
       {tab === "meet" ? (
         <section className="mt-8">
-          <MeetPanel initialGender={user.gender} />
+          <MeetPanel
+            cityName={user.city?.name ?? null}
+            initialGender={user.gender}
+            initialIntents={user.meetIntents}
+            initialNearbyEnabled={user.nearbyDiscoveryEnabled}
+          />
         </section>
       ) : null}
 

@@ -177,11 +177,20 @@ export function StorySubmissionWorkspace({
   ]);
 
   function validateVideo(file: File) {
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    const supportedExtensions = ["mp4", "mov", "m4v", "hevc", "h265"];
+    const supportedMimeTypes = [
+      "video/mp4",
+      "video/quicktime",
+      "video/x-m4v",
+      "video/hevc",
+      "video/h265",
+    ];
     if (
-      file.type !== "video/mp4" &&
-      !file.name.toLowerCase().endsWith(".mp4")
+      !supportedMimeTypes.includes(file.type.toLowerCase()) &&
+      !supportedExtensions.includes(extension ?? "")
     ) {
-      return "Choose an MP4 video.";
+      return "Choose a common mobile video (MP4, MOV, M4V, HEVC or H.265).";
     }
     if (file.size > 25 * 1024 * 1024) {
       return "Videos must be 25 MB or smaller.";
@@ -410,10 +419,10 @@ export function StorySubmissionWorkspace({
               >
                 <FileVideo2 className="h-6 w-6 text-kondo-green" />
                 <span className="mt-4 block text-sm font-black">
-                  {video ? video.name : "Choose an MP4 video"}
+                  {video ? video.name : "Choose a mobile video"}
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  Up to 3 minutes and 25 MB
+                  MP4, MOV, M4V, HEVC or H.265 · up to 3 minutes and 25 MB
                 </span>
               </button>
               <button
@@ -431,7 +440,7 @@ export function StorySubmissionWorkspace({
                 </span>
               </button>
               <input
-                accept="video/mp4,.mp4"
+                accept="video/mp4,video/quicktime,video/x-m4v,video/hevc,video/h265,.mp4,.mov,.m4v,.hevc,.h265"
                 className="sr-only"
                 onChange={(event) => void selectVideo(event.target.files?.[0])}
                 ref={videoInputRef}

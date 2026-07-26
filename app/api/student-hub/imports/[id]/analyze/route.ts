@@ -2,20 +2,13 @@ import { NextRequest } from "next/server";
 import { logServerError, logServerEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
-import {
-  getRequestMeta,
-  hasTrustedOrigin,
-  internalApiError,
-  jsonError,
-} from "@/lib/request";
+import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
 import {
   getScheduleAnalysisProvider,
   ScheduleAnalysisError,
 } from "@/lib/schedule-ai";
 import {
-  cleanupScheduleImportSources,
   parseScheduleForPersistence,
-  saveScheduleImport,
   ScheduleImportStateError,
 } from "@/lib/schedule-import";
 import { getCurrentUser } from "@/lib/server-auth";
@@ -130,49 +123,8 @@ export async function POST(
       importId: id,
       courseCount: normalized.courses.length,
       reviewCount,
-      canSave: persistable.success,
+      readyForConfirmation: persistable.success,
     });
-
-    if (persistable.success) {
-      const saved = await saveScheduleImport({
-        importId: id,
-        ownerId: user.id,
-        expectedStatus: "ANALYZING",
-        title: persistable.data.title,
-        courses: persistable.data.courses,
-        requestMeta: getRequestMeta(request),
-        analysis: {
-          provider: analysis.provider,
-          model: analysis.model,
-          inputTokens: analysis.inputTokens,
-          outputTokens: analysis.outputTokens,
-          normalized,
-          reviewCount,
-        },
-      });
-      await cleanupScheduleImportSources({
-        actor: user,
-        importId: id,
-        files: saved.files,
-        retainSource: saved.retainSource,
-        requestMeta: getRequestMeta(request),
-      });
-      logServerEvent("student-hub.schedule-analysis.completed", {
-        importId: id,
-        scheduleId: saved.schedule.id,
-        courseCount: saved.schedule.courses.length,
-      });
-      return Response.json(
-        {
-          importId: id,
-          schedule: saved.schedule,
-          conflicts: saved.conflicts,
-          reviewCount,
-          saved: true,
-        },
-        { status: 201 },
-      );
-    }
 
     await prisma.$transaction([
       prisma.scheduleImportResult.upsert({
@@ -206,13 +158,17 @@ export async function POST(
       importId: id,
       courseCount: normalized.courses.length,
       reviewCount,
-      validationIssueCount: persistable.error.issues.length,
+      validationIssueCount: persistable.success
+        ? 0
+        : persistable.error.issues.length,
+      explicitConfirmationRequired: true,
     });
     return Response.json({
       importId: id,
       result: normalized,
       reviewCount,
       saved: false,
+      readyForConfirmation: persistable.success,
     });
   } catch (error) {
     const failure =

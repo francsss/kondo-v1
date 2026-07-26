@@ -22,7 +22,9 @@ type CityOption = Option & { countryId: string };
 type UniversityOption = Option & { cityId: string; countryId: string };
 type StudyLevel =
   "LANGUAGE" | "BACHELORS" | "MASTERS" | "DOCTORATE" | "EXCHANGE" | "OTHER";
+type StudentJourney = "CURRENT_STUDENT" | "INCOMING_STUDENT" | "ALUMNI";
 type InitialValues = {
+  studentJourney: StudentJourney | null;
   countryId: string | null;
   cityId: string | null;
   universityId: string | null;
@@ -51,6 +53,7 @@ const interestEmoji: Record<string, string> = {
   "Student Guide": "🧭",
 };
 const onboardingStepKeys = [
+  "student_journey",
   "country",
   "study_location",
   "studies",
@@ -87,6 +90,7 @@ export function OnboardingFlow({
   const [error, setError] = useState("");
   const stepStartedAtRef = useRef(0);
   const [form, setForm] = useState({
+    studentJourney: initialValues.studentJourney ?? "",
     countryId: countries.some(
       (country) => country.id === initialValues.countryId,
     )
@@ -125,6 +129,12 @@ export function OnboardingFlow({
   }, [step]);
 
   const steps = [
+    {
+      title: "Which best describes you?",
+      description:
+        "Choose where you are in your journey so Kondo can prioritize the most useful experiences.",
+      icon: "👋",
+    },
     {
       title: "Where are you from?",
       description: "This helps us connect you with your country community.",
@@ -223,12 +233,14 @@ export function OnboardingFlow({
 
   const canContinue =
     step === 0
-      ? Boolean(form.countryId)
+      ? Boolean(form.studentJourney)
       : step === 1
-        ? Boolean(form.cityId && form.universityId)
+        ? Boolean(form.countryId)
         : step === 2
-          ? Boolean(form.degree && form.arrivalDate && form.languages.length)
-          : form.interests.length > 0;
+          ? Boolean(form.cityId && form.universityId)
+          : step === 3
+            ? Boolean(form.degree && form.arrivalDate && form.languages.length)
+            : form.interests.length > 0;
 
   return (
     <div className="mx-auto grid min-h-[calc(100vh-96px)] max-w-5xl items-center gap-10 py-10 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -266,7 +278,7 @@ export function OnboardingFlow({
                   {item.title}
                 </span>
                 <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  Step {index + 1} of 4
+                  Step {index + 1} of {steps.length}
                 </span>
               </span>
             </div>
@@ -290,6 +302,65 @@ export function OnboardingFlow({
         </p>
         <div className="mt-8 min-h-[260px]">
           {step === 0 ? (
+            <div className="grid gap-3">
+              {[
+                {
+                  value: "CURRENT_STUDENT",
+                  icon: "🎓",
+                  title: "Current Student",
+                  description:
+                    "Campus life, communities, student tools and opportunities.",
+                },
+                {
+                  value: "INCOMING_STUDENT",
+                  icon: "✈️",
+                  title: "Incoming Student",
+                  description:
+                    "Visa guidance, housing, preparation and arrival information.",
+                },
+                {
+                  value: "ALUMNI",
+                  icon: "🎓",
+                  title: "Alumnus / Alumna",
+                  description:
+                    "Networking, mentoring and professional opportunities.",
+                },
+              ].map((journey) => {
+                const selected = form.studentJourney === journey.value;
+                return (
+                  <button
+                    aria-pressed={selected}
+                    className={cn(
+                      "flex items-center gap-4 rounded-3xl border p-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      selected
+                        ? "border-kondo-green bg-kondo-mint text-kondo-forest shadow-sm dark:bg-emerald-400/10 dark:text-emerald-200"
+                        : "border-border bg-background hover:border-emerald-300 hover:bg-muted/60",
+                    )}
+                    key={journey.value}
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        studentJourney: journey.value as StudentJourney,
+                      })
+                    }
+                    type="button"
+                  >
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-card text-2xl shadow-sm">
+                      {journey.icon}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-black">{journey.title}</span>
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        {journey.description}
+                      </span>
+                    </span>
+                    {selected ? <Check className="h-5 w-5 shrink-0" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {step === 1 ? (
             <SearchableSelect
               emptyMessage="No African country matches your search."
               label="Country of origin"
@@ -300,7 +371,7 @@ export function OnboardingFlow({
               onSelect={(countryId) => setForm({ ...form, countryId })}
             />
           ) : null}
-          {step === 1 ? (
+          {step === 2 ? (
             <div className="grid gap-5">
               <SearchableSelect
                 icon={<MapPin />}
@@ -344,7 +415,7 @@ export function OnboardingFlow({
               ) : null}
             </div>
           ) : null}
-          {step === 2 ? (
+          {step === 3 ? (
             <div className="grid gap-5 sm:grid-cols-2">
               <InputField
                 label="Degree or program"
@@ -409,7 +480,7 @@ export function OnboardingFlow({
               />
             </div>
           ) : null}
-          {step === 3 ? (
+          {step === 4 ? (
             <div className="grid gap-3 sm:grid-cols-2">
               {interests.map((interest) => (
                 <button
@@ -446,7 +517,7 @@ export function OnboardingFlow({
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
-          {step < 3 ? (
+          {step < steps.length - 1 ? (
             <Button
               disabled={!canContinue || loading}
               onClick={continueToNextStep}

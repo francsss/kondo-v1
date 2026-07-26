@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
+  Award,
   BookOpenText,
+  Building2,
   CircleHelp,
+  Globe2,
+  MapPin,
   MessageSquareText,
   Search,
   ShoppingBag,
   Users,
 } from "lucide-react";
+import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { CategoryResults } from "@/components/features/search/CategoryResults";
@@ -96,8 +101,8 @@ export default async function SearchPage({
             One search for your whole student life
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Find people, communities, answers, guides, posts, and marketplace
-            items.
+            Find people, communities, universities, places, opportunities,
+            answers, guides, posts, and marketplace items.
           </p>
         </div>
       ) : (
@@ -122,6 +127,14 @@ export default async function SearchPage({
                 label="Community"
                 title={`${item.icon ?? "✦"} ${item.name}`}
                 detail={`${item.memberCount} members`}
+                badge={
+                  item.isOfficial || item.isVerified ? (
+                    <OfficialMark
+                      organizationName={item.name}
+                      organizationType="COMMUNITY"
+                    />
+                  ) : undefined
+                }
               />
             ))}
             {results.guides.map((item) => (
@@ -172,15 +185,72 @@ export default async function SearchPage({
                     <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
                       Student
                     </p>
-                    <h2 className="mt-1 font-bold text-kondo-ink dark:text-white">
-                      {item.firstName} {item.lastName}
-                    </h2>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <h2 className="font-bold text-kondo-ink dark:text-white">
+                        {item.firstName} {item.lastName}
+                      </h2>
+                      {item.officialProfileStatus === "APPROVED" ? (
+                        <OfficialMark
+                          organizationName={item.officialOrganizationName}
+                          organizationType={item.officialOrganizationType}
+                          verifiedAt={item.officialVerifiedAt}
+                        />
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {item.countryEmoji} {item.affiliation}
                     </p>
                   </div>
                 </Card>
               </Link>
+            ))}
+            {results.universities.map((item) => (
+              <ResultCard
+                badge={
+                  <OfficialMark
+                    organizationName={item.name}
+                    organizationType="UNIVERSITY"
+                  />
+                }
+                detail={[item.shortName, item.cityName]
+                  .filter(Boolean)
+                  .join(" · ")}
+                href={`/communities?tab=discover&q=${encodeURIComponent(item.name)}`}
+                icon={<Building2 />}
+                key={item.id}
+                label="University"
+                title={item.name}
+              />
+            ))}
+            {results.countries.map((item) => (
+              <ResultCard
+                detail={item.code}
+                href={`/communities?tab=discover&q=${encodeURIComponent(item.name)}`}
+                icon={<Globe2 />}
+                key={item.id}
+                label="Country"
+                title={`${item.emoji ?? "🌍"} ${item.name}`}
+              />
+            ))}
+            {results.cities.map((item) => (
+              <ResultCard
+                detail={item.province ?? "Explore city guide"}
+                href={`/explore/${item.slug}`}
+                icon={<MapPin />}
+                key={item.id}
+                label="City"
+                title={item.name}
+              />
+            ))}
+            {results.opportunities.map((item) => (
+              <ResultCard
+                detail={`${item.provider} · ${item.status.replaceAll("_", " ")}`}
+                href={`/student-hub/scholarships/${item.slug}`}
+                icon={<Award />}
+                key={item.id}
+                label="Opportunity"
+                title={item.title}
+              />
             ))}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">

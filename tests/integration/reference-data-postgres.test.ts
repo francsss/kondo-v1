@@ -241,6 +241,7 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
       fixture.member.id,
       {
         ...references,
+        studentJourney: "CURRENT_STUDENT",
         degree: "International Business",
         studyLevel: "MASTERS",
         arrivalDate: new Date("2026-09-01"),

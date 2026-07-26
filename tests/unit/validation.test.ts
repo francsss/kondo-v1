@@ -135,6 +135,7 @@ describe("input validation", () => {
     expect(
       onboardingSchema.safeParse({
         ...references,
+        studentJourney: "CURRENT_STUDENT",
         degree: "",
         studyLevel: "MASTERS",
         arrivalDate: "2026-09-01",
@@ -177,6 +178,7 @@ describe("input validation", () => {
 
     expect(
       onboardingSchema.safeParse({
+        studentJourney: "INCOMING_STUDENT",
         countryId: "ckz1234567890123456789012",
         cityId: "",
         universityId: "",
