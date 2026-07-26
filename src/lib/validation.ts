@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { isAfricanCountryCode } from "@/lib/african-countries";
+import { SUPPORTED_CURRENCY_CODES } from "@/lib/currencies";
+import { STUDENT_SKILL_CATEGORIES } from "@/lib/peer-marketplace";
 
 const passwordSchema = z
   .string()
@@ -195,12 +197,20 @@ const peerAmount = z.preprocess(
     .regex(/^[0-9][0-9., ]*$/, "Use a valid amount.")
     .optional(),
 );
+const peerCurrency = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .refine(
+    (value) => SUPPORTED_CURRENCY_CODES.has(value),
+    "Select a supported currency.",
+  );
 
 export const communityExchangeOfferSchema = z
   .object({
     cityId: peerOfferCityId,
-    haveCurrency: z.string().trim().toUpperCase().min(2).max(12),
-    needCurrency: z.string().trim().toUpperCase().min(2).max(12),
+    haveCurrency: peerCurrency,
+    needCurrency: peerCurrency,
     haveAmount: peerAmount,
     needAmount: peerAmount,
     note: z.string().trim().max(500).optional(),
@@ -213,7 +223,7 @@ export const communityExchangeOfferSchema = z
 export const studentSkillOfferSchema = z.object({
   cityId: peerOfferCityId,
   title: z.string().trim().min(4).max(120),
-  category: z.string().trim().min(2).max(60),
+  category: z.enum(STUDENT_SKILL_CATEGORIES),
   description: z.string().trim().min(10).max(700),
   availability: z.string().trim().max(160).optional(),
 });

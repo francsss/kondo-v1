@@ -4,6 +4,7 @@ import { ImagePlus, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadPublicImage } from "@/lib/client-media";
 
 type ReferenceOption = { id: string; name: string };
@@ -241,21 +242,18 @@ function ReferenceSelect({
   name: string;
   options: ReferenceOption[];
 }) {
+  const [selected, setSelected] = useState("");
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold">{label}</span>
-      <select
-        className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
-        name={name}
-        required
-      >
-        <option value="">Choose {label.toLowerCase()}</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div>
+      <input name={name} required type="hidden" value={selected} />
+      <SearchableSelect
+        label={label}
+        onSelect={setSelected}
+        options={options}
+        placeholder={`Choose ${label.toLowerCase()}`}
+        searchPlaceholder={`Search ${label.toLowerCase()}s`}
+        selected={selected}
+      />
+    </div>
   );
 }

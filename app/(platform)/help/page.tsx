@@ -72,13 +72,13 @@ export default async function HelpPage({
         </div>
       </section>
 
-      <div className="scrollbar-none mt-6 flex gap-3 overflow-x-auto pb-2">
+      <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {categories.map(([label, emoji]) => (
           <Link
             className={
               category === label
-                ? "flex min-w-fit items-center gap-2 rounded-full bg-kondo-ink px-4 py-2.5 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "flex min-w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-muted-foreground transition hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
+                ? "flex items-center justify-center gap-2 rounded-2xl bg-kondo-ink px-3 py-2.5 text-xs font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink sm:text-sm"
+                : "flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-muted-foreground transition hover:-translate-y-0.5 hover:border-kondo-green hover:text-kondo-forest dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground sm:text-sm"
             }
             href={`/help?category=${label}`}
             key={label}

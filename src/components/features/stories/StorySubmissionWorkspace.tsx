@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadMediaFile } from "@/lib/client-media";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -467,21 +468,17 @@ export function StorySubmissionWorkspace({
                 value={title}
               />
             </Field>
-            <Field label="Category">
-              <select
-                className="h-11 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-kondo-green"
-                onChange={(event) => setCategoryId(event.target.value)}
-                required
-                value={categoryId}
-              >
-                <option value="">Choose a category</option>
-                {options.categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.icon} {category.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <SearchableSelect
+              label="Category"
+              onSelect={setCategoryId}
+              options={options.categories.map((category) => ({
+                id: category.id,
+                name: `${category.icon} ${category.name}`,
+              }))}
+              placeholder="Choose a category"
+              searchPlaceholder="Search categories"
+              selected={categoryId}
+            />
           </div>
           <Field label="Useful context">
             <textarea
@@ -758,21 +755,14 @@ function ContextSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label>
-      <span className="sr-only">{label}</span>
-      <select
-        className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-xs"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        <option value="">{label} · optional</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <SearchableSelect
+      label={`${label} · optional`}
+      onSelect={onChange}
+      options={options}
+      placeholder={`Any ${label.toLowerCase()}`}
+      searchPlaceholder={`Search ${label.toLowerCase()}s`}
+      selected={value}
+    />
   );
 }
 

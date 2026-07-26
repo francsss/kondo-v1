@@ -85,13 +85,13 @@ export default async function StudentHelpPage({
           ) : null}
         </form>
       </section>
-      <div className="scrollbar-none mt-6 flex gap-2 overflow-x-auto pb-1">
+      <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {categories.map(([value, emoji]) => (
           <Link
             className={
               category === value
-                ? "whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-black text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "whitespace-nowrap rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-muted-foreground"
+                ? "rounded-2xl bg-kondo-ink px-3 py-2.5 text-center text-xs font-black text-white dark:bg-emerald-400 dark:text-kondo-ink sm:text-sm"
+                : "rounded-2xl border border-border bg-card px-3 py-2.5 text-center text-xs font-bold text-muted-foreground transition hover:-translate-y-0.5 hover:border-kondo-green sm:text-sm"
             }
             href={`/student-hub/help?category=${value}`}
             key={value}

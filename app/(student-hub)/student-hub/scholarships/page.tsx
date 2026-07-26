@@ -6,10 +6,10 @@ import {
   BadgeCheck,
   CalendarDays,
   GraduationCap,
-  Search,
   Sparkles,
 } from "lucide-react";
 import { ScholarshipActions } from "@/components/features/student-hub/ScholarshipActions";
+import { ScholarshipFilters } from "@/components/features/student-hub/ScholarshipFilters";
 import { ScholarshipNav } from "@/components/features/student-hub/ScholarshipNav";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
@@ -170,80 +170,34 @@ export default async function ScholarshipsPage({
         </p>
       </div>
       <ScholarshipNav active="opportunities" />
-      <Card className="mt-6">
-        <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="flex h-11 items-center gap-3 rounded-2xl border border-border px-4 md:col-span-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              aria-label="Search scholarships"
-              className="w-full bg-transparent text-sm outline-none"
-              defaultValue={q}
-              name="q"
-              placeholder="Scholarship, provider, city or field"
-            />
-          </label>
-          <FilterSelect
-            defaultValue={country}
-            label="Destination"
-            name="country"
-            options={countries.map((item) => [item.id, item.name])}
-          />
-          <FilterSelect
-            defaultValue={university}
-            label="University"
-            name="university"
-            options={universities.map((item) => [item.id, item.name])}
-          />
-          <FilterSelect
-            defaultValue={level}
-            label="Study level"
-            name="level"
-            options={studyLevels.map((item) => [
-              item,
-              `${item[0]}${item.slice(1).toLowerCase()}`,
-            ])}
-          />
-          <FilterSelect
-            defaultValue={field}
-            label="Field"
-            name="field"
-            options={fields.map((item) => [item, item])}
-          />
-          <FilterSelect
-            defaultValue={funding}
-            label="Funding"
-            name="funding"
-            options={[
-              ["FULL", "Full funding"],
-              ["PARTIAL", "Partial funding"],
-            ]}
-          />
-          <FilterSelect
-            defaultValue={status}
-            label="Status"
-            name="status"
-            options={[
-              ["OPEN", "Open"],
-              ["OPENING_SOON", "Opening soon"],
-              ["CLOSED", "Closed"],
-            ]}
-          />
-          {saved ? <input name="saved" type="hidden" value="1" /> : null}
-          <button className="h-11 rounded-full bg-kondo-ink px-6 text-sm font-black text-white dark:bg-emerald-400 dark:text-kondo-ink">
-            Apply filters
-          </button>
-          <Link
-            className="grid h-11 place-items-center rounded-full border border-border text-sm font-black"
-            href={
-              saved
-                ? "/student-hub/scholarships"
-                : "/student-hub/scholarships?saved=1"
-            }
-          >
-            {saved ? "Show all" : "Saved only"}
-          </Link>
-        </form>
-      </Card>
+      <ScholarshipFilters
+        options={{
+          countries: countries.map((item) => ({
+            id: item.id,
+            name: item.name,
+          })),
+          universities: universities.map((item) => ({
+            id: item.id,
+            name: item.name,
+          })),
+          levels: studyLevels.map((item) => ({
+            id: item,
+            name: `${item[0]}${item.slice(1).toLowerCase()}`,
+          })),
+          fields: fields.map((item) => ({ id: item, name: item })),
+          funding: [
+            { id: "FULL", name: "Full funding" },
+            { id: "PARTIAL", name: "Partial funding" },
+          ],
+          statuses: [
+            { id: "OPEN", name: "Open" },
+            { id: "OPENING_SOON", name: "Opening soon" },
+            { id: "CLOSED", name: "Closed" },
+          ],
+        }}
+        saved={Boolean(saved)}
+        values={{ q, country, university, level, field, funding, status }}
+      />
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         {scholarships.map((item) => {
           const effectiveStatus = effectiveScholarshipStatus(item);
@@ -335,33 +289,5 @@ export default async function ScholarshipsPage({
         </Card>
       ) : null}
     </div>
-  );
-}
-
-function FilterSelect({
-  name,
-  label,
-  defaultValue,
-  options,
-}: {
-  name: string;
-  label: string;
-  defaultValue?: string;
-  options: Array<readonly [string, string]>;
-}) {
-  return (
-    <select
-      aria-label={label}
-      className="h-11 min-w-0 rounded-2xl border border-border bg-background px-3 text-sm"
-      defaultValue={defaultValue ?? ""}
-      name={name}
-    >
-      <option value="">All {label.toLowerCase()}</option>
-      {options.map(([value, optionLabel]) => (
-        <option key={value} value={value}>
-          {optionLabel}
-        </option>
-      ))}
-    </select>
   );
 }

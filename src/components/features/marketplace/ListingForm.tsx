@@ -9,6 +9,7 @@ import {
 } from "@/components/forms/SaveFeedback";
 import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadPublicImage } from "@/lib/client-media";
 import { getMarketplaceSubmitIntent } from "@/lib/marketplace-form";
 
@@ -39,6 +40,8 @@ export function ListingForm({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const [categoryId, setCategoryId] = useState(listing?.categoryId ?? "");
+  const [cityId, setCityId] = useState(listing?.cityId ?? "");
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,38 +141,34 @@ export function ListingForm({
       onSubmit={submit}
     >
       <div className="grid gap-5 sm:grid-cols-2">
-        <label>
-          <span className="mb-2 block text-sm font-bold">Category</span>
-          <select
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
-            defaultValue={listing?.categoryId}
-            name="categoryId"
-            required
-          >
-            <option value="">Choose a category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="mb-2 block text-sm font-bold">City</span>
-          <select
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
-            defaultValue={listing?.cityId}
-            name="cityId"
-            required
-          >
-            <option value="">Choose a city</option>
-            {cities.map((city) => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div>
+          <input name="categoryId" type="hidden" value={categoryId} />
+          <SearchableSelect
+            label="Category"
+            onSelect={(value) => {
+              setCategoryId(value);
+              setIsDirty(true);
+            }}
+            options={categories}
+            placeholder="Choose a category"
+            searchPlaceholder="Search categories"
+            selected={categoryId}
+          />
+        </div>
+        <div>
+          <input name="cityId" type="hidden" value={cityId} />
+          <SearchableSelect
+            label="City"
+            onSelect={(value) => {
+              setCityId(value);
+              setIsDirty(true);
+            }}
+            options={cities}
+            placeholder="Choose a city"
+            searchPlaceholder="Search cities"
+            selected={cityId}
+          />
+        </div>
       </div>
       <label className="block">
         <span className="mb-2 block text-sm font-bold">Title</span>

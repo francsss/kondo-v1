@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 type Country = { id: string; name: string };
 type University = { id: string; name: string; countryId: string };
@@ -501,20 +502,13 @@ function ScholarshipForm({
             required
           />
         </Field>
-        <Field label="Destination country">
-          <select
-            className={input}
-            defaultValue={editing?.countryId ?? ""}
-            name="countryId"
-          >
-            <option value="">Derived from university / global</option>
-            {countries.map((country) => (
-              <option key={country.id} value={country.id}>
-                {country.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <FormSearchableSelect
+          clearLabel="Derived from university / global"
+          defaultValue={editing?.countryId ?? ""}
+          label="Destination country"
+          name="countryId"
+          options={countries}
+        />
         <Field label="City">
           <input
             className={input}
@@ -809,20 +803,13 @@ function AgentForm({
             type="url"
           />
         </Field>
-        <Field label="Country">
-          <select
-            className={input}
-            defaultValue={editing?.countryId ?? ""}
-            name="countryId"
-          >
-            <option value="">Remote / not specified</option>
-            {countries.map((country) => (
-              <option key={country.id} value={country.id}>
-                {country.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <FormSearchableSelect
+          clearLabel="Remote / not specified"
+          defaultValue={editing?.countryId ?? ""}
+          label="Country"
+          name="countryId"
+          options={countries}
+        />
         <ListField
           defaultValue={editing?.languages}
           label="Languages"
@@ -934,5 +921,35 @@ function AgentForm({
         </div>
       </form>
     </Card>
+  );
+}
+
+function FormSearchableSelect({
+  label,
+  name,
+  defaultValue,
+  clearLabel,
+  options,
+}: {
+  label: string;
+  name: string;
+  defaultValue: string;
+  clearLabel: string;
+  options: Country[];
+}) {
+  const [selected, setSelected] = useState(defaultValue);
+  return (
+    <div>
+      <input name={name} type="hidden" value={selected} />
+      <SearchableSelect
+        clearLabel={clearLabel}
+        label={label}
+        onSelect={setSelected}
+        options={options}
+        placeholder={clearLabel}
+        searchPlaceholder={`Search ${label.toLowerCase()}`}
+        selected={selected}
+      />
+    </div>
   );
 }

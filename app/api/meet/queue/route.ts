@@ -10,23 +10,7 @@ const matchSchema = z.object({
   gender: z.enum(["MALE", "FEMALE"]),
   genderPreference: z.enum(["ALL", "MALE", "FEMALE"]),
   countryPreferenceCode: z.string().length(2).nullable().default(null),
-  mode: z.enum(["RANDOM", "NEARBY", "LOOKING_FOR"]).default("RANDOM"),
-  nearbyEnabled: z.boolean().default(false),
-  intents: z
-    .array(
-      z.enum([
-        "FRIENDS",
-        "STUDY",
-        "LANGUAGE",
-        "SPORTS",
-        "CITY",
-        "NETWORKING",
-        "COUNTRY",
-        "RELATIONSHIP",
-      ]),
-    )
-    .max(8)
-    .default([]),
+  mode: z.literal("RANDOM").default("RANDOM"),
 });
 
 export async function POST(request: NextRequest) {
@@ -45,12 +29,6 @@ export async function POST(request: NextRequest) {
     if (parsed.data.countryPreferenceCode && !countryReference) {
       return jsonError("Select a valid African country.");
     }
-    if (parsed.data.mode === "NEARBY" && !parsed.data.nearbyEnabled) {
-      return jsonError("Enable approximate nearby discovery to continue.", 422);
-    }
-    if (parsed.data.mode === "LOOKING_FOR" && !parsed.data.intents.length) {
-      return jsonError("Choose at least one reason for meeting.", 422);
-    }
     const country = countryReference
       ? await prisma.country.upsert({
           where: { code: countryReference.code },
@@ -64,9 +42,9 @@ export async function POST(request: NextRequest) {
       gender: parsed.data.gender,
       genderPreference: parsed.data.genderPreference,
       countryPreferenceId: country?.id ?? null,
-      mode: parsed.data.mode,
-      nearbyEnabled: parsed.data.nearbyEnabled,
-      intents: parsed.data.intents,
+      mode: "RANDOM",
+      nearbyEnabled: false,
+      intents: [],
     });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

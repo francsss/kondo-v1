@@ -90,7 +90,7 @@
   input,
   select,
   textarea {
-    @apply text-foreground placeholder:text-muted-foreground;
+    @apply text-foreground transition-colors duration-200 placeholder:text-muted-foreground;
   }
 
   select option {

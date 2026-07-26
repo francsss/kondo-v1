@@ -20,6 +20,7 @@ export function SearchableSelect({
   searchPlaceholder,
   emptyMessage = "No result found.",
   disabled = false,
+  clearLabel,
 }: {
   label: string;
   icon?: React.ReactNode;
@@ -30,6 +31,7 @@ export function SearchableSelect({
   searchPlaceholder: string;
   emptyMessage?: string;
   disabled?: boolean;
+  clearLabel?: string;
 }) {
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -155,6 +157,29 @@ export function SearchableSelect({
             id={`${id}-options`}
             role="listbox"
           >
+            {clearLabel && !query ? (
+              <button
+                aria-selected={!selected}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition",
+                  !selected
+                    ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
+                    : "text-foreground hover:bg-muted",
+                )}
+                onClick={() => {
+                  onSelect("");
+                  setOpen(false);
+                  setQuery("");
+                }}
+                role="option"
+                type="button"
+              >
+                <span className="min-w-0 flex-1 text-sm font-semibold">
+                  {clearLabel}
+                </span>
+                {!selected ? <Check className="h-4 w-4 shrink-0" /> : null}
+              </button>
+            ) : null}
             {filteredOptions.length ? (
               filteredOptions.map((option) => (
                 <button

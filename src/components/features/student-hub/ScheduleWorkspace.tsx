@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadMediaFile } from "@/lib/client-media";
 import {
   formatImportFileSize,
@@ -1070,23 +1071,21 @@ function UniversityFields({ universities }: { universities: University[] }) {
   const university = universities.find((item) => item.id === selected);
   return (
     <>
-      <label className="block">
-        <span className="mb-2 block text-sm font-black">University</span>
-        <select
-          className={input}
-          name="universityId"
-          onChange={(event) => setSelected(event.target.value)}
-          required
-          value={selected}
-        >
-          <option value="">Choose university</option>
-          {universities.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div>
+        <input name="universityId" type="hidden" value={selected} />
+        <SearchableSelect
+          label="University"
+          onSelect={setSelected}
+          options={universities.map((item) => ({
+            id: item.id,
+            name: item.name,
+            secondary: item.shortName ?? undefined,
+          }))}
+          placeholder="Choose university"
+          searchPlaceholder="Search universities"
+          selected={selected}
+        />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label>
           <span className="mb-2 block text-sm font-black">Campus</span>

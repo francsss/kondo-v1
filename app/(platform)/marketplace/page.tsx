@@ -6,11 +6,11 @@ import {
   LayoutDashboard,
   Plus,
   Repeat2,
-  Search,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
+import { MarketplaceFilterBar } from "@/components/features/marketplace/MarketplaceFilterBar";
 import { PeerMarketplaceBoard } from "@/components/features/marketplace/PeerMarketplaceBoard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -48,7 +48,7 @@ function MarketplaceNavigation({
   return (
     <nav
       aria-label="Marketplace sections"
-      className="scrollbar-none mb-7 flex gap-2 overflow-x-auto"
+      className="mb-7 grid grid-cols-3 border-b border-border"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -57,14 +57,14 @@ function MarketplaceNavigation({
             aria-current={active === tab.value ? "page" : undefined}
             className={
               active === tab.value
-                ? "inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-sm font-black text-primary-foreground shadow-sm"
-                : "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-black text-muted-foreground transition hover:text-foreground"
+                ? "relative inline-flex min-h-14 items-center justify-center gap-2 px-2 text-center text-xs font-black text-kondo-green transition sm:px-5 sm:text-sm after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-kondo-green"
+                : "inline-flex min-h-14 items-center justify-center gap-2 px-2 text-center text-xs font-bold text-muted-foreground transition duration-200 hover:bg-muted/60 hover:text-foreground sm:px-5 sm:text-sm"
             }
             href={tab.href}
             key={tab.value}
           >
-            <Icon className="h-4 w-4" />
-            {tab.label}
+            <Icon className="hidden h-4 w-4 sm:block" />
+            <span>{tab.label}</span>
           </Link>
         );
       })}
@@ -280,73 +280,24 @@ export default async function MarketplacePage({
         title="Marketplace"
       />
 
-      <Card className="mt-8 bg-kondo-navy text-white">
-        <form className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_130px_130px_160px_auto]">
-          <label className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className="h-11 w-full rounded-2xl bg-white pl-11 pr-4 text-sm text-kondo-ink"
-              defaultValue={params.q}
-              name="q"
-              placeholder="Search items"
-            />
-          </label>
-          <select
-            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
-            defaultValue={params.city ?? ""}
-            name="city"
-          >
-            <option value="">All cities</option>
-            {cities.map((city) => (
-              <option key={city.id} value={city.slug}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-          <input
-            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
-            defaultValue={params.min}
-            min={0}
-            name="min"
-            placeholder="Min ¥"
-            type="number"
-          />
-          <input
-            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
-            defaultValue={params.max}
-            min={0}
-            name="max"
-            placeholder="Max ¥"
-            type="number"
-          />
-          <select
-            className="h-11 rounded-2xl bg-white px-3 text-sm text-kondo-ink"
-            defaultValue={params.sort ?? "latest"}
-            name="sort"
-          >
-            <option value="latest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="price-asc">Price low to high</option>
-            <option value="price-desc">Price high to low</option>
-          </select>
-          {params.category ? (
-            <input name="category" type="hidden" value={params.category} />
-          ) : null}
-          <Button
-            className="bg-white text-kondo-forest hover:bg-kondo-lime"
-            type="submit"
-          >
-            Filter
-          </Button>
-        </form>
-      </Card>
+      <MarketplaceFilterBar
+        cities={cities}
+        values={{
+          q: params.q,
+          city: params.city,
+          min: params.min,
+          max: params.max,
+          sort: params.sort,
+          category: params.category,
+        }}
+      />
 
-      <section className="scrollbar-none mt-7 flex gap-3 overflow-x-auto pb-2">
+      <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
         <Link
           className={
             !params.category
-              ? "grid min-w-24 place-items-center rounded-3xl bg-kondo-ink p-4 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
-              : "grid min-w-24 place-items-center rounded-3xl border border-slate-200 bg-white p-4 text-center dark:border-white/10 dark:bg-white/5"
+              ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
+              : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 dark:border-white/10 dark:bg-white/5"
           }
           href={href({ ...hrefInput, category: undefined })}
         >
@@ -357,8 +308,8 @@ export default async function MarketplacePage({
           <Link
             className={
               params.category === category.slug
-                ? "grid min-w-24 place-items-center rounded-3xl bg-kondo-ink p-4 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "grid min-w-24 place-items-center rounded-3xl border border-slate-200 bg-white p-4 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"
+                ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
+                : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"
             }
             href={href({ ...hrefInput, category: category.slug })}
             key={category.id}

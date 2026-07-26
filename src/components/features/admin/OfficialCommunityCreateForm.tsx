@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ImagePlus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadPublicImage } from "@/lib/client-media";
 
 type Option = { id: string; name: string };
@@ -184,21 +185,18 @@ function OptionSelect({
   name: string;
   options: Option[];
 }) {
+  const [selected, setSelected] = useState("");
   return (
-    <label className="text-xs font-bold text-muted-foreground">
-      {label}
-      <select
-        className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
-        name={name}
-        required
-      >
-        <option value="">Choose {label.toLowerCase()}</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div>
+      <input name={name} type="hidden" value={selected} />
+      <SearchableSelect
+        label={label}
+        onSelect={setSelected}
+        options={options}
+        placeholder={`Choose ${label.toLowerCase()}`}
+        searchPlaceholder={`Search ${label.toLowerCase()}s`}
+        selected={selected}
+      />
+    </div>
   );
 }

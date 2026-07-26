@@ -37,20 +37,27 @@ function StudentHubTabs({
     <nav
       aria-label={mobile ? "Student Hub mobile" : "Student Hub"}
       className={cn(
-        "scrollbar-none items-center gap-1 overflow-x-auto rounded-full border border-border bg-card/80 p-1 shadow-sm backdrop-blur-xl",
-        mobile ? "flex" : "hidden md:flex",
+        mobile
+          ? "grid grid-cols-6 border-t border-border/70 pt-2"
+          : "hidden items-center border-b border-border md:flex",
       )}
     >
-      {tabs.map(({ href, label }) => {
+      {tabs.map(({ href, label }, index) => {
         const active = isActiveTab(pathname, href);
         return (
           <Link
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative isolate inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-bold transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "relative isolate inline-flex items-center justify-center whitespace-nowrap font-bold transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              mobile
+                ? cn(
+                    "min-h-9 px-1 text-[11px]",
+                    index < 3 ? "col-span-2" : "col-span-3",
+                  )
+                : "h-11 px-4 text-sm",
               active
-                ? "text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "text-kondo-green"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
             data-product-event={PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED}
             data-product-source={label.toLowerCase().replaceAll(" ", "_")}
@@ -59,7 +66,7 @@ function StudentHubTabs({
           >
             {active ? (
               <motion.span
-                className="absolute inset-0 -z-10 rounded-full bg-primary shadow-sm"
+                className="absolute inset-x-3 bottom-0 -z-10 h-0.5 rounded-full bg-kondo-green shadow-[0_0_12px_rgba(52,211,153,0.35)]"
                 layoutId={
                   mobile ? "student-hub-mobile-tab" : "student-hub-desktop-tab"
                 }
@@ -108,7 +115,7 @@ export function StudentHubShell({
           </Link>
           <StudentHubTabs pathname={pathname} />
         </div>
-        <div className="scrollbar-none overflow-x-auto px-4 pb-3 md:hidden">
+        <div className="px-4 pb-2 md:hidden">
           <StudentHubTabs mobile pathname={pathname} />
         </div>
       </header>

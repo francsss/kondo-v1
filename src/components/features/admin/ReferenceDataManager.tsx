@@ -5,6 +5,7 @@ import { CheckCircle2, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import type { ReferenceType } from "@/lib/reference-data";
 
 type CountryRecord = {
@@ -488,24 +489,22 @@ function SelectField({
   defaultValue: string;
   options: Array<{ id: string; label: string }>;
 }) {
+  const [selected, setSelected] = useState(defaultValue);
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
-        {label}
-      </span>
-      <select
-        className="h-11 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
-        defaultValue={defaultValue}
-        name={name}
-        required
-      >
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div>
+      <input name={name} type="hidden" value={selected} />
+      <SearchableSelect
+        label={label}
+        onSelect={setSelected}
+        options={options.map((option) => ({
+          id: option.id,
+          name: option.label,
+        }))}
+        placeholder={`Choose ${label.toLowerCase()}`}
+        searchPlaceholder={`Search ${label.toLowerCase()}s`}
+        selected={selected}
+      />
+    </div>
   );
 }
 

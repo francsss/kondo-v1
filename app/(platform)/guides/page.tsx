@@ -86,14 +86,14 @@ export default async function GuidesPage({
         </div>
       </section>
 
-      <div className="scrollbar-none mt-7 flex gap-2 overflow-x-auto pb-1">
+      <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {categories.map((category) => (
           <Link
             className={
               selectedCategory === category.value ||
               (!selectedCategory && !category.value)
-                ? "whitespace-nowrap rounded-full bg-kondo-ink px-4 py-2 text-sm font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-muted-foreground dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground"
+                ? "rounded-2xl bg-kondo-ink px-3 py-2.5 text-center text-xs font-bold text-white dark:bg-emerald-400 dark:text-kondo-ink sm:text-sm"
+                : "rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-center text-xs font-bold text-muted-foreground transition hover:-translate-y-0.5 hover:border-kondo-green dark:border-white/10 dark:bg-white/5 dark:text-muted-foreground sm:text-sm"
             }
             href={
               category.value ? `/guides?category=${category.value}` : "/guides"

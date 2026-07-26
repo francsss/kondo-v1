@@ -57,21 +57,34 @@ export default async function SellerDashboard({
         eyebrow="Seller tools"
         title="Your listings"
       />
-      <div className="scrollbar-none mt-7 flex gap-2 overflow-x-auto">
-        <Button asChild size="sm" variant={!status ? "primary" : "secondary"}>
-          <Link href="/marketplace/selling">All</Link>
-        </Button>
+      <nav
+        aria-label="Listing status"
+        className="mt-7 grid grid-cols-4 border-b border-border sm:grid-cols-7"
+      >
+        <Link
+          className={
+            !status
+              ? "relative px-2 py-3 text-center text-xs font-black text-kondo-green after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:bg-kondo-green"
+              : "px-2 py-3 text-center text-xs font-bold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+          }
+          href="/marketplace/selling"
+        >
+          All
+        </Link>
         {statuses.map((value) => (
-          <Button
-            asChild
+          <Link
+            className={
+              status === value
+                ? "relative px-1 py-3 text-center text-[10px] font-black text-kondo-green after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:bg-kondo-green sm:text-xs"
+                : "px-1 py-3 text-center text-[10px] font-bold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground sm:text-xs"
+            }
+            href={`/marketplace/selling?status=${value}`}
             key={value}
-            size="sm"
-            variant={status === value ? "primary" : "secondary"}
           >
-            <Link href={`/marketplace/selling?status=${value}`}>{value}</Link>
-          </Button>
+            {value}
+          </Link>
         ))}
-      </div>
+      </nav>
       <div className="mt-6 space-y-4">
         {result.records.map((listing) => (
           <Card

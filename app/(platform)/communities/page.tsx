@@ -147,15 +147,15 @@ export default async function CommunitiesPage({
 
       <nav
         aria-label="Community sections"
-        className="scrollbar-none mt-8 flex gap-2 overflow-x-auto rounded-3xl border border-border bg-card p-1.5 shadow-sm"
+        className="mt-8 grid grid-cols-3 border-b border-border"
       >
         {tabs.map(({ value, label, icon: Icon }) => (
           <Link
             aria-current={tab === value ? "page" : undefined}
             className={
               tab === value
-                ? "inline-flex min-w-fit flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm transition"
-                : "inline-flex min-w-fit flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                ? "relative inline-flex min-h-14 items-center justify-center gap-2 px-3 text-sm font-black text-kondo-green transition after:absolute after:inset-x-5 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-kondo-green"
+                : "inline-flex min-h-14 items-center justify-center gap-2 px-3 text-sm font-bold text-muted-foreground transition duration-200 hover:bg-muted/60 hover:text-foreground"
             }
             href={communityHref({ tab: value })}
             key={value}
@@ -209,13 +209,13 @@ export default async function CommunitiesPage({
       ) : null}
 
       {tab === "my" ? (
-        <div className="mt-7 flex gap-2">
+        <div className="mt-7 grid max-w-sm grid-cols-2 border-b border-border">
           {(["managed", "joined"] as const).map((value) => (
             <Link
               className={
                 scope === value
-                  ? "rounded-full bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"
-                  : "rounded-full border border-border bg-card px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground"
+                  ? "relative px-5 py-3 text-center text-sm font-black text-kondo-green after:absolute after:inset-x-6 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-kondo-green"
+                  : "px-5 py-3 text-center text-sm font-bold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
               }
               href={communityHref({
                 tab,
@@ -289,7 +289,7 @@ export default async function CommunitiesPage({
             </form>
           </Card>
 
-          <div className="scrollbar-none mt-5 flex gap-2 overflow-x-auto pb-1">
+          <div className="mt-5 grid grid-cols-5 border-b border-border">
             {[
               { label: "All", value: undefined },
               { label: "University", value: "UNIVERSITY" },
@@ -304,8 +304,8 @@ export default async function CommunitiesPage({
                 <Link
                   className={
                     active
-                      ? "whitespace-nowrap rounded-full bg-foreground px-4 py-2 text-sm font-bold text-background"
-                      : "whitespace-nowrap rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-muted-foreground hover:border-primary hover:text-foreground"
+                      ? "relative px-1 py-3 text-center text-xs font-black text-kondo-green after:absolute after:inset-x-2 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-kondo-green sm:px-4 sm:text-sm"
+                      : "px-1 py-3 text-center text-xs font-bold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground sm:px-4 sm:text-sm"
                   }
                   href={communityHref({
                     tab,

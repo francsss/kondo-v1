@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CalendarDays, Flag, ShieldCheck, X } from "lucide-react";
+import { CalendarDays, Fingerprint, Flag, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { captureProductEvent } from "@/lib/product-analytics-client";
@@ -15,6 +15,7 @@ type OfficialMarkProps = {
   size?: "sm" | "md";
   withLabel?: boolean;
   className?: string;
+  interactive?: boolean;
 };
 
 function readableType(value?: string | null) {
@@ -29,6 +30,7 @@ export function OfficialMark({
   size = "sm",
   withLabel = false,
   className,
+  interactive = true,
 }: OfficialMarkProps) {
   const [open, setOpen] = useState(false);
   const reducedMotion = useReducedMotion();
@@ -53,48 +55,72 @@ export function OfficialMark({
     });
   }
 
-  return (
+  const glyph = (
     <>
-      <button
-        aria-haspopup="dialog"
-        aria-label="Official profile. Open verification information."
+      <span
+        aria-hidden="true"
         className={cn(
-          "inline-flex min-h-6 items-center gap-1.5 rounded-full align-middle text-kondo-forest outline-none transition hover:bg-kondo-mint focus-visible:ring-2 focus-visible:ring-kondo-green focus-visible:ring-offset-2 dark:text-emerald-300",
-          withLabel &&
-            "border border-emerald-200 bg-kondo-mint/70 px-2 py-1 dark:border-emerald-400/20 dark:bg-emerald-400/10",
-          className,
+          "group/mark relative inline-grid shrink-0 place-items-center overflow-hidden bg-[conic-gradient(from_210deg,#8df7c9,#d9ff8e,#43d7b0,#79a7ff,#8df7c9)] p-[1.5px] shadow-[0_3px_12px_rgba(12,90,68,0.28)] transition duration-300 [clip-path:polygon(50%_0%,88%_15%,100%_55%,72%_92%,50%_100%,28%_92%,0%_55%,12%_15%)] group-hover:scale-110 group-hover:rotate-3",
+          size === "sm" ? "h-[19px] w-[19px]" : "h-[23px] w-[23px]",
         )}
-        onClick={showInformation}
-        title="Official profile recognized by Kondo"
-        type="button"
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "relative inline-grid shrink-0 rotate-45 place-items-center rounded-[4px] border border-kondo-green/30 bg-gradient-to-br from-kondo-lime to-emerald-300 shadow-[0_2px_8px_rgba(12,90,68,0.18)]",
-            size === "sm" ? "h-[17px] w-[17px]" : "h-5 w-5",
-          )}
-        >
+        <span className="absolute inset-[1.5px] grid place-items-center bg-kondo-forest [clip-path:inherit] dark:bg-[#0d2f27]">
           <span
             className={cn(
-              "-rotate-45 font-black leading-none text-kondo-forest",
-              size === "sm" ? "text-[8px]" : "text-[9px]",
+              "font-black leading-none text-kondo-lime",
+              size === "sm" ? "text-[8px]" : "text-[10px]",
             )}
           >
             K
           </span>
         </span>
-        {withLabel ? (
-          <span className="text-[10px] font-black uppercase tracking-[0.08em]">
-            Official profile
-          </span>
-        ) : (
-          <span className="sr-only">Official profile</span>
-        )}
-      </button>
+        <span className="absolute -left-full top-0 h-full w-1/2 -skew-x-12 bg-white/45 blur-[1px] transition-all duration-700 group-hover/mark:left-[130%]" />
+      </span>
+      {withLabel ? (
+        <span className="text-[10px] font-black uppercase tracking-[0.08em]">
+          Kondo verified
+        </span>
+      ) : (
+        <span className="sr-only">Kondo verified profile</span>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {interactive ? (
+        <button
+          aria-haspopup="dialog"
+          aria-label="Kondo verified profile. Open verification information."
+          className={cn(
+            "group inline-flex min-h-6 items-center gap-1.5 rounded-full align-middle text-kondo-forest outline-none transition hover:bg-kondo-mint focus-visible:ring-2 focus-visible:ring-kondo-green focus-visible:ring-offset-2 dark:text-emerald-300",
+            withLabel &&
+              "border border-emerald-200 bg-kondo-mint/70 px-2 py-1 dark:border-emerald-400/20 dark:bg-emerald-400/10",
+            className,
+          )}
+          onClick={showInformation}
+          title="Identity verified by Kondo"
+          type="button"
+        >
+          {glyph}
+        </button>
+      ) : (
+        <span
+          aria-label="Kondo verified profile"
+          className={cn(
+            "group inline-flex min-h-6 items-center gap-1.5 rounded-full align-middle text-kondo-forest",
+            withLabel &&
+              "border border-emerald-200 bg-kondo-mint/70 px-2 py-1 dark:border-emerald-400/20 dark:bg-emerald-400/10",
+            className,
+          )}
+          role="img"
+        >
+          {glyph}
+        </span>
+      )}
 
       <AnimatePresence>
-        {open ? (
+        {interactive && open ? (
           <motion.div
             animate={{ opacity: 1 }}
             className="fixed inset-0 z-[100] grid place-items-center bg-overlay/55 p-4 backdrop-blur-sm"
@@ -116,8 +142,12 @@ export function OfficialMark({
               transition={{ duration: reducedMotion ? 0 : 0.2 }}
             >
               <div className="flex items-start justify-between gap-4">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
-                  <ShieldCheck aria-hidden="true" className="h-6 w-6" />
+                <span className="relative grid h-12 w-12 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
+                  <Fingerprint aria-hidden="true" className="h-6 w-6" />
+                  <ShieldCheck
+                    aria-hidden="true"
+                    className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-card p-0.5 text-kondo-green"
+                  />
                 </span>
                 <Button
                   aria-label="Close verification information"
@@ -133,10 +163,11 @@ export function OfficialMark({
                 className="mt-5 text-2xl font-black tracking-tight text-kondo-ink dark:text-white"
                 id="official-profile-title"
               >
-                Official profile
+                Identity verified by Kondo
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Kondo has confirmed that this profile officially represents{" "}
+                Kondo has reviewed this identity and confirmed that it
+                officially represents{" "}
                 {organizationName
                   ? `${organizationName}, a ${readableType(organizationType)}`
                   : `this ${readableType(organizationType)}`}

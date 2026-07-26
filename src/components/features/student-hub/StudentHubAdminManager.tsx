@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 type Period = {
   id?: string;
@@ -141,20 +142,18 @@ export function StudentHubAdminManager({
   return (
     <div className="mt-7 space-y-6">
       <Card>
-        <label>
-          <span className="mb-2 block text-sm font-black">University</span>
-          <select
-            className={input}
-            onChange={(event) => setUniversityId(event.target.value)}
-            value={universityId}
-          >
-            {universities.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SearchableSelect
+          label="University"
+          onSelect={setUniversityId}
+          options={universities.map((item) => ({
+            id: item.id,
+            name: item.name,
+            secondary: item.shortName ?? undefined,
+          }))}
+          placeholder="Choose university"
+          searchPlaceholder="Search universities"
+          selected={universityId}
+        />
         {university &&
         !university.periodConfigurations.some((item) => item.isActive) ? (
           <p className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">

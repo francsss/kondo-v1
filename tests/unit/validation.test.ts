@@ -9,6 +9,7 @@ import {
   createListingSchema,
   createPostSchema,
   createQuestionSchema,
+  communityExchangeOfferSchema,
   onboardingDraftSchema,
   onboardingSchema,
   mediaAdminRemoveSchema,
@@ -27,6 +28,7 @@ import {
   registerSchema,
   sessionBulkRevokeSchema,
   settingsPreferencesSchema,
+  studentSkillOfferSchema,
 } from "@/lib/validation";
 
 describe("input validation", () => {
@@ -114,6 +116,42 @@ describe("input validation", () => {
         publish: false,
       }).success,
     ).toBe(true);
+  });
+
+  it("requires supported currencies and predefined skill categories", () => {
+    expect(
+      communityExchangeOfferSchema.safeParse({
+        cityId: "",
+        haveCurrency: "cny",
+        needCurrency: "xaf",
+        haveAmount: "500",
+        needAmount: "",
+      }).success,
+    ).toBe(true);
+    expect(
+      communityExchangeOfferSchema.safeParse({
+        cityId: "",
+        haveCurrency: "coins",
+        needCurrency: "XAF",
+      }).success,
+    ).toBe(false);
+    expect(
+      studentSkillOfferSchema.safeParse({
+        cityId: "",
+        title: "Mandarin conversation practice",
+        category: "Language practice",
+        description: "Friendly weekly conversation practice for beginners.",
+        availability: "Weekends",
+      }).success,
+    ).toBe(true);
+    expect(
+      studentSkillOfferSchema.safeParse({
+        cityId: "",
+        title: "A custom category",
+        category: "Whatever I typed",
+        description: "This should not bypass the curated skill categories.",
+      }).success,
+    ).toBe(false);
   });
 
   it("validates complete and resumable onboarding payloads", () => {
