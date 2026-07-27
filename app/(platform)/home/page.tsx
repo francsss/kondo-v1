@@ -125,7 +125,12 @@ export default async function HomePage() {
       <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
           <Card className="flex items-center gap-3 p-4">
-            <Avatar firstName={user.firstName} lastName={user.lastName} />
+            <Avatar
+              firstName={user.firstName}
+              lastName={user.lastName}
+              mediaId={user.avatarMediaId}
+              seed={user.id}
+            />
             <PostComposer
               communities={composerCommunities}
               triggerLabel="Share something with your community…"

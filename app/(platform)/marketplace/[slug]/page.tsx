@@ -35,6 +35,7 @@ export default async function ListingDetailPage({
           id: true,
           firstName: true,
           lastName: true,
+          avatarMediaId: true,
           country: { select: { emoji: true } },
           university: { select: { shortName: true } },
         },
@@ -122,6 +123,8 @@ export default async function ListingDetailPage({
             <Avatar
               firstName={listing.seller.firstName}
               lastName={listing.seller.lastName}
+              mediaId={listing.seller.avatarMediaId}
+              seed={listing.seller.id}
             />
             <div className="min-w-0 flex-1">
               <p className="font-bold text-kondo-ink dark:text-white">

@@ -50,6 +50,8 @@ export async function QuestionDetailContent({
           <Avatar
             firstName={question.author.firstName}
             lastName={question.author.lastName}
+            mediaId={question.author.avatarMediaId}
+            seed={question.author.id}
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-kondo-ink dark:text-white">
@@ -104,6 +106,8 @@ export async function QuestionDetailContent({
                 <Avatar
                   firstName={answer.author.firstName}
                   lastName={answer.author.lastName}
+                  mediaId={answer.author.avatarMediaId}
+                  seed={answer.author.id}
                 />
                 <div>
                   <p className="text-sm font-bold text-kondo-ink dark:text-white">

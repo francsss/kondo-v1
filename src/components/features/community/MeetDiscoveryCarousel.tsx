@@ -213,6 +213,7 @@ export function MeetDiscoveryCarousel({
                       firstName={profile.firstName}
                       lastName={profile.lastName}
                       mediaId={profile.avatarMediaId}
+                      seed={profile.id}
                     />
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-2.5 py-1 text-[10px] font-black text-foreground backdrop-blur">
                       <Icon className="h-3 w-3 text-kondo-green" />

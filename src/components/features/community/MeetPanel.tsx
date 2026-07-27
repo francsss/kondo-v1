@@ -33,6 +33,7 @@ import {
   MEET_PREMIUM_FEATURES,
 } from "@/features/meet/config";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
+import { meetMapSearchQuery } from "@/lib/meet-map";
 import type { PremiumAccess } from "@/lib/premium";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -140,6 +141,12 @@ export function MeetPanel({
     universityOptions.find(
       (university) => university.id === profile?.discoveryUniversityId,
     )?.name ?? universityName;
+  const otherCityName =
+    cityOptions.find((city) => city.id === otherCityId)?.name ?? null;
+  const activeMapCityName =
+    distanceRange === "OTHER_CITY" ? otherCityName : discoveryCityName;
+  const activeMapUniversityName =
+    distanceRange === "OTHER_CITY" ? null : discoveryUniversityName;
   const profileIsComplete = Boolean(
     profile?.completedAt &&
     profile.discoveryCityId &&
@@ -582,7 +589,7 @@ export function MeetPanel({
                       discoveryUniversityName ??
                       discoveryCityName ??
                       "your study area"
-                    }. Markers are decorative and never represent exact positions.`
+                    }. Markers use privacy-safe approximate areas and never represent exact positions.`
                   : "Choose what brings you here, then explore compatible profiles without starting an automatic call."}
               </p>
 
@@ -757,12 +764,19 @@ export function MeetPanel({
                 areaLabel={
                   mode === "NEARBY"
                     ? `Around ${
-                        discoveryUniversityName ??
-                        discoveryCityName ??
+                        activeMapUniversityName ??
+                        activeMapCityName ??
                         "your study area"
                       }`
                     : "Your discovery constellation"
                 }
+                cityName={activeMapCityName}
+                distanceRange={distanceRange}
+                key={`${mode}:${distanceRange}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
+                mapQuery={meetMapSearchQuery(
+                  activeMapUniversityName,
+                  activeMapCityName,
+                )}
                 mode={mode}
                 onPremiumRequest={setPremiumReason}
                 premiumFeatures={premiumAccess.featureKeys}
@@ -783,9 +797,9 @@ export function MeetPanel({
                       Your map begins with your choices
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Set the filters that matter to you. Kondo will place
-                      compatible profiles on a stylized privacy-first map—never
-                      their real coordinates.
+                      Set the filters that matter to you. Kondo will open the
+                      real map around your study area and place compatible
+                      profiles using privacy-safe approximate positions.
                     </p>
                   </div>
                 </div>

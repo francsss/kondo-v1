@@ -102,7 +102,16 @@ export default async function CommunityPage({
     },
     include: {
       members: {
-        include: { user: { select: { firstName: true, lastName: true } } },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatarMediaId: true,
+            },
+          },
+        },
         orderBy: { joinedAt: "desc" },
         take: 6,
       },
@@ -293,6 +302,7 @@ export default async function CommunityPage({
                   firstName={user.firstName}
                   lastName={user.lastName}
                   mediaId={user.avatarMediaId}
+                  seed={user.id}
                 />
                 {joined && community.status === "ACTIVE" ? (
                   <PostComposer
@@ -446,6 +456,8 @@ export default async function CommunityPage({
                         className="h-10 w-10"
                         firstName={member.user.firstName}
                         lastName={member.user.lastName}
+                        mediaId={member.user.avatarMediaId}
+                        seed={member.user.id}
                       />
                       <p className="min-w-0 truncate text-sm font-bold text-foreground">
                         {member.user.firstName} {member.user.lastName}

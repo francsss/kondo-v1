@@ -88,6 +88,7 @@ export default async function ConversationPage({
               firstName={other.firstName}
               lastName={other.lastName}
               mediaId={other.avatarMediaId}
+              seed={other.id}
             />
           </Link>
           <div className="min-w-0 flex-1">
@@ -182,6 +183,8 @@ export default async function ConversationPage({
                         className="mt-auto h-7 w-7 text-[9px]"
                         firstName={message.sender.firstName}
                         lastName={message.sender.lastName}
+                        mediaId={message.sender.avatarMediaId}
+                        seed={message.sender.id}
                       />
                     ) : null}
                     <div

@@ -371,6 +371,7 @@ export function LiveActivityStream({
                         firstName={activity.actor.firstName}
                         lastName={activity.actor.lastName}
                         mediaId={activity.actor.avatarMediaId}
+                        seed={activity.actor.id}
                       />
                     ) : (
                       <span

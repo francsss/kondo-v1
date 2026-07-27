@@ -54,6 +54,7 @@ export function ProfileView({
               firstName={profile.firstName}
               lastName={profile.lastName}
               mediaId={profile.avatar?.id}
+              seed={profile.id}
             />
             <div className="flex flex-wrap gap-2">
               {own ? (

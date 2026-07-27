@@ -49,6 +49,9 @@ export interface ScheduleAnalysisProvider {
   analyze(
     files: ScheduleFile[],
     context: PeriodContext,
+    onStage?: (
+      stage: "TEXT_EXTRACTION" | "STRUCTURED_EXTRACTION",
+    ) => Promise<void> | void,
   ): Promise<ScheduleAnalysis>;
 }
 
@@ -66,6 +69,8 @@ export type ScheduleAnalysisErrorCode =
   | "NO_COURSE_NAMES"
   | "TIMETABLE_RECONSTRUCTION_FAILED"
   | "PERIOD_CONFIG_MISSING"
+  | "DOCUMENT_UNSUPPORTED"
+  | "DOCUMENT_PAGE_LIMIT"
   | "DOCUMENT_TEXT_EXTRACTION_FAILED"
   | "STORAGE_READ_FAILED";
 
@@ -165,7 +170,13 @@ function responseText(payload: Record<string, unknown>) {
 }
 
 class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
-  async analyze(files: ScheduleFile[], context: PeriodContext) {
+  async analyze(
+    files: ScheduleFile[],
+    context: PeriodContext,
+    onStage?: (
+      stage: "TEXT_EXTRACTION" | "STRUCTURED_EXTRACTION",
+    ) => Promise<void> | void,
+  ) {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       throw new ScheduleAnalysisError(
@@ -192,6 +203,7 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
     const extractedDocuments: string[] = [];
     const diagnostics: DocumentQualityDiagnostic[] = [];
 
+    await onStage?.("TEXT_EXTRACTION");
     for (const file of files) {
       logServerEvent("student-hub.schedule-analysis.file-read.started", {
         provider: file.storageProvider,
@@ -277,8 +289,16 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
         );
       } catch (error) {
         if (error instanceof DocumentExtractionError) {
+          const code =
+            error.code === "LOW_QUALITY"
+              ? "DOCUMENT_TOO_BLURRY"
+              : error.code === "UNSUPPORTED_TYPE"
+                ? "DOCUMENT_UNSUPPORTED"
+                : error.code === "PAGE_LIMIT"
+                  ? "DOCUMENT_PAGE_LIMIT"
+                  : "DOCUMENT_TEXT_EXTRACTION_FAILED";
           throw new ScheduleAnalysisError(
-            "DOCUMENT_TEXT_EXTRACTION_FAILED",
+            code,
             error.message,
             422,
             error.retryable,
@@ -288,6 +308,7 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
       }
     }
 
+    await onStage?.("STRUCTURED_EXTRACTION");
     const systemPrompt = [
       "You extract university timetables from OCR or embedded PDF text.",
       "Return exactly one JSON object matching the supplied JSON schema. Do not wrap it in markdown.",

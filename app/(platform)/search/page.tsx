@@ -180,7 +180,12 @@ export default async function SearchPage({
             {results.users.map((item) => (
               <Link href={`/profile/${item.username ?? item.id}`} key={item.id}>
                 <Card className="flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-                  <Avatar firstName={item.firstName} lastName={item.lastName} />
+                  <Avatar
+                    firstName={item.firstName}
+                    lastName={item.lastName}
+                    mediaId={item.avatarMediaId}
+                    seed={item.id}
+                  />
                   <div>
                     <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
                       Student

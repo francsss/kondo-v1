@@ -32,6 +32,7 @@ export const safePublicUserSelect = {
   username: true,
   firstName: true,
   lastName: true,
+  avatarMediaId: true,
   officialProfileStatus: true,
   officialOrganizationType: true,
   officialOrganizationName: true,
@@ -47,6 +48,7 @@ export type SafePublicUser = {
   username: string | null;
   firstName: string;
   lastName: string;
+  avatarMediaId: string | null;
   officialProfileStatus: string;
   officialOrganizationType: string | null;
   officialOrganizationName: string | null;
@@ -74,6 +76,7 @@ export function toSafePublicUser(user: SafePublicUserSource): SafePublicUser {
     username: user.username,
     firstName: user.firstName,
     lastName: user.lastName,
+    avatarMediaId: user.avatarMediaId,
     ...toSafePublicOfficialFields(user),
   };
 }

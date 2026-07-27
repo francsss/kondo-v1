@@ -106,6 +106,7 @@ export default async function AdminUsersPage({
               firstName={user.firstName}
               lastName={user.lastName}
               mediaId={user.avatarMediaId}
+              seed={user.id}
             />
             <div className="min-w-0 flex-1">
               <p className="truncate font-black text-kondo-ink dark:text-white">

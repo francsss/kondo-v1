@@ -54,11 +54,15 @@ export type DocumentTextExtraction = {
   attempts: string[];
 };
 
+export type DocumentExtractionErrorCode =
+  "LOW_QUALITY" | "UNSUPPORTED_TYPE" | "PAGE_LIMIT" | "OCR_FAILED";
+
 export class DocumentExtractionError extends Error {
   constructor(
     message: string,
     public readonly retryable = false,
     public readonly attempts: string[] = [],
+    public readonly code: DocumentExtractionErrorCode = "OCR_FAILED",
   ) {
     super(message);
     this.name = "DocumentExtractionError";
@@ -205,6 +209,35 @@ async function preprocessImageVariants(bytes: Uint8Array) {
   ];
 }
 
+async function validateImageQuality(bytes: Uint8Array) {
+  try {
+    const metadata = await sharp(bytes, {
+      failOn: "error",
+      limitInputPixels: 144_000_000,
+      sequentialRead: true,
+    }).metadata();
+    const width = metadata.width ?? 0;
+    const height = metadata.height ?? 0;
+    if (width < 240 || height < 160 || width * height < 120_000) {
+      throw new DocumentExtractionError(
+        "The uploaded file quality is too low. Please upload a clearer image.",
+        false,
+        [],
+        "LOW_QUALITY",
+      );
+    }
+    return { width, height };
+  } catch (error) {
+    if (error instanceof DocumentExtractionError) throw error;
+    throw new DocumentExtractionError(
+      "The uploaded file quality is too low. Please upload a clearer image.",
+      false,
+      [],
+      "LOW_QUALITY",
+    );
+  }
+}
+
 async function recognizeImage(
   bytes: Uint8Array,
   context: Record<string, unknown>,
@@ -246,7 +279,10 @@ async function recognizeImage(
     }
     if (!best || best.quality.usefulCharacters < MIN_USABLE_CHARACTERS) {
       throw new DocumentExtractionError(
-        "No readable text was found after automatic rotation, contrast enhancement, resizing, and OCR.",
+        "The uploaded file quality is too low. Please upload a clearer image.",
+        false,
+        [],
+        "LOW_QUALITY",
       );
     }
     return best;
@@ -302,6 +338,9 @@ async function extractEmbeddedPdfText(bytes: Uint8Array) {
     if (document.numPages > MAX_PDF_PAGES) {
       throw new DocumentExtractionError(
         `PDF timetables can contain at most ${MAX_PDF_PAGES} pages.`,
+        false,
+        [],
+        "PAGE_LIMIT",
       );
     }
     const pages: string[] = [];
@@ -343,6 +382,9 @@ async function extractScannedPdfText(bytes: Uint8Array) {
     if (pageCount > MAX_PDF_PAGES) {
       throw new DocumentExtractionError(
         `PDF timetables can contain at most ${MAX_PDF_PAGES} pages.`,
+        false,
+        [],
+        "PAGE_LIMIT",
       );
     }
     const pages: string[] = [];
@@ -526,9 +568,10 @@ export async function extractDocumentText(
     }
 
     throw new DocumentExtractionError(
-      "The PDF could not be read after embedded-text extraction and rendered-page OCR were both attempted.",
+      "OCR could not read the uploaded PDF. Upload the original PDF or a clearer scan.",
       true,
       attempts,
+      "OCR_FAILED",
     );
   }
 
@@ -539,6 +582,13 @@ export async function extractDocumentText(
   ) {
     attempts.push("auto-rotate-resize-contrast-ocr");
     try {
+      const dimensions = await validateImageQuality(bytes);
+      logServerEvent("student-hub.schedule-analysis.image.quality.validated", {
+        mimeType,
+        width: dimensions.width,
+        height: dimensions.height,
+        sizeBytes: bytes.byteLength,
+      });
       const result = await recognizeImage(bytes, {
         pageNumber: 1,
         pageCount: 1,
@@ -568,20 +618,27 @@ export async function extractDocumentText(
         stage: "auto-rotate-resize-contrast-ocr",
       });
       if (error instanceof DocumentExtractionError) {
-        throw new DocumentExtractionError(error.message, false, attempts);
+        throw new DocumentExtractionError(
+          error.message,
+          error.retryable,
+          attempts,
+          error.code,
+        );
       }
       throw new DocumentExtractionError(
-        "The image could not be decoded or read after automatic enhancement and OCR.",
-        true,
+        "The uploaded file quality is too low. Please upload a clearer image.",
+        false,
         attempts,
+        "LOW_QUALITY",
       );
     }
   }
 
   throw new DocumentExtractionError(
-    "This timetable file type is not supported.",
+    "The document format is not supported. Upload a PDF, JPG, PNG, or WebP timetable.",
     false,
     attempts,
+    "UNSUPPORTED_TYPE",
   );
 }
 

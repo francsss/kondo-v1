@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { initials, stableGradient } from "@/lib/presentation";
+import { defaultAvatarDataUri, initials } from "@/lib/presentation";
 import { MediaImage } from "@/components/ui/MediaImage";
 
 export function Avatar({
@@ -7,11 +7,13 @@ export function Avatar({
   lastName,
   className,
   mediaId,
+  seed,
 }: {
   firstName: string;
   lastName: string;
   className?: string;
   mediaId?: string | null;
+  seed?: string;
 }) {
   const name = `${firstName} ${lastName}`;
   if (mediaId) {
@@ -39,13 +41,15 @@ export function Avatar({
     <span
       aria-label={name}
       className={cn(
-        "inline-grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br text-xs font-black ring-2 ring-card",
-        stableGradient(name),
+        "inline-grid h-10 w-10 shrink-0 place-items-center rounded-full bg-cover bg-center text-xs font-black ring-2 ring-card",
         className,
       )}
       role="img"
+      style={{
+        backgroundImage: `url("${defaultAvatarDataUri(firstName, lastName, seed)}")`,
+      }}
     >
-      {initials(firstName, lastName)}
+      <span className="sr-only">{initials(firstName, lastName)}</span>
     </span>
   );
 }

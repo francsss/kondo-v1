@@ -106,6 +106,7 @@ function renderItem(category: Category, item: Record<string, unknown>) {
         username: string | null;
         firstName: string;
         lastName: string;
+        avatarMediaId: string | null;
         countryEmoji: string | null;
         affiliation: string | null;
         officialProfileStatus: string;
@@ -116,7 +117,12 @@ function renderItem(category: Category, item: Record<string, unknown>) {
       return (
         <Link href={`/profile/${user.username ?? user.id}`} key={user.id}>
           <Card className="flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-            <Avatar firstName={user.firstName} lastName={user.lastName} />
+            <Avatar
+              firstName={user.firstName}
+              lastName={user.lastName}
+              mediaId={user.avatarMediaId}
+              seed={user.id}
+            />
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
                 Student

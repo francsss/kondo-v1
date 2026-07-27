@@ -39,6 +39,7 @@ jobs:
       TEST_DATABASE_URL: postgresql://kondo:kondo_password@localhost:5432/kondo_module3_test
       JWT_SECRET: ci-only-jwt-secret-that-is-at-least-thirty-two-characters
       NEXT_PUBLIC_APP_URL: http://localhost:3100
+      NEXT_PUBLIC_BAIDU_MAP_AK: ci-browser-map-key
       STORAGE_DRIVER: local
       EMAIL_PROVIDER: console
       CRON_SECRET: ci-only-cron-secret-that-is-at-least-thirty-two-characters

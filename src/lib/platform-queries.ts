@@ -288,6 +288,7 @@ export async function getHelpQuestions() {
           id: true,
           firstName: true,
           lastName: true,
+          avatarMediaId: true,
           country: { select: { emoji: true } },
         },
       },

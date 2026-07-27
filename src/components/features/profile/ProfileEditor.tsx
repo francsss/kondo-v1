@@ -122,6 +122,7 @@ export function ProfileEditor({ profile }: { profile: ProfileSettings }) {
               firstName={profile.firstName}
               lastName={profile.lastName}
               mediaId={removeAvatar ? null : profile.avatarMediaId}
+              seed={profile.id}
             />
             <div>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-kondo-ink transition hover:border-kondo-green dark:border-white/10 dark:text-white">

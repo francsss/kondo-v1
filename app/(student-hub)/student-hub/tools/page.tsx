@@ -52,15 +52,36 @@ export default async function StudentToolsPage() {
     }),
     prisma.scheduleImport.findMany({
       where: { ownerId: user.id },
-      select: { id: true, status: true, createdAt: true, errorMessage: true },
+      select: {
+        id: true,
+        status: true,
+        processingStage: true,
+        createdAt: true,
+        errorMessage: true,
+        result: { select: { extractedJson: true } },
+      },
       orderBy: { createdAt: "desc" },
-      take: 3,
+      take: 5,
     }),
   ]);
+  const recoverableImport = recentImports.find(
+    (item) => item.status === "REVIEW_REQUIRED" && item.result,
+  );
   return (
     <ScheduleWorkspace
+      initialReview={
+        recoverableImport
+          ? {
+              importId: recoverableImport.id,
+              result: recoverableImport.result!.extractedJson,
+            }
+          : null
+      }
       recentImports={recentImports.map((item) => ({
-        ...item,
+        id: item.id,
+        status: item.status,
+        processingStage: item.processingStage,
+        errorMessage: item.errorMessage,
         createdAt: item.createdAt.toISOString(),
       }))}
       schedules={schedules.map((schedule) => ({

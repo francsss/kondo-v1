@@ -137,6 +137,25 @@ describe("timetable document extraction", () => {
     logFixtureResult("native-text-pdf", result, ["Business English"]);
   });
 
+  it("rejects a genuinely undersized image with actionable guidance before OCR", async () => {
+    const tiny = await sharp({
+      create: {
+        width: 100,
+        height: 100,
+        channels: 3,
+        background: "white",
+      },
+    })
+      .png()
+      .toBuffer();
+
+    await expect(extractDocumentText(tiny, "image/png")).rejects.toMatchObject({
+      code: "LOW_QUALITY",
+      message:
+        "The uploaded file quality is too low. Please upload a clearer image.",
+    });
+  });
+
   it("renders a scanned PDF and extracts it with OCR", async () => {
     const result = await extractDocumentText(
       await scannedPdfTimetable([

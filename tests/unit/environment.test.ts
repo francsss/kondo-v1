@@ -13,6 +13,7 @@ const validProductionEnvironment = {
     "postgresql://app:secret@ep-kondo.us-east-2.aws.neon.tech/kondo?sslmode=require",
   JWT_SECRET: "jwt-secret-that-is-at-least-thirty-two-bytes-long",
   NEXT_PUBLIC_APP_URL: "https://kondo.app",
+  NEXT_PUBLIC_BAIDU_MAP_AK: "baidu-browser-key",
   STORAGE_DRIVER: "s3",
   STORAGE_BUCKET: "kondo-production",
   STORAGE_REGION: "auto",

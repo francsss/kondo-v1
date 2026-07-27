@@ -88,8 +88,11 @@ async function clearDatabase() {
   await prisma.reaction.deleteMany();
   await prisma.comment.deleteMany();
   await prisma.post.deleteMany();
-  await prisma.communityMember.deleteMany();
+  // Delete the parent first so PostgreSQL cascades memberships after the
+  // owner row is gone. Deleting owner memberships directly is intentionally
+  // rejected by the community ownership integrity trigger.
   await prisma.community.deleteMany();
+  await prisma.communityMember.deleteMany();
   await prisma.session.deleteMany();
   await prisma.oAuthAccount.deleteMany();
   await prisma.user.deleteMany();

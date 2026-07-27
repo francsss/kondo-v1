@@ -182,7 +182,7 @@ export class DatabasePresenceStore implements PresenceStore {
     const onlineAfter = new Date(now.getTime() - PRESENCE_ONLINE_WINDOW_MS);
     const presence = await prisma.userPresence.findMany({
       where: {
-        lastSeen: { gte: onlineAfter },
+        lastSeen: { gte: onlineAfter, lte: now },
         user: { status: "ACTIVE" },
       },
       include: { user: { select: presenceUserSelect } },

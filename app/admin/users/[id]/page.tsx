@@ -62,6 +62,7 @@ export default async function AdminUserDetailPage({
                 firstName={user.firstName}
                 lastName={user.lastName}
                 mediaId={user.avatarMediaId}
+                seed={user.id}
               />
               <div>
                 <h2 className="text-xl font-black text-kondo-ink dark:text-white">

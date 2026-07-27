@@ -9,6 +9,59 @@ import {
 } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getCurrentUser();
+  if (!user) return jsonError("Authentication required.", 401);
+  const id = (await params).id;
+  try {
+    const scheduleImport = await prisma.scheduleImport.findFirst({
+      where: { id, ownerId: user.id },
+      select: {
+        id: true,
+        status: true,
+        processingStage: true,
+        errorCode: true,
+        errorMessage: true,
+        attemptCount: true,
+        scheduleId: true,
+        updatedAt: true,
+        result: {
+          select: {
+            extractedJson: true,
+            courseCount: true,
+            reviewCount: true,
+            diagnostics: true,
+          },
+        },
+      },
+    });
+    if (!scheduleImport) return jsonError("Import not found.", 404);
+    return Response.json(
+      {
+        import: {
+          ...scheduleImport,
+          updatedAt: scheduleImport.updatedAt.toISOString(),
+          result:
+            scheduleImport.status === "REVIEW_REQUIRED"
+              ? scheduleImport.result
+              : null,
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          Vary: "Cookie",
+        },
+      },
+    );
+  } catch (error) {
+    return internalApiError("student-hub.import.status", error);
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

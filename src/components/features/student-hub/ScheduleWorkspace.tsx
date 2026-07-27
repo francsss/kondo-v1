@@ -97,6 +97,23 @@ type ReviewCourse = Omit<
   "id" | "createdAt" | "updatedAt" | "specificDate"
 > & { specificDate?: string | null; uncertainFields?: string[] };
 type Review = { title: string; warnings: string[]; courses: ReviewCourse[] };
+type ImportStatusPayload = {
+  import: {
+    id: string;
+    status:
+      | "UPLOADED"
+      | "ANALYZING"
+      | "REVIEW_REQUIRED"
+      | "CONFIRMED"
+      | "FAILED"
+      | "CANCELLED";
+    processingStage: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    scheduleId: string | null;
+    result: { extractedJson: Review } | null;
+  };
+};
 
 class ApiRequestError extends Error {
   constructor(
@@ -120,6 +137,16 @@ const analysisSteps = [
   "6. Explicit confirmation",
   "7. Schedule generation",
 ] as const;
+const serverStageLabels: Record<string, string> = {
+  FILE_VALIDATION: analysisSteps[0],
+  TEXT_EXTRACTION: analysisSteps[1],
+  STRUCTURED_EXTRACTION: analysisSteps[2],
+  STRUCTURE_VALIDATION: analysisSteps[3],
+  REVIEW: analysisSteps[4],
+  GENERATING_SCHEDULE: analysisSteps[6],
+  COMPLETE: "Complete",
+  FAILED: "Analysis stopped",
+};
 const emptyCourse: ReviewCourse = {
   courseName: "",
   teacher: "",
@@ -171,19 +198,39 @@ async function api(url: string, body: unknown, method = "POST") {
   return payload;
 }
 
+async function getImportStatus(importId: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/student-hub/imports/${importId}`, {
+    credentials: "include",
+    signal,
+  });
+  const payload = (await response.json().catch(() => ({}))) as
+    ImportStatusPayload | { error?: string };
+  if (!response.ok || !("import" in payload)) {
+    throw new Error(
+      "error" in payload && payload.error
+        ? payload.error
+        : "The import status could not be retrieved.",
+    );
+  }
+  return payload.import;
+}
+
 export function ScheduleWorkspace({
   universities,
   schedules,
   recentImports,
+  initialReview,
 }: {
   universities: University[];
   schedules: Schedule[];
   recentImports: Array<{
     id: string;
     status: string;
+    processingStage: string | null;
     createdAt: string;
     errorMessage: string | null;
   }>;
+  initialReview: { importId: string; result: unknown } | null;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<"week" | "today" | "semester">("week");
@@ -198,8 +245,10 @@ export function ScheduleWorkspace({
   const [error, setError] = useState("");
   const [importError, setImportError] = useState("");
   const [success, setSuccess] = useState("");
-  const [review, setReview] = useState<Review | null>(null);
-  const [importId, setImportId] = useState("");
+  const [review, setReview] = useState<Review | null>(
+    (initialReview?.result as Review | undefined) ?? null,
+  );
+  const [importId, setImportId] = useState(initialReview?.importId ?? "");
   const [pendingImportId, setPendingImportId] = useState("");
   const [selectedImportFiles, setSelectedImportFiles] = useState<File[]>([]);
   const [importConsent, setImportConsent] = useState(false);
@@ -282,6 +331,9 @@ export function ScheduleWorkspace({
     const stageTimers: Array<ReturnType<typeof setTimeout>> = [];
     const uploadedMediaIds: string[] = [];
     let importCreated = false;
+    let currentImportId = pendingImportId;
+    let statusPoll: ReturnType<typeof setInterval> | null = null;
+    const statusController = new AbortController();
     const operationStartedAt = performance.now();
     captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_FILE_IMPORT_STARTED, {
       tool: "timetable",
@@ -292,7 +344,6 @@ export function ScheduleWorkspace({
       retry: Boolean(pendingImportId),
     });
     try {
-      let currentImportId = pendingImportId;
       if (!currentImportId) {
         const form = new FormData(event.currentTarget);
         if (!form.get("universityId")) {
@@ -360,6 +411,16 @@ export function ScheduleWorkspace({
             ),
           ),
       );
+      statusPoll = setInterval(() => {
+        void getImportStatus(currentImportId, statusController.signal)
+          .then((status) => {
+            const label = status.processingStage
+              ? serverStageLabels[status.processingStage]
+              : null;
+            if (label) setAnalysisStage(label);
+          })
+          .catch(() => null);
+      }, 1_500);
       const analyzed = await api(
         `/api/student-hub/imports/${currentImportId}/analyze`,
         {},
@@ -373,6 +434,35 @@ export function ScheduleWorkspace({
       setReview(analyzed.result as Review);
       setShowImport(false);
     } catch (cause) {
+      if (currentImportId) {
+        try {
+          const recovered = await getImportStatus(currentImportId);
+          if (recovered.status === "REVIEW_REQUIRED" && recovered.result) {
+            setImportId(currentImportId);
+            setReview(recovered.result.extractedJson);
+            setPendingImportId(currentImportId);
+            setShowImport(false);
+            captureProductEvent(
+              PRODUCT_EVENTS.STUDENT_HUB_GENERATION_SUCCEEDED,
+              {
+                tool: "timetable",
+                result: "review_recovered",
+                duration_ms: Math.round(performance.now() - operationStartedAt),
+              },
+            );
+            return;
+          }
+          if (recovered.status === "FAILED" && recovered.errorMessage) {
+            cause = new ApiRequestError(
+              recovered.errorMessage,
+              recovered.errorCode,
+              true,
+            );
+          }
+        } catch {
+          // Preserve the original request error when recovery is unavailable.
+        }
+      }
       captureProductEvent(
         importCreated || pendingImportId
           ? PRODUCT_EVENTS.STUDENT_HUB_GENERATION_FAILED
@@ -405,6 +495,8 @@ export function ScheduleWorkspace({
         );
       }
     } finally {
+      statusController.abort();
+      if (statusPoll) clearInterval(statusPoll);
       stageTimers.forEach((timer) => clearTimeout(timer));
       setAnalysisStage("");
       setUploadProgress((current) => ({ ...current, percent: 0 }));
@@ -436,6 +528,52 @@ export function ScheduleWorkspace({
       router.push(`/student-hub/tools/timetables/${scheduleId}?generated=1`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resumeImport(recoverImportId: string) {
+    setBusy(true);
+    setError("");
+    setImportError("");
+    try {
+      const recovered = await getImportStatus(recoverImportId);
+      if (recovered.status === "REVIEW_REQUIRED" && recovered.result) {
+        setImportId(recoverImportId);
+        setPendingImportId(recoverImportId);
+        setReview(recovered.result.extractedJson);
+        setShowImport(false);
+        return;
+      }
+      if (recovered.status === "CONFIRMED" && recovered.scheduleId) {
+        router.push(
+          `/student-hub/tools/timetables/${recovered.scheduleId}?generated=1`,
+        );
+        return;
+      }
+      if (recovered.status === "ANALYZING") {
+        setError(
+          "Analysis is still running on the server. Wait a moment, then select Check progress again.",
+        );
+        return;
+      }
+      setPendingImportId(recoverImportId);
+      setSelectedImportFiles([]);
+      setImportConsent(false);
+      setShowImport(true);
+      if (recovered.status === "FAILED") {
+        setImportError(
+          recovered.errorMessage ??
+            "The previous analysis did not finish. Review the guidance and try again.",
+        );
+      }
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "The timetable import could not be recovered.",
+      );
     } finally {
       setBusy(false);
     }
@@ -717,6 +855,28 @@ export function ScheduleWorkspace({
                     <p className="mt-2 leading-5 text-red-700 dark:text-red-300">
                       {item.errorMessage}
                     </p>
+                  ) : null}
+                  {[
+                    "UPLOADED",
+                    "ANALYZING",
+                    "REVIEW_REQUIRED",
+                    "FAILED",
+                    "CONFIRMED",
+                  ].includes(item.status) ? (
+                    <button
+                      className="mt-2 font-black text-kondo-green transition hover:underline disabled:cursor-wait disabled:opacity-60"
+                      disabled={busy}
+                      onClick={() => void resumeImport(item.id)}
+                      type="button"
+                    >
+                      {item.status === "REVIEW_REQUIRED"
+                        ? "Resume review"
+                        : item.status === "CONFIRMED"
+                          ? "Open timetable"
+                          : item.status === "ANALYZING"
+                            ? "Check progress"
+                            : "Retry import"}
+                    </button>
                   ) : null}
                 </div>
               ))}

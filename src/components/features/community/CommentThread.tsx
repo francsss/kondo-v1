@@ -427,6 +427,7 @@ function CommentRow({
         firstName={comment.author.firstName}
         lastName={comment.author.lastName}
         mediaId={comment.author.avatarMediaId}
+        seed={comment.author.id}
       />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">

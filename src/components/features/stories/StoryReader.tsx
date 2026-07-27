@@ -600,6 +600,7 @@ export function StoryReader({
                             "Member"
                           }
                           mediaId={story.creator.avatarMediaId}
+                          seed={story.creator.id}
                         />
                         <span className="truncate text-sm font-black">
                           {story.creator.name}

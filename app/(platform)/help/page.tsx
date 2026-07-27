@@ -105,6 +105,8 @@ export default async function HelpPage({
                 <Avatar
                   firstName={question.author.firstName}
                   lastName={question.author.lastName}
+                  mediaId={question.author.avatarMediaId}
+                  seed={question.author.id}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

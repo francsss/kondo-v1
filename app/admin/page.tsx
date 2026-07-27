@@ -314,6 +314,8 @@ export default async function AdminPage() {
                         className="h-8 w-8"
                         firstName={user.firstName}
                         lastName={user.lastName}
+                        mediaId={user.avatarMediaId}
+                        seed={user.id}
                       />
                       <div>
                         <p className="font-bold text-kondo-ink dark:text-white">

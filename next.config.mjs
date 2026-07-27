@@ -12,8 +12,8 @@ const configuredDevOrigins = (process.env.KONDO_DEV_ORIGINS ?? "")
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://*.posthog.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' https://*.posthog.com https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' https: wss:${isDevelopment ? " ws:" : ""}`,

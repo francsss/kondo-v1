@@ -379,6 +379,7 @@ export function AppShell({
                   firstName={user.firstName}
                   lastName={user.lastName}
                   mediaId={user.avatarMediaId}
+                  seed={user.id}
                 />
               </Link>
               <ExploreMenu />

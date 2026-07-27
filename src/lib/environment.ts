@@ -5,6 +5,7 @@ const REQUIRED_PRODUCTION_VALUES = [
   "DIRECT_URL",
   "JWT_SECRET",
   "NEXT_PUBLIC_APP_URL",
+  "NEXT_PUBLIC_BAIDU_MAP_AK",
   "STORAGE_BUCKET",
   "STORAGE_REGION",
   "STORAGE_ENDPOINT",
@@ -146,6 +147,12 @@ export function productionEnvironmentIssues(
     (appUrl.hostname === "localhost" || appUrl.hostname === "127.0.0.1")
   ) {
     issues.push("NEXT_PUBLIC_APP_URL cannot point to localhost in production.");
+  }
+  if (
+    environment.NEXT_PUBLIC_BAIDU_MAP_AK &&
+    environment.NEXT_PUBLIC_BAIDU_MAP_AK.trim().length < 8
+  ) {
+    issues.push("NEXT_PUBLIC_BAIDU_MAP_AK must be a valid browser API key.");
   }
 
   if (environment.STORAGE_DRIVER !== "s3") {

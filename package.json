@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --env-file-if-exists=.env scripts/prepare-test-db.mjs && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run",
+    "test": "EMAIL_PROVIDER=console node --env-file-if-exists=.env scripts/prepare-test-db.mjs && EMAIL_PROVIDER=console node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run",
     "e2e": "env -u NO_COLOR playwright test",
     "e2e:ui": "env -u NO_COLOR playwright test --ui",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",

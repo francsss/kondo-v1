@@ -108,14 +108,16 @@ export async function POST(
       },
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
     });
-    if (!configuration || configuration.periods.length === 0) {
-      throw new ScheduleAnalysisError(
-        "PERIOD_CONFIG_MISSING",
-        "The class-period configuration for this university is missing. Ask an administrator to configure the timetable periods before retrying.",
-        422,
-        false,
-      );
-    }
+    const periods = configuration?.periods ?? [];
+    logServerEvent(
+      "student-hub.schedule-analysis.period-configuration.checked",
+      {
+        importId: id,
+        configured: periods.length > 0,
+        periodCount: periods.length,
+        fallback: periods.length ? null : "manual-time-review",
+      },
+    );
     await prisma.scheduleImport.update({
       where: { id },
       data: { processingStage: "TEXT_EXTRACTION" },
@@ -126,19 +128,25 @@ export async function POST(
         university: scheduleImport.university?.name ?? "Unknown university",
         campus: scheduleImport.campus?.name,
         term: scheduleImport.academicTerm?.name,
-        timezone: configuration.timezone,
-        periods: configuration.periods,
+        timezone: configuration?.timezone ?? "Asia/Shanghai",
+        periods,
+      },
+      async (stage) => {
+        await prisma.scheduleImport.update({
+          where: { id },
+          data: { processingStage: stage },
+        });
       },
     );
     await prisma.scheduleImport.update({
       where: { id },
       data: { processingStage: "STRUCTURE_VALIDATION" },
     });
-    const validated = validateExtractedSchedule(analysis.extraction);
-    const normalized = normalizeExtractedSchedule(
-      validated.schedule,
-      configuration.periods,
-    );
+    const validated = validateExtractedSchedule(analysis.extraction, {
+      configuredPeriodNumbers: periods.map((period) => period.periodNumber),
+      periodConfigurationAvailable: periods.length > 0,
+    });
+    const normalized = normalizeExtractedSchedule(validated.schedule, periods);
     const reviewCount = normalized.courses.filter(
       (course) => course.uncertainFields.length > 0 || course.confidence < 0.75,
     ).length;

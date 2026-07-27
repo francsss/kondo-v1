@@ -32,6 +32,7 @@ export default async function NewMessagePage({
         id: true,
         firstName: true,
         lastName: true,
+        avatarMediaId: true,
         username: true,
         university: { select: { name: true, shortName: true } },
       },
@@ -58,6 +59,8 @@ export default async function NewMessagePage({
               className="h-12 w-12"
               firstName={recipient.firstName}
               lastName={recipient.lastName}
+              mediaId={recipient.avatarMediaId}
+              seed={recipient.id}
             />
             <div className="min-w-0">
               <h1 className="truncate text-lg font-black text-kondo-ink dark:text-white">

@@ -89,7 +89,13 @@ function weekRangesOverlap(
   return leftStart <= rightEnd && rightStart <= leftEnd;
 }
 
-export function validateExtractedSchedule(schedule: ExtractedSchedule): {
+export function validateExtractedSchedule(
+  schedule: ExtractedSchedule,
+  options: {
+    configuredPeriodNumbers?: number[];
+    periodConfigurationAvailable?: boolean;
+  } = {},
+): {
   schedule: ExtractedSchedule;
   diagnostics: ScheduleValidationDiagnostic;
 } {
@@ -97,12 +103,35 @@ export function validateExtractedSchedule(schedule: ExtractedSchedule): {
   const conflictPairs: number[][] = [];
   const incompleteCourseIndexes: number[] = [];
   const warnings = new Set(schedule.warnings);
+  const configuredPeriods = new Set(options.configuredPeriodNumbers ?? []);
   const courses = schedule.courses.map((course, index) => {
     const uncertain = new Set(course.uncertainFields);
     if (!course.teacher) uncertain.add("teacher");
     if (!course.room && !course.building) uncertain.add("room");
     if (!course.startWeek && !course.specificDate) uncertain.add("startWeek");
     if (!course.endWeek && !course.specificDate) uncertain.add("endWeek");
+    for (const [field, period] of [
+      ["startPeriod", course.startPeriod],
+      ["endPeriod", course.endPeriod],
+    ] as const) {
+      if (
+        period &&
+        configuredPeriods.size > 0 &&
+        !configuredPeriods.has(period)
+      ) {
+        uncertain.add(field);
+        warnings.add(
+          `Unknown period ${period} in "${course.courseName}". Verify the period or enter the class time manually.`,
+        );
+      }
+    }
+    if (
+      options.periodConfigurationAvailable === false &&
+      (course.startPeriod || course.endPeriod) &&
+      (!course.startTime || !course.endTime)
+    ) {
+      uncertain.add("time");
+    }
     if (uncertain.size > 0) incompleteCourseIndexes.push(index);
     return {
       ...course,
@@ -160,6 +189,11 @@ export function validateExtractedSchedule(schedule: ExtractedSchedule): {
       `${incompleteCourseIndexes.length} course${
         incompleteCourseIndexes.length === 1 ? "" : "s"
       } contain uncertain fields. Review the highlighted information before confirming.`,
+    );
+  }
+  if (options.periodConfigurationAvailable === false) {
+    warnings.add(
+      "Your university timetable periods are not configured yet. Explicit times were preserved; courses containing only period numbers need manual time confirmation.",
     );
   }
 

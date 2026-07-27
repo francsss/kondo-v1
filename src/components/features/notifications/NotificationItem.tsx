@@ -83,6 +83,7 @@ export function NotificationItem({
             firstName={notification.actor.firstName}
             lastName={notification.actor.lastName}
             mediaId={notification.actor.avatarMediaId}
+            seed={notification.actor.id}
           />
         ) : (
           <span className="grid h-10 w-10 place-items-center rounded-full bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">

@@ -79,4 +79,46 @@ describe("timetable quality and structure validation", () => {
     expect(result.schedule.warnings.join(" ")).toMatch(/duplicate/i);
     expect(result.schedule.warnings.join(" ")).toMatch(/conflict/i);
   });
+
+  it("keeps period-only courses reviewable when a university has no period configuration", () => {
+    const result = validateExtractedSchedule(
+      {
+        title: "Imported timetable",
+        warnings: [],
+        courses: [
+          course({
+            startPeriod: 3,
+            endPeriod: 4,
+            startTime: null,
+            endTime: null,
+          }),
+        ],
+      },
+      { periodConfigurationAvailable: false, configuredPeriodNumbers: [] },
+    );
+
+    expect(result.schedule.courses[0]?.uncertainFields).toContain("time");
+    expect(result.schedule.warnings.join(" ")).toContain(
+      "timetable periods are not configured",
+    );
+  });
+
+  it("flags period numbers that are absent from the university configuration", () => {
+    const result = validateExtractedSchedule(
+      {
+        title: "Imported timetable",
+        warnings: [],
+        courses: [course({ startPeriod: 9, endPeriod: 10 })],
+      },
+      {
+        periodConfigurationAvailable: true,
+        configuredPeriodNumbers: [1, 2, 3, 4],
+      },
+    );
+
+    expect(result.schedule.courses[0]?.uncertainFields).toEqual(
+      expect.arrayContaining(["startPeriod", "endPeriod"]),
+    );
+    expect(result.schedule.warnings.join(" ")).toContain("Unknown period 9");
+  });
 });
