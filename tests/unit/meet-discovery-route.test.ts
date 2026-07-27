@@ -47,6 +47,8 @@ const viewerProfile = {
   minimumAge: 18,
   maximumAge: 40,
   preferredLanguages: ["English"],
+  discoveryCityId: "discovery-city-1",
+  discoveryUniversityId: "discovery-university-1",
   lookingFor: ["STUDY", "FRIENDS"],
   distanceRange: "CITY",
   otherCityId: null,
@@ -59,6 +61,53 @@ const viewerProfile = {
   showInterests: true,
   completedAt: new Date("2026-07-01T00:00:00.000Z"),
 };
+
+function compatibleCandidate(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    id: "member-2",
+    username: "member-two",
+    firstName: "Ama",
+    lastName: "Mensah",
+    gender: "FEMALE",
+    cityId: "discovery-city-1",
+    universityId: "discovery-university-1",
+    avatarMediaId: null,
+    bio: "Student",
+    lastActiveAt: new Date("2026-07-26T10:00:00.000Z"),
+    languages: ["English"],
+    interests: ["Study"],
+    locationAudience: "MEMBERS",
+    educationAudience: "MEMBERS",
+    languagesAudience: "MEMBERS",
+    officialProfileStatus: "NOT_VERIFIED",
+    officialOrganizationType: null,
+    officialOrganizationName: null,
+    officialVerifiedAt: null,
+    country: { name: "Ghana", emoji: "🇬🇭" },
+    city: { name: "Jiaxing" },
+    university: {
+      id: "discovery-university-1",
+      name: "Jiaxing University",
+      shortName: "JXU",
+    },
+    meetDiscoveryProfile: {
+      ...viewerProfile,
+      userId: "member-2",
+      interestedIn: "ALL",
+      lookingFor: ["STUDY"],
+      nearbyVisibility: true,
+      discoveryCity: { name: "Jiaxing" },
+      discoveryUniversity: {
+        id: "discovery-university-1",
+        name: "Jiaxing University",
+        shortName: "JXU",
+      },
+    },
+    ...overrides,
+  };
+}
 
 describe("Meet discovery API", () => {
   beforeEach(() => {
@@ -84,7 +133,7 @@ describe("Meet discovery API", () => {
     vi.clearAllMocks();
   });
 
-  it("uses same-city opt-in discovery and excludes blocked relationships", async () => {
+  it("uses the saved discovery city and excludes blocked relationships", async () => {
     const response = await POST(
       request({
         mode: "NEARBY",
@@ -96,21 +145,40 @@ describe("Meet discovery API", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.findMany).toHaveBeenCalledWith(
+    const query = mocks.findMany.mock.calls[0]?.[0];
+    expect(query.where).toEqual(
       expect.objectContaining({
-        where: expect.objectContaining({
-          id: { not: "viewer-1" },
-          cityId: "city-1",
-          blockedUsers: { none: { blockedId: "viewer-1" } },
-          blockedByUsers: { none: { blockerId: "viewer-1" } },
+        id: { not: "viewer-1" },
+        blockedUsers: { none: { blockedId: "viewer-1" } },
+        blockedByUsers: { none: { blockerId: "viewer-1" } },
+      }),
+    );
+    expect(query.where.AND).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
           meetDiscoveryProfile: {
-            is: {
+            is: expect.objectContaining({
               completedAt: { not: null },
               nearbyVisibility: true,
-            },
+            }),
           },
         }),
-      }),
+        {
+          OR: [
+            {
+              meetDiscoveryProfile: {
+                is: { discoveryCityId: "discovery-city-1" },
+              },
+            },
+            {
+              cityId: "discovery-city-1",
+              meetDiscoveryProfile: {
+                is: { discoveryCityId: null },
+              },
+            },
+          ],
+        },
+      ]),
     );
     expect(await response.json()).toEqual(
       expect.objectContaining({
@@ -156,39 +224,10 @@ describe("Meet discovery API", () => {
 
   it("never exposes private location or education details", async () => {
     mocks.findMany.mockResolvedValue([
-      {
-        id: "member-2",
-        username: "member-two",
-        firstName: "Ama",
-        lastName: "Mensah",
-        gender: "FEMALE",
-        avatarMediaId: null,
-        bio: "Student",
-        lastActiveAt: new Date("2026-07-26T10:00:00.000Z"),
-        languages: ["English"],
-        interests: ["Study"],
+      compatibleCandidate({
         locationAudience: "PRIVATE",
         educationAudience: "PRIVATE",
-        languagesAudience: "MEMBERS",
-        officialProfileStatus: "NOT_VERIFIED",
-        officialOrganizationType: null,
-        officialOrganizationName: null,
-        officialVerifiedAt: null,
-        country: { name: "Ghana", emoji: "🇬🇭" },
-        city: { name: "Jiaxing" },
-        university: {
-          id: "university-1",
-          name: "Jiaxing University",
-          shortName: "JXU",
-        },
-        meetDiscoveryProfile: {
-          ...viewerProfile,
-          userId: "member-2",
-          interestedIn: "ALL",
-          lookingFor: ["STUDY"],
-          nearbyVisibility: true,
-        },
-      },
+      }),
     ]);
 
     const response = await POST(
@@ -208,7 +247,59 @@ describe("Meet discovery API", () => {
     expect(payload.profiles[0]).not.toHaveProperty("meetIntents");
   });
 
-  it("gates extended distance without activating a fake subscription", async () => {
+  it("returns a mutually compatible member from the selected university", async () => {
+    mocks.findMany.mockResolvedValue([compatibleCandidate()]);
+
+    const response = await POST(
+      request({
+        mode: "NEARBY",
+        genderPreference: "ALL",
+        countryPreferenceCode: "",
+        intents: [],
+        distanceRange: "KM_5",
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.profiles).toHaveLength(1);
+    expect(payload.profiles[0]).toEqual(
+      expect.objectContaining({
+        id: "member-2",
+        distanceLabel: "Near JXU",
+        location: expect.objectContaining({ city: "Approximate area" }),
+      }),
+    );
+  });
+
+  it("filters a candidate whose preference is incompatible in reverse", async () => {
+    const candidate = compatibleCandidate();
+    mocks.findMany.mockResolvedValue([
+      {
+        ...candidate,
+        meetDiscoveryProfile: {
+          ...(candidate.meetDiscoveryProfile as Record<string, unknown>),
+          interestedIn: "MALE",
+        },
+      },
+    ]);
+
+    const response = await POST(
+      request({
+        mode: "NEARBY",
+        genderPreference: "ALL",
+        countryPreferenceCode: "",
+        intents: [],
+        distanceRange: "CITY",
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.profiles).toEqual([]);
+  });
+
+  it("allows the 20 km filter without advertising or requiring Premium", async () => {
     const response = await POST(
       request({
         mode: "NEARBY",
@@ -218,10 +309,46 @@ describe("Meet discovery API", () => {
         distanceRange: "KM_20",
       }),
     );
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     expect(await response.json()).toEqual(
-      expect.objectContaining({ code: "MEET_PREMIUM_REQUIRED" }),
+      expect.objectContaining({ mode: "NEARBY", profiles: [] }),
     );
-    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.findMany).toHaveBeenCalledOnce();
+  });
+
+  it("uses the Discovery Profile university for campus distance filters", async () => {
+    const response = await POST(
+      request({
+        mode: "NEARBY",
+        genderPreference: "ALL",
+        countryPreferenceCode: "",
+        intents: [],
+        distanceRange: "KM_5",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const query = mocks.findMany.mock.calls[0]?.[0];
+    expect(query.where.AND).toEqual(
+      expect.arrayContaining([
+        {
+          OR: [
+            {
+              meetDiscoveryProfile: {
+                is: {
+                  discoveryUniversityId: "discovery-university-1",
+                },
+              },
+            },
+            {
+              universityId: "discovery-university-1",
+              meetDiscoveryProfile: {
+                is: { discoveryUniversityId: null },
+              },
+            },
+          ],
+        },
+      ]),
+    );
   });
 });

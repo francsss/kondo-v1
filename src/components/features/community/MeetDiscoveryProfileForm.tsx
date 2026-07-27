@@ -30,6 +30,8 @@ export type MeetProfileData = {
   maximumAge: number;
   preferredLanguages: string[];
   lookingFor: string[];
+  discoveryCityId: string | null;
+  discoveryUniversityId: string | null;
   distanceRange: "KM_5" | "KM_10" | "KM_20" | "CITY" | "OTHER_CITY";
   otherCityId: string | null;
   nearbyVisibility: boolean;
@@ -95,10 +97,13 @@ export function MeetDiscoveryProfileForm({
   profile,
   initialGender,
   initialLanguages,
+  initialCityId,
+  initialUniversityId,
   currentCity,
   currentCountry,
   currentUniversity,
   cityOptions,
+  universityOptions,
   required,
   onCancel,
   onSaved,
@@ -106,10 +111,13 @@ export function MeetDiscoveryProfileForm({
   profile: MeetProfileData | null;
   initialGender: "MALE" | "FEMALE" | null;
   initialLanguages: string[];
+  initialCityId: string | null;
+  initialUniversityId: string | null;
   currentCity: string | null;
   currentCountry: string | null;
   currentUniversity: string | null;
   cityOptions: Array<{ id: string; name: string }>;
+  universityOptions: Array<{ id: string; name: string; cityId: string }>;
   required: boolean;
   onCancel?: () => void;
   onSaved: (profile: MeetProfileData) => void;
@@ -128,11 +136,17 @@ export function MeetDiscoveryProfileForm({
     preferredLanguages: profile?.preferredLanguages.length
       ? profile.preferredLanguages
       : defaultLanguages,
+    discoveryCityId: profile?.discoveryCityId ?? initialCityId,
+    discoveryUniversityId:
+      profile?.discoveryUniversityId ?? initialUniversityId,
     lookingFor: profile?.lookingFor.length
       ? profile.lookingFor
       : MEET_INTENTS.map(([value]) => value),
-    distanceRange: profile?.distanceRange ?? "CITY",
-    otherCityId: profile?.otherCityId ?? null,
+    distanceRange:
+      profile?.distanceRange === "OTHER_CITY"
+        ? "CITY"
+        : (profile?.distanceRange ?? "CITY"),
+    otherCityId: null,
     nearbyVisibility: profile?.nearbyVisibility ?? true,
     showAge: profile?.showAge ?? true,
     showNationality: profile?.showNationality ?? true,
@@ -146,6 +160,13 @@ export function MeetDiscoveryProfileForm({
   const enabledPrivacyCount = useMemo(
     () => privacyOptions.filter(({ key }) => form[key]).length,
     [form],
+  );
+  const availableUniversities = useMemo(
+    () =>
+      universityOptions.filter(
+        (university) => university.cityId === form.discoveryCityId,
+      ),
+    [form.discoveryCityId, universityOptions],
   );
 
   function toggleArray(
@@ -164,6 +185,12 @@ export function MeetDiscoveryProfileForm({
     event.preventDefault();
     if (!form.lookingFor.length) {
       setError("Choose at least one reason for using Meet.");
+      return;
+    }
+    if (!form.discoveryCityId || !form.discoveryUniversityId) {
+      setError(
+        "Choose both your discovery city and university before continuing.",
+      );
       return;
     }
     setBusy(true);
@@ -201,7 +228,7 @@ export function MeetDiscoveryProfileForm({
       <div className="bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#218267] px-5 py-7 text-white sm:px-8 sm:py-9">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-kondo-lime">
           <Sparkles className="h-3.5 w-3.5" />
-          {required ? "Your Meet introduction" : "Meet Settings"}
+          {required ? "Your Meet introduction" : "Discovery Settings"}
         </span>
         <h2 className="mt-4 text-2xl font-black tracking-tight sm:text-3xl">
           {required
@@ -380,6 +407,54 @@ export function MeetDiscoveryProfileForm({
         <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <h3 className="font-black">Nearby discovery</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              These choices define your approximate discovery area. They never
+              expose your live position.
+            </p>
+            <div className="mt-4 grid gap-4">
+              <SearchableSelect
+                label="Discovery city"
+                onSelect={(value) =>
+                  setForm((current) => {
+                    const currentUniversityStillMatches =
+                      universityOptions.some(
+                        (university) =>
+                          university.id === current.discoveryUniversityId &&
+                          university.cityId === value,
+                      );
+                    return {
+                      ...current,
+                      discoveryCityId: value || null,
+                      discoveryUniversityId: currentUniversityStillMatches
+                        ? current.discoveryUniversityId
+                        : null,
+                    };
+                  })
+                }
+                options={cityOptions}
+                placeholder="Choose a city"
+                searchPlaceholder="Search cities"
+                selected={form.discoveryCityId ?? ""}
+              />
+              <SearchableSelect
+                disabled={!form.discoveryCityId}
+                label="Discovery university"
+                onSelect={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    discoveryUniversityId: value || null,
+                  }))
+                }
+                options={availableUniversities}
+                placeholder={
+                  form.discoveryCityId
+                    ? "Choose your university"
+                    : "Choose a city first"
+                }
+                searchPlaceholder="Search universities"
+                selected={form.discoveryUniversityId ?? ""}
+              />
+            </div>
             <label className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-muted/40 p-4">
               <input
                 checked={form.nearbyVisibility}
@@ -429,28 +504,10 @@ export function MeetDiscoveryProfileForm({
                     type="button"
                   >
                     {option.label}
-                    {option.premium ? " · Premium" : ""}
                   </button>
                 ))}
               </div>
             </div>
-            {form.distanceRange === "OTHER_CITY" ? (
-              <div className="mt-4">
-                <SearchableSelect
-                  label="Another city"
-                  onSelect={(value) =>
-                    setForm((current) => ({
-                      ...current,
-                      otherCityId: value || null,
-                    }))
-                  }
-                  options={cityOptions}
-                  placeholder="Choose a city"
-                  searchPlaceholder="Search cities"
-                  selected={form.otherCityId ?? ""}
-                />
-              </div>
-            ) : null}
           </div>
 
           <div>

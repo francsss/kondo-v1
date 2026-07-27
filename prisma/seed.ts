@@ -355,6 +355,8 @@ async function main() {
       minimumAge: 18,
       maximumAge: 40,
       preferredLanguages: user.languages,
+      discoveryCityId: user.cityId,
+      discoveryUniversityId: user.universityId,
       lookingFor: [
         "FRIENDS",
         "STUDY",

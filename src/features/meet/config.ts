@@ -30,7 +30,7 @@ export const MEET_LANGUAGE_OPTIONS = [
 export const MEET_DISTANCE_OPTIONS = [
   { value: "KM_5", label: "5 km", premium: false },
   { value: "KM_10", label: "10 km", premium: false },
-  { value: "KM_20", label: "20 km", premium: true },
+  { value: "KM_20", label: "20 km", premium: false },
   { value: "CITY", label: "Entire city", premium: false },
   { value: "OTHER_CITY", label: "Another city", premium: true },
 ] as const;

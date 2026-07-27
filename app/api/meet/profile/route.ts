@@ -37,12 +37,43 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    if (parsed.data.otherCityId) {
-      const city = await prisma.city.findFirst({
-        where: { id: parsed.data.otherCityId, isActive: true },
+    const [discoveryCity, discoveryUniversity, otherCity] = await Promise.all([
+      prisma.city.findFirst({
+        where: { id: parsed.data.discoveryCityId, isActive: true },
         select: { id: true },
-      });
-      if (!city) return jsonError("The selected city is unavailable.", 422);
+      }),
+      prisma.university.findFirst({
+        where: {
+          id: parsed.data.discoveryUniversityId,
+          isActive: true,
+          verified: true,
+        },
+        select: { id: true, cityId: true },
+      }),
+      parsed.data.otherCityId
+        ? prisma.city.findFirst({
+            where: { id: parsed.data.otherCityId, isActive: true },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    if (!discoveryCity) {
+      return jsonError("The selected discovery city is unavailable.", 422);
+    }
+    if (!discoveryUniversity) {
+      return jsonError(
+        "The selected discovery university is unavailable.",
+        422,
+      );
+    }
+    if (discoveryUniversity.cityId !== discoveryCity.id) {
+      return jsonError(
+        "Choose a university located in the selected discovery city.",
+        422,
+      );
+    }
+    if (parsed.data.otherCityId && !otherCity) {
+      return jsonError("The selected city is unavailable.", 422);
     }
 
     const now = new Date();
@@ -73,6 +104,8 @@ export async function PUT(request: NextRequest) {
       userId: user.id,
       nearbyVisibility: profile.nearbyVisibility,
       distanceRange: profile.distanceRange,
+      discoveryCityId: profile.discoveryCityId,
+      discoveryUniversityId: profile.discoveryUniversityId,
       lookingForCount: profile.lookingFor.length,
       languageCount: profile.preferredLanguages.length,
     });

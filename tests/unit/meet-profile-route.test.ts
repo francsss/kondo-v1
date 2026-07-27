@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
   findCity: vi.fn(),
+  findUniversity: vi.fn(),
   updateUser: vi.fn(),
   upsertProfile: vi.fn(),
 }));
@@ -15,6 +16,7 @@ vi.mock("@/lib/server-auth", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     city: { findFirst: mocks.findCity },
+    university: { findFirst: mocks.findUniversity },
     $transaction: vi.fn(
       async (
         callback: (tx: {
@@ -51,6 +53,8 @@ const completeProfile = {
   minimumAge: 18,
   maximumAge: 40,
   preferredLanguages: ["English", "French"],
+  discoveryCityId: "clxcity000000000000000001",
+  discoveryUniversityId: "clxuniversity000000000001",
   lookingFor: [
     "FRIENDS",
     "STUDY",
@@ -76,6 +80,13 @@ describe("Meet discovery profile API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getCurrentUser.mockResolvedValue({ id: "user-1" });
+    mocks.findCity.mockResolvedValue({
+      id: completeProfile.discoveryCityId,
+    });
+    mocks.findUniversity.mockResolvedValue({
+      id: completeProfile.discoveryUniversityId,
+      cityId: completeProfile.discoveryCityId,
+    });
     mocks.updateUser.mockResolvedValue({});
     mocks.upsertProfile.mockResolvedValue({
       userId: "user-1",
@@ -116,6 +127,23 @@ describe("Meet discovery profile API", () => {
       request({ ...completeProfile, minimumAge: 40, maximumAge: 18 }),
     );
     expect(response.status).toBe(400);
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects a university outside the selected discovery city", async () => {
+    mocks.findUniversity.mockResolvedValue({
+      id: completeProfile.discoveryUniversityId,
+      cityId: "clxcity000000000000000002",
+    });
+
+    const response = await PUT(request(completeProfile));
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        error: "Choose a university located in the selected discovery city.",
+      }),
+    );
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
 });

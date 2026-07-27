@@ -97,7 +97,12 @@ export default async function CommunitiesPage({
     }),
     prisma.university.findMany({
       where: { isActive: true, verified: true },
-      select: { id: true, name: true, city: { select: { name: true } } },
+      select: {
+        id: true,
+        name: true,
+        cityId: true,
+        city: { select: { name: true } },
+      },
       orderBy: { name: "asc" },
     }),
     tab === "meet"
@@ -145,6 +150,7 @@ export default async function CommunitiesPage({
   const referenceUniversities = universities.map((university) => ({
     id: university.id,
     name: `${university.name} · ${university.city.name}`,
+    cityId: university.cityId,
   }));
   const tabs = [
     { value: "my" as const, label: "My Communities", icon: Users },
@@ -195,11 +201,14 @@ export default async function CommunitiesPage({
             cityName={user.city?.name ?? null}
             countryName={user.country?.name ?? null}
             initialGender={user.gender}
+            initialCityId={user.cityId}
             initialIntents={user.meetIntents}
             initialLanguages={user.languages}
             initialNearbyEnabled={user.nearbyDiscoveryEnabled}
             initialProfile={meetProfile}
+            initialUniversityId={user.universityId}
             premiumAccess={premiumAccess}
+            universityOptions={referenceUniversities}
             universityName={
               user.university?.shortName ?? user.university?.name ?? null
             }

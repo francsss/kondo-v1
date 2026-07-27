@@ -2,7 +2,6 @@
 
 import {
   Compass,
-  Crown,
   LoaderCircle,
   MapPin,
   Radio,
@@ -27,11 +26,7 @@ import { MeetPremiumGate } from "@/components/features/community/MeetPremiumGate
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import {
-  MEET_DISTANCE_OPTIONS,
-  MEET_INTENTS,
-  MEET_PREMIUM_FEATURES,
-} from "@/features/meet/config";
+import { MEET_DISTANCE_OPTIONS, MEET_INTENTS } from "@/features/meet/config";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
 import type { PremiumAccess } from "@/lib/premium";
 import { captureProductEvent } from "@/lib/product-analytics-client";
@@ -60,6 +55,9 @@ export function MeetPanel({
   countryName,
   universityName,
   cityOptions,
+  universityOptions,
+  initialCityId,
+  initialUniversityId,
 }: {
   initialGender: Gender | null;
   initialNearbyEnabled: boolean;
@@ -71,12 +69,20 @@ export function MeetPanel({
   countryName: string | null;
   universityName: string | null;
   cityOptions: Array<{ id: string; name: string }>;
+  universityOptions: Array<{ id: string; name: string; cityId: string }>;
+  initialCityId: string | null;
+  initialUniversityId: string | null;
 }) {
+  const hasCompleteDiscoveryProfile = Boolean(
+    initialProfile?.completedAt &&
+    initialProfile.discoveryCityId &&
+    initialProfile.discoveryUniversityId,
+  );
   const [profile, setProfile] = useState<MeetProfileData | null>(
     initialProfile,
   );
   const [editingProfile, setEditingProfile] = useState(
-    !initialProfile?.completedAt,
+    !hasCompleteDiscoveryProfile,
   );
   const [gender, setGender] = useState<Gender | "">(
     initialProfile?.gender ?? initialGender ?? "",
@@ -98,9 +104,10 @@ export function MeetPanel({
   );
   const [distanceRange, setDistanceRange] = useState<
     "KM_5" | "KM_10" | "KM_20" | "CITY" | "OTHER_CITY"
-  >(initialProfile?.distanceRange ?? "CITY");
-  const [otherCityId, setOtherCityId] = useState(
-    initialProfile?.otherCityId ?? "",
+  >(
+    initialProfile?.distanceRange === "OTHER_CITY"
+      ? "CITY"
+      : (initialProfile?.distanceRange ?? "CITY"),
   );
   const [matching, setMatching] = useState(false);
   const [discovering, setDiscovering] = useState(false);
@@ -115,6 +122,13 @@ export function MeetPanel({
   const pollTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const discoveryCityName =
+    cityOptions.find((city) => city.id === profile?.discoveryCityId)?.name ??
+    cityName;
+  const discoveryUniversityName =
+    universityOptions.find(
+      (university) => university.id === profile?.discoveryUniversityId,
+    )?.name ?? universityName;
 
   useEffect(() => {
     captureProductEvent(PRODUCT_EVENTS.MEET_OPENED);
@@ -267,7 +281,7 @@ export function MeetPanel({
           countryPreferenceCode,
           intents,
           distanceRange,
-          otherCityId: otherCityId || null,
+          otherCityId: null,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -309,28 +323,40 @@ export function MeetPanel({
     setGenderPreference(nextProfile.interestedIn);
     setNearbyEnabled(nextProfile.nearbyVisibility);
     setIntents(nextProfile.lookingFor);
-    setDistanceRange(nextProfile.distanceRange);
-    setOtherCityId(nextProfile.otherCityId ?? "");
+    setDistanceRange(
+      nextProfile.distanceRange === "OTHER_CITY"
+        ? "CITY"
+        : nextProfile.distanceRange,
+    );
     setEditingProfile(false);
     setDiscoveryStarted(false);
     setProfiles([]);
   }
 
-  if (editingProfile || !profile?.completedAt) {
+  const profileIsComplete = Boolean(
+    profile?.completedAt &&
+    profile.discoveryCityId &&
+    profile.discoveryUniversityId,
+  );
+
+  if (editingProfile || !profileIsComplete) {
     return (
       <MeetDiscoveryProfileForm
         cityOptions={cityOptions}
         currentCity={cityName}
         currentCountry={countryName}
         currentUniversity={universityName}
+        initialCityId={initialCityId}
         initialGender={initialGender}
         initialLanguages={initialLanguages}
+        initialUniversityId={initialUniversityId}
         onCancel={
-          profile?.completedAt ? () => setEditingProfile(false) : undefined
+          profileIsComplete ? () => setEditingProfile(false) : undefined
         }
         onSaved={savedProfile}
         profile={profile}
-        required={!profile?.completedAt}
+        required={!profileIsComplete}
+        universityOptions={universityOptions}
       />
     );
   }
@@ -347,21 +373,6 @@ export function MeetPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {!premiumAccess.active ? (
-            <Button
-              onClick={() =>
-                setPremiumReason(
-                  "Meet Premium adds richer discovery after you have explored the basic experience.",
-                )
-              }
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <Crown className="h-4 w-4" />
-              Premium
-            </Button>
-          ) : null}
           <Button
             onClick={() => setEditingProfile(true)}
             size="sm"
@@ -369,7 +380,7 @@ export function MeetPanel({
             variant="secondary"
           >
             <Settings2 className="h-4 w-4" />
-            Meet Settings
+            Discovery Settings
           </Button>
         </div>
       </div>
@@ -441,14 +452,16 @@ export function MeetPanel({
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {mode === "NEARBY"
                   ? `Explore members who opted in around ${
-                      cityName ?? "your study city"
+                      discoveryUniversityName ??
+                      discoveryCityName ??
+                      "your study area"
                     }. Markers are decorative and never represent exact positions.`
                   : "Choose what brings you here, then explore compatible profiles without starting an automatic call."}
               </p>
 
               <div className="mt-6 space-y-5">
                 {mode === "NEARBY" ? (
-                  <div className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                  <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/40 p-4">
                     <span>
                       <span className="flex items-center gap-2 text-sm font-black">
                         <span
@@ -463,18 +476,10 @@ export function MeetPanel({
                         {nearbyEnabled ? "enabled" : "disabled"}
                       </span>
                       <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                        Change this privacy setting in Meet Settings. Your exact
+                        Manage this preference in Discovery Settings. Your exact
                         position is never requested or shared.
                       </span>
                     </span>
-                    <Button
-                      onClick={() => setEditingProfile(true)}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      Change
-                    </Button>
                   </div>
                 ) : (
                   <fieldset>
@@ -546,60 +551,26 @@ export function MeetPanel({
                       Discovery area
                     </legend>
                     <div className="grid grid-cols-2 gap-2">
-                      {MEET_DISTANCE_OPTIONS.map((option) => {
-                        const selected = distanceRange === option.value;
-                        const requiredFeature =
-                          option.value === "OTHER_CITY"
-                            ? MEET_PREMIUM_FEATURES.OTHER_CITY
-                            : option.value === "KM_20"
-                              ? MEET_PREMIUM_FEATURES.EXTENDED_DISTANCE
-                              : null;
-                        const locked =
-                          Boolean(requiredFeature) &&
-                          !premiumAccess.featureKeys.includes(requiredFeature!);
-                        return (
-                          <button
-                            aria-pressed={selected}
-                            className={cn(
-                              "rounded-2xl border p-3 text-left text-xs transition active:scale-[0.98]",
-                              selected
-                                ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                                : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
-                            )}
-                            key={option.value}
-                            onClick={() => {
-                              if (locked) {
-                                setPremiumReason(
-                                  `${option.label} discovery is available with Meet Premium.`,
-                                );
-                                return;
-                              }
-                              setDistanceRange(option.value);
-                            }}
-                            type="button"
-                          >
-                            {option.label}
-                            {locked ? (
-                              <span className="mt-1 block text-[10px] text-amber-600">
-                                Premium
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
+                      {MEET_DISTANCE_OPTIONS.filter(
+                        (option) => option.value !== "OTHER_CITY",
+                      ).map((option) => (
+                        <button
+                          aria-pressed={distanceRange === option.value}
+                          className={cn(
+                            "rounded-2xl border p-3 text-left text-xs transition active:scale-[0.98]",
+                            distanceRange === option.value
+                              ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+                              : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
+                          )}
+                          key={option.value}
+                          onClick={() => setDistanceRange(option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
                     </div>
                   </fieldset>
-                ) : null}
-
-                {mode === "NEARBY" && distanceRange === "OTHER_CITY" ? (
-                  <SearchableSelect
-                    label="Another city"
-                    onSelect={setOtherCityId}
-                    options={cityOptions}
-                    placeholder="Choose a study city"
-                    searchPlaceholder="Search cities"
-                    selected={otherCityId}
-                  />
                 ) : null}
 
                 {error ? (
@@ -636,7 +607,11 @@ export function MeetPanel({
               <MeetDiscoveryMap
                 areaLabel={
                   mode === "NEARBY"
-                    ? `Around ${cityName ?? "your city"}`
+                    ? `Around ${
+                        discoveryUniversityName ??
+                        discoveryCityName ??
+                        "your study area"
+                      }`
                     : "Your discovery constellation"
                 }
                 mode={mode}

@@ -150,6 +150,12 @@ test.describe("premium UX refinements", () => {
     page,
   }) => {
     await page.goto("/communities?tab=meet");
+    await expect(
+      page.getByRole("button", { name: "Discovery Settings" }),
+    ).toBeVisible();
+    await expect(page.getByText("Meet Premium", { exact: true })).toHaveCount(
+      0,
+    );
     await page.getByRole("button", { name: "Nearby" }).click();
 
     await expect(
@@ -160,7 +166,24 @@ test.describe("premium UX refinements", () => {
     ).toHaveCount(0);
 
     await expect(page.getByText("Approximate discovery enabled")).toBeVisible();
+    await page.getByRole("button", { name: "20 km" }).click();
     await page.getByRole("button", { name: "Explore people" }).click();
     await expect(page.getByText("Approximate map · never exact")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Preview / }).first(),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page
+      .getByRole("button", { name: /^Preview / })
+      .first()
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Full profile" }),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Full profile" }).click();
+    await expect(page.getByRole("dialog")).toContainText("Meet Premium");
   });
 });

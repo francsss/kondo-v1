@@ -27,6 +27,12 @@ export const meetDiscoveryProfileSchema = z
     minimumAge: z.coerce.number().int().min(18).max(80).default(18),
     maximumAge: z.coerce.number().int().min(18).max(80).default(40),
     preferredLanguages: z.array(meetLanguageSchema).max(10).default([]),
+    discoveryCityId: z
+      .string()
+      .cuid("Choose the city where you want to discover students."),
+    discoveryUniversityId: z
+      .string()
+      .cuid("Choose your university for campus-area discovery."),
     lookingFor: z
       .array(meetIntentSchema)
       .min(1, "Choose at least one reason for using Meet.")

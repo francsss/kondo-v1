@@ -688,24 +688,25 @@ model UserPreference {
 }
 
 model City {
-  id             String                   @id @default(cuid())
-  slug           String                   @unique
-  name           String
-  province       String?
-  countryId      String
-  country        Country                  @relation(fields: [countryId], references: [id], onDelete: Restrict)
-  isActive       Boolean                  @default(true)
-  verified       Boolean                  @default(false)
-  users          User[]
-  universities   University[]
-  communities    Community[]
-  listings       MarketplaceListing[]
-  exchangeOffers CommunityExchangeOffer[]
-  skillOffers    StudentSkillOffer[]
-  cityHub        CityHub?
-  storyLinks     StoryEntityLink[]
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  id                    String                   @id @default(cuid())
+  slug                  String                   @unique
+  name                  String
+  province              String?
+  countryId             String
+  country               Country                  @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  isActive              Boolean                  @default(true)
+  verified              Boolean                  @default(false)
+  users                 User[]
+  universities          University[]
+  communities           Community[]
+  listings              MarketplaceListing[]
+  exchangeOffers        CommunityExchangeOffer[]
+  skillOffers           StudentSkillOffer[]
+  meetDiscoveryProfiles MeetDiscoveryProfile[]   @relation("MeetDiscoveryCity")
+  cityHub               CityHub?
+  storyLinks            StoryEntityLink[]
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
 
   @@unique([countryId, name])
   @@index([countryId])
@@ -713,28 +714,29 @@ model City {
 }
 
 model University {
-  id                   String                          @id @default(cuid())
-  slug                 String                          @unique
-  name                 String
-  shortName            String?
-  countryId            String
-  country              Country                         @relation(fields: [countryId], references: [id], onDelete: Restrict)
-  cityId               String
-  city                 City                            @relation(fields: [cityId], references: [id], onDelete: Restrict)
-  isActive             Boolean                         @default(true)
-  verified             Boolean                         @default(false)
-  users                User[]
-  communities          Community[]
-  campuses             Campus[]
-  academicTerms        AcademicTerm[]
-  periodConfigurations UniversityPeriodConfiguration[]
-  studentSchedules     StudentSchedule[]
-  scheduleImports      ScheduleImport[]
-  scholarships         Scholarship[]
-  scholarshipLinks     ScholarshipUniversity[]
-  storyLinks           StoryEntityLink[]
-  createdAt            DateTime                        @default(now())
-  updatedAt            DateTime                        @updatedAt
+  id                    String                          @id @default(cuid())
+  slug                  String                          @unique
+  name                  String
+  shortName             String?
+  countryId             String
+  country               Country                         @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId                String
+  city                  City                            @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  isActive              Boolean                         @default(true)
+  verified              Boolean                         @default(false)
+  users                 User[]
+  communities           Community[]
+  campuses              Campus[]
+  academicTerms         AcademicTerm[]
+  periodConfigurations  UniversityPeriodConfiguration[]
+  studentSchedules      StudentSchedule[]
+  scheduleImports       ScheduleImport[]
+  scholarships          Scholarship[]
+  scholarshipLinks      ScholarshipUniversity[]
+  storyLinks            StoryEntityLink[]
+  meetDiscoveryProfiles MeetDiscoveryProfile[]          @relation("MeetDiscoveryUniversity")
+  createdAt             DateTime                        @default(now())
+  updatedAt             DateTime                        @updatedAt
 
   @@unique([cityId, name])
   @@index([countryId])
@@ -1878,6 +1880,10 @@ model MeetDiscoveryProfile {
   maximumAge             Int                  @default(40)
   preferredLanguages     String[]             @default([])
   lookingFor             String[]             @default([])
+  discoveryCityId        String?
+  discoveryCity          City?                @relation("MeetDiscoveryCity", fields: [discoveryCityId], references: [id], onDelete: SetNull)
+  discoveryUniversityId  String?
+  discoveryUniversity    University?          @relation("MeetDiscoveryUniversity", fields: [discoveryUniversityId], references: [id], onDelete: SetNull)
   distanceRange          MeetDistanceRange    @default(CITY)
   otherCityId            String?
   nearbyVisibility       Boolean              @default(true)
@@ -1892,6 +1898,7 @@ model MeetDiscoveryProfile {
   updatedAt              DateTime             @updatedAt
 
   @@index([gender, nearbyVisibility, completedAt])
+  @@index([discoveryCityId, discoveryUniversityId, nearbyVisibility])
   @@index([distanceRange, otherCityId])
 }
 

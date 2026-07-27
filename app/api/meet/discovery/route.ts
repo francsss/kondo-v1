@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 import {
   MEET_PREMIUM_FEATURES,
@@ -26,12 +27,18 @@ function ageFromBirthYear(birthYear: number | null, now = new Date()) {
   return birthYear ? now.getUTCFullYear() - birthYear : null;
 }
 
+function intersectGenderPreferences(
+  first: "ALL" | "MALE" | "FEMALE",
+  second: "ALL" | "MALE" | "FEMALE",
+) {
+  if (first === "ALL") return second;
+  if (second === "ALL" || first === second) return first;
+  return null;
+}
+
 function requiresPremiumFeature(
   distanceRange: "KM_5" | "KM_10" | "KM_20" | "CITY" | "OTHER_CITY",
 ): MeetPremiumFeature | null {
-  if (distanceRange === "KM_20") {
-    return MEET_PREMIUM_FEATURES.EXTENDED_DISTANCE;
-  }
   if (distanceRange === "OTHER_CITY") {
     return MEET_PREMIUM_FEATURES.OTHER_CITY;
   }
@@ -68,7 +75,11 @@ export async function POST(request: NextRequest) {
       }),
       getPremiumAccess(user.id),
     ]);
-    if (!profile?.completedAt) {
+    if (
+      !profile?.completedAt ||
+      !profile.discoveryCityId ||
+      !profile.discoveryUniversityId
+    ) {
       return Response.json(
         {
           error: "Complete your Meet Discovery Profile before exploring.",
@@ -95,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     if (parsed.data.mode === "NEARBY" && !profile.nearbyVisibility) {
       return jsonError(
-        "Enable Nearby Visibility in Meet Settings to continue.",
+        "Enable Nearby Visibility in Discovery Settings to continue.",
         422,
       );
     }
@@ -106,7 +117,9 @@ export async function POST(request: NextRequest) {
     const targetCityId =
       parsed.data.distanceRange === "OTHER_CITY"
         ? parsed.data.otherCityId
-        : user.cityId;
+        : (profile.discoveryCityId ?? user.cityId);
+    const targetUniversityId =
+      profile.discoveryUniversityId ?? user.universityId;
     if (parsed.data.mode === "NEARBY" && !targetCityId) {
       return jsonError(
         parsed.data.distanceRange === "OTHER_CITY"
@@ -116,6 +129,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const viewerAge = ageFromBirthYear(profile.birthYear);
+    const candidateGender = intersectGenderPreferences(
+      profile.interestedIn,
+      parsed.data.genderPreference,
+    );
+    const currentYear = new Date().getUTCFullYear();
+    const profileCompatibility: Prisma.MeetDiscoveryProfileWhereInput = {
+      completedAt: { not: null },
+      interestedIn: user.gender ? { in: ["ALL", user.gender] } : "ALL",
+      ...(viewerAge === null
+        ? {}
+        : {
+            minimumAge: { lte: viewerAge },
+            maximumAge: { gte: viewerAge },
+          }),
+      OR: [
+        { birthYear: null },
+        {
+          birthYear: {
+            gte: currentYear - profile.maximumAge,
+            lte: currentYear - profile.minimumAge,
+          },
+        },
+      ],
+    };
+
     const candidates = await prisma.user.findMany({
       where: {
         id: { not: user.id },
@@ -123,26 +162,66 @@ export async function POST(request: NextRequest) {
         onboardingCompletedAt: { not: null },
         profileAudience: { in: ["PUBLIC", "MEMBERS"] },
         gender:
-          parsed.data.genderPreference === "ALL"
+          candidateGender === "ALL"
             ? { not: null }
-            : parsed.data.genderPreference,
+            : (candidateGender ?? { in: [] }),
         ...(parsed.data.countryPreferenceCode
           ? { country: { code: parsed.data.countryPreferenceCode } }
           : {}),
         ...(parsed.data.mode === "NEARBY"
           ? {
-              cityId: targetCityId,
-              meetDiscoveryProfile: {
-                is: {
-                  completedAt: { not: null },
-                  nearbyVisibility: true,
+              AND: [
+                {
+                  meetDiscoveryProfile: {
+                    is: {
+                      ...profileCompatibility,
+                      nearbyVisibility: true,
+                    },
+                  },
                 },
-              },
+                {
+                  OR: [
+                    {
+                      meetDiscoveryProfile: {
+                        is: { discoveryCityId: targetCityId },
+                      },
+                    },
+                    {
+                      cityId: targetCityId,
+                      meetDiscoveryProfile: {
+                        is: { discoveryCityId: null },
+                      },
+                    },
+                  ],
+                },
+                ...(["KM_5", "KM_10"].includes(parsed.data.distanceRange) &&
+                targetUniversityId
+                  ? [
+                      {
+                        OR: [
+                          {
+                            meetDiscoveryProfile: {
+                              is: {
+                                discoveryUniversityId: targetUniversityId,
+                              },
+                            },
+                          },
+                          {
+                            universityId: targetUniversityId,
+                            meetDiscoveryProfile: {
+                              is: { discoveryUniversityId: null },
+                            },
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
+              ],
             }
           : {
               meetDiscoveryProfile: {
                 is: {
-                  completedAt: { not: null },
+                  ...profileCompatibility,
                   lookingFor: { hasSome: parsed.data.intents },
                 },
               },
@@ -156,6 +235,8 @@ export async function POST(request: NextRequest) {
         firstName: true,
         lastName: true,
         gender: true,
+        cityId: true,
+        universityId: true,
         avatarMediaId: true,
         bio: true,
         lastActiveAt: true,
@@ -171,13 +252,19 @@ export async function POST(request: NextRequest) {
         country: { select: { name: true, emoji: true } },
         city: { select: { name: true } },
         university: { select: { id: true, name: true, shortName: true } },
-        meetDiscoveryProfile: true,
+        meetDiscoveryProfile: {
+          include: {
+            discoveryCity: { select: { name: true } },
+            discoveryUniversity: {
+              select: { id: true, name: true, shortName: true },
+            },
+          },
+        },
       },
       orderBy: [{ lastActiveAt: "desc" }, { createdAt: "desc" }],
       take: access.active ? 60 : 30,
     });
 
-    const viewerAge = ageFromBirthYear(profile.birthYear);
     const profiles = candidates
       .filter((candidate) => {
         const discovery = candidate.meetDiscoveryProfile;
@@ -200,11 +287,17 @@ export async function POST(request: NextRequest) {
           return false;
         }
 
+        const candidateCityId = discovery.discoveryCityId ?? candidate.cityId;
+        const candidateUniversityId =
+          discovery.discoveryUniversityId ?? candidate.universityId;
+        if (parsed.data.mode === "NEARBY" && candidateCityId !== targetCityId) {
+          return false;
+        }
         if (
           parsed.data.mode === "NEARBY" &&
           ["KM_5", "KM_10"].includes(parsed.data.distanceRange) &&
-          user.universityId &&
-          candidate.university?.id !== user.universityId
+          targetUniversityId &&
+          candidateUniversityId !== targetUniversityId
         ) {
           return false;
         }
@@ -230,16 +323,25 @@ export async function POST(request: NextRequest) {
         const canShowLanguages =
           discovery.showLanguages && candidate.languagesAudience !== "PRIVATE";
         const university =
-          candidate.university?.shortName ?? candidate.university?.name ?? null;
+          discovery.discoveryUniversity?.shortName ??
+          discovery.discoveryUniversity?.name ??
+          candidate.university?.shortName ??
+          candidate.university?.name ??
+          null;
+        const city =
+          discovery.discoveryCity?.name ?? candidate.city?.name ?? null;
         const distanceLabel =
           parsed.data.mode !== "NEARBY"
             ? null
-            : ["KM_5", "KM_10"].includes(parsed.data.distanceRange) &&
-                university
+            : parsed.data.distanceRange === "KM_5" && university
               ? `Near ${university}`
-              : parsed.data.distanceRange === "OTHER_CITY"
-                ? `Around ${candidate.city?.name ?? "the selected city"}`
-                : "Around your study city";
+              : parsed.data.distanceRange === "KM_10" && university
+                ? `Around the ${university} study area`
+                : parsed.data.distanceRange === "KM_20"
+                  ? `Within the ${city ?? "selected city"} student area`
+                  : parsed.data.distanceRange === "OTHER_CITY"
+                    ? `Around ${city ?? "the selected city"}`
+                    : `Around ${city ?? "your study city"}`;
 
         return {
           id: candidate.id,
@@ -253,10 +355,7 @@ export async function POST(request: NextRequest) {
           distanceLabel,
           location: canShowLocation
             ? {
-                city:
-                  parsed.data.mode === "NEARBY"
-                    ? "Approximate area"
-                    : (candidate.city?.name ?? null),
+                city: parsed.data.mode === "NEARBY" ? "Approximate area" : city,
                 countryName: discovery.showNationality
                   ? (candidate.country?.name ?? null)
                   : null,
@@ -289,6 +388,8 @@ export async function POST(request: NextRequest) {
       candidateCount: candidates.length,
       resultCount: profiles.length,
       premium: access.active,
+      targetCityId,
+      targetUniversityId,
     });
 
     return Response.json(
