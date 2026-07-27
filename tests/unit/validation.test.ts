@@ -346,6 +346,10 @@ describe("input validation", () => {
         language: "FRENCH",
         notificationMessages: true,
         notificationComments: false,
+        notificationCommunity: true,
+        notificationMeet: false,
+        notificationAcademic: true,
+        notificationRecommendations: false,
         emailDigest: "WEEKLY",
       }).success,
     ).toBe(true);

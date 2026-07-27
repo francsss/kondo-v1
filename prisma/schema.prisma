@@ -196,11 +196,16 @@ enum HelpCategory {
 }
 
 enum NotificationType {
+  ACCOUNT
   MESSAGE
   COMMENT
   REPLY
   MARKETPLACE_UPDATE
   COMMUNITY_ANNOUNCEMENT
+  COMMUNITY_ACTIVITY
+  MEET_ACTIVITY
+  ACADEMIC
+  RECOMMENDATION
   MODERATION_UPDATE
 }
 
@@ -671,18 +676,22 @@ model Country {
 }
 
 model UserPreference {
-  userId                    String             @id
-  user                      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  theme                     ThemePreference    @default(SYSTEM)
-  language                  AppLanguage        @default(ENGLISH)
-  notificationMessages      Boolean            @default(true)
-  notificationComments      Boolean            @default(true)
-  notificationMarketplace   Boolean            @default(true)
-  notificationAnnouncements Boolean            @default(true)
-  emailDigest               NotificationDigest @default(NEVER)
-  lastDigestSentAt          DateTime?
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
+  userId                      String             @id
+  user                        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme                       ThemePreference    @default(SYSTEM)
+  language                    AppLanguage        @default(ENGLISH)
+  notificationMessages        Boolean            @default(true)
+  notificationComments        Boolean            @default(true)
+  notificationMarketplace     Boolean            @default(true)
+  notificationAnnouncements   Boolean            @default(true)
+  notificationCommunity       Boolean            @default(true)
+  notificationMeet            Boolean            @default(true)
+  notificationAcademic        Boolean            @default(true)
+  notificationRecommendations Boolean            @default(true)
+  emailDigest                 NotificationDigest @default(NEVER)
+  lastDigestSentAt            DateTime?
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
 
   @@index([emailDigest, lastDigestSentAt])
 }

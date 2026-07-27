@@ -78,6 +78,7 @@ function compatibleCandidate(
     lastActiveAt: new Date("2026-07-26T10:00:00.000Z"),
     languages: ["English"],
     interests: ["Study"],
+    profileAudience: "MEMBERS",
     locationAudience: "MEMBERS",
     educationAudience: "MEMBERS",
     languagesAudience: "MEMBERS",
@@ -270,8 +271,32 @@ describe("Meet discovery API", () => {
         distanceLabel: "Near JXU",
         location: expect.objectContaining({ city: "Approximate area" }),
         sharedInterests: ["Study"],
+        gender: null,
       }),
     );
+  });
+
+  it("only includes gender when the candidate made their profile public", async () => {
+    mocks.findMany.mockResolvedValue([
+      compatibleCandidate({ profileAudience: "PUBLIC" }),
+    ]);
+
+    const response = await POST(
+      request({
+        mode: "LOOKING_FOR",
+        genderPreference: "ALL",
+        countryPreferenceCode: "",
+        intents: ["STUDY"],
+        distanceRange: "CITY",
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.profiles[0]).toMatchObject({
+      gender: "FEMALE",
+      distanceLabel: "Near JXU",
+    });
   });
 
   it("filters a candidate whose preference is incompatible in reverse", async () => {

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { processNotificationJobs } from "@/lib/notifications";
 import { internalApiError, jsonError } from "@/lib/request";
+import { generateSmartNotificationJobs } from "@/lib/smart-notifications";
 import { isAuthorizedWorkerRequest } from "@/lib/worker-auth";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +11,14 @@ async function handle(request: NextRequest) {
     return jsonError("Authentication required.", 401);
   }
   try {
-    return Response.json(await processNotificationJobs(100), {
-      headers: { "Cache-Control": "private, no-store, max-age=0" },
-    });
+    const generated = await generateSmartNotificationJobs();
+    const processed = await processNotificationJobs(200);
+    return Response.json(
+      { generated, processed },
+      {
+        headers: { "Cache-Control": "private, no-store, max-age=0" },
+      },
+    );
   } catch (error) {
     return internalApiError("notifications.worker", error);
   }

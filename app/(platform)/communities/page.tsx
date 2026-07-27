@@ -1,17 +1,10 @@
 import type { CommunityType } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  Search,
-  Sparkles,
-  Users,
-  Video,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Sparkles } from "lucide-react";
 import { CommunityCard } from "@/components/features/community/CommunityCard";
 import { CommunityCreateDialog } from "@/components/features/community/CommunityCreateDialog";
+import { CommunitySectionNav } from "@/components/features/community/CommunitySectionNav";
 import { MeetPanel } from "@/components/features/community/MeetPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -152,12 +145,6 @@ export default async function CommunitiesPage({
     name: `${university.name} · ${university.city.name}`,
     cityId: university.cityId,
   }));
-  const tabs = [
-    { value: "my" as const, label: "My Community", icon: Users },
-    { value: "discover" as const, label: "Discover", icon: Compass },
-    { value: "meet" as const, label: "Meet", icon: Video },
-  ];
-
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -173,26 +160,7 @@ export default async function CommunitiesPage({
         />
       </div>
 
-      <nav
-        aria-label="Community sections"
-        className="subnav-row mt-8 border-b border-border"
-      >
-        {tabs.map(({ value, label, icon: Icon }) => (
-          <Link
-            aria-current={tab === value ? "page" : undefined}
-            className={
-              tab === value
-                ? "relative inline-flex min-h-14 items-center justify-center gap-2 px-3 text-sm font-black text-kondo-green transition after:absolute after:inset-x-5 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-kondo-green"
-                : "inline-flex min-h-14 items-center justify-center gap-2 px-3 text-sm font-bold text-muted-foreground transition duration-200 hover:bg-muted/60 hover:text-foreground"
-            }
-            href={communityHref({ tab: value })}
-            key={value}
-            scroll={false}
-          >
-            <Icon className="h-4 w-4" /> {label}
-          </Link>
-        ))}
-      </nav>
+      <CommunitySectionNav activeTab={tab} userId={user.id} />
 
       {tab === "meet" ? (
         <section className="mt-8">

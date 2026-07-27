@@ -26,6 +26,7 @@ export type MeetDiscoveryProfile = {
   lastName: string;
   avatarMediaId: string | null;
   bio: string | null;
+  gender: "MALE" | "FEMALE" | null;
   age: number | null;
   lastActiveAt: string | null;
   distanceLabel: string | null;

@@ -16,6 +16,16 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
   "ADMIN_ANNOUNCEMENT",
   "COMMUNITY_REQUEST_HELP",
   "COMMUNITY_REQUEST_CLOSED",
+  "ACCOUNT_WELCOME",
+  "ONBOARDING_REMINDER",
+  "COMMUNITY_POST",
+  "COMMUNITY_DAILY_SUMMARY",
+  "COMMUNITY_MEMBER_SUMMARY",
+  "MEET_MATCHES",
+  "ACADEMIC_CLASS_REMINDER",
+  "ACADEMIC_IMPORT_READY",
+  "SCHOLARSHIP_MATCH",
+  "MARKETPLACE_NEARBY",
 ] as const;
 
 export type NotificationTemplateKey =
@@ -65,6 +75,16 @@ const allowedTemplateTokens: Record<
   ADMIN_ANNOUNCEMENT: ["title", "body"],
   COMMUNITY_REQUEST_HELP: ["actorName", "requestTitle"],
   COMMUNITY_REQUEST_CLOSED: ["requestTitle"],
+  ACCOUNT_WELCOME: ["firstName"],
+  ONBOARDING_REMINDER: [],
+  COMMUNITY_POST: ["actorName", "communityName", "preview"],
+  COMMUNITY_DAILY_SUMMARY: ["communityName", "count"],
+  COMMUNITY_MEMBER_SUMMARY: ["communityName", "count"],
+  MEET_MATCHES: ["areaName", "count", "intention"],
+  ACADEMIC_CLASS_REMINDER: ["courseName", "minutes", "location"],
+  ACADEMIC_IMPORT_READY: ["courseCount"],
+  SCHOLARSHIP_MATCH: ["scholarshipTitle"],
+  MARKETPLACE_NEARBY: ["listingTitle", "cityName"],
 };
 
 const safeRoutePrefixes = [
@@ -214,9 +234,13 @@ function preferenceAllows(
     notificationComments: boolean;
     notificationMarketplace: boolean;
     notificationAnnouncements: boolean;
+    notificationCommunity: boolean;
+    notificationMeet: boolean;
+    notificationAcademic: boolean;
+    notificationRecommendations: boolean;
   } | null,
 ) {
-  if (type === "MODERATION_UPDATE") return true;
+  if (type === "MODERATION_UPDATE" || type === "ACCOUNT") return true;
   if (!preference) return true;
   if (type === "MESSAGE") return preference.notificationMessages;
   if (type === "COMMENT" || type === "REPLY") {
@@ -224,6 +248,14 @@ function preferenceAllows(
   }
   if (type === "MARKETPLACE_UPDATE") {
     return preference.notificationMarketplace;
+  }
+  if (type === "COMMUNITY_ACTIVITY") {
+    return preference.notificationCommunity;
+  }
+  if (type === "MEET_ACTIVITY") return preference.notificationMeet;
+  if (type === "ACADEMIC") return preference.notificationAcademic;
+  if (type === "RECOMMENDATION") {
+    return preference.notificationRecommendations;
   }
   return preference.notificationAnnouncements;
 }
@@ -292,6 +324,10 @@ async function deliverClaimedJob(jobId: string) {
                 notificationComments: true,
                 notificationMarketplace: true,
                 notificationAnnouncements: true,
+                notificationCommunity: true,
+                notificationMeet: true,
+                notificationAcademic: true,
+                notificationRecommendations: true,
               },
             },
           },

@@ -16,6 +16,7 @@ import {
   updateNotificationTemplate,
 } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { generateSmartNotificationJobs } from "@/lib/smart-notifications";
 
 const isIsolatedPostgres =
   process.env.DATABASE_URL?.includes("/kondo_module3_test") ?? false;
@@ -59,6 +60,10 @@ async function createFixture() {
               notificationComments: false,
               notificationMarketplace: false,
               notificationAnnouncements: false,
+              notificationCommunity: false,
+              notificationMeet: false,
+              notificationAcademic: false,
+              notificationRecommendations: false,
             },
           },
         },
@@ -250,6 +255,18 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
     });
     await enqueueNotificationJob({
       recipientId: fixture.disabledRecipient.id,
+      type: "MEET_ACTIVITY",
+      templateKey: "MEET_MATCHES",
+      data: {
+        areaName: "Jiaxing",
+        count: 3,
+        intention: "language exchange",
+      },
+      href: "/communities?tab=meet",
+      dedupeKey: "meet:muted",
+    });
+    await enqueueNotificationJob({
+      recipientId: fixture.disabledRecipient.id,
       actorId: fixture.admin.id,
       type: "MODERATION_UPDATE",
       templateKey: "MODERATION_RESULT",
@@ -265,6 +282,11 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
     });
     expect(jobs).toEqual([
       {
+        dedupeKey: "meet:muted",
+        status: "SKIPPED",
+        lastErrorCode: "PREFERENCE_DISABLED",
+      },
+      {
         dedupeKey: "message:muted",
         status: "SKIPPED",
         lastErrorCode: "PREFERENCE_DISABLED",
@@ -278,6 +300,99 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
     await expect(
       getUnreadNotificationCount(fixture.disabledRecipient.id),
     ).resolves.toBe(1);
+  });
+
+  it("creates one useful onboarding reminder and deduplicates repeated smart-worker runs", async () => {
+    const now = new Date("2026-07-27T08:03:00.000Z");
+    await prisma.user.update({
+      where: { id: fixture.recipient.id },
+      data: {
+        createdAt: new Date(now.getTime() - 2 * 86_400_000),
+        onboardingCompletedAt: null,
+      },
+    });
+
+    const first = await generateSmartNotificationJobs(now, {
+      includeHourly: true,
+      recipientIds: [fixture.recipient.id],
+    });
+    const second = await generateSmartNotificationJobs(now, {
+      includeHourly: true,
+      recipientIds: [fixture.recipient.id],
+    });
+    expect(first.created).toBeGreaterThanOrEqual(1);
+    expect(second.created).toBe(0);
+
+    await processNotificationJobs(20);
+    await expect(
+      prisma.notification.findMany({
+        where: {
+          recipientId: fixture.recipient.id,
+          templateKey: "ONBOARDING_REMINDER",
+        },
+        select: { title: true, href: true },
+      }),
+    ).resolves.toEqual([
+      {
+        title: "Complete your Kondo profile",
+        href: "/onboarding",
+      },
+    ]);
+  });
+
+  it("reminds a student shortly before a confirmed class and only once per class date", async () => {
+    const now = new Date("2026-07-27T08:03:00.000Z");
+    const schedule = await prisma.studentSchedule.create({
+      data: {
+        ownerId: fixture.recipient.id,
+        title: "Module 8 confirmed timetable",
+        timezone: "UTC",
+        confirmedAt: new Date("2026-07-26T12:00:00.000Z"),
+        courses: {
+          create: {
+            courseName: "Applied Mathematics",
+            dayOfWeek: 1,
+            specificDate: new Date("2026-07-27T00:00:00.000Z"),
+            startTime: "08:18",
+            endTime: "09:48",
+            building: "Science Building",
+            room: "204",
+          },
+        },
+      },
+    });
+
+    try {
+      const first = await generateSmartNotificationJobs(now, {
+        includeHourly: false,
+        recipientIds: [fixture.recipient.id],
+      });
+      const second = await generateSmartNotificationJobs(now, {
+        includeHourly: false,
+        recipientIds: [fixture.recipient.id],
+      });
+      expect(first.created).toBe(1);
+      expect(second.created).toBe(0);
+
+      await processNotificationJobs(20);
+      await expect(
+        prisma.notification.findMany({
+          where: {
+            recipientId: fixture.recipient.id,
+            templateKey: "ACADEMIC_CLASS_REMINDER",
+          },
+          select: { title: true, body: true, href: true },
+        }),
+      ).resolves.toEqual([
+        {
+          title: "Applied Mathematics starts in 15 minutes",
+          body: "Science Building · 204",
+          href: `/student-hub/tools/timetables/${schedule.id}`,
+        },
+      ]);
+    } finally {
+      await prisma.studentSchedule.delete({ where: { id: schedule.id } });
+    }
   });
 
   it("supports pagination, individual read, click state, mark all, and soft hiding", async () => {

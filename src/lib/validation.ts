@@ -315,6 +315,10 @@ export const settingsPreferencesSchema = z.object({
   notificationComments: z.boolean().optional(),
   notificationMarketplace: z.boolean().optional(),
   notificationAnnouncements: z.boolean().optional(),
+  notificationCommunity: z.boolean().optional(),
+  notificationMeet: z.boolean().optional(),
+  notificationAcademic: z.boolean().optional(),
+  notificationRecommendations: z.boolean().optional(),
   emailDigest: z.enum(["NEVER", "DAILY", "WEEKLY"]).optional(),
 });
 

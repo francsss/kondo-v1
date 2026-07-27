@@ -1093,7 +1093,9 @@ export async function createCommunityPost(input: {
     },
     select: {
       role: true,
-      community: { select: { id: true, slug: true, status: true } },
+      community: {
+        select: { id: true, slug: true, name: true, status: true },
+      },
     },
   });
   if (!membership || membership.community.status !== "ACTIVE") {
@@ -1178,6 +1180,39 @@ export async function createCommunityPost(input: {
           },
           href: `/communities/${membership.community.slug}?post=${post.id}`,
           dedupeKey: `community-announcement:${post.id}:${recipient.userId}`,
+        });
+      }
+    } else if (post.status === "PUBLISHED" && localStaff(membership.role)) {
+      const [recipients, actorProfile] = await Promise.all([
+        tx.communityMember.findMany({
+          where: {
+            communityId: post.communityId,
+            userId: { not: input.actor.id },
+          },
+          select: { userId: true },
+          take: 500,
+        }),
+        tx.user.findUnique({
+          where: { id: input.actor.id },
+          select: { firstName: true, lastName: true },
+        }),
+      ]);
+      const day = post.createdAt.toISOString().slice(0, 10);
+      for (const recipient of recipients) {
+        await enqueueNotificationJobWithClient(tx, {
+          recipientId: recipient.userId,
+          actorId: input.actor.id,
+          type: "COMMUNITY_ACTIVITY",
+          templateKey: "COMMUNITY_POST",
+          data: {
+            actorName: actorProfile
+              ? `${actorProfile.firstName} ${actorProfile.lastName}`
+              : "Community staff",
+            communityName: membership.community.name,
+            preview: post.content.slice(0, 180),
+          },
+          href: `/communities/${membership.community.slug}?post=${post.id}`,
+          dedupeKey: `community-post:${post.communityId}:${recipient.userId}:${day}`,
         });
       }
     }

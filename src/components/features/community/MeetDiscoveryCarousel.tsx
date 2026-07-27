@@ -8,6 +8,7 @@ import {
   Heart,
   Languages,
   MapPin,
+  MoveRight,
   Sparkles,
   UsersRound,
 } from "lucide-react";
@@ -220,8 +221,21 @@ export function MeetDiscoveryCarousel({
                   </div>
                   <p className="mt-4 truncate text-lg font-black tracking-tight">
                     {maskedName(profile.firstName, profile.lastName)}
-                    {profile.age ? ` · ${profile.age}` : ""}
                   </p>
+                  {profile.gender || profile.age ? (
+                    <p className="mt-1 truncate text-xs font-bold text-foreground/75">
+                      {[
+                        profile.gender === "MALE"
+                          ? "Male"
+                          : profile.gender === "FEMALE"
+                            ? "Female"
+                            : null,
+                        profile.age,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                   <p className="mt-1 truncate text-xs font-semibold text-muted-foreground">
                     {profile.distanceLabel ??
                       profile.university ??
@@ -264,6 +278,31 @@ export function MeetDiscoveryCarousel({
               );
             })
           : null}
+        {!loading && cards.length ? (
+          <button
+            aria-label="Discover more people"
+            className="group flex h-48 w-[210px] shrink-0 snap-start flex-col justify-between rounded-[1.75rem] border border-dashed border-kondo-green/35 bg-gradient-to-br from-kondo-mint/70 via-card to-card p-5 text-left shadow-soft transition hover:-translate-y-1 hover:border-kondo-green hover:shadow-lift dark:from-emerald-400/10 sm:w-[235px]"
+            onClick={() =>
+              onPremiumRequest(
+                "Unlock more profiles, advanced filters, extended distance and additional discovery options.",
+              )
+            }
+            type="button"
+          >
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-green text-white shadow-lg transition group-hover:scale-105">
+              <MoveRight className="h-5 w-5" />
+            </span>
+            <span>
+              <span className="block text-lg font-black tracking-tight">
+                Discover more people
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                More profiles and discovery options when you ask for them.
+              </span>
+            </span>
+            <span className="text-xs font-black text-kondo-green">More →</span>
+          </button>
+        ) : null}
       </div>
     </section>
   );

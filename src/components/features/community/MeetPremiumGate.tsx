@@ -51,6 +51,8 @@ export function MeetPremiumGate({
         <div className="space-y-4 p-7 sm:p-9">
           {[
             "View complete profiles from discovery previews",
+            "Browse more compatible student profiles",
+            "Use advanced filters and additional discovery options",
             "Explore extended areas and other study cities",
             "Send connection requests directly from the map",
           ].map((feature) => (

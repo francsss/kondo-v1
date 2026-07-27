@@ -16,6 +16,10 @@ type Preferences = {
   notificationComments: boolean;
   notificationMarketplace: boolean;
   notificationAnnouncements: boolean;
+  notificationCommunity: boolean;
+  notificationMeet: boolean;
+  notificationAcademic: boolean;
+  notificationRecommendations: boolean;
   emailDigest: "NEVER" | "DAILY" | "WEEKLY";
 };
 
@@ -36,9 +40,29 @@ const toggles = [
     description: "Relevant updates about your listings and contacts.",
   },
   {
+    key: "notificationCommunity" as const,
+    label: "Communities",
+    description: "Useful discussions and activity from communities you joined.",
+  },
+  {
+    key: "notificationMeet" as const,
+    label: "Meet",
+    description: "Meaningful student connections matching your preferences.",
+  },
+  {
+    key: "notificationAcademic" as const,
+    label: "Academic reminders",
+    description: "Classes, timetable analysis and other Student Hub actions.",
+  },
+  {
+    key: "notificationRecommendations" as const,
+    label: "Personalized recommendations",
+    description: "Limited scholarships and nearby Marketplace suggestions.",
+  },
+  {
     key: "notificationAnnouncements" as const,
     label: "Community announcements",
-    description: "Important updates from communities you joined.",
+    description: "Important staff and platform announcements.",
   },
 ];
 
@@ -59,6 +83,10 @@ export function NotificationSettings({
       notificationComments: values.has("notificationComments"),
       notificationMarketplace: values.has("notificationMarketplace"),
       notificationAnnouncements: values.has("notificationAnnouncements"),
+      notificationCommunity: values.has("notificationCommunity"),
+      notificationMeet: values.has("notificationMeet"),
+      notificationAcademic: values.has("notificationAcademic"),
+      notificationRecommendations: values.has("notificationRecommendations"),
       emailDigest: values.get("emailDigest"),
     };
     setSaveState("saving");

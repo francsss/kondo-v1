@@ -415,6 +415,32 @@ postgresDescribe("Module 11 PostgreSQL communities", () => {
         },
       }),
     ).rejects.toMatchObject({ status: 403 });
+    const staffPost = await createCommunityPost({
+      actor: fixture.owner,
+      data: {
+        communityId: community.id,
+        type: "DISCUSSION",
+        content: "Community staff shared a useful campus update.",
+        mediaIds: [],
+      },
+    });
+    await expect(
+      prisma.notificationJob.findUnique({
+        where: {
+          recipientId_dedupeKey: {
+            recipientId: fixture.member.id,
+            dedupeKey: `community-post:${community.id}:${fixture.member.id}:${new Date(
+              staffPost.post.createdAt,
+            )
+              .toISOString()
+              .slice(0, 10)}`,
+          },
+        },
+      }),
+    ).resolves.toMatchObject({
+      type: "COMMUNITY_ACTIVITY",
+      templateKey: "COMMUNITY_POST",
+    });
     const announcement = await createCommunityPost({
       actor: fixture.owner,
       data: {

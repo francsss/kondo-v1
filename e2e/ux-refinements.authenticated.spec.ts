@@ -58,6 +58,17 @@ test.describe("premium UX refinements", () => {
         communityNavigation.getByRole("link", { name: label }),
       ).toBeVisible();
     }
+    await expect(
+      communityNavigation.getByText("New", { exact: true }),
+    ).toBeVisible();
+    const communityWidths = await communityNavigation.evaluate((element) =>
+      Array.from(element.children).map(
+        (child) => child.getBoundingClientRect().width,
+      ),
+    );
+    expect(
+      Math.max(...communityWidths) - Math.min(...communityWidths),
+    ).toBeLessThan(2);
     expect(
       await communityNavigation.evaluate(
         (element) => element.scrollWidth <= element.clientWidth + 1,
@@ -73,6 +84,13 @@ test.describe("premium UX refinements", () => {
           ).size,
       ),
     ).toBe(1);
+    await communityNavigation.getByRole("link", { name: /Meet/ }).click();
+    await expect(page).toHaveURL(/\/communities\?tab=meet/);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Community sections" })
+        .getByText("New", { exact: true }),
+    ).toHaveCount(0);
 
     await page.goto("/student-hub");
     const mobileStudentNavigation = page.getByRole("navigation", {
@@ -156,9 +174,20 @@ test.describe("premium UX refinements", () => {
     await expect(
       page.getByRole("region", { name: "Discovery matches" }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Discover more people" }),
+    ).toBeVisible();
     await expect(page.getByText("Meet Premium", { exact: true })).toHaveCount(
       0,
     );
+    await page.getByRole("button", { name: "Discover more people" }).click();
+    await expect(page.getByRole("dialog")).toContainText(
+      "Unlock more profiles",
+    );
+    await page
+      .getByRole("button", { name: "Continue basic discovery" })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("button", { name: "Nearby" }).click();
 
     await expect(

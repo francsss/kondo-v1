@@ -1,6 +1,10 @@
 import { Prisma, type UserGender } from "@prisma/client";
 import { getAfricanCountry } from "@/lib/african-countries";
 import { writeAuditLogWithClient } from "@/lib/audit";
+import {
+  enqueueNotificationJobWithClient,
+  processNotificationJobNow,
+} from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { createDatabaseSession } from "@/lib/server-auth";
 
@@ -33,7 +37,7 @@ export async function registerUserWithNationalCommunity(
   let finalError: unknown;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      return await prisma.$transaction(
+      const result = await prisma.$transaction(
         async (tx) => {
           const country = await tx.country.upsert({
             where: { code: countryReference.code },
@@ -160,7 +164,20 @@ export async function registerUserWithNationalCommunity(
             ipAddress: input.ipAddress,
             userAgent: input.userAgent,
           });
-          return { user: createdUser, sessionId, communityId: community.id };
+          const welcomeJob = await enqueueNotificationJobWithClient(tx, {
+            recipientId: createdUser.id,
+            type: "ACCOUNT",
+            templateKey: "ACCOUNT_WELCOME",
+            data: { firstName: createdUser.firstName },
+            href: "/onboarding",
+            dedupeKey: `account-welcome:${createdUser.id}`,
+          });
+          return {
+            user: createdUser,
+            sessionId,
+            communityId: community.id,
+            welcomeJobId: welcomeJob?.id ?? null,
+          };
         },
         {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -168,6 +185,10 @@ export async function registerUserWithNationalCommunity(
           timeout: 15_000,
         },
       );
+      if (result.welcomeJobId) {
+        await processNotificationJobNow(result.welcomeJobId).catch(() => null);
+      }
+      return result;
     } catch (error) {
       finalError = error;
       if (!isRetryableRegistrationError(error) || attempt === 3) throw error;

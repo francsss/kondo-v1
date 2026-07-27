@@ -235,6 +235,7 @@ export async function POST(request: NextRequest) {
         firstName: true,
         lastName: true,
         gender: true,
+        profileAudience: true,
         cityId: true,
         universityId: true,
         avatarMediaId: true,
@@ -330,9 +331,16 @@ export async function POST(request: NextRequest) {
           null;
         const city =
           discovery.discoveryCity?.name ?? candidate.city?.name ?? null;
+        const candidateCityId = discovery.discoveryCityId ?? candidate.cityId;
+        const candidateUniversityId =
+          discovery.discoveryUniversityId ?? candidate.universityId;
         const distanceLabel =
           parsed.data.mode !== "NEARBY"
-            ? null
+            ? candidateUniversityId === targetUniversityId && university
+              ? `Near ${university}`
+              : candidateCityId === targetCityId
+                ? `Around ${city ?? "your study city"}`
+                : null
             : parsed.data.distanceRange === "KM_5" && university
               ? `Near ${university}`
               : parsed.data.distanceRange === "KM_10" && university
@@ -350,6 +358,8 @@ export async function POST(request: NextRequest) {
           lastName: candidate.lastName,
           avatarMediaId: candidate.avatarMediaId,
           bio: candidate.bio,
+          gender:
+            candidate.profileAudience === "PUBLIC" ? candidate.gender : null,
           age: discovery.showAge ? ageFromBirthYear(discovery.birthYear) : null,
           lastActiveAt: candidate.lastActiveAt?.toISOString() ?? null,
           distanceLabel,

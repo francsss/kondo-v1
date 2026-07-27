@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 import { logServerError, logServerEvent } from "@/lib/logger";
+import {
+  enqueueNotificationJob,
+  processNotificationJobNow,
+} from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
@@ -187,6 +191,17 @@ export async function POST(
         },
       }),
     ]);
+    const reviewJob = await enqueueNotificationJob({
+      recipientId: user.id,
+      type: "ACADEMIC",
+      templateKey: "ACADEMIC_IMPORT_READY",
+      data: { courseCount: normalized.courses.length },
+      href: "/student-hub/tools",
+      dedupeKey: `academic-import-ready:${id}`,
+    });
+    if (reviewJob?.id) {
+      await processNotificationJobNow(reviewJob.id).catch(() => null);
+    }
     logServerEvent("student-hub.schedule-analysis.review-required", {
       importId: id,
       courseCount: normalized.courses.length,

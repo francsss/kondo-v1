@@ -85,6 +85,21 @@ postgresDescribe("national registration and call coordination", () => {
       expect(registration.user.gender).toBe(
         registration.user.firstName === "First" ? "FEMALE" : "MALE",
       );
+      await expect(
+        prisma.notification.findUnique({
+          where: {
+            recipientId_dedupeKey: {
+              recipientId: registration.user.id,
+              dedupeKey: `account-welcome:${registration.user.id}`,
+            },
+          },
+          select: { type: true, title: true, href: true },
+        }),
+      ).resolves.toEqual({
+        type: "ACCOUNT",
+        title: `Welcome to Kondo, ${registration.user.firstName} 👋`,
+        href: "/onboarding",
+      });
     }
     const testAdmin = await prisma.user.findUniqueOrThrow({
       where: { email: adminEmail },

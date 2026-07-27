@@ -21,6 +21,10 @@ type PreferenceUpdate = {
   notificationComments?: boolean;
   notificationMarketplace?: boolean;
   notificationAnnouncements?: boolean;
+  notificationCommunity?: boolean;
+  notificationMeet?: boolean;
+  notificationAcademic?: boolean;
+  notificationRecommendations?: boolean;
   emailDigest?: NotificationDigest;
 };
 
@@ -31,6 +35,10 @@ const preferenceSelect = {
   notificationComments: true,
   notificationMarketplace: true,
   notificationAnnouncements: true,
+  notificationCommunity: true,
+  notificationMeet: true,
+  notificationAcademic: true,
+  notificationRecommendations: true,
   emailDigest: true,
   updatedAt: true,
 } satisfies Prisma.UserPreferenceSelect;
@@ -42,6 +50,10 @@ const defaultPreferences = {
   notificationComments: true,
   notificationMarketplace: true,
   notificationAnnouncements: true,
+  notificationCommunity: true,
+  notificationMeet: true,
+  notificationAcademic: true,
+  notificationRecommendations: true,
   emailDigest: "NEVER" as const,
 };
 
@@ -67,6 +79,10 @@ function preferenceDto(
     notificationComments: preference.notificationComments,
     notificationMarketplace: preference.notificationMarketplace,
     notificationAnnouncements: preference.notificationAnnouncements,
+    notificationCommunity: preference.notificationCommunity,
+    notificationMeet: preference.notificationMeet,
+    notificationAcademic: preference.notificationAcademic,
+    notificationRecommendations: preference.notificationRecommendations,
     emailDigest: preference.emailDigest,
     updatedAt: preference.updatedAt?.toISOString() ?? null,
   };

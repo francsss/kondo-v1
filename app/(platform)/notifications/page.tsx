@@ -2,12 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Bell,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
+  GraduationCap,
+  Handshake,
   Megaphone,
   MessageCircle,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
+  UsersRound,
 } from "lucide-react";
 import { MarkAllReadButton } from "@/components/features/notifications/MarkAllReadButton";
 import { NotificationAnalytics } from "@/components/features/notifications/NotificationAnalytics";
@@ -22,11 +27,16 @@ import { requireUser } from "@/lib/server-auth";
 export const metadata: Metadata = { title: "Notifications" };
 
 const icons = {
+  ACCOUNT: Sparkles,
   MESSAGE: MessageCircle,
   COMMENT: MessageCircle,
   REPLY: MessageCircle,
   MARKETPLACE_UPDATE: ShoppingBag,
   COMMUNITY_ANNOUNCEMENT: Megaphone,
+  COMMUNITY_ACTIVITY: UsersRound,
+  MEET_ACTIVITY: Handshake,
+  ACADEMIC: BookOpen,
+  RECOMMENDATION: GraduationCap,
   MODERATION_UPDATE: ShieldCheck,
 };
 
