@@ -24,7 +24,11 @@ export async function POST(request: NextRequest) {
     const profile = await prisma.meetDiscoveryProfile.findUnique({
       where: { userId: user.id },
     });
-    if (!profile?.completedAt) {
+    if (
+      !profile?.completedAt ||
+      !profile.discoveryCityId ||
+      !profile.discoveryUniversityId
+    ) {
       return Response.json(
         {
           error: "Complete your Meet Discovery Profile before matching.",

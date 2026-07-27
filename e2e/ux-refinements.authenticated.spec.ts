@@ -53,7 +53,7 @@ test.describe("premium UX refinements", () => {
       name: "Community sections",
     });
     await expect(communityNavigation).toBeVisible();
-    for (const label of ["My Communities", "Discover", "Meet"]) {
+    for (const label of ["My Community", "Discover", "Meet"]) {
       await expect(
         communityNavigation.getByRole("link", { name: label }),
       ).toBeVisible();
@@ -151,7 +151,10 @@ test.describe("premium UX refinements", () => {
   }) => {
     await page.goto("/communities?tab=meet");
     await expect(
-      page.getByRole("button", { name: "Discovery Settings" }),
+      page.getByRole("button", { name: "Discovery preferences" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Discovery matches" }),
     ).toBeVisible();
     await expect(page.getByText("Meet Premium", { exact: true })).toHaveCount(
       0,
@@ -168,22 +171,27 @@ test.describe("premium UX refinements", () => {
     await expect(page.getByText("Approximate discovery enabled")).toBeVisible();
     await page.getByRole("button", { name: "20 km" }).click();
     await page.getByRole("button", { name: "Explore people" }).click();
-    await expect(page.getByText("Approximate map · never exact")).toBeVisible();
+    const discoveryMap = page.getByRole("region", {
+      name: "Nearby discovery map",
+    });
     await expect(
-      page.getByRole("button", { name: /^Preview / }).first(),
+      discoveryMap.getByText("Approximate map · never exact"),
+    ).toBeVisible();
+    await expect(
+      discoveryMap.getByRole("button", { name: /^Preview / }).first(),
     ).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page
+    await discoveryMap
       .getByRole("button", { name: /^Preview / })
       .first()
       .click();
     await expect(
-      page.getByRole("button", { name: "Full profile" }),
+      discoveryMap.getByRole("button", { name: "Full profile" }),
     ).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Full profile" }).click();
+    await discoveryMap.getByRole("button", { name: "Full profile" }).click();
     await expect(page.getByRole("dialog")).toContainText("Meet Premium");
   });
 });

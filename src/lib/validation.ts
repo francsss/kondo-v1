@@ -15,6 +15,9 @@ export const registerSchema = z
     firstName: z.string().trim().min(2).max(60),
     lastName: z.string().trim().min(2).max(60),
     email: z.string().trim().email().toLowerCase(),
+    gender: z.enum(["MALE", "FEMALE"], {
+      required_error: "Select your gender.",
+    }),
     countryCode: z
       .string()
       .trim()
@@ -77,6 +80,7 @@ const optionalReferenceId = z.preprocess(
 
 export const onboardingSchema = z.object({
   ...onboardingReferenceSchema,
+  gender: z.enum(["MALE", "FEMALE"]),
   studentJourney: studentJourneySchema,
   degree: z.string().trim().min(2).max(120),
   studyLevel: studyLevelSchema,
@@ -86,6 +90,7 @@ export const onboardingSchema = z.object({
 });
 
 export const onboardingDraftSchema = z.object({
+  gender: z.enum(["MALE", "FEMALE"]).optional(),
   studentJourney: studentJourneySchema.optional(),
   countryId: optionalReferenceId,
   cityId: optionalReferenceId,

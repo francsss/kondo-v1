@@ -24,6 +24,7 @@ type StudyLevel =
   "LANGUAGE" | "BACHELORS" | "MASTERS" | "DOCTORATE" | "EXCHANGE" | "OTHER";
 type StudentJourney = "CURRENT_STUDENT" | "INCOMING_STUDENT" | "ALUMNI";
 type InitialValues = {
+  gender: "MALE" | "FEMALE" | null;
   studentJourney: StudentJourney | null;
   countryId: string | null;
   cityId: string | null;
@@ -90,6 +91,7 @@ export function OnboardingFlow({
   const [error, setError] = useState("");
   const stepStartedAtRef = useRef(0);
   const [form, setForm] = useState({
+    gender: initialValues.gender ?? "",
     studentJourney: initialValues.studentJourney ?? "",
     countryId: countries.some(
       (country) => country.id === initialValues.countryId,
@@ -233,7 +235,7 @@ export function OnboardingFlow({
 
   const canContinue =
     step === 0
-      ? Boolean(form.studentJourney)
+      ? Boolean(form.gender && form.studentJourney)
       : step === 1
         ? Boolean(form.countryId)
         : step === 2
@@ -302,7 +304,38 @@ export function OnboardingFlow({
         </p>
         <div className="mt-8 min-h-[260px]">
           {step === 0 ? (
-            <div className="grid gap-3">
+            <div className="grid gap-5">
+              <fieldset>
+                <legend className="mb-2 text-sm font-bold text-kondo-ink dark:text-white">
+                  Gender
+                </legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "MALE", label: "Man" },
+                    { value: "FEMALE", label: "Woman" },
+                  ].map((option) => (
+                    <button
+                      aria-pressed={form.gender === option.value}
+                      className={cn(
+                        "rounded-2xl border px-4 py-3 text-sm font-bold transition",
+                        form.gender === option.value
+                          ? "border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+                          : "border-border bg-background text-muted-foreground hover:border-kondo-green/50",
+                      )}
+                      key={option.value}
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          gender: option.value as "MALE" | "FEMALE",
+                        })
+                      }
+                      type="button"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               {[
                 {
                   value: "CURRENT_STUDENT",

@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       passwordHash,
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
+      gender: parsed.data.gender,
       countryCode: parsed.data.countryCode,
       ...meta,
     });

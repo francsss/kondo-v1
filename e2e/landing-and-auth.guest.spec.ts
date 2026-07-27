@@ -24,6 +24,7 @@ test.describe("public landing and authentication", () => {
     await page
       .locator('input[name="email"]')
       .fill(`e2e-${Date.now()}@example.com`);
+    await page.locator('select[name="gender"]').selectOption("FEMALE");
     await page.getByRole("button", { name: "Country of origin" }).click();
     await page
       .getByRole("textbox", { name: "Search African countries…" })

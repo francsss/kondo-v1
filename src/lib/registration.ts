@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type UserGender } from "@prisma/client";
 import { getAfricanCountry } from "@/lib/african-countries";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +11,7 @@ type RegistrationInput = {
   passwordHash: string;
   firstName: string;
   lastName: string;
+  gender: UserGender;
   countryCode: string;
   ipAddress?: string | null;
   userAgent?: string | null;
@@ -75,6 +76,7 @@ export async function registerUserWithNationalCommunity(
               passwordHash: input.passwordHash,
               firstName: input.firstName,
               lastName: input.lastName,
+              gender: input.gender,
               countryId: country.id,
               role: "MEMBER",
             },

@@ -62,6 +62,7 @@ postgresDescribe("national registration and call coordination", () => {
           passwordHash: "not-a-real-password-hash",
           firstName,
           lastName: "Zimbabwe",
+          gender: index === 0 ? "FEMALE" : "MALE",
           countryCode: "ZW",
         }),
       ),
@@ -81,6 +82,9 @@ postgresDescribe("national registration and call coordination", () => {
         )?.role,
       ).toBe("MEMBER");
       expect(registration.user.countryId).toBe(communities[0]?.countryId);
+      expect(registration.user.gender).toBe(
+        registration.user.firstName === "First" ? "FEMALE" : "MALE",
+      );
     }
     const testAdmin = await prisma.user.findUniqueOrThrow({
       where: { email: adminEmail },
@@ -297,5 +301,72 @@ postgresDescribe("national registration and call coordination", () => {
     });
     expect(duplicateAssignments).toHaveLength(0);
     await Promise.all(users.map(({ id }) => leaveMeetQueue(id)));
+  });
+
+  it("uses shared discovery intentions when selecting a Random candidate", async () => {
+    const ghana = await prisma.country.findUniqueOrThrow({
+      where: { code: "GH" },
+    });
+    const [viewer, studyCandidate, languageCandidate] = await Promise.all(
+      ["viewer", "study", "language"].map((label) =>
+        prisma.user.create({
+          data: {
+            email: `intent-${label}-${randomUUID()}@${testDomain}`,
+            firstName: "Intent",
+            lastName: label,
+            countryId: ghana.id,
+            gender: "FEMALE",
+            status: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    const now = new Date();
+    await prisma.meetQueueEntry.createMany({
+      data: [
+        {
+          userId: studyCandidate!.id,
+          genderPreference: "ALL",
+          mode: "RANDOM",
+          intents: ["STUDY"],
+          heartbeatAt: now,
+        },
+        {
+          userId: languageCandidate!.id,
+          genderPreference: "ALL",
+          mode: "RANDOM",
+          intents: ["LANGUAGE"],
+          heartbeatAt: now,
+        },
+      ],
+    });
+
+    const match = await findMeetMatch({
+      userId: viewer!.id,
+      gender: "FEMALE",
+      genderPreference: "ALL",
+      countryPreferenceId: null,
+      mode: "RANDOM",
+      intents: ["LANGUAGE"],
+    });
+
+    expect(match.state).toBe("MATCHED");
+    if (match.state !== "MATCHED") throw new Error("Expected a match.");
+    const participants = await prisma.callParticipant.findMany({
+      where: { callSessionId: match.callId },
+      select: { userId: true },
+    });
+    expect(participants.map(({ userId }) => userId).sort()).toEqual(
+      [viewer!.id, languageCandidate!.id].sort(),
+    );
+    expect(
+      participants.some(({ userId }) => userId === studyCandidate!.id),
+    ).toBe(false);
+
+    await Promise.all(
+      [viewer!, studyCandidate!, languageCandidate!].map(({ id }) =>
+        leaveMeetQueue(id),
+      ),
+    );
   });
 });

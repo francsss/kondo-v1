@@ -153,7 +153,7 @@ export default async function CommunitiesPage({
     cityId: university.cityId,
   }));
   const tabs = [
-    { value: "my" as const, label: "My Communities", icon: Users },
+    { value: "my" as const, label: "My Community", icon: Users },
     { value: "discover" as const, label: "Discover", icon: Compass },
     { value: "meet" as const, label: "Meet", icon: Video },
   ];

@@ -366,6 +366,11 @@ export async function POST(request: NextRequest) {
             : null,
           university: canShowUniversity ? university : null,
           languages: canShowLanguages ? candidate.languages.slice(0, 4) : [],
+          sharedInterests: discovery.showInterests
+            ? candidate.interests
+                .filter((interest) => user.interests.includes(interest))
+                .slice(0, 4)
+            : [],
           lookingFor: discovery.showInterests
             ? discovery.lookingFor.slice(0, 4)
             : [],

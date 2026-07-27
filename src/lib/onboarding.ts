@@ -1,4 +1,9 @@
-import type { Prisma, StudentJourney, StudyLevel } from "@prisma/client";
+import type {
+  Prisma,
+  StudentJourney,
+  StudyLevel,
+  UserGender,
+} from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { validateOnboardingReferences } from "@/lib/reference-data";
@@ -19,6 +24,7 @@ type PartialOnboardingReferences = {
 };
 
 export type OnboardingDraftInput = PartialOnboardingReferences & {
+  gender?: UserGender;
   studentJourney?: StudentJourney;
   degree?: string;
   studyLevel?: StudyLevel;
@@ -28,6 +34,7 @@ export type OnboardingDraftInput = PartialOnboardingReferences & {
 };
 
 export type OnboardingInput = OnboardingReferences & {
+  gender: UserGender;
   studentJourney: StudentJourney;
   degree: string;
   studyLevel: StudyLevel;
@@ -53,6 +60,7 @@ function draftData(
   // statement, which the DB consistency trigger requires when a city change
   // must also clear a now-mismatched university.
   return {
+    gender: input.gender,
     studentJourney: input.studentJourney,
     countryId: input.countryId === undefined ? undefined : input.countryId,
     cityId: input.cityId === undefined ? undefined : input.cityId,
@@ -97,6 +105,7 @@ export async function saveOnboardingDraft(
       where: { id: userId },
       data: draftData(input, { clearUniversity }),
       select: {
+        gender: true,
         studentJourney: true,
         countryId: true,
         cityId: true,
@@ -128,6 +137,7 @@ export async function completeOnboarding(
     const previous = await tx.user.findUnique({
       where: { id: userId },
       select: {
+        gender: true,
         studentJourney: true,
         countryId: true,
         cityId: true,
@@ -138,6 +148,14 @@ export async function completeOnboarding(
         languages: true,
         interests: true,
         onboardingCompletedAt: true,
+        meetDiscoveryProfile: {
+          select: {
+            userId: true,
+            discoveryCityId: true,
+            discoveryUniversityId: true,
+            completedAt: true,
+          },
+        },
       },
     });
     if (!previous) throw new Error("Authenticated user no longer exists.");
@@ -147,9 +165,27 @@ export async function completeOnboarding(
       where: { id: userId },
       data: {
         ...draftData(input),
+        ...(previous.meetDiscoveryProfile
+          ? {}
+          : {
+              nearbyDiscoveryEnabled: true,
+              meetIntents: {
+                set: [
+                  "FRIENDS",
+                  "STUDY",
+                  "LANGUAGE",
+                  "SPORTS",
+                  "CITY",
+                  "NETWORKING",
+                  "COUNTRY",
+                  "RELATIONSHIP",
+                ],
+              },
+            }),
         onboardingCompletedAt: completedAt,
       },
       select: {
+        gender: true,
         studentJourney: true,
         countryId: true,
         cityId: true,
@@ -163,7 +199,52 @@ export async function completeOnboarding(
       },
     });
 
+    await tx.meetDiscoveryProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        gender: input.gender,
+        interestedIn: "ALL",
+        birthYear: null,
+        minimumAge: 18,
+        maximumAge: 40,
+        preferredLanguages: input.languages,
+        lookingFor: [
+          "FRIENDS",
+          "STUDY",
+          "LANGUAGE",
+          "SPORTS",
+          "CITY",
+          "NETWORKING",
+          "COUNTRY",
+          "RELATIONSHIP",
+        ],
+        discoveryCityId: input.cityId,
+        discoveryUniversityId: input.universityId,
+        distanceRange: "CITY",
+        otherCityId: null,
+        nearbyVisibility: true,
+        showAge: true,
+        showNationality: true,
+        showUniversity: true,
+        showRelationshipStatus: true,
+        showLanguages: true,
+        showInterests: true,
+        completedAt,
+      },
+      update: {
+        gender: input.gender,
+        discoveryCityId:
+          previous.meetDiscoveryProfile?.discoveryCityId ?? input.cityId,
+        discoveryUniversityId:
+          previous.meetDiscoveryProfile?.discoveryUniversityId ??
+          input.universityId,
+        completedAt: previous.meetDiscoveryProfile?.completedAt ?? completedAt,
+      },
+    });
+
     const oldValue = {
+      gender: previous.gender,
       studentJourney: previous.studentJourney,
       countryId: previous.countryId,
       cityId: previous.cityId,
@@ -175,6 +256,7 @@ export async function completeOnboarding(
       interests: previous.interests,
     };
     const newValue = {
+      gender: updated.gender,
       studentJourney: updated.studentJourney,
       countryId: updated.countryId,
       cityId: updated.cityId,

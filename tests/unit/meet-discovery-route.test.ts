@@ -117,6 +117,7 @@ describe("Meet discovery API", () => {
       countryId: "country-1",
       universityId: "university-1",
       gender: "FEMALE",
+      interests: ["Study"],
     });
     mocks.findProfile.mockResolvedValue(viewerProfile);
     mocks.getPremiumAccess.mockResolvedValue({
@@ -268,6 +269,7 @@ describe("Meet discovery API", () => {
         id: "member-2",
         distanceLabel: "Near JXU",
         location: expect.objectContaining({ city: "Approximate area" }),
+        sharedInterests: ["Study"],
       }),
     );
   });

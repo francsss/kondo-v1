@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CallRoomOverlay } from "@/components/features/calls/CallRoomOverlay";
+import { MeetDiscoveryCarousel } from "@/components/features/community/MeetDiscoveryCarousel";
 import {
   MeetDiscoveryMap,
   type MeetDiscoveryProfile,
@@ -26,7 +27,11 @@ import { MeetPremiumGate } from "@/components/features/community/MeetPremiumGate
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { MEET_DISTANCE_OPTIONS, MEET_INTENTS } from "@/features/meet/config";
+import {
+  MEET_DISTANCE_OPTIONS,
+  MEET_INTENTS,
+  MEET_PREMIUM_FEATURES,
+} from "@/features/meet/config";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
 import type { PremiumAccess } from "@/lib/premium";
 import { captureProductEvent } from "@/lib/product-analytics-client";
@@ -109,10 +114,15 @@ export function MeetPanel({
       ? "CITY"
       : (initialProfile?.distanceRange ?? "CITY"),
   );
+  const [otherCityId, setOtherCityId] = useState("");
   const [matching, setMatching] = useState(false);
   const [discovering, setDiscovering] = useState(false);
   const [discoveryStarted, setDiscoveryStarted] = useState(false);
   const [profiles, setProfiles] = useState<MeetDiscoveryProfile[]>([]);
+  const [recommendations, setRecommendations] = useState<
+    MeetDiscoveryProfile[]
+  >([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [callId, setCallId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [noAvailability, setNoAvailability] = useState(false);
@@ -122,6 +132,7 @@ export function MeetPanel({
   const pollTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const skipNextAutoRefreshRef = useRef(false);
   const discoveryCityName =
     cityOptions.find((city) => city.id === profile?.discoveryCityId)?.name ??
     cityName;
@@ -129,10 +140,54 @@ export function MeetPanel({
     universityOptions.find(
       (university) => university.id === profile?.discoveryUniversityId,
     )?.name ?? universityName;
+  const profileIsComplete = Boolean(
+    profile?.completedAt &&
+    profile.discoveryCityId &&
+    profile.discoveryUniversityId,
+  );
+  const discoveryIntentKey = intents.join("|");
 
   useEffect(() => {
     captureProductEvent(PRODUCT_EVENTS.MEET_OPENED);
   }, []);
+
+  useEffect(() => {
+    if (!profileIsComplete || !intents.length) return;
+    const controller = new AbortController();
+    void fetch("/api/meet/discovery", {
+      method: "POST",
+      credentials: "include",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "LOOKING_FOR",
+        genderPreference,
+        countryPreferenceCode: "",
+        intents,
+        distanceRange: distanceRange === "OTHER_CITY" ? "CITY" : distanceRange,
+        otherCityId: null,
+      }),
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (response.ok) setRecommendations(payload?.profiles ?? []);
+      })
+      .catch((reason) => {
+        if (!(reason instanceof Error && reason.name === "AbortError")) {
+          setRecommendations([]);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRecommendationsLoading(false);
+      });
+    return () => controller.abort();
+  }, [
+    discoveryIntentKey,
+    distanceRange,
+    genderPreference,
+    intents,
+    profileIsComplete,
+  ]);
 
   const removeFromQueue = useCallback(async () => {
     await fetch("/api/meet/queue", {
@@ -185,7 +240,7 @@ export function MeetPanel({
         countryPreferenceCode: countryPreferenceCode || null,
         mode: "RANDOM",
         nearbyEnabled: false,
-        intents: [],
+        intents,
       }),
     }).catch((reason) => {
       if (reason instanceof Error && reason.name === "AbortError") return null;
@@ -267,6 +322,10 @@ export function MeetPanel({
       setError("Choose at least one reason for meeting.");
       return;
     }
+    if (mode === "NEARBY" && distanceRange === "OTHER_CITY" && !otherCityId) {
+      setError("Choose another city before exploring.");
+      return;
+    }
     if (discovering) return;
     setDiscovering(true);
     setError("");
@@ -281,7 +340,7 @@ export function MeetPanel({
           countryPreferenceCode,
           intents,
           distanceRange,
-          otherCityId: null,
+          otherCityId: distanceRange === "OTHER_CITY" ? otherCityId : null,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -295,6 +354,7 @@ export function MeetPanel({
         );
       }
       setProfiles(payload.profiles ?? []);
+      skipNextAutoRefreshRef.current = true;
       setDiscoveryStarted(true);
     } catch (cause) {
       setError(
@@ -307,6 +367,71 @@ export function MeetPanel({
     }
   }
 
+  useEffect(() => {
+    if (!discoveryStarted || mode === "RANDOM") return;
+    if (skipNextAutoRefreshRef.current) {
+      skipNextAutoRefreshRef.current = false;
+      return;
+    }
+    if (distanceRange === "OTHER_CITY" && !otherCityId) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setDiscovering(true);
+      setError("");
+      void fetch("/api/meet/discovery", {
+        method: "POST",
+        credentials: "include",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          genderPreference,
+          countryPreferenceCode,
+          intents,
+          distanceRange,
+          otherCityId: distanceRange === "OTHER_CITY" ? otherCityId : null,
+        }),
+      })
+        .then(async (response) => {
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) {
+            if (payload?.code === "MEET_PREMIUM_REQUIRED") {
+              setPremiumReason(payload.error);
+              return;
+            }
+            throw new Error(
+              payload?.error ?? "Discovery is temporarily unavailable.",
+            );
+          }
+          setProfiles(payload?.profiles ?? []);
+        })
+        .catch((cause) => {
+          if (cause instanceof Error && cause.name === "AbortError") return;
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Discovery is temporarily unavailable.",
+          );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setDiscovering(false);
+        });
+    }, 320);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [
+    countryPreferenceCode,
+    discoveryIntentKey,
+    discoveryStarted,
+    distanceRange,
+    genderPreference,
+    intents,
+    mode,
+    otherCityId,
+  ]);
+
   function selectMode(nextMode: MeetMode) {
     if (matching) return;
     setMode(nextMode);
@@ -318,6 +443,7 @@ export function MeetPanel({
   }
 
   function savedProfile(nextProfile: MeetProfileData) {
+    setRecommendationsLoading(true);
     setProfile(nextProfile);
     setGender(nextProfile.gender);
     setGenderPreference(nextProfile.interestedIn);
@@ -328,16 +454,11 @@ export function MeetPanel({
         ? "CITY"
         : nextProfile.distanceRange,
     );
+    setOtherCityId("");
     setEditingProfile(false);
     setDiscoveryStarted(false);
     setProfiles([]);
   }
-
-  const profileIsComplete = Boolean(
-    profile?.completedAt &&
-    profile.discoveryCityId &&
-    profile.discoveryUniversityId,
-  );
 
   if (editingProfile || !profileIsComplete) {
     return (
@@ -372,18 +493,24 @@ export function MeetPanel({
             Your preferences stay private and can be changed anytime.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setEditingProfile(true)}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <Settings2 className="h-4 w-4" />
-            Discovery Settings
-          </Button>
-        </div>
+        <Button
+          aria-label="Discovery preferences"
+          onClick={() => setEditingProfile(true)}
+          size="icon"
+          title="Discovery preferences"
+          type="button"
+          variant="ghost"
+        >
+          <Settings2 className="h-4 w-4" />
+        </Button>
       </div>
+      <MeetDiscoveryCarousel
+        activeIntent={intents[0] ?? null}
+        loading={recommendationsLoading}
+        onPremiumRequest={setPremiumReason}
+        premiumFeatures={premiumAccess.featureKeys}
+        profiles={recommendations}
+      />
       <nav
         aria-label="Meet modes"
         className="subnav-row mx-auto mb-7 max-w-5xl border-b border-border"
@@ -551,9 +678,7 @@ export function MeetPanel({
                       Discovery area
                     </legend>
                     <div className="grid grid-cols-2 gap-2">
-                      {MEET_DISTANCE_OPTIONS.filter(
-                        (option) => option.value !== "OTHER_CITY",
-                      ).map((option) => (
+                      {MEET_DISTANCE_OPTIONS.map((option) => (
                         <button
                           aria-pressed={distanceRange === option.value}
                           className={cn(
@@ -563,7 +688,20 @@ export function MeetPanel({
                               : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
                           )}
                           key={option.value}
-                          onClick={() => setDistanceRange(option.value)}
+                          onClick={() => {
+                            if (
+                              option.value === "OTHER_CITY" &&
+                              !premiumAccess.featureKeys.includes(
+                                MEET_PREMIUM_FEATURES.OTHER_CITY,
+                              )
+                            ) {
+                              setPremiumReason(
+                                "Meet Premium unlocks discovery in another study city.",
+                              );
+                              return;
+                            }
+                            setDistanceRange(option.value);
+                          }}
                           type="button"
                         >
                           {option.label}
@@ -571,6 +709,17 @@ export function MeetPanel({
                       ))}
                     </div>
                   </fieldset>
+                ) : null}
+
+                {mode === "NEARBY" && distanceRange === "OTHER_CITY" ? (
+                  <SearchableSelect
+                    label="Another city"
+                    onSelect={setOtherCityId}
+                    options={cityOptions}
+                    placeholder="Choose a study city"
+                    searchPlaceholder="Search cities"
+                    selected={otherCityId}
+                  />
                 ) : null}
 
                 {error ? (

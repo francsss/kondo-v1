@@ -38,12 +38,27 @@ describe("input validation", () => {
         firstName: "Ama",
         lastName: "Mensah",
         email: "AMA@example.com",
+        gender: "FEMALE",
         countryCode: "GH",
         password: "StrongPass1",
         confirmPassword: "StrongPass1",
         acceptedTerms: true,
       }).success,
     ).toBe(true);
+  });
+
+  it("requires gender during registration", () => {
+    expect(
+      registerSchema.safeParse({
+        firstName: "Ama",
+        lastName: "Mensah",
+        email: "ama@example.com",
+        countryCode: "GH",
+        password: "StrongPass1",
+        confirmPassword: "StrongPass1",
+        acceptedTerms: true,
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects posts without meaningful content", () => {
@@ -173,6 +188,7 @@ describe("input validation", () => {
     expect(
       onboardingSchema.safeParse({
         ...references,
+        gender: "FEMALE",
         studentJourney: "CURRENT_STUDENT",
         degree: "",
         studyLevel: "MASTERS",
@@ -217,6 +233,7 @@ describe("input validation", () => {
     expect(
       onboardingSchema.safeParse({
         studentJourney: "INCOMING_STUDENT",
+        gender: "MALE",
         countryId: "ckz1234567890123456789012",
         cityId: "",
         universityId: "",

@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("");
+  const [gender, setGender] = useState("");
 
   useEffect(() => {
     resetProductAnalytics();
@@ -45,6 +46,7 @@ export default function RegisterPage() {
           firstName: form.get("firstName"),
           lastName: form.get("lastName"),
           email: form.get("email"),
+          gender: form.get("gender"),
           countryCode: form.get("countryCode"),
           password: form.get("password"),
           confirmPassword: form.get("confirmPassword"),
@@ -162,6 +164,28 @@ export default function RegisterPage() {
                   autoComplete="email"
                 />
               </div>
+              <label className="block sm:col-span-2">
+                <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
+                  Gender
+                </span>
+                <select
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-base outline-none transition focus:border-kondo-green dark:border-white/10"
+                  name="gender"
+                  onChange={(event) => setGender(event.target.value)}
+                  required
+                  value={gender}
+                >
+                  <option disabled value="">
+                    Select your gender
+                  </option>
+                  <option value="MALE">Man</option>
+                  <option value="FEMALE">Woman</option>
+                </select>
+                <span className="mt-1.5 block text-[11px] text-muted-foreground">
+                  Used privately to improve Meet compatibility. You can control
+                  discovery visibility later.
+                </span>
+              </label>
               <div className="sm:col-span-2">
                 <input name="countryCode" type="hidden" value={countryCode} />
                 <SearchableSelect
@@ -244,7 +268,7 @@ export default function RegisterPage() {
               ) : null}
               <div className="sm:col-span-2">
                 <Button
-                  disabled={loading || !countryCode}
+                  disabled={loading || !countryCode || !gender}
                   fullWidth
                   size="lg"
                   type="submit"

@@ -28,6 +28,8 @@ type MatchDiagnostics = {
   countryMismatch: number;
   nearbyMismatch: number;
   intentMismatch: number;
+  rankedCandidates: number;
+  selectedCompatibilityScore: number;
 };
 
 function preferenceAllows(
@@ -49,6 +51,11 @@ function countriesCompatible(input: {
     (!input.secondPreferenceId ||
       input.secondPreferenceId === input.firstCountryId)
   );
+}
+
+function sharedValues(first: string[], second: string[]) {
+  const secondSet = new Set(second);
+  return first.filter((value) => secondSet.has(value));
 }
 
 function isRetryable(error: unknown) {
@@ -109,6 +116,8 @@ export async function findMeetMatch(input: {
             countryMismatch: 0,
             nearbyMismatch: 0,
             intentMismatch: 0,
+            rankedCandidates: 0,
+            selectedCompatibilityScore: 0,
           };
 
           const user = await tx.user.update({
@@ -127,9 +136,19 @@ export async function findMeetMatch(input: {
               id: true,
               countryId: true,
               cityId: true,
+              universityId: true,
               gender: true,
+              languages: true,
+              interests: true,
               nearbyDiscoveryEnabled: true,
               meetIntents: true,
+              meetDiscoveryProfile: {
+                select: {
+                  discoveryCityId: true,
+                  discoveryUniversityId: true,
+                  preferredLanguages: true,
+                },
+              },
             },
           });
           const existing = await tx.meetQueueEntry.findUnique({
@@ -209,10 +228,20 @@ export async function findMeetMatch(input: {
                   id: true,
                   countryId: true,
                   cityId: true,
+                  universityId: true,
                   gender: true,
                   status: true,
+                  languages: true,
+                  interests: true,
                   nearbyDiscoveryEnabled: true,
                   meetIntents: true,
+                  meetDiscoveryProfile: {
+                    select: {
+                      discoveryCityId: true,
+                      discoveryUniversityId: true,
+                      preferredLanguages: true,
+                    },
+                  },
                   callParticipations: {
                     where: {
                       status: { not: "LEFT" },
@@ -257,6 +286,7 @@ export async function findMeetMatch(input: {
             ),
           );
           let candidate: (typeof candidates)[number] | undefined;
+          let candidateScore = -1;
           for (const entry of candidates) {
             if (entry.user.status !== "ACTIVE") {
               diagnostics.inactive += 1;
@@ -302,15 +332,54 @@ export async function findMeetMatch(input: {
               diagnostics.nearbyMismatch += 1;
               continue;
             }
+            const sharedIntents = sharedValues(intents, entry.intents);
             if (
-              mode === "LOOKING_FOR" &&
-              !intents.some((intent) => entry.user.meetIntents.includes(intent))
+              (mode === "LOOKING_FOR" ||
+                (intents.length > 0 && entry.intents.length > 0)) &&
+              sharedIntents.length === 0
             ) {
               diagnostics.intentMismatch += 1;
               continue;
             }
-            candidate = entry;
-            break;
+
+            const viewerDiscovery = user.meetDiscoveryProfile;
+            const candidateDiscovery = entry.user.meetDiscoveryProfile;
+            const viewerLanguages = viewerDiscovery?.preferredLanguages.length
+              ? viewerDiscovery.preferredLanguages
+              : user.languages;
+            const candidateLanguages = candidateDiscovery?.preferredLanguages
+              .length
+              ? candidateDiscovery.preferredLanguages
+              : entry.user.languages;
+            const viewerCityId =
+              viewerDiscovery?.discoveryCityId ?? user.cityId;
+            const candidateCityId =
+              candidateDiscovery?.discoveryCityId ?? entry.user.cityId;
+            const viewerUniversityId =
+              viewerDiscovery?.discoveryUniversityId ?? user.universityId;
+            const candidateUniversityId =
+              candidateDiscovery?.discoveryUniversityId ??
+              entry.user.universityId;
+            const compatibilityScore =
+              sharedIntents.length * 8 +
+              sharedValues(viewerLanguages, candidateLanguages).length * 2 +
+              sharedValues(user.interests, entry.user.interests).length +
+              (viewerCityId &&
+              candidateCityId &&
+              viewerCityId === candidateCityId
+                ? 3
+                : 0) +
+              (viewerUniversityId &&
+              candidateUniversityId &&
+              viewerUniversityId === candidateUniversityId
+                ? 5
+                : 0);
+            diagnostics.rankedCandidates += 1;
+            if (compatibilityScore > candidateScore) {
+              candidate = entry;
+              candidateScore = compatibilityScore;
+              diagnostics.selectedCompatibilityScore = compatibilityScore;
+            }
           }
           if (!candidate) {
             return { state: "WAITING" as const, diagnostics };

@@ -241,6 +241,7 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
       fixture.member.id,
       {
         ...references,
+        gender: "FEMALE",
         studentJourney: "CURRENT_STUDENT",
         degree: "International Business",
         studyLevel: "MASTERS",
@@ -251,6 +252,19 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
       { ipAddress: "203.0.113.10", userAgent: "Module 4 test" },
     );
     expect(completed.onboardingCompletedAt).toEqual(expect.any(String));
+    await expect(
+      prisma.meetDiscoveryProfile.findUnique({
+        where: { userId: fixture.member.id },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        gender: "FEMALE",
+        discoveryCityId: fixture.cityA.id,
+        discoveryUniversityId: fixture.universityA.id,
+        nearbyVisibility: true,
+        completedAt: expect.any(Date),
+      }),
+    );
     await expect(
       prisma.auditLog.findFirst({
         where: {

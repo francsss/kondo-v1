@@ -36,6 +36,7 @@ export type MeetDiscoveryProfile = {
   } | null;
   university: string | null;
   languages: string[];
+  sharedInterests: string[];
   lookingFor: string[];
   official: {
     organizationType: string | null;
@@ -116,6 +117,13 @@ function intentLabel(intent: string) {
     .replace(/^\w/, (value) => value.toUpperCase());
 }
 
+function maskedFirstName(firstName: string) {
+  const first = firstName.trim();
+  return `${first.slice(0, 1)}${"*".repeat(
+    Math.min(4, Math.max(2, first.length - 1)),
+  )}`;
+}
+
 export function MeetDiscoveryMap({
   profiles,
   mode,
@@ -140,7 +148,10 @@ export function MeetDiscoveryMap({
   );
 
   return (
-    <section className="relative min-h-[480px] overflow-hidden rounded-[2rem] border border-border bg-[#eaf4ee] shadow-lift dark:bg-[#101f1b]">
+    <section
+      aria-label="Nearby discovery map"
+      className="relative min-h-[480px] overflow-hidden rounded-[2rem] border border-border bg-[#eaf4ee] shadow-lift dark:bg-[#101f1b]"
+    >
       <div
         aria-hidden="true"
         className="absolute inset-0 opacity-80 dark:opacity-40"
@@ -181,7 +192,7 @@ export function MeetDiscoveryMap({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           aria-label={
             cluster.profiles.length === 1
-              ? `Preview ${cluster.profiles[0]!.firstName}`
+              ? `Preview ${maskedFirstName(cluster.profiles[0]!.firstName)}`
               : `Preview ${cluster.profiles.length} nearby members`
           }
           className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-4 focus-visible:ring-kondo-green/30"
@@ -273,7 +284,7 @@ export function MeetDiscoveryMap({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="truncate text-lg font-black">
-                    {selected.firstName}
+                    {maskedFirstName(selected.firstName)}
                     {selected.age ? `, ${selected.age}` : ""}
                   </h3>
                   {selected.official ? (
@@ -312,6 +323,12 @@ export function MeetDiscoveryMap({
                 <p className="flex items-center gap-2">
                   <Sparkles className="h-3.5 w-3.5 text-kondo-green" />
                   {selected.lookingFor.map(intentLabel).join(" · ")}
+                </p>
+              ) : null}
+              {selected.sharedInterests.length ? (
+                <p className="flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-kondo-green" />
+                  {selected.sharedInterests.join(" · ")} in common
                 </p>
               ) : null}
             </div>
