@@ -61,3 +61,47 @@ export function meetMapSearchQuery(
 ) {
   return [universityName, cityName, "China"].filter(Boolean).join(", ");
 }
+
+function cleanUniversityLabel(value: string | null) {
+  return value?.split(" · ")[0]?.trim() || null;
+}
+
+function cleanCityLabel(value: string | null) {
+  return value?.split(",")[0]?.trim() || null;
+}
+
+export function meetMapSearchQueries(input: {
+  universityName: string | null;
+  universityNativeName?: string | null;
+  cityName: string | null;
+  cityNativeName?: string | null;
+}) {
+  const universityName = cleanUniversityLabel(input.universityName);
+  const cityName = cleanCityLabel(input.cityName);
+  const universityNativeName = input.universityNativeName?.trim() || null;
+  const cityNativeName = input.cityNativeName?.trim() || null;
+  const queries = [
+    universityNativeName && cityNativeName
+      ? `${cityNativeName}${universityNativeName}`
+      : universityNativeName,
+    universityNativeName,
+    universityName && cityName
+      ? meetMapSearchQuery(universityName, cityName)
+      : universityName,
+    universityName,
+    cityNativeName,
+    cityName,
+  ].filter((value): value is string => Boolean(value));
+
+  return [...new Set(queries)];
+}
+
+export function meetMapCityQueries(
+  cityName: string | null,
+  cityNativeName?: string | null,
+) {
+  return [cityNativeName?.trim() || null, cleanCityLabel(cityName)].filter(
+    (value, index, values): value is string =>
+      Boolean(value) && values.indexOf(value) === index,
+  );
+}

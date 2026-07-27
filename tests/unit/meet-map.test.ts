@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  chinaCityNativeName,
+  chinaUniversityNativeName,
+} from "@/lib/china-map-aliases";
+import {
+  meetMapCityQueries,
   meetMapRadiusKm,
+  meetMapSearchQueries,
   meetMapSearchQuery,
   meetMapZoom,
   privacySafeMapCoordinate,
@@ -50,5 +56,36 @@ describe("Meet privacy-safe real-map coordinates", () => {
     );
     expect(meetMapRadiusKm("KM_20")).toBe(20);
     expect(meetMapZoom("KM_5")).toBeGreaterThan(meetMapZoom("KM_20"));
+  });
+
+  it("prioritizes Baidu-native place names and keeps English fallbacks", () => {
+    expect(
+      chinaUniversityNativeName(
+        "cuniversityf8a15c9ced43e971f975",
+        "Jiaxing University",
+      ),
+    ).toBe("嘉兴大学");
+    expect(chinaCityNativeName("ccity351267ac91b3d8719020", "Jiaxing")).toBe(
+      "嘉兴市",
+    );
+    expect(
+      meetMapSearchQueries({
+        universityName: "Jiaxing University · Jiaxing",
+        universityNativeName: "嘉兴大学",
+        cityName: "Jiaxing, China",
+        cityNativeName: "嘉兴市",
+      }),
+    ).toEqual([
+      "嘉兴市嘉兴大学",
+      "嘉兴大学",
+      "Jiaxing University, Jiaxing, China",
+      "Jiaxing University",
+      "嘉兴市",
+      "Jiaxing",
+    ]);
+    expect(meetMapCityQueries("Jiaxing, China", "嘉兴市")).toEqual([
+      "嘉兴市",
+      "Jiaxing",
+    ]);
   });
 });

@@ -58,6 +58,12 @@ type BaiduPoint = { lng: number; lat: number };
 type BaiduOverlay = {
   addEventListener?(event: string, listener: () => void): void;
 };
+type BaiduLocalResultPoi = {
+  point?: BaiduPoint;
+};
+type BaiduLocalResult = {
+  getPoi(index: number): BaiduLocalResultPoi | null;
+};
 type BaiduMapInstance = {
   centerAndZoom(point: BaiduPoint, zoom: number): void;
   enableScrollWheelZoom(enabled: boolean): void;
@@ -77,6 +83,15 @@ type BaiduMapsApi = {
       callback: (point: BaiduPoint | null) => void,
       city?: string,
     ): void;
+  };
+  LocalSearch?: new (
+    location: string,
+    options: {
+      pageCapacity?: number;
+      onSearchComplete: (result: BaiduLocalResult | BaiduLocalResult[]) => void;
+    },
+  ) => {
+    search(query: string, options?: { forceLocal?: boolean }): void;
   };
   NavigationControl: new () => unknown;
   ScaleControl: new () => unknown;
@@ -107,8 +122,8 @@ declare global {
 let baiduLoader: Promise<BaiduMapsApi> | null = null;
 const geocodeCache = new Map<string, BaiduPoint>();
 const BAIDU_LOAD_TIMEOUT_MS = 10_000;
-const GEOCODE_TIMEOUT_MS = 5_000;
-const GEOCODE_STAGGER_MS = 650;
+const AREA_SEARCH_TIMEOUT_MS = 7_000;
+const AREA_SEARCH_STAGGER_MS = 250;
 
 function loadBaiduMaps(apiKey: string) {
   if (window.BMapGL) return Promise.resolve(window.BMapGL);
@@ -173,64 +188,95 @@ function maskedFirstName(firstName: string) {
   )}`;
 }
 
-function geocodeArea(
+function firstLocalSearchPoint(result: BaiduLocalResult | BaiduLocalResult[]) {
+  const firstResult = Array.isArray(result) ? result[0] : result;
+  return firstResult?.getPoi(0)?.point ?? null;
+}
+
+function locateStudyArea(
   api: BaiduMapsApi,
-  query: string,
-  cityName: string | null,
+  mapQueries: string[],
+  cityQueries: string[],
 ) {
-  const cacheKey = `${query.trim().toLowerCase()}|${cityName?.trim().toLowerCase() ?? ""}`;
+  const queries = [...new Set(mapQueries.map((query) => query.trim()))].filter(
+    Boolean,
+  );
+  const cities = [...new Set(cityQueries.map((city) => city.trim()))].filter(
+    Boolean,
+  );
+  const cacheKey = `${queries.join("|").toLowerCase()}::${cities
+    .join("|")
+    .toLowerCase()}`;
   const cached = geocodeCache.get(cacheKey);
   if (cached) return Promise.resolve(cached);
-  const candidates = [
-    ...new Set(
-      [query, cityName].filter((candidate): candidate is string =>
-        Boolean(candidate),
-      ),
-    ),
-  ];
+  if (!queries.length) {
+    return Promise.reject(new Error("The selected study area was not found."));
+  }
+
   return new Promise<BaiduPoint>((resolve, reject) => {
     const geocoder = new api.Geocoder();
-    const staggerTimers: number[] = [];
+    const attemptTimers: number[] = [];
     let settled = false;
     const cleanup = () => {
       window.clearTimeout(deadline);
-      staggerTimers.forEach((timer) => window.clearTimeout(timer));
+      attemptTimers.forEach((timer) => window.clearTimeout(timer));
+    };
+    const succeed = (point: BaiduPoint | null | undefined) => {
+      if (settled || !point) return;
+      settled = true;
+      cleanup();
+      if (geocodeCache.size >= 100) {
+        const oldest = geocodeCache.keys().next().value;
+        if (oldest) geocodeCache.delete(oldest);
+      }
+      geocodeCache.set(cacheKey, point);
+      resolve(point);
     };
     const deadline = window.setTimeout(() => {
       if (settled) return;
       settled = true;
       cleanup();
-      reject(
-        new Error(
-          "Baidu Maps could not locate the selected study area quickly enough.",
-        ),
-      );
-    }, GEOCODE_TIMEOUT_MS);
-    for (const [index, candidate] of candidates.entries()) {
+      reject(new Error("Baidu Maps could not locate the selected study area."));
+    }, AREA_SEARCH_TIMEOUT_MS);
+
+    const attempts: Array<() => void> = [];
+    const primaryCity = cities[0] ?? "China";
+
+    const LocalSearch = api.LocalSearch;
+    if (LocalSearch) {
+      for (const query of queries.slice(0, 4)) {
+        attempts.push(() => {
+          const search = new LocalSearch(primaryCity, {
+            pageCapacity: 1,
+            onSearchComplete: (result) =>
+              succeed(firstLocalSearchPoint(result)),
+          });
+          search.search(query, { forceLocal: true });
+        });
+      }
+    }
+
+    for (const city of cities) {
+      attempts.push(() => {
+        geocoder.getPoint(city, succeed, city);
+      });
+    }
+    for (const query of queries.slice(0, 4)) {
+      attempts.push(() => {
+        geocoder.getPoint(query, succeed, primaryCity);
+      });
+    }
+
+    for (const [index, attempt] of attempts.entries()) {
       const timer = window.setTimeout(() => {
         if (settled) return;
-        geocoder.getPoint(
-          candidate,
-          (point) => {
-            if (settled || !point) return;
-            settled = true;
-            cleanup();
-            if (geocodeCache.size >= 100) {
-              const oldest = geocodeCache.keys().next().value;
-              if (oldest) geocodeCache.delete(oldest);
-            }
-            geocodeCache.set(cacheKey, point);
-            resolve(point);
-          },
-          cityName ?? "China",
-        );
-      }, index * GEOCODE_STAGGER_MS);
-      staggerTimers.push(timer);
-    }
-    if (!candidates.length) {
-      settled = true;
-      cleanup();
-      reject(new Error("The selected study area was not found."));
+        try {
+          attempt();
+        } catch {
+          // Continue through the remaining Baidu POI and geocoder fallbacks.
+        }
+      }, index * AREA_SEARCH_STAGGER_MS);
+      attemptTimers.push(timer);
     }
   });
 }
@@ -239,8 +285,8 @@ export function MeetDiscoveryMap({
   profiles,
   mode,
   areaLabel,
-  mapQuery,
-  cityName,
+  mapQueries,
+  cityQueries,
   distanceRange,
   premiumFeatures,
   onPremiumRequest,
@@ -248,8 +294,8 @@ export function MeetDiscoveryMap({
   profiles: MeetDiscoveryProfile[];
   mode: "NEARBY" | "LOOKING_FOR";
   areaLabel: string;
-  mapQuery: string;
-  cityName: string | null;
+  mapQueries: string[];
+  cityQueries: string[];
   distanceRange: MeetMapDistance;
   premiumFeatures: string[];
   onPremiumRequest: (reason: string) => void;
@@ -259,11 +305,11 @@ export function MeetDiscoveryMap({
   const [selected, setSelected] = useState<MeetDiscoveryProfile | null>(null);
   const [mapStatus, setMapStatus] = useState<
     "loading" | "ready" | "unconfigured" | "error"
-  >(!apiKey ? "unconfigured" : mapQuery ? "loading" : "error");
+  >(!apiKey ? "unconfigured" : mapQueries.length ? "loading" : "error");
   const [mapError, setMapError] = useState(
     !apiKey
       ? "The real map is not configured yet. Add NEXT_PUBLIC_BAIDU_MAP_AK in Vercel Production."
-      : mapQuery
+      : mapQueries.length
         ? ""
         : "Choose a study university and city before opening the nearby map.",
   );
@@ -276,14 +322,16 @@ export function MeetDiscoveryMap({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!apiKey || !container || !mapQuery) return;
+    if (!apiKey || !container || !mapQueries.length) return;
     let cancelled = false;
+    setMapStatus("loading");
+    setMapError("");
     void loadBaiduMaps(apiKey)
       .then(async (api) => {
         if (cancelled) return;
         container.replaceChildren();
         const map = new api.Map(container, { enableMapClick: false });
-        const anchor = await geocodeArea(api, mapQuery, cityName);
+        const anchor = await locateStudyArea(api, mapQueries, cityQueries);
         if (cancelled) return;
         map.centerAndZoom(anchor, meetMapZoom(distanceRange));
         map.enableScrollWheelZoom(true);
@@ -341,7 +389,7 @@ export function MeetDiscoveryMap({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, cityName, distanceRange, mapQuery, profiles]);
+  }, [apiKey, cityQueries, distanceRange, mapQueries, profiles]);
 
   return (
     <section

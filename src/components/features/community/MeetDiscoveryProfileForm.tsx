@@ -116,8 +116,17 @@ export function MeetDiscoveryProfileForm({
   currentCity: string | null;
   currentCountry: string | null;
   currentUniversity: string | null;
-  cityOptions: Array<{ id: string; name: string }>;
-  universityOptions: Array<{ id: string; name: string; cityId: string }>;
+  cityOptions: Array<{
+    id: string;
+    name: string;
+    nativeName?: string | null;
+  }>;
+  universityOptions: Array<{
+    id: string;
+    name: string;
+    cityId: string;
+    nativeName?: string | null;
+  }>;
   required: boolean;
   onCancel?: () => void;
   onSaved: (profile: MeetProfileData) => void;

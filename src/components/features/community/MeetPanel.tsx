@@ -33,7 +33,7 @@ import {
   MEET_PREMIUM_FEATURES,
 } from "@/features/meet/config";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
-import { meetMapSearchQuery } from "@/lib/meet-map";
+import { meetMapCityQueries, meetMapSearchQueries } from "@/lib/meet-map";
 import type { PremiumAccess } from "@/lib/premium";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -74,8 +74,17 @@ export function MeetPanel({
   cityName: string | null;
   countryName: string | null;
   universityName: string | null;
-  cityOptions: Array<{ id: string; name: string }>;
-  universityOptions: Array<{ id: string; name: string; cityId: string }>;
+  cityOptions: Array<{
+    id: string;
+    name: string;
+    nativeName?: string | null;
+  }>;
+  universityOptions: Array<{
+    id: string;
+    name: string;
+    cityId: string;
+    nativeName?: string | null;
+  }>;
   initialCityId: string | null;
   initialUniversityId: string | null;
 }) {
@@ -134,19 +143,26 @@ export function MeetPanel({
   const startedAtRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
   const skipNextAutoRefreshRef = useRef(false);
-  const discoveryCityName =
-    cityOptions.find((city) => city.id === profile?.discoveryCityId)?.name ??
-    cityName;
-  const discoveryUniversityName =
-    universityOptions.find(
-      (university) => university.id === profile?.discoveryUniversityId,
-    )?.name ?? universityName;
-  const otherCityName =
-    cityOptions.find((city) => city.id === otherCityId)?.name ?? null;
+  const discoveryCity = cityOptions.find(
+    (city) => city.id === profile?.discoveryCityId,
+  );
+  const discoveryUniversity = universityOptions.find(
+    (university) => university.id === profile?.discoveryUniversityId,
+  );
+  const otherCity = cityOptions.find((city) => city.id === otherCityId);
+  const discoveryCityName = discoveryCity?.name ?? cityName;
+  const discoveryUniversityName = discoveryUniversity?.name ?? universityName;
+  const otherCityName = otherCity?.name ?? null;
   const activeMapCityName =
     distanceRange === "OTHER_CITY" ? otherCityName : discoveryCityName;
   const activeMapUniversityName =
     distanceRange === "OTHER_CITY" ? null : discoveryUniversityName;
+  const activeMapCityNativeName =
+    distanceRange === "OTHER_CITY"
+      ? otherCity?.nativeName
+      : discoveryCity?.nativeName;
+  const activeMapUniversityNativeName =
+    distanceRange === "OTHER_CITY" ? null : discoveryUniversity?.nativeName;
   const profileIsComplete = Boolean(
     profile?.completedAt &&
     profile.discoveryCityId &&
@@ -770,13 +786,18 @@ export function MeetPanel({
                       }`
                     : "Your discovery constellation"
                 }
-                cityName={activeMapCityName}
+                cityQueries={meetMapCityQueries(
+                  activeMapCityName,
+                  activeMapCityNativeName,
+                )}
                 distanceRange={distanceRange}
                 key={`${mode}:${distanceRange}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
-                mapQuery={meetMapSearchQuery(
-                  activeMapUniversityName,
-                  activeMapCityName,
-                )}
+                mapQueries={meetMapSearchQueries({
+                  universityName: activeMapUniversityName,
+                  universityNativeName: activeMapUniversityNativeName,
+                  cityName: activeMapCityName,
+                  cityNativeName: activeMapCityNativeName,
+                })}
                 mode={mode}
                 onPremiumRequest={setPremiumReason}
                 premiumFeatures={premiumAccess.featureKeys}

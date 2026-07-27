@@ -9,6 +9,10 @@ import { MeetPanel } from "@/components/features/community/MeetPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  chinaCityNativeName,
+  chinaUniversityNativeName,
+} from "@/lib/china-map-aliases";
 import { getCommunityDirectory } from "@/lib/platform-queries";
 import { getPremiumAccess } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
@@ -139,11 +143,13 @@ export default async function CommunitiesPage({
   const referenceCities = cities.map((city) => ({
     id: city.id,
     name: `${city.name}, ${city.country.name}`,
+    nativeName: chinaCityNativeName(city.id, city.name),
   }));
   const referenceUniversities = universities.map((university) => ({
     id: university.id,
     name: `${university.name} · ${university.city.name}`,
     cityId: university.cityId,
+    nativeName: chinaUniversityNativeName(university.id, university.name),
   }));
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
