@@ -105,21 +105,44 @@ declare global {
 }
 
 let baiduLoader: Promise<BaiduMapsApi> | null = null;
+const geocodeCache = new Map<string, BaiduPoint>();
+const BAIDU_LOAD_TIMEOUT_MS = 10_000;
+const GEOCODE_TIMEOUT_MS = 5_000;
+const GEOCODE_STAGGER_MS = 650;
 
 function loadBaiduMaps(apiKey: string) {
   if (window.BMapGL) return Promise.resolve(window.BMapGL);
   if (baiduLoader) return baiduLoader;
   baiduLoader = new Promise<BaiduMapsApi>((resolve, reject) => {
     const existing = document.getElementById("kondo-baidu-map-script");
+    let settled = false;
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      window.clearInterval(readinessPoll);
+    };
+    const complete = (api: BaiduMapsApi) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(api);
+    };
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      baiduLoader = null;
+      reject(error);
+    };
     const timeout = window.setTimeout(() => {
       document.getElementById("kondo-baidu-map-script")?.remove();
-      baiduLoader = null;
-      reject(new Error("Baidu Maps took too long to load."));
-    }, 15_000);
+      fail(new Error("Baidu Maps took too long to load."));
+    }, BAIDU_LOAD_TIMEOUT_MS);
+    const readinessPoll = window.setInterval(() => {
+      if (window.BMapGL) complete(window.BMapGL);
+    }, 100);
     window.__kondoBaiduMapReady = () => {
-      window.clearTimeout(timeout);
-      if (window.BMapGL) resolve(window.BMapGL);
-      else reject(new Error("Baidu Maps did not initialize."));
+      if (window.BMapGL) complete(window.BMapGL);
+      else fail(new Error("Baidu Maps did not initialize."));
     };
     existing?.remove();
     const script = document.createElement("script");
@@ -128,10 +151,8 @@ function loadBaiduMaps(apiKey: string) {
     script.defer = true;
     script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${encodeURIComponent(apiKey)}&callback=__kondoBaiduMapReady`;
     script.onerror = () => {
-      window.clearTimeout(timeout);
       script.remove();
-      baiduLoader = null;
-      reject(new Error("Baidu Maps could not be loaded."));
+      fail(new Error("Baidu Maps could not be loaded."));
     };
     document.head.appendChild(script);
   });
@@ -157,25 +178,60 @@ function geocodeArea(
   query: string,
   cityName: string | null,
 ) {
-  const candidates = [...new Set([query, cityName, "China"].filter(Boolean))];
+  const cacheKey = `${query.trim().toLowerCase()}|${cityName?.trim().toLowerCase() ?? ""}`;
+  const cached = geocodeCache.get(cacheKey);
+  if (cached) return Promise.resolve(cached);
+  const candidates = [
+    ...new Set(
+      [query, cityName].filter((candidate): candidate is string =>
+        Boolean(candidate),
+      ),
+    ),
+  ];
   return new Promise<BaiduPoint>((resolve, reject) => {
     const geocoder = new api.Geocoder();
-    const attempt = (index: number) => {
-      const candidate = candidates[index];
-      if (!candidate) {
-        reject(new Error("The selected study area was not found."));
-        return;
-      }
-      geocoder.getPoint(
-        candidate,
-        (point) => {
-          if (point) resolve(point);
-          else attempt(index + 1);
-        },
-        cityName ?? "China",
-      );
+    const staggerTimers: number[] = [];
+    let settled = false;
+    const cleanup = () => {
+      window.clearTimeout(deadline);
+      staggerTimers.forEach((timer) => window.clearTimeout(timer));
     };
-    attempt(0);
+    const deadline = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(
+        new Error(
+          "Baidu Maps could not locate the selected study area quickly enough.",
+        ),
+      );
+    }, GEOCODE_TIMEOUT_MS);
+    for (const [index, candidate] of candidates.entries()) {
+      const timer = window.setTimeout(() => {
+        if (settled) return;
+        geocoder.getPoint(
+          candidate,
+          (point) => {
+            if (settled || !point) return;
+            settled = true;
+            cleanup();
+            if (geocodeCache.size >= 100) {
+              const oldest = geocodeCache.keys().next().value;
+              if (oldest) geocodeCache.delete(oldest);
+            }
+            geocodeCache.set(cacheKey, point);
+            resolve(point);
+          },
+          cityName ?? "China",
+        );
+      }, index * GEOCODE_STAGGER_MS);
+      staggerTimers.push(timer);
+    }
+    if (!candidates.length) {
+      settled = true;
+      cleanup();
+      reject(new Error("The selected study area was not found."));
+    }
   });
 }
 
@@ -242,6 +298,7 @@ export function MeetDiscoveryMap({
             fillOpacity: 0.08,
           }),
         );
+        setMapStatus("ready");
         for (const profile of profiles) {
           const coordinate = privacySafeMapCoordinate(
             anchor,
@@ -271,14 +328,13 @@ export function MeetDiscoveryMap({
           marker.addEventListener?.("click", () => setSelected(profile));
           map.addOverlay(marker);
         }
-        setMapStatus("ready");
       })
       .catch((error) => {
         if (cancelled) return;
         setMapStatus("error");
         setMapError(
           error instanceof Error
-            ? `${error.message} Check the Baidu Maps key and its domain allowlist.`
+            ? `${error.message} Refresh the map or update your study area in Discovery Settings.`
             : "The real map could not be loaded.",
         );
       });
