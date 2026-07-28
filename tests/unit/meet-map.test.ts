@@ -4,6 +4,7 @@ import {
   chinaUniversityNativeName,
 } from "@/lib/china-map-aliases";
 import {
+  JIAXING_UNIVERSITY_BD09,
   meetMapCityQueries,
   MEET_MAP_COORDINATE_SYSTEM,
   meetMapKnownAnchor,
@@ -25,7 +26,7 @@ function approximateDistanceKm(
 }
 
 describe("Meet privacy-safe real-map coordinates", () => {
-  const jiaxingUniversity = { lng: 120.755, lat: 30.746 };
+  const jiaxingUniversity = JIAXING_UNIVERSITY_BD09;
 
   it("creates deterministic approximate points inside the selected radius", () => {
     const first = privacySafeMapCoordinate(
@@ -72,6 +73,7 @@ describe("Meet privacy-safe real-map coordinates", () => {
       meetMapKnownAnchor([
         "嘉兴市嘉兴大学",
         "嘉兴大学",
+        "嘉兴学院",
         "Jiaxing University, Jiaxing, China",
       ]),
     ).toEqual(jiaxingUniversity);

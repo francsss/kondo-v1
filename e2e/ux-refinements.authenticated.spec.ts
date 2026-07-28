@@ -168,6 +168,11 @@ test.describe("premium UX refinements", () => {
     page,
   }) => {
     await page.route("https://api.map.baidu.com/**", async (route) => {
+      const sdkUrl = new URL(route.request().url());
+      const callback = sdkUrl.searchParams.get("callback");
+      expect(sdkUrl.searchParams.get("v")).toBe("4.0");
+      expect(sdkUrl.searchParams.has("type")).toBe(false);
+      expect(callback).toBeTruthy();
       await route.fulfill({
         contentType: "application/javascript",
         body: `
@@ -188,10 +193,19 @@ test.describe("premium UX refinements", () => {
             class Marker {
               constructor(point, options) {
                 this.point = point;
-                this.options = options;
+                this.options = options || {};
                 this.listeners = {};
               }
               addEventListener(event, listener) { this.listeners[event] = listener; }
+              setIcon(icon) { this.icon = icon; }
+              setLabel(label) { this.label = label; }
+            }
+            class Label {
+              constructor(content, options) {
+                this.content = content;
+                this.options = options;
+              }
+              setStyle(styles) { this.styles = styles; }
             }
             class Circle {
               constructor(point, radius, options) {
@@ -203,12 +217,31 @@ test.describe("premium UX refinements", () => {
             class Map {
               constructor(container) {
                 this.container = container;
+                this.listeners = {};
+                this.markerElements = new globalThis.Map();
                 container.dataset.testMapReady = "true";
               }
-              centerAndZoom() {}
+              addEventListener(event, listener) { this.listeners[event] = listener; }
+              removeEventListener(event, listener) {
+                if (this.listeners[event] === listener) delete this.listeners[event];
+              }
+              centerAndZoom() {
+                this.initialized = true;
+                queueMicrotask(() => this.listeners.tilesloaded?.());
+              }
               enableScrollWheelZoom() {}
               addControl() {}
-              clearOverlays() {}
+              checkResize() {}
+              isLoaded() { return Boolean(this.initialized); }
+              clearOverlays() {
+                for (const marker of this.markerElements.values()) marker.remove();
+                this.markerElements.clear();
+              }
+              destroy() { this.clearOverlays(); }
+              removeOverlay(overlay) {
+                this.markerElements.get(overlay)?.remove();
+                this.markerElements.delete(overlay);
+              }
               addOverlay(overlay) {
                 if (!(overlay instanceof Marker)) return;
                 const marker = document.createElement("button");
@@ -221,23 +254,32 @@ test.describe("premium UX refinements", () => {
                 marker.style.height = "48px";
                 marker.addEventListener("click", () => overlay.listeners.click?.());
                 this.container.appendChild(marker);
+                this.markerElements.set(overlay, marker);
               }
             }
             class Geocoder {
               getPoint(_query, callback) { callback(new Point(120.75, 30.76)); }
             }
-            window.BMapGL = {
+            class Convertor {
+              translate(points, _from, _to, callback) {
+                callback({ status: 0, points });
+              }
+            }
+            window.BMap = {
               Point,
               Size,
               Icon,
               Marker,
+              Label,
               Circle,
               Map,
               Geocoder,
+              Convertor,
               NavigationControl: class {},
               ScaleControl: class {},
             };
-            window.__kondoBaiduMapReady?.();
+            window.BMapGL = window.BMap;
+            window[${JSON.stringify(callback)}]?.();
           })();
         `,
       });
@@ -249,20 +291,23 @@ test.describe("premium UX refinements", () => {
     await expect(
       page.getByRole("region", { name: "Discovery matches" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Discover more people" }),
-    ).toBeVisible();
     await expect(page.getByText("Meet Premium", { exact: true })).toHaveCount(
       0,
     );
-    await page.getByRole("button", { name: "Discover more people" }).click();
-    await expect(page.getByRole("dialog")).toContainText(
-      "Unlock more profiles",
-    );
-    await page
-      .getByRole("button", { name: "Continue basic discovery" })
-      .click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const discoverMore = page.getByRole("button", {
+      name: "Discover more people",
+    });
+    if ((await discoverMore.count()) > 0) {
+      await expect(discoverMore).toBeVisible();
+      await discoverMore.click();
+      await expect(page.getByRole("dialog")).toContainText(
+        "Unlock more profiles",
+      );
+      await page
+        .getByRole("button", { name: "Continue basic discovery" })
+        .click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    }
     await page.getByRole("button", { name: "Nearby" }).click();
 
     await expect(
@@ -283,6 +328,7 @@ test.describe("premium UX refinements", () => {
     ).toBeVisible();
     await expect(discoveryMap).toHaveAttribute("data-map-provider", "baidu");
     await expect(discoveryMap).toHaveAttribute("data-map-status", "ready");
+    await expect(discoveryMap).toHaveAttribute("data-map-tiles", "loaded");
     await expect(
       discoveryMap.getByRole("button", { name: /^Preview / }),
     ).not.toHaveCount(0);

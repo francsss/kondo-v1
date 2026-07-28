@@ -22,16 +22,19 @@ import { Button } from "@/components/ui/Button";
 import { MEET_PREMIUM_FEATURES } from "@/features/meet/config";
 import {
   type BaiduMapInstance,
+  type BaiduMarker,
   type BaiduMapsApi,
   type BaiduOverlay,
   type BaiduPoint,
+  inspectBaiduMapRenderer,
   loadBaiduMapsSdk,
   logBaiduMapEvent,
+  observeBaiduMapResourceFailures,
   resetBaiduMapsSdkAfterFailure,
   waitForBaiduMapContainer,
-  waitForBaiduMapRenderer,
 } from "@/lib/baidu-map-sdk";
 import {
+  JIAXING_UNIVERSITY_BD09,
   meetMapKnownAnchor,
   meetMapRadiusKm,
   meetMapZoom,
@@ -72,35 +75,46 @@ export type MeetMapViewer = Pick<
 >;
 
 const geocodeCache = new Map<string, BaiduPoint>();
-const MAP_AVATAR_TIMEOUT_MS = 4_000;
 
-function resolveMapAvatarUrl(profile: MeetMapViewer): Promise<string | null> {
-  if (!profile.avatarMediaId) return Promise.resolve(null);
+function hydrateMarkerAvatar(
+  api: BaiduMapsApi,
+  marker: BaiduMarker,
+  profile: MeetMapViewer,
+  sizePixels: number,
+  signal: AbortSignal,
+) {
+  if (!profile.avatarMediaId || !marker.setIcon) return () => {};
 
-  return new Promise<string | null>((resolve) => {
-    const image = new window.Image();
-    let settled = false;
-    const finish = (url: string | null) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      image.onload = null;
-      image.onerror = null;
-      resolve(url);
-    };
-    const timeout = window.setTimeout(
-      () => finish(null),
-      MAP_AVATAR_TIMEOUT_MS,
+  const image = new window.Image();
+  const avatarUrl = `/api/media/${profile.avatarMediaId}`;
+  const cleanup = () => {
+    image.onload = null;
+    image.onerror = null;
+    signal.removeEventListener("abort", cleanup);
+  };
+  image.onload = () => {
+    if (signal.aborted) return;
+    const size = new api.Size(sizePixels, sizePixels);
+    marker.setIcon?.(
+      new api.Icon(avatarUrl, size, {
+        imageSize: size,
+        anchor: new api.Size(sizePixels / 2, sizePixels / 2),
+      }),
     );
-    image.onload = () =>
-      finish(
-        image.naturalWidth > 0 && image.naturalHeight > 0
-          ? `/api/media/${profile.avatarMediaId}`
-          : null,
-      );
-    image.onerror = () => finish(null);
-    image.src = `/api/media/${profile.avatarMediaId}`;
-  });
+    cleanup();
+    logBaiduMapEvent("marker.avatar_loaded", {
+      profileId: profile.id,
+    });
+  };
+  image.onerror = () => {
+    cleanup();
+    console.error("[Kondo Meet Map]", "marker.avatar_failed", {
+      profileId: profile.id,
+    });
+  };
+  signal.addEventListener("abort", cleanup, { once: true });
+  image.src = avatarUrl;
+  return cleanup;
 }
 
 function intentLabel(intent: string) {
@@ -239,6 +253,9 @@ export function MeetDiscoveryMap({
   );
   const [mapAttempt, setMapAttempt] = useState(0);
   const [mapRevision, setMapRevision] = useState(0);
+  const [tileStatus, setTileStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
   const mapQueryKey = mapQueries.join("\u0001");
   const cityQueryKey = cityQueries.join("\u0001");
   const canViewFullProfile = premiumFeatures.includes(
@@ -258,12 +275,15 @@ export function MeetDiscoveryMap({
       .filter((query) => query.length > 0);
     if (!apiKey || !container || !activeMapQueries.length) return;
     const controller = new AbortController();
+    const stopObservingResources = observeBaiduMapResourceFailures(
+      controller.signal,
+    );
     let localMap: BaiduMapInstance | null = null;
     let tilesLoadedListener: (() => void) | null = null;
     let styleLoadErrorListener: (() => void) | null = null;
     let styleLoadTimeoutListener: (() => void) | null = null;
-    let mapFailed = false;
     setMapStatus("loading");
+    setTileStatus("loading");
     setMapError("");
 
     void Promise.all([
@@ -273,80 +293,120 @@ export function MeetDiscoveryMap({
       .then(async ([api, measurement]) => {
         if (controller.signal.aborted || mapRef.current) return;
         container.replaceChildren();
-        const map = new api.Map(container, { enableMapClick: false });
+        const knownAnchor = meetMapKnownAnchor(activeMapQueries);
+        const initialCoordinate = knownAnchor ?? JIAXING_UNIVERSITY_BD09;
+        const initialPoint = new api.Point(
+          initialCoordinate.lng,
+          initialCoordinate.lat,
+        );
+        const zoom = meetMapZoom(distanceRange);
+        const map = new api.Map(container, {
+          enableAutoResize: true,
+          enableMapClick: false,
+          enableWheelZoom: true,
+        });
         localMap = map;
         mapRef.current = map;
         apiRef.current = api;
         logBaiduMapEvent("map.created", {
+          initialized: map.isLoaded?.() ?? true,
           width: Math.round(measurement.width),
           height: Math.round(measurement.height),
         });
 
         tilesLoadedListener = () => {
           if (controller.signal.aborted) return;
-          logBaiduMapEvent("map.tiles_loaded");
+          setTileStatus("loaded");
+          logBaiduMapEvent("map.tiles_loaded", {
+            ...inspectBaiduMapRenderer(map, container),
+          });
         };
         map.addEventListener("tilesloaded", tilesLoadedListener);
-        map.addEventListener("ontilesloaded", tilesLoadedListener);
         styleLoadErrorListener = () => {
           if (controller.signal.aborted) return;
-          mapFailed = true;
           const message =
             "Baidu loaded the SDK but failed to load the map style.";
           console.error("[Kondo Meet Map]", "map.style_load_failed", {
             message,
           });
+          setTileStatus("error");
           setMapStatus("error");
           setMapError(message);
         };
         styleLoadTimeoutListener = () => {
           if (controller.signal.aborted) return;
-          mapFailed = true;
           const message =
             "Baidu loaded the SDK but its map style service did not respond.";
           console.error("[Kondo Meet Map]", "map.style_load_timeout", {
             message,
           });
+          setTileStatus("error");
           setMapStatus("error");
           setMapError(message);
         };
-        map.addEventListener("onstyle_loaded_error", styleLoadErrorListener);
-        map.addEventListener(
-          "onstyle_loaded_timeout",
-          styleLoadTimeoutListener,
-        );
+        map.addEventListener("style_loaded_error", styleLoadErrorListener);
+        map.addEventListener("style_loaded_timeout", styleLoadTimeoutListener);
 
-        const knownAnchor = meetMapKnownAnchor(activeMapQueries);
-        const anchor = knownAnchor
-          ? new api.Point(knownAnchor.lng, knownAnchor.lat)
-          : await locateStudyArea(api, activeMapQueries, activeCityQueries);
-        if (controller.signal.aborted) return;
-        anchorRef.current = anchor;
-        logBaiduMapEvent("map.anchor_resolved", {
-          source: knownAnchor ? "verified_anchor" : "baidu_geocoder",
-          coordinateSystem: "BD09",
-        });
-        map.centerAndZoom(anchor, meetMapZoom(distanceRange));
+        map.centerAndZoom(initialPoint, zoom);
         logBaiduMapEvent("map.center_set", {
-          zoom: meetMapZoom(distanceRange),
+          source: knownAnchor ? "verified_anchor" : "startup_anchor",
+          coordinateSystem: "BD09",
+          zoom,
           radiusKm: meetMapRadiusKm(distanceRange),
         });
-        map.enableScrollWheelZoom(true);
+        map.enableScrollWheelZoom();
         map.addControl(new api.NavigationControl());
         map.addControl(new api.ScaleControl());
-        map.addOverlay(
-          new api.Circle(anchor, meetMapRadiusKm(distanceRange) * 1_000, {
-            strokeColor: "#16a36a",
-            strokeWeight: 1,
-            strokeOpacity: 0.48,
-            fillColor: "#34d399",
-            fillOpacity: 0.08,
-          }),
-        );
-        await waitForBaiduMapRenderer(map, container, controller.signal);
-        if (controller.signal.aborted || mapFailed) return;
+        map.checkResize?.();
         setMapStatus("ready");
-        setMapRevision((revision) => revision + 1);
+        logBaiduMapEvent("map.visible", {
+          ...inspectBaiduMapRenderer(map, container),
+        });
+
+        const finishAnchor = (
+          anchor: BaiduPoint,
+          source: "verified_anchor" | "baidu_geocoder",
+        ) => {
+          if (controller.signal.aborted || mapRef.current !== map) return;
+          anchorRef.current = anchor;
+          map.centerAndZoom(anchor, zoom);
+          map.addOverlay(
+            new api.Circle(anchor, meetMapRadiusKm(distanceRange) * 1_000, {
+              strokeColor: "#16a36a",
+              strokeWeight: 1,
+              strokeOpacity: 0.48,
+              fillColor: "#34d399",
+              fillOpacity: 0.08,
+            }),
+          );
+          logBaiduMapEvent("map.anchor_resolved", {
+            source,
+            coordinateSystem: "BD09",
+          });
+          setMapRevision((revision) => revision + 1);
+        };
+
+        if (knownAnchor) {
+          finishAnchor(initialPoint, "verified_anchor");
+          return;
+        }
+
+        try {
+          const geocodedAnchor = await locateStudyArea(
+            api,
+            activeMapQueries,
+            activeCityQueries,
+          );
+          finishAnchor(geocodedAnchor, "baidu_geocoder");
+        } catch (error) {
+          console.error("[Kondo Meet Map]", "map.anchor_failed", error);
+          if (controller.signal.aborted) return;
+          setMapError(
+            error instanceof Error
+              ? error.message
+              : "Baidu could not locate the selected study area.",
+          );
+        }
       })
       .catch((error) => {
         if (
@@ -366,19 +426,19 @@ export function MeetDiscoveryMap({
 
     return () => {
       controller.abort();
+      stopObservingResources();
       if (localMap && tilesLoadedListener) {
         localMap.removeEventListener("tilesloaded", tilesLoadedListener);
-        localMap.removeEventListener("ontilesloaded", tilesLoadedListener);
       }
       if (localMap && styleLoadErrorListener) {
         localMap.removeEventListener(
-          "onstyle_loaded_error",
+          "style_loaded_error",
           styleLoadErrorListener,
         );
       }
       if (localMap && styleLoadTimeoutListener) {
         localMap.removeEventListener(
-          "onstyle_loaded_timeout",
+          "style_loaded_timeout",
           styleLoadTimeoutListener,
         );
       }
@@ -402,88 +462,89 @@ export function MeetDiscoveryMap({
     const anchor = anchorRef.current;
     if (!map || !api || !anchor || !mapRevision) return;
 
-    let cancelled = false;
+    const controller = new AbortController();
+    const avatarCleanups: Array<() => void> = [];
     for (const overlay of markerOverlaysRef.current) {
       map.removeOverlay(overlay);
     }
     markerOverlaysRef.current = [];
 
-    void Promise.all([
-      resolveMapAvatarUrl(viewer),
-      ...profiles.map((profile) => resolveMapAvatarUrl(profile)),
-    ])
-      .then(([viewerAvatarUrl, ...profileAvatarUrls]) => {
-        if (cancelled || mapRef.current !== map) return;
-        const overlays: BaiduOverlay[] = [];
+    const overlays: BaiduOverlay[] = [];
+    try {
+      const viewerMarker = new api.Marker(anchor, {
+        title: "Your approximate study area",
+      });
+      const viewerLabel = new api.Label("You", {
+        position: anchor,
+        offset: new api.Size(18, -42),
+      });
+      viewerLabel.setStyle?.({
+        background: "#063c31",
+        border: "2px solid #ffffff",
+        borderRadius: "999px",
+        boxShadow: "0 6px 18px rgba(6, 60, 49, 0.24)",
+        color: "#ffffff",
+        fontSize: "11px",
+        fontWeight: "800",
+        lineHeight: "20px",
+        padding: "0 8px",
+        whiteSpace: "nowrap",
+      });
+      viewerMarker.setLabel?.(viewerLabel);
+      map.addOverlay(viewerMarker);
+      overlays.push(viewerMarker);
+      avatarCleanups.push(
+        hydrateMarkerAvatar(api, viewerMarker, viewer, 54, controller.signal),
+      );
 
-        const viewerSize = new api.Size(54, 54);
-        const viewerIcon = viewerAvatarUrl
-          ? new api.Icon(viewerAvatarUrl, viewerSize, {
-              imageSize: viewerSize,
-              anchor: new api.Size(27, 27),
-            })
-          : undefined;
-        const viewerMarker = new api.Marker(anchor, {
-          icon: viewerIcon,
-          title: "Your approximate study area",
+      for (const profile of profiles) {
+        const coordinate = privacySafeMapCoordinate(
+          anchor,
+          profile.id,
+          distanceRange,
+        );
+        const point = new api.Point(coordinate.lng, coordinate.lat);
+        const marker = new api.Marker(point, {
+          title: `Approximate area for ${maskedFirstName(profile.firstName)}`,
         });
-        const viewerLabel = new api.Label("You", {
-          position: anchor,
-          offset: new api.Size(18, -42),
+        const label = new api.Label(maskedFirstName(profile.firstName), {
+          position: point,
+          offset: new api.Size(14, -36),
         });
-        viewerLabel.setStyle?.({
-          background: "#063c31",
-          border: "2px solid #ffffff",
+        label.setStyle?.({
+          background: "rgba(255,255,255,.94)",
+          border: "1px solid rgba(6,60,49,.18)",
           borderRadius: "999px",
-          boxShadow: "0 6px 18px rgba(6, 60, 49, 0.24)",
-          color: "#ffffff",
-          fontSize: "11px",
+          boxShadow: "0 5px 14px rgba(6,60,49,.14)",
+          color: "#063c31",
+          fontSize: "10px",
           fontWeight: "800",
-          lineHeight: "20px",
-          padding: "0 8px",
+          lineHeight: "18px",
+          padding: "0 7px",
           whiteSpace: "nowrap",
         });
-        viewerMarker.setLabel?.(viewerLabel);
-        map.addOverlay(viewerMarker);
-        overlays.push(viewerMarker);
+        marker.setLabel?.(label);
+        marker.addEventListener?.("click", () => setSelected(profile));
+        map.addOverlay(marker);
+        overlays.push(marker);
+        avatarCleanups.push(
+          hydrateMarkerAvatar(api, marker, profile, 48, controller.signal),
+        );
+      }
 
-        for (const [index, profile] of profiles.entries()) {
-          const coordinate = privacySafeMapCoordinate(
-            anchor,
-            profile.id,
-            distanceRange,
-          );
-          const point = new api.Point(coordinate.lng, coordinate.lat);
-          const size = new api.Size(48, 48);
-          const avatarUrl = profileAvatarUrls[index];
-          const icon = avatarUrl
-            ? new api.Icon(avatarUrl, size, {
-                imageSize: size,
-                anchor: new api.Size(24, 24),
-              })
-            : undefined;
-          const marker = new api.Marker(point, {
-            icon,
-            title: `Approximate area for ${maskedFirstName(profile.firstName)}`,
-          });
-          marker.addEventListener?.("click", () => setSelected(profile));
-          map.addOverlay(marker);
-          overlays.push(marker);
-        }
-
-        markerOverlaysRef.current = overlays;
-        logBaiduMapEvent("markers.added", {
-          currentUser: 1,
-          nearbyUsers: profiles.length,
-          coordinateSystem: "BD09",
-        });
-      })
-      .catch((error) => {
-        console.error("[Kondo Meet Map]", "markers.failed", error);
+      markerOverlaysRef.current = overlays;
+      logBaiduMapEvent("markers.added", {
+        currentUser: 1,
+        nearbyUsers: profiles.length,
+        coordinateSystem: "BD09",
       });
+    } catch (error) {
+      console.error("[Kondo Meet Map]", "markers.failed", error);
+    }
 
     return () => {
-      cancelled = true;
+      controller.abort();
+      for (const cleanupAvatar of avatarCleanups) cleanupAvatar();
       for (const overlay of markerOverlaysRef.current) {
         map.removeOverlay(overlay);
       }
@@ -498,6 +559,7 @@ export function MeetDiscoveryMap({
       className="relative min-h-[480px] overflow-hidden rounded-[2rem] border border-border bg-muted shadow-lift"
       data-map-provider="baidu"
       data-map-status={mapStatus}
+      data-map-tiles={tileStatus}
     >
       <div className="absolute inset-0" ref={containerRef} />
 

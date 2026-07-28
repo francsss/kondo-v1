@@ -3,6 +3,10 @@ export type MeetMapDistance =
 
 export type MapCoordinate = { lng: number; lat: number };
 export const MEET_MAP_COORDINATE_SYSTEM = "BD09" as const;
+export const JIAXING_UNIVERSITY_BD09: MapCoordinate = {
+  lng: 120.730282,
+  lat: 30.746285,
+};
 
 const RADIUS_KM: Record<MeetMapDistance, number> = {
   KM_5: 5,
@@ -25,9 +29,11 @@ const KNOWN_STUDY_AREA_ANCHORS: Array<{
   coordinate: MapCoordinate;
 }> = [
   {
-    aliases: ["嘉兴大学", "jiaxing university"],
-    // Verified Baidu longitude/latitude. Never replace with raw GPS coordinates.
-    coordinate: { lng: 120.755, lat: 30.746 },
+    aliases: ["嘉兴大学", "嘉兴学院", "jiaxing university"],
+    // Baidu BD-09 center for the Lianglin campus near the university's
+    // official address at 899 Guangqiong Road. This avoids geocoding during
+    // map startup and must never be replaced with raw WGS-84 GPS coordinates.
+    coordinate: JIAXING_UNIVERSITY_BD09,
   },
 ];
 

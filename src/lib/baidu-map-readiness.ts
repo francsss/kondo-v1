@@ -12,15 +12,14 @@ const REQUIRED_BAIDU_CONSTRUCTORS = [
   "Convertor",
 ] as const;
 
-export const BAIDU_MAP_CALLBACK = "__kondoBaiduMapReady";
+export const BAIDU_MAP_VERSION = "4.0" as const;
 
-export function baiduMapSdkUrl(apiKey: string, callback = BAIDU_MAP_CALLBACK) {
+export function baiduMapSdkUrl(apiKey: string, callback?: string) {
   const parameters = new URLSearchParams({
-    type: "webgl",
-    v: "4.0",
+    v: BAIDU_MAP_VERSION,
     ak: apiKey,
-    callback,
   });
+  if (callback) parameters.set("callback", callback);
   return `https://api.map.baidu.com/api?${parameters.toString()}`;
 }
 
