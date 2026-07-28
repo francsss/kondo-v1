@@ -883,8 +883,8 @@ model ScheduleCourse {
   specificDate DateTime?            @db.Date
   startPeriod  Int?
   endPeriod    Int?
-  startTime    String               @db.VarChar(5)
-  endTime      String               @db.VarChar(5)
+  startTime    String?              @db.VarChar(5)
+  endTime      String?              @db.VarChar(5)
   room         String?
   building     String?
   campusLabel  String?

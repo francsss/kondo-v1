@@ -45,7 +45,13 @@ export default async function StudentToolsPage() {
         academicTerm: {
           select: { name: true, firstWeekStartsOn: true, totalWeeks: true },
         },
-        courses: { orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] },
+        courses: {
+          orderBy: [
+            { dayOfWeek: "asc" },
+            { startTime: "asc" },
+            { startPeriod: "asc" },
+          ],
+        },
       },
       orderBy: { updatedAt: "desc" },
       take: 5,

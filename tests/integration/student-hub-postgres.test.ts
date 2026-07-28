@@ -180,6 +180,133 @@ postgresDescribe("Student Hub PostgreSQL persistence", () => {
     );
   });
 
+  it("persists period-only courses when no clock mapping is configured", async () => {
+    const scheduleImport = await prisma.scheduleImport.create({
+      data: {
+        ownerId,
+        universityId,
+        status: "REVIEW_REQUIRED",
+      },
+    });
+
+    const saved = await saveScheduleImport({
+      importId: scheduleImport.id,
+      ownerId,
+      expectedStatus: "REVIEW_REQUIRED",
+      title: "Period-only timetable",
+      courses: [
+        {
+          courseName: "大学物理",
+          teacher: null,
+          dayOfWeek: 1,
+          specificDate: null,
+          startPeriod: 1,
+          endPeriod: 2,
+          startTime: null,
+          endTime: null,
+          room: "A201",
+          building: null,
+          campusLabel: null,
+          startWeek: 1,
+          endWeek: 16,
+          weekPattern: "ALL",
+          weeks: [],
+          language: "zh-CN",
+          notes: null,
+          color: "#22A06B",
+          isOptional: false,
+          confidence: 0.91,
+          source: "IMPORT",
+        },
+      ],
+    });
+
+    expect(saved.schedule.courses[0]).toMatchObject({
+      startPeriod: 1,
+      endPeriod: 2,
+      startTime: null,
+      endTime: null,
+    });
+  });
+
+  it("resolves period-only review data with the current university mapping before persistence", async () => {
+    await prisma.universityPeriodConfiguration.create({
+      data: {
+        universityId,
+        name: "Official periods",
+        timezone: "Asia/Shanghai",
+        isActive: true,
+        isDefault: true,
+        periods: {
+          create: [
+            {
+              periodNumber: 1,
+              label: "Period 1",
+              startTime: "08:00",
+              endTime: "08:45",
+              displayOrder: 1,
+              isActive: true,
+            },
+            {
+              periodNumber: 2,
+              label: "Period 2",
+              startTime: "08:55",
+              endTime: "09:40",
+              displayOrder: 2,
+              isActive: true,
+            },
+          ],
+        },
+      },
+    });
+    const scheduleImport = await prisma.scheduleImport.create({
+      data: {
+        ownerId,
+        universityId,
+        status: "REVIEW_REQUIRED",
+      },
+    });
+
+    const saved = await saveScheduleImport({
+      importId: scheduleImport.id,
+      ownerId,
+      expectedStatus: "REVIEW_REQUIRED",
+      title: "Mapped timetable",
+      courses: [
+        {
+          courseName: "Advanced Mathematics",
+          teacher: null,
+          dayOfWeek: 2,
+          specificDate: null,
+          startPeriod: 1,
+          endPeriod: 2,
+          startTime: "",
+          endTime: "",
+          room: null,
+          building: null,
+          campusLabel: null,
+          startWeek: 1,
+          endWeek: 16,
+          weekPattern: "ALL",
+          weeks: [],
+          language: "en",
+          notes: null,
+          color: "#3B82F6",
+          isOptional: false,
+          confidence: 0.88,
+          source: "IMPORT",
+        },
+      ],
+    });
+
+    expect(saved.schedule.courses[0]).toMatchObject({
+      startPeriod: 1,
+      endPeriod: 2,
+      startTime: "08:00",
+      endTime: "09:40",
+    });
+  });
+
   it("does not expose another student's private schedule through owner-scoped queries", async () => {
     await expect(
       prisma.studentSchedule.findFirst({

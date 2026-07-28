@@ -14,6 +14,8 @@ import {
   assessExtractedDocument,
   type DocumentQualityDiagnostic,
 } from "@/lib/schedule-validation";
+import { normalizeScheduleExtractionCandidate } from "@/lib/schedule-extraction-normalization";
+import { describeTimetableValidation } from "@/lib/schedule-validation-errors";
 import { getObjectStorageForProvider } from "@/lib/storage";
 
 type ScheduleFile = Pick<
@@ -457,8 +459,9 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
         }
         let parsed: ExtractedSchedule;
         try {
+          const providerJson = JSON.parse(responseText(payload));
           parsed = scheduleExtractionSchema.parse(
-            JSON.parse(responseText(payload)),
+            normalizeScheduleExtractionCandidate(providerJson),
           );
           if (parsed.courses.length === 0) {
             throw new ScheduleAnalysisError(
@@ -471,6 +474,20 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
         } catch (error) {
           if (error instanceof ScheduleAnalysisError) throw error;
           if (error instanceof SyntaxError || error instanceof ZodError) {
+            const validation =
+              error instanceof ZodError
+                ? describeTimetableValidation(error)
+                : {
+                    message:
+                      "The analysis service returned malformed JSON and no timetable could be reconstructed.",
+                    issues: [
+                      {
+                        path: "json",
+                        message:
+                          "The analysis service returned malformed JSON and no timetable could be reconstructed.",
+                      },
+                    ],
+                  };
             logServerError(
               "student-hub.schedule-analysis.response-validation.failed",
               error,
@@ -486,11 +503,12 @@ class DeepSeekScheduleProvider implements ScheduleAnalysisProvider {
                         .map((issue) => issue.path.join("."))
                         .join(",")
                     : "json",
+                firstIssuePath: validation.issues[0]?.path ?? "unknown",
               },
             );
             throw new ScheduleAnalysisError(
               "TIMETABLE_RECONSTRUCTION_FAILED",
-              "Text extraction succeeded, but timetable reconstruction failed because the academic fields were inconsistent. Try a less-cropped document or correct the source layout.",
+              `Text extraction succeeded, but the timetable could not be reconstructed: ${validation.message}`,
               502,
               true,
             );

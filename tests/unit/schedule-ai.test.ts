@@ -231,4 +231,55 @@ describe("DeepSeek timetable analysis", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.extraction.title).toBe("Spring timetable");
   });
+
+  it("accepts a mixed Chinese response with weekday and period aliases", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  timetable: {
+                    title: "春季课表",
+                    classes: [
+                      {
+                        subject: "高等数学",
+                        instructor: "李老师",
+                        weekday: "周一",
+                        periods: "第1-2节",
+                        weekRange: "1-16周",
+                        classroom: "A201",
+                        confidence: "94%",
+                      },
+                    ],
+                  },
+                }),
+              },
+            },
+          ],
+          usage: { prompt_tokens: 100, completion_tokens: 50 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getScheduleAnalysisProvider().analyze(
+      [file("image/png", "chinese-timetable.png")],
+      context,
+    );
+
+    expect(result.extraction.courses[0]).toMatchObject({
+      courseName: "高等数学",
+      dayOfWeek: "MONDAY",
+      startPeriod: 1,
+      endPeriod: 2,
+      startTime: null,
+      endTime: null,
+      startWeek: 1,
+      endWeek: 16,
+      room: "A201",
+    });
+  });
 });

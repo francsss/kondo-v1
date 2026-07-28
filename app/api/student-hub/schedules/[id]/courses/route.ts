@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { scheduleCourseInputSchema } from "@/features/student-hub/schemas";
 import { prisma } from "@/lib/prisma";
 import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
+import { describeTimetableValidation } from "@/lib/schedule-validation-errors";
 import { getCurrentUser } from "@/lib/server-auth";
 import { findScheduleConflicts } from "@/lib/student-schedule";
 
@@ -16,8 +17,13 @@ export async function POST(
   const parsed = scheduleCourseInputSchema.safeParse(
     await request.json().catch(() => null),
   );
-  if (!parsed.success)
-    return jsonError(parsed.error.issues[0]?.message ?? "Invalid course.");
+  if (!parsed.success) {
+    const validation = describeTimetableValidation(parsed.error);
+    return Response.json(
+      { error: validation.message, code: validation.code },
+      { status: 422 },
+    );
+  }
   const scheduleId = (await params).id;
   try {
     const schedule = await prisma.studentSchedule.findFirst({

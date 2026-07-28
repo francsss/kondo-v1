@@ -13,7 +13,11 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
-import { DAY_NAMES, findScheduleConflicts } from "@/lib/student-schedule";
+import {
+  DAY_NAMES,
+  findScheduleConflicts,
+  formatCourseTime,
+} from "@/lib/student-schedule";
 
 export const metadata: Metadata = { title: "Generated timetable" };
 
@@ -32,7 +36,13 @@ export default async function TimetableResultPage({
       university: { select: { name: true } },
       campus: { select: { name: true } },
       academicTerm: { select: { name: true } },
-      courses: { orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] },
+      courses: {
+        orderBy: [
+          { dayOfWeek: "asc" },
+          { startTime: "asc" },
+          { startPeriod: "asc" },
+        ],
+      },
     },
   });
   if (!schedule) notFound();
@@ -107,7 +117,7 @@ export default async function TimetableResultPage({
                             {course.courseName}
                           </p>
                           <p className="mt-1 text-[11px] font-bold text-muted-foreground">
-                            {course.startTime}–{course.endTime}
+                            {formatCourseTime(course)}
                           </p>
                           <p className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">
                             {course.room || course.teacher || "Class"}

@@ -10,8 +10,10 @@ const course = (
     id: string;
     courseName: string;
     dayOfWeek: number;
-    startTime: string;
-    endTime: string;
+    startPeriod: number | null;
+    endPeriod: number | null;
+    startTime: string | null;
+    endTime: string | null;
     startWeek: number | null;
     endWeek: number | null;
     weekPattern: "ALL" | "ODD" | "EVEN" | "CUSTOM";
@@ -21,6 +23,8 @@ const course = (
   id: "course-a",
   courseName: "Chinese",
   dayOfWeek: 1,
+  startPeriod: null,
+  endPeriod: null,
   startTime: "08:00",
   endTime: "09:30",
   startWeek: 1,
@@ -109,6 +113,12 @@ describe("student timetable normalization", () => {
       [],
     );
     expect(normalized.courses[0]?.uncertainFields).toContain("time");
+    expect(normalized.courses[0]).toMatchObject({
+      startPeriod: 3,
+      endPeriod: 4,
+      startTime: null,
+      endTime: null,
+    });
   });
 
   it("understands odd, even and custom recurrence when detecting conflicts", () => {
@@ -125,9 +135,31 @@ describe("student timetable normalization", () => {
       {
         firstId: "odd",
         secondId: "custom",
-        message:
-          "Chinese conflicts with Chinese on Monday from 08:00 to 09:30.",
+        message: "Chinese conflicts with Chinese on Monday (08:00–09:30).",
       },
     ]);
+  });
+
+  it("detects overlapping period-only courses without inventing clock times", () => {
+    const first = course({
+      id: "period-a",
+      startTime: null,
+      endTime: null,
+      startPeriod: 1,
+      endPeriod: 2,
+    });
+    const second = course({
+      id: "period-b",
+      courseName: "Physics",
+      startTime: null,
+      endTime: null,
+      startPeriod: 2,
+      endPeriod: 3,
+    });
+
+    expect(schedulesOverlap(first, second)).toBe(true);
+    expect(findScheduleConflicts([first, second])[0]?.message).toContain(
+      "Periods 1–2",
+    );
   });
 });

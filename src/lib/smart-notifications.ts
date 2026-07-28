@@ -96,6 +96,7 @@ async function insertJobs(jobs: SmartJob[]) {
 async function academicReminderJobs(now: Date, recipientIds?: string[]) {
   const courses = await prisma.scheduleCourse.findMany({
     where: {
+      startTime: { not: null },
       schedule: {
         isActive: true,
         confirmedAt: { not: null },
@@ -128,6 +129,7 @@ async function academicReminderJobs(now: Date, recipientIds?: string[]) {
   });
   const jobs: SmartJob[] = [];
   for (const course of courses) {
+    if (!course.startTime) continue;
     const clock = localClock(now, course.schedule.timezone);
     const term = course.schedule.academicTerm;
     if (

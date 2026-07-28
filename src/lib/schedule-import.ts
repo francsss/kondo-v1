@@ -5,6 +5,7 @@ import { logServerError, logServerEvent } from "@/lib/logger";
 import { removeOwnedMedia } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 import { findScheduleConflicts } from "@/lib/student-schedule";
+import { describeTimetableValidation } from "@/lib/schedule-validation-errors";
 
 type RequestMeta = {
   ipAddress?: string | null;
@@ -47,6 +48,41 @@ export function parseScheduleForPersistence(normalized: NormalizedSchedule) {
   });
 }
 
+function resolveCourseTimesFromPeriods(
+  courses: Array<Record<string, unknown>>,
+  periods: Array<{
+    periodNumber: number;
+    startTime: string;
+    endTime: string;
+  }>,
+) {
+  const periodMap = new Map(
+    periods.map((period) => [period.periodNumber, period]),
+  );
+  return courses.map((course) => {
+    const startPeriod =
+      typeof course.startPeriod === "number" ? course.startPeriod : null;
+    const endPeriod =
+      typeof course.endPeriod === "number" ? course.endPeriod : null;
+    const explicitStart =
+      typeof course.startTime === "string" && course.startTime.trim()
+        ? course.startTime.trim()
+        : null;
+    const explicitEnd =
+      typeof course.endTime === "string" && course.endTime.trim()
+        ? course.endTime.trim()
+        : null;
+    return {
+      ...course,
+      startTime:
+        explicitStart ??
+        (startPeriod ? periodMap.get(startPeriod)?.startTime : null),
+      endTime:
+        explicitEnd ?? (endPeriod ? periodMap.get(endPeriod)?.endTime : null),
+    };
+  });
+}
+
 export async function saveScheduleImport(input: {
   importId: string;
   ownerId: string;
@@ -59,17 +95,6 @@ export async function saveScheduleImport(input: {
   requestMeta?: RequestMeta;
   analysis?: AnalysisMetadata;
 }) {
-  const parsed = scheduleImportConfirmSchema.safeParse({
-    title: input.title,
-    courses: input.courses,
-  });
-  if (!parsed.success) {
-    throw new ScheduleImportStateError(
-      parsed.error.issues[0]?.message ?? "Invalid timetable.",
-      422,
-    );
-  }
-
   const scheduleImport = await prisma.scheduleImport.findFirst({
     where: {
       id: input.importId,
@@ -101,6 +126,23 @@ export async function saveScheduleImport(input: {
     },
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
   });
+  const resolvedCourses = resolveCourseTimesFromPeriods(
+    input.courses,
+    configuration?.periods ?? [],
+  );
+  const parsed = scheduleImportConfirmSchema.safeParse({
+    title: input.title,
+    courses: resolvedCourses,
+  });
+  if (!parsed.success) {
+    const validation = describeTimetableValidation(parsed.error);
+    logServerEvent("student-hub.schedule.save.validation-failed", {
+      importId: input.importId,
+      issueCount: validation.issues.length,
+      firstIssuePath: validation.issues[0]?.path ?? "unknown",
+    });
+    throw new ScheduleImportStateError(validation.message, 422);
+  }
 
   logServerEvent("student-hub.schedule.save.started", {
     importId: input.importId,

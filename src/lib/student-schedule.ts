@@ -52,8 +52,8 @@ export function normalizeExtractedSchedule(
       const endPeriod = course.endPeriod
         ? periodMap.get(course.endPeriod)
         : null;
-      const startTime = course.startTime ?? startPeriod?.startTime ?? "";
-      const endTime = course.endTime ?? endPeriod?.endTime ?? "";
+      const startTime = course.startTime ?? startPeriod?.startTime ?? null;
+      const endTime = course.endTime ?? endPeriod?.endTime ?? null;
       const uncertainFields = [...course.uncertainFields];
       if (!startTime || !endTime) uncertainFields.push("time");
       return {
@@ -89,6 +89,8 @@ type ConflictCourse = Pick<
   | "id"
   | "courseName"
   | "dayOfWeek"
+  | "startPeriod"
+  | "endPeriod"
   | "startTime"
   | "endTime"
   | "startWeek"
@@ -96,6 +98,24 @@ type ConflictCourse = Pick<
   | "weekPattern"
   | "weeks"
 >;
+
+function comparableCourseWindow(course: ConflictCourse) {
+  if (course.startTime && course.endTime) {
+    return {
+      kind: "time" as const,
+      start: course.startTime,
+      end: course.endTime,
+    };
+  }
+  if (course.startPeriod !== null && course.endPeriod !== null) {
+    return {
+      kind: "period" as const,
+      start: String(course.startPeriod).padStart(2, "0"),
+      end: String(course.endPeriod + 1).padStart(2, "0"),
+    };
+  }
+  return null;
+}
 
 function weekSet(course: ConflictCourse) {
   if (course.weekPattern === "CUSTOM") return new Set(course.weeks);
@@ -112,9 +132,35 @@ function weekSet(course: ConflictCourse) {
 
 export function schedulesOverlap(a: ConflictCourse, b: ConflictCourse) {
   if (a.dayOfWeek !== b.dayOfWeek) return false;
-  if (!(a.startTime < b.endTime && b.startTime < a.endTime)) return false;
+  const aWindow = comparableCourseWindow(a);
+  const bWindow = comparableCourseWindow(b);
+  if (
+    !aWindow ||
+    !bWindow ||
+    aWindow.kind !== bWindow.kind ||
+    !(aWindow.start < bWindow.end && bWindow.start < aWindow.end)
+  ) {
+    return false;
+  }
   const aWeeks = weekSet(a);
   return [...weekSet(b)].some((week) => aWeeks.has(week));
+}
+
+export function formatCourseTime(
+  course: Pick<
+    ConflictCourse,
+    "startTime" | "endTime" | "startPeriod" | "endPeriod"
+  >,
+) {
+  if (course.startTime && course.endTime) {
+    return `${course.startTime}–${course.endTime}`;
+  }
+  if (course.startPeriod !== null && course.endPeriod !== null) {
+    return course.startPeriod === course.endPeriod
+      ? `Period ${course.startPeriod}`
+      : `Periods ${course.startPeriod}–${course.endPeriod}`;
+  }
+  return "Time to confirm";
 }
 
 export function findScheduleConflicts(courses: ConflictCourse[]) {
@@ -131,7 +177,7 @@ export function findScheduleConflicts(courses: ConflictCourse[]) {
       conflicts.push({
         firstId: a.id,
         secondId: b.id,
-        message: `${a.courseName} conflicts with ${b.courseName} on ${DAY_NAMES[a.dayOfWeek - 1]} from ${a.startTime} to ${a.endTime}.`,
+        message: `${a.courseName} conflicts with ${b.courseName} on ${DAY_NAMES[a.dayOfWeek - 1]} (${formatCourseTime(a)}).`,
       });
     }
   }

@@ -12,6 +12,7 @@ import {
   ScheduleAnalysisError,
 } from "@/lib/schedule-ai";
 import { validateExtractedSchedule } from "@/lib/schedule-validation";
+import { describeTimetableValidation } from "@/lib/schedule-validation-errors";
 import {
   parseScheduleForPersistence,
   ScheduleImportStateError,
@@ -151,11 +152,16 @@ export async function POST(
       (course) => course.uncertainFields.length > 0 || course.confidence < 0.75,
     ).length;
     const persistable = parseScheduleForPersistence(normalized);
+    const persistenceValidation = persistable.success
+      ? null
+      : describeTimetableValidation(persistable.error);
     logServerEvent("student-hub.schedule-analysis.validation.completed", {
       importId: id,
       courseCount: normalized.courses.length,
       reviewCount,
       readyForConfirmation: persistable.success,
+      validationIssueCount: persistenceValidation?.issues.length ?? 0,
+      firstIssuePath: persistenceValidation?.issues[0]?.path ?? null,
     });
 
     await prisma.$transaction([
@@ -217,6 +223,7 @@ export async function POST(
       validationIssueCount: persistable.success
         ? 0
         : persistable.error.issues.length,
+      firstValidationIssue: persistenceValidation?.issues[0]?.message ?? null,
       explicitConfirmationRequired: true,
     });
     return Response.json({
@@ -225,6 +232,7 @@ export async function POST(
       reviewCount,
       saved: false,
       readyForConfirmation: persistable.success,
+      validationIssues: persistenceValidation?.issues ?? [],
     });
   } catch (error) {
     const failure =

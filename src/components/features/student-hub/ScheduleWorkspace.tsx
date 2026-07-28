@@ -28,7 +28,7 @@ import {
 } from "@/lib/schedule-import-client";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
-import { DAY_NAMES } from "@/lib/student-schedule";
+import { DAY_NAMES, formatCourseTime } from "@/lib/student-schedule";
 
 type University = {
   id: string;
@@ -58,8 +58,8 @@ type Course = {
   specificDate: string | null;
   startPeriod: number | null;
   endPeriod: number | null;
-  startTime: string;
-  endTime: string;
+  startTime: string | null;
+  endTime: string | null;
   room: string | null;
   building: string | null;
   campusLabel: string | null;
@@ -517,7 +517,11 @@ export function ScheduleWorkspace({
           courses: review.courses.map((course) => {
             const confirmed = { ...course };
             delete confirmed.uncertainFields;
-            return confirmed;
+            return {
+              ...confirmed,
+              startTime: confirmed.startTime || null,
+              endTime: confirmed.endTime || null,
+            };
           }),
         },
       );
@@ -1333,8 +1337,8 @@ function CourseFields({
   course: Partial<ReviewCourse> & {
     courseName: string;
     dayOfWeek: number;
-    startTime: string;
-    endTime: string;
+    startTime: string | null;
+    endTime: string | null;
   };
   onChange: (field: keyof ReviewCourse, value: never) => void;
 }) {
@@ -1385,25 +1389,57 @@ function CourseFields({
         />
       </label>
       <label>
-        <span className="mb-1 block text-xs font-bold">Starts</span>
+        <span className="mb-1 block text-xs font-bold">Start period</span>
+        <input
+          className={input}
+          max={40}
+          min={1}
+          onChange={(event) =>
+            onChange(
+              "startPeriod",
+              (event.target.value ? Number(event.target.value) : null) as never,
+            )
+          }
+          placeholder="e.g. 1"
+          type="number"
+          value={course.startPeriod ?? ""}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">End period</span>
+        <input
+          className={input}
+          max={40}
+          min={1}
+          onChange={(event) =>
+            onChange(
+              "endPeriod",
+              (event.target.value ? Number(event.target.value) : null) as never,
+            )
+          }
+          placeholder="e.g. 2"
+          type="number"
+          value={course.endPeriod ?? ""}
+        />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-bold">Start time</span>
         <input
           className={input}
           onChange={(event) =>
             onChange("startTime", event.target.value as never)
           }
-          required
           type="time"
-          value={course.startTime}
+          value={course.startTime ?? ""}
         />
       </label>
       <label>
-        <span className="mb-1 block text-xs font-bold">Ends</span>
+        <span className="mb-1 block text-xs font-bold">End time</span>
         <input
           className={input}
           onChange={(event) => onChange("endTime", event.target.value as never)}
-          required
           type="time"
-          value={course.endTime}
+          value={course.endTime ?? ""}
         />
       </label>
       <label>
@@ -1499,7 +1535,7 @@ function CourseCard({
     >
       <p className="line-clamp-2 text-xs font-black">{course.courseName}</p>
       <p className="mt-1 text-[11px] font-bold text-muted-foreground">
-        {course.startTime}–{course.endTime}
+        {formatCourseTime(course)}
       </p>
       <p className="mt-1 line-clamp-1 text-[10px] text-muted-foreground">
         {course.room || course.teacher || "Class"}
@@ -1541,8 +1577,8 @@ function CourseRow({
       <div className="min-w-0 flex-1">
         <p className="font-black">{course.courseName}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {DAY_NAMES[course.dayOfWeek - 1]} · {course.startTime}–
-          {course.endTime} {course.room ? `· ${course.room}` : ""}
+          {DAY_NAMES[course.dayOfWeek - 1]} · {formatCourseTime(course)}{" "}
+          {course.room ? `· ${course.room}` : ""}
         </p>
       </div>
       <Button

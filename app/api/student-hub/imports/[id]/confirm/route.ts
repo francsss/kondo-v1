@@ -13,6 +13,7 @@ import {
   saveScheduleImport,
   ScheduleImportStateError,
 } from "@/lib/schedule-import";
+import { describeTimetableValidation } from "@/lib/schedule-validation-errors";
 import { getCurrentUser } from "@/lib/server-auth";
 
 export async function POST(
@@ -26,8 +27,21 @@ export async function POST(
   const parsed = scheduleImportConfirmSchema.safeParse(
     await request.json().catch(() => null),
   );
-  if (!parsed.success)
-    return jsonError(parsed.error.issues[0]?.message ?? "Invalid timetable.");
+  if (!parsed.success) {
+    const validation = describeTimetableValidation(parsed.error);
+    logServerEvent("student-hub.schedule-import.confirmation.rejected", {
+      issueCount: validation.issues.length,
+      firstIssuePath: validation.issues[0]?.path ?? "unknown",
+    });
+    return Response.json(
+      {
+        error: validation.message,
+        code: validation.code,
+        issues: validation.issues,
+      },
+      { status: 422 },
+    );
+  }
   const id = (await params).id;
   try {
     await prisma.scheduleImport.updateMany({

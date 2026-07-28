@@ -11,7 +11,20 @@ export const scheduleDaySchema = z.enum([
 ]);
 
 export const weekPatternSchema = z.enum(["ALL", "ODD", "EVEN", "CUSTOM"]);
-const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const timeSchema = z
+  .string()
+  .regex(
+    /^([01]\d|2[0-3]):[0-5]\d$/,
+    "Use a valid 24-hour time in HH:MM format.",
+  );
+const optionalTimeSchema = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  timeSchema.nullable(),
+);
+const optionalPeriodSchema = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  z.coerce.number().int().positive().max(40).nullable(),
+);
 
 export const extractedCourseSchema = z
   .object({
@@ -70,16 +83,10 @@ export const scheduleCourseInputSchema = z
     teacher: z.string().trim().max(160).nullable().optional(),
     dayOfWeek: z.coerce.number().int().min(1).max(7),
     specificDate: z.string().date().nullable().optional(),
-    startPeriod: z.coerce
-      .number()
-      .int()
-      .positive()
-      .max(40)
-      .nullable()
-      .optional(),
-    endPeriod: z.coerce.number().int().positive().max(40).nullable().optional(),
-    startTime: timeSchema,
-    endTime: timeSchema,
+    startPeriod: optionalPeriodSchema,
+    endPeriod: optionalPeriodSchema,
+    startTime: optionalTimeSchema,
+    endTime: optionalTimeSchema,
     room: z.string().trim().max(120).nullable().optional(),
     building: z.string().trim().max(160).nullable().optional(),
     campusLabel: z.string().trim().max(160).nullable().optional(),
@@ -100,9 +107,77 @@ export const scheduleCourseInputSchema = z
     confidence: z.number().min(0).max(1).nullable().optional(),
     source: z.enum(["IMPORT", "MANUAL"]).default("MANUAL"),
   })
-  .refine((course) => course.startTime < course.endTime, {
-    message: "The end time must be after the start time.",
-    path: ["endTime"],
+  .superRefine((course, context) => {
+    const hasStartTime = Boolean(course.startTime);
+    const hasEndTime = Boolean(course.endTime);
+    const hasStartPeriod = course.startPeriod !== null;
+    const hasEndPeriod = course.endPeriod !== null;
+
+    if (hasStartTime !== hasEndTime) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide both the start and end time, or leave both empty.",
+        path: [hasStartTime ? "endTime" : "startTime"],
+      });
+    }
+    if (hasStartPeriod !== hasEndPeriod) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Provide both the start and end period number, or leave both empty.",
+        path: [hasStartPeriod ? "endPeriod" : "startPeriod"],
+      });
+    }
+    if (!hasStartTime && !hasStartPeriod) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "A complete clock-time range or a complete period-number range is required.",
+        path: ["startTime"],
+      });
+    }
+    if (
+      course.startTime &&
+      course.endTime &&
+      course.startTime >= course.endTime
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "The end time must be after the start time.",
+        path: ["endTime"],
+      });
+    }
+    if (
+      course.startPeriod !== null &&
+      course.endPeriod !== null &&
+      course.startPeriod > course.endPeriod
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "The end period must be after the start period.",
+        path: ["endPeriod"],
+      });
+    }
+    if (
+      course.startWeek !== null &&
+      course.startWeek !== undefined &&
+      course.endWeek !== null &&
+      course.endWeek !== undefined &&
+      course.startWeek > course.endWeek
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "The last week must not be before the first week.",
+        path: ["endWeek"],
+      });
+    }
+    if (course.weekPattern === "CUSTOM" && course.weeks.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Custom week patterns require at least one week number.",
+        path: ["weeks"],
+      });
+    }
   });
 
 export const scheduleImportCreateSchema = z.object({
