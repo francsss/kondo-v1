@@ -14,6 +14,7 @@ import {
 import { validateExtractedSchedule } from "@/lib/schedule-validation";
 import { describeTimetableValidation } from "@/lib/schedule-validation-errors";
 import {
+  findApplicablePeriodConfiguration,
   parseScheduleForPersistence,
   ScheduleImportStateError,
 } from "@/lib/schedule-import";
@@ -93,21 +94,9 @@ export async function POST(
   });
 
   try {
-    const configuration = await prisma.universityPeriodConfiguration.findFirst({
-      where: {
-        universityId: scheduleImport.universityId ?? "",
-        isActive: true,
-        OR: scheduleImport.campusId
-          ? [{ campusId: scheduleImport.campusId }, { campusId: null }]
-          : [{ campusId: null }],
-      },
-      include: {
-        periods: {
-          where: { isActive: true, isBreak: false },
-          orderBy: { displayOrder: "asc" },
-        },
-      },
-      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+    const configuration = await findApplicablePeriodConfiguration({
+      universityId: scheduleImport.universityId,
+      campusId: scheduleImport.campusId,
     });
     const periods = configuration?.periods ?? [];
     logServerEvent(

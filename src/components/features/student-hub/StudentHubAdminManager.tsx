@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Building2,
-  CalendarDays,
   Check,
   Clock3,
   LoaderCircle,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -35,18 +35,6 @@ type Campus = {
   createdAt: string;
   updatedAt: string;
 };
-type Term = {
-  id: string;
-  campusId: string | null;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-  firstWeekStartsOn: string;
-  totalWeeks: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
 type Configuration = {
   id: string;
   campusId: string | null;
@@ -66,12 +54,12 @@ type University = {
   name: string;
   shortName: string | null;
   campuses: Campus[];
-  academicTerms: Term[];
   periodConfigurations: Configuration[];
 };
+
 const input =
-  "h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-kondo-green";
-const defaultPeriods: Period[] = [
+  "h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none transition focus:border-kondo-green";
+const initialPeriods: Period[] = [
   {
     periodNumber: 1,
     label: "Period 1",
@@ -106,6 +94,39 @@ async function send(url: string, body: unknown, method = "POST") {
   return data;
 }
 
+function durationMinutes(start: string, end: string) {
+  const [startHour = 0, startMinute = 0] = start.split(":").map(Number);
+  const [endHour = 0, endMinute = 0] = end.split(":").map(Number);
+  return endHour * 60 + endMinute - (startHour * 60 + startMinute);
+}
+
+function normalizedPeriods(periods: Period[]) {
+  return periods.map((period, index) => {
+    const hour = Number(period.startTime.slice(0, 2));
+    return {
+      periodNumber: period.periodNumber,
+      label: `Period ${period.periodNumber}`,
+      startTime: period.startTime,
+      endTime: period.endTime,
+      displayOrder: index + 1,
+      part:
+        hour < 12 ? "MORNING" : hour < 18 ? "AFTERNOON" : ("EVENING" as const),
+      isBreak: false,
+      isActive: true,
+    };
+  });
+}
+
+function activeConfiguration(
+  university: University | undefined,
+  campusId = "",
+) {
+  return university?.periodConfigurations.find(
+    (configuration) =>
+      configuration.isActive && (configuration.campusId ?? "") === campusId,
+  );
+}
+
 export function StudentHubAdminManager({
   universities,
   canManage,
@@ -114,37 +135,119 @@ export function StudentHubAdminManager({
   canManage: boolean;
 }) {
   const router = useRouter();
+  const firstConfiguration = activeConfiguration(universities[0]);
   const [universityId, setUniversityId] = useState(universities[0]?.id ?? "");
-  const [periods, setPeriods] = useState<Period[]>(defaultPeriods);
+  const [campusId, setCampusId] = useState("");
+  const [editingConfigurationId, setEditingConfigurationId] = useState<
+    string | null
+  >(firstConfiguration?.id ?? null);
+  const [periods, setPeriods] = useState<Period[]>(
+    firstConfiguration?.periods.map((period) => ({
+      ...period,
+      label: `Period ${period.periodNumber}`,
+    })) ?? initialPeriods,
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const university = universities.find((item) => item.id === universityId);
-  async function submit(
-    form: HTMLFormElement,
-    url: string,
-    body: Record<string, unknown>,
-  ) {
+  const configurationForScope = useMemo(
+    () => activeConfiguration(university, campusId),
+    [campusId, university],
+  );
+
+  function resetPeriodEditor(nextCampusId = "") {
+    setCampusId(nextCampusId);
+    const existing = activeConfiguration(university, nextCampusId);
+    if (existing) {
+      setEditingConfigurationId(existing.id);
+      setPeriods(
+        existing.periods.map((period) => ({
+          ...period,
+          label: `Period ${period.periodNumber}`,
+        })),
+      );
+    } else {
+      setEditingConfigurationId(null);
+      setPeriods(initialPeriods.map((period) => ({ ...period })));
+    }
+  }
+
+  async function submitCampus(form: HTMLFormElement, body: unknown) {
+    if (!university) return;
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      await send(url, body);
+      await send(
+        `/api/admin/student-hub/universities/${university.id}/campuses`,
+        body,
+      );
       form.reset();
-      setMessage("Saved to the Student Hub configuration.");
+      setMessage("Campus saved.");
       router.refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Save failed.");
+      setError(cause instanceof Error ? cause.message : "Campus save failed.");
     } finally {
       setBusy(false);
     }
   }
+
+  async function savePeriods(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!university) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const selectedCampus = university.campuses.find(
+        (campus) => campus.id === campusId,
+      );
+      const body = {
+        campusId: campusId || null,
+        name: `${selectedCampus?.name ?? university.name} periods`,
+        timezone: "Asia/Shanghai",
+        primaryLanguage: "zh-CN",
+        isActive: true,
+        isDefault: true,
+        periods: normalizedPeriods(periods),
+      };
+      await send(
+        editingConfigurationId
+          ? `/api/admin/student-hub/period-configurations/${editingConfigurationId}`
+          : `/api/admin/student-hub/universities/${university.id}/period-configurations`,
+        body,
+        editingConfigurationId ? "PATCH" : "POST",
+      );
+      setMessage("Official periods saved. Student schedules will use them.");
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Period save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mt-7 space-y-6">
       <Card>
         <SearchableSelect
           label="University"
-          onSelect={setUniversityId}
+          onSelect={(value) => {
+            const selectedUniversity = universities.find(
+              (item) => item.id === value,
+            );
+            const configuration = activeConfiguration(selectedUniversity);
+            setUniversityId(value);
+            setCampusId("");
+            setEditingConfigurationId(configuration?.id ?? null);
+            setPeriods(
+              configuration?.periods.map((period) => ({
+                ...period,
+                label: `Period ${period.periodNumber}`,
+              })) ?? initialPeriods.map((period) => ({ ...period })),
+            );
+          }}
           options={universities.map((item) => ({
             id: item.id,
             name: item.name,
@@ -154,46 +257,53 @@ export function StudentHubAdminManager({
           searchPlaceholder="Search universities"
           selected={universityId}
         />
-        {university &&
-        !university.periodConfigurations.some((item) => item.isActive) ? (
-          <p className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
-            <AlertTriangle className="h-4 w-4" />
-            No active official period configuration. Numbered timetable periods
-            cannot be converted automatically.
-          </p>
-        ) : null}
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          Only university-specific information is configured here: campuses and
+          the exact start and end time of each numbered period.
+        </p>
       </Card>
+
       {error ? (
         <p
+          className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 dark:bg-red-400/10 dark:text-red-300"
           role="alert"
-          className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700"
         >
           {error}
         </p>
       ) : null}
       {message ? (
-        <p className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
-          <Check className="h-4 w-4" />
-          {message}
+        <p className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-300">
+          <Check className="h-4 w-4" /> {message}
         </p>
       ) : null}
+
       {university ? (
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
           <Card>
             <div className="flex items-center gap-3">
               <Building2 className="h-5 w-5 text-kondo-green" />
-              <h2 className="text-lg font-black">Campuses</h2>
+              <div>
+                <h2 className="text-lg font-black">Campuses</h2>
+                <p className="text-xs text-muted-foreground">
+                  Existing campus management is preserved.
+                </p>
+              </div>
             </div>
             <div className="mt-4 space-y-2">
               {university.campuses.map((campus) => (
                 <div className="rounded-2xl bg-muted p-3" key={campus.id}>
                   <p className="text-sm font-black">{campus.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {campus.address || "No address"} ·{" "}
                     {campus.isActive ? "Active" : "Inactive"}
                   </p>
                 </div>
               ))}
+              {!university.campuses.length ? (
+                <p className="text-sm text-muted-foreground">
+                  No campuses configured.
+                </p>
+              ) : null}
             </div>
             {canManage ? (
               <form
@@ -202,15 +312,11 @@ export function StudentHubAdminManager({
                   event.preventDefault();
                   const form = event.currentTarget;
                   const data = new FormData(form);
-                  void submit(
-                    form,
-                    `/api/admin/student-hub/universities/${university.id}/campuses`,
-                    {
-                      name: data.get("name"),
-                      address: data.get("address") || null,
-                      isActive: true,
-                    },
-                  );
+                  void submitCampus(form, {
+                    name: data.get("name"),
+                    address: data.get("address") || null,
+                    isActive: true,
+                  });
                 }}
               >
                 <input
@@ -225,281 +331,139 @@ export function StudentHubAdminManager({
                   placeholder="Address (optional)"
                 />
                 <Button disabled={busy} type="submit">
-                  <Plus className="h-4 w-4" />
-                  Add campus
+                  <Plus className="h-4 w-4" /> Add campus
                 </Button>
               </form>
             ) : null}
           </Card>
+
           <Card>
-            <div className="flex items-center gap-3">
-              <CalendarDays className="h-5 w-5 text-kondo-green" />
-              <h2 className="text-lg font-black">Academic terms</h2>
-            </div>
-            <div className="mt-4 space-y-2">
-              {university.academicTerms.map((term) => (
-                <div className="rounded-2xl bg-muted p-3" key={term.id}>
-                  <p className="text-sm font-black">{term.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {term.startsOn} → {term.endsOn} · {term.totalWeeks} weeks
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Clock3 className="mt-0.5 h-5 w-5 text-kondo-green" />
+                <div>
+                  <h2 className="text-lg font-black">Periods</h2>
+                  <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
+                    Enter only the period number and its start and end time.
+                    Duration is calculated automatically.
                   </p>
                 </div>
-              ))}
-            </div>
-            {canManage ? (
-              <form
-                className="mt-5 grid gap-3 sm:grid-cols-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const form = event.currentTarget;
-                  const data = new FormData(form);
-                  void submit(
-                    form,
-                    `/api/admin/student-hub/universities/${university.id}/terms`,
-                    {
-                      campusId: data.get("campusId") || null,
-                      name: data.get("name"),
-                      startsOn: data.get("startsOn"),
-                      endsOn: data.get("endsOn"),
-                      firstWeekStartsOn: data.get("firstWeekStartsOn"),
-                      totalWeeks: data.get("totalWeeks"),
-                      isActive: true,
-                    },
-                  );
-                }}
+              </div>
+              <select
+                aria-label="Period campus"
+                className={`${input} w-full sm:w-60`}
+                onChange={(event) => resetPeriodEditor(event.target.value)}
+                value={campusId}
               >
-                <select className={input} name="campusId">
-                  <option value="">All campuses</option>
-                  {university.campuses.map((campus) => (
+                <option value="">All campuses</option>
+                {university.campuses
+                  .filter((campus) => campus.isActive)
+                  .map((campus) => (
                     <option key={campus.id} value={campus.id}>
                       {campus.name}
                     </option>
                   ))}
-                </select>
-                <input
-                  className={input}
-                  name="name"
-                  placeholder="2026 Spring"
-                  required
-                />
-                <label className="text-xs font-bold">
-                  Starts
-                  <input
-                    className={`${input} mt-1`}
-                    name="startsOn"
-                    required
-                    type="date"
-                  />
-                </label>
-                <label className="text-xs font-bold">
-                  Ends
-                  <input
-                    className={`${input} mt-1`}
-                    name="endsOn"
-                    required
-                    type="date"
-                  />
-                </label>
-                <label className="text-xs font-bold">
-                  Week 1 starts
-                  <input
-                    className={`${input} mt-1`}
-                    name="firstWeekStartsOn"
-                    required
-                    type="date"
-                  />
-                </label>
-                <label className="text-xs font-bold">
-                  Total weeks
-                  <input
-                    className={`${input} mt-1`}
-                    defaultValue={18}
-                    max={60}
-                    min={1}
-                    name="totalWeeks"
-                    required
-                    type="number"
-                  />
-                </label>
-                <Button className="sm:col-span-2" disabled={busy} type="submit">
-                  <Plus className="h-4 w-4" />
-                  Add semester
-                </Button>
-              </form>
-            ) : null}
-          </Card>
-        </div>
-      ) : null}
-      {university ? (
-        <Card>
-          <div className="flex items-center gap-3">
-            <Clock3 className="h-5 w-5 text-kondo-green" />
-            <div>
-              <h2 className="text-lg font-black">Official class periods</h2>
-              <p className="text-xs text-muted-foreground">
-                Versioned mappings used when an imported timetable contains
-                第1-2节 or numbered periods.
+              </select>
+            </div>
+
+            {!configurationForScope && !editingConfigurationId ? (
+              <p className="mt-5 flex items-center gap-2 rounded-2xl bg-amber-50 p-3 text-xs font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
+                <AlertTriangle className="h-4 w-4" />
+                No official periods exist for this scope yet.
               </p>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {university.periodConfigurations.map((configuration) => (
-              <div
-                className="rounded-3xl border border-border p-4"
-                key={configuration.id}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-black">{configuration.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {configuration.campus?.name ?? "University-wide"} · v
-                      {configuration.version}
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    {configuration.isDefault ? (
-                      <span className="rounded-full bg-kondo-mint px-2 py-1 text-[10px] font-black text-kondo-forest">
-                        DEFAULT
-                      </span>
-                    ) : null}
-                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-black">
-                      {configuration.isActive ? "ACTIVE" : "INACTIVE"}
-                    </span>
-                  </div>
+            ) : null}
+
+            <form className="mt-5" onSubmit={savePeriods}>
+              <div className="space-y-2">
+                <div className="hidden grid-cols-[100px_1fr_1fr_100px_44px] gap-2 px-3 text-[10px] font-black uppercase tracking-wide text-muted-foreground sm:grid">
+                  <span>Period</span>
+                  <span>Starts</span>
+                  <span>Ends</span>
+                  <span>Duration</span>
+                  <span />
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {configuration.periods.length} periods ·{" "}
-                  {configuration.timezone} · {configuration.primaryLanguage}
-                </p>
-              </div>
-            ))}
-          </div>
-          {canManage ? (
-            <form
-              className="mt-7"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = event.currentTarget;
-                const data = new FormData(form);
-                void submit(
-                  form,
-                  `/api/admin/student-hub/universities/${university.id}/period-configurations`,
-                  {
-                    campusId: data.get("campusId") || null,
-                    name: data.get("name"),
-                    timezone: data.get("timezone"),
-                    primaryLanguage: data.get("primaryLanguage"),
-                    isActive: true,
-                    isDefault: data.get("isDefault") === "on",
-                    periods,
-                  },
-                );
-              }}
-            >
-              <div className="grid gap-3 md:grid-cols-4">
-                <input
-                  className={input}
-                  name="name"
-                  placeholder="Standard periods"
-                  required
-                />
-                <select className={input} name="campusId">
-                  <option value="">University-wide</option>
-                  {university.campuses.map((campus) => (
-                    <option key={campus.id} value={campus.id}>
-                      {campus.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={input}
-                  defaultValue="Asia/Shanghai"
-                  name="timezone"
-                  required
-                />
-                <input
-                  className={input}
-                  defaultValue="zh-CN"
-                  name="primaryLanguage"
-                  required
-                />
-              </div>
-              <label className="mt-3 flex items-center gap-2 text-sm font-bold">
-                <input name="isDefault" type="checkbox" />
-                Use as default for this scope
-              </label>
-              <div className="mt-5 space-y-2">
                 {periods.map((period, index) => (
                   <div
-                    className="grid gap-2 rounded-2xl bg-muted p-3 sm:grid-cols-[80px_minmax(120px,1fr)_130px_130px_44px]"
-                    key={index}
+                    className="grid grid-cols-[76px_1fr_1fr_40px] gap-2 rounded-2xl bg-muted/65 p-3 sm:grid-cols-[100px_1fr_1fr_100px_44px]"
+                    key={`${period.periodNumber}-${index}`}
                   >
-                    <input
-                      aria-label="Period number"
-                      className={input}
-                      min={1}
-                      onChange={(event) =>
-                        setPeriods((current) =>
-                          current.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? {
-                                  ...item,
-                                  periodNumber: Number(event.target.value),
-                                  displayOrder: Number(event.target.value),
-                                }
-                              : item,
-                          ),
-                        )
-                      }
-                      type="number"
-                      value={period.periodNumber}
-                    />
-                    <input
-                      aria-label="Period label"
-                      className={input}
-                      onChange={(event) =>
-                        setPeriods((current) =>
-                          current.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, label: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      value={period.label}
-                    />
-                    <input
-                      aria-label="Start time"
-                      className={input}
-                      onChange={(event) =>
-                        setPeriods((current) =>
-                          current.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, startTime: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      type="time"
-                      value={period.startTime}
-                    />
-                    <input
-                      aria-label="End time"
-                      className={input}
-                      onChange={(event) =>
-                        setPeriods((current) =>
-                          current.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, endTime: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      type="time"
-                      value={period.endTime}
-                    />
+                    <label>
+                      <span className="mb-1 block text-[10px] font-bold text-muted-foreground sm:hidden">
+                        Period
+                      </span>
+                      <input
+                        aria-label="Period number"
+                        className={input}
+                        min={1}
+                        onChange={(event) =>
+                          setPeriods((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...item,
+                                    periodNumber: Number(event.target.value),
+                                  }
+                                : item,
+                            ),
+                          )
+                        }
+                        required
+                        type="number"
+                        value={period.periodNumber}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-[10px] font-bold text-muted-foreground sm:hidden">
+                        Starts
+                      </span>
+                      <input
+                        aria-label="Start time"
+                        className={input}
+                        onChange={(event) =>
+                          setPeriods((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, startTime: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        required
+                        type="time"
+                        value={period.startTime}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-[10px] font-bold text-muted-foreground sm:hidden">
+                        Ends
+                      </span>
+                      <input
+                        aria-label="End time"
+                        className={input}
+                        onChange={(event) =>
+                          setPeriods((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, endTime: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        required
+                        type="time"
+                        value={period.endTime}
+                      />
+                    </label>
+                    <span className="hidden self-center text-xs font-black text-muted-foreground sm:block">
+                      {Math.max(
+                        0,
+                        durationMinutes(period.startTime, period.endTime),
+                      )}{" "}
+                      min
+                    </span>
                     <Button
                       aria-label="Remove period"
+                      disabled={periods.length === 1}
                       onClick={() =>
                         setPeriods((current) =>
                           current.filter((_, itemIndex) => itemIndex !== index),
@@ -514,41 +478,48 @@ export function StudentHubAdminManager({
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Button
-                  onClick={() =>
-                    setPeriods((current) => [
-                      ...current,
-                      {
-                        periodNumber: current.length + 1,
-                        label: `Period ${current.length + 1}`,
-                        startTime: "10:00",
-                        endTime: "10:45",
-                        displayOrder: current.length + 1,
-                        part: "MORNING",
-                        isBreak: false,
-                        isActive: true,
-                      },
-                    ])
-                  }
-                  type="button"
-                  variant="secondary"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add period
-                </Button>
-                <Button disabled={busy || !periods.length} type="submit">
-                  {busy ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                  Save official configuration
-                </Button>
-              </div>
+              {canManage ? (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button
+                    onClick={() =>
+                      setPeriods((current) => [
+                        ...current,
+                        {
+                          periodNumber:
+                            Math.max(
+                              0,
+                              ...current.map((item) => item.periodNumber),
+                            ) + 1,
+                          label: "",
+                          startTime: "10:00",
+                          endTime: "10:45",
+                          displayOrder: current.length + 1,
+                          part: null,
+                          isBreak: false,
+                          isActive: true,
+                        },
+                      ])
+                    }
+                    type="button"
+                    variant="secondary"
+                  >
+                    <Plus className="h-4 w-4" /> Add period
+                  </Button>
+                  <Button disabled={busy || !periods.length} type="submit">
+                    {busy ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : editingConfigurationId ? (
+                      <Pencil className="h-4 w-4" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    {editingConfigurationId ? "Update periods" : "Save periods"}
+                  </Button>
+                </div>
+              ) : null}
             </form>
-          ) : null}
-        </Card>
+          </Card>
+        </div>
       ) : null}
     </div>
   );

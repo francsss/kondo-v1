@@ -51,7 +51,7 @@ describe("timetable quality and structure validation", () => {
     ).toEqual(expect.objectContaining({ ok: true }));
   });
 
-  it("marks uncertain fields and detects duplicates and overlaps", () => {
+  it("treats teacher and classroom as optional while detecting duplicates and overlaps", () => {
     const result = validateExtractedSchedule({
       title: "Semester schedule",
       warnings: [],
@@ -73,9 +73,8 @@ describe("timetable quality and structure validation", () => {
       [0, 2],
       [1, 2],
     ]);
-    expect(result.schedule.courses[0].uncertainFields).toEqual(
-      expect.arrayContaining(["teacher", "room"]),
-    );
+    expect(result.schedule.courses[0].uncertainFields).not.toContain("teacher");
+    expect(result.schedule.courses[0].uncertainFields).not.toContain("room");
     expect(result.schedule.warnings.join(" ")).toMatch(/duplicate/i);
     expect(result.schedule.warnings.join(" ")).toMatch(/conflict/i);
   });

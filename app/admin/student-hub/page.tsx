@@ -16,7 +16,6 @@ export default async function AdminStudentHubPage() {
       name: true,
       shortName: true,
       campuses: { orderBy: { name: "asc" } },
-      academicTerms: { orderBy: { startsOn: "desc" } },
       periodConfigurations: {
         include: {
           campus: { select: { name: true } },
@@ -30,7 +29,7 @@ export default async function AdminStudentHubPage() {
   return (
     <div className="mx-auto max-w-[1320px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <PageHeader
-        description="Configure university campuses, semesters and official class-period mappings used by private timetable imports."
+        description="Configure university campuses and official numbered periods used by private timetable imports."
         eyebrow="Kondo operations"
         title="Student Hub"
       />
@@ -43,16 +42,6 @@ export default async function AdminStudentHubPage() {
             ...campus,
             createdAt: campus.createdAt.toISOString(),
             updatedAt: campus.updatedAt.toISOString(),
-          })),
-          academicTerms: university.academicTerms.map((term) => ({
-            ...term,
-            startsOn: term.startsOn.toISOString().slice(0, 10),
-            endsOn: term.endsOn.toISOString().slice(0, 10),
-            firstWeekStartsOn: term.firstWeekStartsOn
-              .toISOString()
-              .slice(0, 10),
-            createdAt: term.createdAt.toISOString(),
-            updatedAt: term.updatedAt.toISOString(),
           })),
           periodConfigurations: university.periodConfigurations.map(
             (configuration) => ({

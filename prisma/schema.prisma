@@ -389,6 +389,27 @@ enum ScheduleCourseSource {
   MANUAL
 }
 
+enum AcademicTaskKind {
+  ASSIGNMENT
+  PROJECT
+  EXAM
+  REMINDER
+  EVENT
+}
+
+enum AcademicTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AcademicTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 enum ClassPeriodPart {
   MORNING
   AFTERNOON
@@ -603,6 +624,7 @@ model User {
   answerVotes                      AnswerVote[]
   studentSchedules                 StudentSchedule[]
   scheduleImports                  ScheduleImport[]
+  academicTasks                    AcademicTask[]
   customPeriodConfigurations       CustomPeriodConfiguration[]
   scholarshipFavorites             ScholarshipFavorite[]
   bookmarks                        Bookmark[]
@@ -864,6 +886,7 @@ model StudentSchedule {
   confirmedAt                 DateTime?
   isActive                    Boolean          @default(true)
   courses                     ScheduleCourse[]
+  tasks                       AcademicTask[]
   imports                     ScheduleImport[]
   createdAt                   DateTime         @default(now())
   updatedAt                   DateTime         @updatedAt
@@ -898,10 +921,35 @@ model ScheduleCourse {
   isOptional   Boolean              @default(false)
   confidence   Float?
   source       ScheduleCourseSource @default(MANUAL)
+  tasks        AcademicTask[]
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
   @@index([scheduleId, dayOfWeek, startTime])
+}
+
+model AcademicTask {
+  id          String               @id @default(cuid())
+  ownerId     String
+  owner       User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  scheduleId  String?
+  schedule    StudentSchedule?     @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  courseId    String?
+  course      ScheduleCourse?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  title       String               @db.VarChar(200)
+  description String?              @db.VarChar(2000)
+  kind        AcademicTaskKind     @default(ASSIGNMENT)
+  status      AcademicTaskStatus   @default(PENDING)
+  priority    AcademicTaskPriority @default(MEDIUM)
+  dueAt       DateTime?
+  reminderAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([ownerId, status, dueAt])
+  @@index([scheduleId, status])
+  @@index([courseId])
 }
 
 model ScheduleImport {

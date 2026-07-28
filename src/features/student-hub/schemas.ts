@@ -201,6 +201,46 @@ export const scheduleCreateSchema = z.object({
   timezone: z.string().trim().min(3).max(80).default("Asia/Shanghai"),
 });
 
+const academicTaskBaseSchema = z.object({
+  scheduleId: z.string().cuid().nullable().optional(),
+  courseId: z.string().cuid().nullable().optional(),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2_000).nullable().optional(),
+  kind: z
+    .enum(["ASSIGNMENT", "PROJECT", "EXAM", "REMINDER", "EVENT"])
+    .default("ASSIGNMENT"),
+  status: z
+    .enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"])
+    .default("PENDING"),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
+  dueAt: z.string().datetime().nullable().optional(),
+  reminderAt: z.string().datetime().nullable().optional(),
+});
+
+function validateTaskDates(
+  task: { reminderAt?: string | null; dueAt?: string | null },
+  context: z.RefinementCtx,
+) {
+  if (
+    task.reminderAt &&
+    task.dueAt &&
+    new Date(task.reminderAt) > new Date(task.dueAt)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "The reminder must be scheduled before the due date.",
+      path: ["reminderAt"],
+    });
+  }
+}
+
+export const academicTaskInputSchema =
+  academicTaskBaseSchema.superRefine(validateTaskDates);
+
+export const academicTaskUpdateSchema = academicTaskBaseSchema
+  .partial()
+  .superRefine(validateTaskDates);
+
 export const campusSchema = z.object({
   name: z.string().trim().min(2).max(160),
   address: z.string().trim().max(300).nullable().optional(),
@@ -238,15 +278,29 @@ export const classPeriodSchema = z
     path: ["endTime"],
   });
 
-export const periodConfigurationSchema = z.object({
-  campusId: z.string().cuid().nullable().optional(),
-  name: z.string().trim().min(2).max(160),
-  timezone: z.string().trim().min(3).max(80),
-  primaryLanguage: z.string().trim().min(2).max(30),
-  isActive: z.boolean().default(true),
-  isDefault: z.boolean().default(false),
-  periods: z.array(classPeriodSchema).min(1).max(40),
-});
+export const periodConfigurationSchema = z
+  .object({
+    campusId: z.string().cuid().nullable().optional(),
+    name: z.string().trim().min(2).max(160),
+    timezone: z.string().trim().min(3).max(80),
+    primaryLanguage: z.string().trim().min(2).max(30),
+    isActive: z.boolean().default(true),
+    isDefault: z.boolean().default(false),
+    periods: z.array(classPeriodSchema).min(1).max(40),
+  })
+  .superRefine((configuration, context) => {
+    const seen = new Set<number>();
+    configuration.periods.forEach((period, index) => {
+      if (seen.has(period.periodNumber)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Period ${period.periodNumber} is duplicated.`,
+          path: ["periods", index, "periodNumber"],
+        });
+      }
+      seen.add(period.periodNumber);
+    });
+  });
 
 export const SCHEDULE_EXTRACTION_JSON_SCHEMA = {
   type: "object",
@@ -264,20 +318,11 @@ export const SCHEDULE_EXTRACTION_JSON_SCHEMA = {
           "courseName",
           "teacher",
           "dayOfWeek",
-          "specificDate",
           "startPeriod",
           "endPeriod",
           "startTime",
           "endTime",
           "room",
-          "building",
-          "campus",
-          "startWeek",
-          "endWeek",
-          "weekPattern",
-          "weeks",
-          "language",
-          "notes",
           "confidence",
           "uncertainFields",
         ],
@@ -285,20 +330,11 @@ export const SCHEDULE_EXTRACTION_JSON_SCHEMA = {
           courseName: { type: "string" },
           teacher: { type: ["string", "null"] },
           dayOfWeek: { enum: scheduleDaySchema.options },
-          specificDate: { type: ["string", "null"] },
           startPeriod: { type: ["integer", "null"] },
           endPeriod: { type: ["integer", "null"] },
           startTime: { type: ["string", "null"] },
           endTime: { type: ["string", "null"] },
           room: { type: ["string", "null"] },
-          building: { type: ["string", "null"] },
-          campus: { type: ["string", "null"] },
-          startWeek: { type: ["integer", "null"] },
-          endWeek: { type: ["integer", "null"] },
-          weekPattern: { enum: weekPatternSchema.options },
-          weeks: { type: "array", items: { type: "integer" } },
-          language: { type: ["string", "null"] },
-          notes: { type: ["string", "null"] },
           confidence: { type: "number", minimum: 0, maximum: 1 },
           uncertainFields: { type: "array", items: { type: "string" } },
         },

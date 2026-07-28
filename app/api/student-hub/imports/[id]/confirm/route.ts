@@ -81,7 +81,7 @@ export async function POST(
           scheduleId: saved.schedule.id,
           courseCount: saved.schedule.courses.length,
           conflictCount: saved.conflicts.length,
-          derivedViews: ["CALENDAR", "COURSE_WORKSPACES", "TODAY"],
+          derivedViews: ["TODAY", "SCHEDULE", "TASKS", "COURSE_WORKSPACES"],
           assignmentReminders:
             "Created only when a future structured assignment detector supplies due dates.",
         },
@@ -93,6 +93,7 @@ export async function POST(
       courseCount: saved.schedule.courses.length,
       conflictCount: saved.conflicts.length,
       calendarAndTodayViewsReady: true,
+      tasksWorkspaceReady: true,
       courseWorkspacesReady: true,
     });
     return Response.json(

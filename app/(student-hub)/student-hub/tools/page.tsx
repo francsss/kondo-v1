@@ -5,9 +5,18 @@ import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "My Student Tools" };
 
-export default async function StudentToolsPage() {
+export default async function StudentToolsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    view?: string;
+    schedule?: string;
+    generated?: string;
+  }>;
+}) {
   const user = await requireUser();
-  const [universities, schedules, recentImports] = await Promise.all([
+  const query = await searchParams;
+  const [universities, schedules, recentImports, tasks] = await Promise.all([
     prisma.university.findMany({
       where: { isActive: true },
       select: {
@@ -17,18 +26,6 @@ export default async function StudentToolsPage() {
         campuses: {
           where: { isActive: true },
           select: { id: true, name: true },
-        },
-        academicTerms: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            name: true,
-            campusId: true,
-            startsOn: true,
-            endsOn: true,
-            firstWeekStartsOn: true,
-            totalWeeks: true,
-          },
         },
         periodConfigurations: {
           where: { isActive: true },
@@ -69,12 +66,32 @@ export default async function StudentToolsPage() {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    prisma.academicTask.findMany({
+      where: { ownerId: user.id, status: { not: "CANCELLED" } },
+      include: {
+        course: { select: { id: true, courseName: true, color: true } },
+      },
+      orderBy: [{ status: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }],
+      take: 200,
+    }),
   ]);
   const recoverableImport = recentImports.find(
     (item) => item.status === "REVIEW_REQUIRED" && item.result,
   );
   return (
     <ScheduleWorkspace
+      initialScheduleId={query.schedule}
+      initialSection={
+        query.view === "schedule" || query.view === "tasks"
+          ? query.view
+          : "today"
+      }
+      initialSuccess={
+        query.generated === "1"
+          ? "Timetable generated successfully."
+          : undefined
+      }
+      userName={user.firstName}
       initialReview={
         recoverableImport
           ? {
@@ -89,6 +106,14 @@ export default async function StudentToolsPage() {
         processingStage: item.processingStage,
         errorMessage: item.errorMessage,
         createdAt: item.createdAt.toISOString(),
+      }))}
+      tasks={tasks.map((task) => ({
+        ...task,
+        dueAt: task.dueAt?.toISOString() ?? null,
+        reminderAt: task.reminderAt?.toISOString() ?? null,
+        completedAt: task.completedAt?.toISOString() ?? null,
+        createdAt: task.createdAt.toISOString(),
+        updatedAt: task.updatedAt.toISOString(),
       }))}
       schedules={schedules.map((schedule) => ({
         ...schedule,
@@ -109,15 +134,7 @@ export default async function StudentToolsPage() {
           updatedAt: course.updatedAt.toISOString(),
         })),
       }))}
-      universities={universities.map((university) => ({
-        ...university,
-        academicTerms: university.academicTerms.map((term) => ({
-          ...term,
-          startsOn: term.startsOn.toISOString(),
-          endsOn: term.endsOn.toISOString(),
-          firstWeekStartsOn: term.firstWeekStartsOn.toISOString(),
-        })),
-      }))}
+      universities={universities}
     />
   );
 }

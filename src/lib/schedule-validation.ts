@@ -106,10 +106,9 @@ export function validateExtractedSchedule(
   const configuredPeriods = new Set(options.configuredPeriodNumbers ?? []);
   const courses = schedule.courses.map((course, index) => {
     const uncertain = new Set(course.uncertainFields);
-    if (!course.teacher) uncertain.add("teacher");
-    if (!course.room && !course.building) uncertain.add("room");
-    if (!course.startWeek && !course.specificDate) uncertain.add("startWeek");
-    if (!course.endWeek && !course.specificDate) uncertain.add("endWeek");
+    uncertain.delete("teacher");
+    uncertain.delete("room");
+    uncertain.delete("classroom");
     for (const [field, period] of [
       ["startPeriod", course.startPeriod],
       ["endPeriod", course.endPeriod],

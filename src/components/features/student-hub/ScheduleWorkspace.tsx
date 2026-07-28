@@ -4,19 +4,27 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowRight,
+  BookOpen,
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   Copy,
   FileImage,
+  GraduationCap,
+  LayoutDashboard,
+  ListTodo,
   LoaderCircle,
+  MapPin,
   Pencil,
   Plus,
   Sparkles,
   Trash2,
   Upload,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -28,6 +36,12 @@ import {
 } from "@/lib/schedule-import-client";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import {
+  academicCalendarPosition,
+  academicWeekDates,
+  deriveTodayCourses,
+  isPendingAcademicTask,
+} from "@/lib/student-academic-tools";
 import { DAY_NAMES, formatCourseTime } from "@/lib/student-schedule";
 
 type University = {
@@ -35,15 +49,6 @@ type University = {
   name: string;
   shortName: string | null;
   campuses: Array<{ id: string; name: string }>;
-  academicTerms: Array<{
-    id: string;
-    name: string;
-    campusId: string | null;
-    startsOn: string;
-    endsOn: string;
-    firstWeekStartsOn: string;
-    totalWeeks: number;
-  }>;
   periodConfigurations: Array<{
     id: string;
     campusId: string | null;
@@ -91,6 +96,30 @@ type Schedule = {
   createdAt: string;
   updatedAt: string;
   confirmedAt: string | null;
+};
+type AcademicTask = {
+  id: string;
+  scheduleId: string | null;
+  courseId: string | null;
+  title: string;
+  description: string | null;
+  kind: "ASSIGNMENT" | "PROJECT" | "EXAM" | "REMINDER" | "EVENT";
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  dueAt: string | null;
+  reminderAt: string | null;
+  completedAt: string | null;
+  course: { id: string; courseName: string; color: string } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+type AcademicTaskDraft = {
+  title: string;
+  description: string;
+  kind: AcademicTask["kind"];
+  priority: AcademicTask["priority"];
+  dueAt: string;
+  courseId: string;
 };
 type ReviewCourse = Omit<
   Course,
@@ -169,6 +198,14 @@ const emptyCourse: ReviewCourse = {
   confidence: null,
   source: "MANUAL" as const,
 };
+const emptyTask: AcademicTaskDraft = {
+  title: "",
+  description: "",
+  kind: "ASSIGNMENT",
+  priority: "MEDIUM",
+  dueAt: "",
+  courseId: "",
+};
 
 function importFileKind(files: File[]) {
   const kinds = new Set(
@@ -216,13 +253,23 @@ async function getImportStatus(importId: string, signal?: AbortSignal) {
 }
 
 export function ScheduleWorkspace({
+  userName,
+  initialSection,
+  initialScheduleId,
+  initialSuccess,
   universities,
   schedules,
+  tasks,
   recentImports,
   initialReview,
 }: {
+  userName: string;
+  initialSection: "today" | "schedule" | "tasks";
+  initialScheduleId?: string;
+  initialSuccess?: string;
   universities: University[];
   schedules: Schedule[];
+  tasks: AcademicTask[];
   recentImports: Array<{
     id: string;
     status: string;
@@ -233,18 +280,29 @@ export function ScheduleWorkspace({
   initialReview: { importId: string; result: unknown } | null;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"week" | "today" | "semester">("week");
+  const [section, setSection] = useState<"today" | "schedule" | "tasks">(
+    initialSection,
+  );
+  const [mode, setMode] = useState<"week" | "month" | "semester">("week");
+  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
   const [selectedSchedule, setSelectedSchedule] = useState(
-    schedules[0]?.id ?? "",
+    schedules.some((schedule) => schedule.id === initialScheduleId)
+      ? initialScheduleId!
+      : (schedules[0]?.id ?? ""),
   );
   const [showImport, setShowImport] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [showTask, setShowTask] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskDraft, setTaskDraft] = useState<AcademicTaskDraft>({
+    ...emptyTask,
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [analysisStage, setAnalysisStage] = useState("");
   const [error, setError] = useState("");
   const [importError, setImportError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] = useState(initialSuccess ?? "");
   const [review, setReview] = useState<Review | null>(
     (initialReview?.result as Review | undefined) ?? null,
   );
@@ -262,16 +320,27 @@ export function ScheduleWorkspace({
   const [manual, setManual] = useState({ ...emptyCourse });
   const schedule =
     schedules.find((item) => item.id === selectedSchedule) ?? schedules[0];
-  const today = new Date().getDay() || 7;
-  const visibleCourses = useMemo(
+  const todaySummary = useMemo(
     () =>
-      !schedule
-        ? []
-        : mode === "today"
-          ? schedule.courses.filter((course) => course.dayOfWeek === today)
-          : schedule.courses,
-    [mode, schedule, today],
+      deriveTodayCourses(
+        schedule?.courses ?? [],
+        new Date(),
+        schedule?.timezone ?? "Asia/Shanghai",
+      ),
+    [schedule],
   );
+  const pendingTasks = useMemo(
+    () =>
+      tasks.filter(isPendingAcademicTask).sort((left, right) => {
+        if (!left.dueAt) return 1;
+        if (!right.dueAt) return -1;
+        return new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime();
+      }),
+    [tasks],
+  );
+  const upcomingExams = pendingTasks.filter((task) => task.kind === "EXAM");
+  const upcomingEvents = pendingTasks.filter((task) => task.kind === "EVENT");
+  const weekDates = useMemo(() => academicWeekDates(weekAnchor), [weekAnchor]);
 
   useEffect(() => {
     const startedAt = performance.now();
@@ -529,7 +598,12 @@ export function ScheduleWorkspace({
       setReview(null);
       setImportId("");
       setPendingImportId("");
-      router.push(`/student-hub/tools/timetables/${scheduleId}?generated=1`);
+      setSection("schedule");
+      setSelectedSchedule(scheduleId);
+      router.push(
+        `/student-hub/tools?view=schedule&schedule=${scheduleId}&generated=1`,
+      );
+      router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Save failed.");
     } finally {
@@ -552,7 +626,7 @@ export function ScheduleWorkspace({
       }
       if (recovered.status === "CONFIRMED" && recovered.scheduleId) {
         router.push(
-          `/student-hub/tools/timetables/${recovered.scheduleId}?generated=1`,
+          `/student-hub/tools?view=schedule&schedule=${recovered.scheduleId}&generated=1`,
         );
         return;
       }
@@ -674,47 +748,155 @@ export function ScheduleWorkspace({
     }
   }
 
+  function openTask(task?: AcademicTask) {
+    if (task) {
+      setEditingTaskId(task.id);
+      setTaskDraft({
+        title: task.title,
+        description: task.description ?? "",
+        kind: task.kind,
+        priority: task.priority,
+        dueAt: task.dueAt
+          ? new Date(task.dueAt).toISOString().slice(0, 16)
+          : "",
+        courseId: task.courseId ?? "",
+      });
+    } else {
+      setEditingTaskId(null);
+      setTaskDraft({ ...emptyTask });
+    }
+    setShowTask(true);
+  }
+
+  async function saveTask(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api(
+        editingTaskId
+          ? `/api/student-hub/tasks/${editingTaskId}`
+          : "/api/student-hub/tasks",
+        {
+          scheduleId: schedule?.id ?? null,
+          courseId: taskDraft.courseId || null,
+          title: taskDraft.title,
+          description: taskDraft.description || null,
+          kind: taskDraft.kind,
+          priority: taskDraft.priority,
+          status: editingTaskId
+            ? tasks.find((task) => task.id === editingTaskId)?.status
+            : "PENDING",
+          dueAt: taskDraft.dueAt
+            ? new Date(taskDraft.dueAt).toISOString()
+            : null,
+          reminderAt: null,
+        },
+        editingTaskId ? "PATCH" : "POST",
+      );
+      setSuccess(editingTaskId ? "Task updated." : "Task added.");
+      setShowTask(false);
+      setEditingTaskId(null);
+      setTaskDraft({ ...emptyTask });
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Task save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleTask(task: AcademicTask) {
+    setBusy(true);
+    setError("");
+    try {
+      await api(
+        `/api/student-hub/tasks/${task.id}`,
+        {
+          status: task.status === "COMPLETED" ? "PENDING" : "COMPLETED",
+        },
+        "PATCH",
+      );
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Task update failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteTask(task: AcademicTask) {
+    if (!window.confirm(`Delete "${task.title}"?`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/student-hub/tasks/${task.id}`, {}, "DELETE");
+      setSuccess("Task deleted.");
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Task delete failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
-      <div className="flex flex-wrap items-end justify-between gap-5">
+    <div className="mx-auto max-w-[1440px] px-3 pb-24 pt-5 sm:px-6 lg:px-8 lg:pt-9">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-            My Tools
+            Student Hub · Academic OS
           </p>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-            Your semester, under control.
+          <h1 className="mt-1.5 text-3xl font-black tracking-[-0.045em] sm:text-4xl">
+            Your academic day, organized.
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Import a timetable, review every detected course, then manage the
-            result privately.
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            One reliable place for classes, deadlines and everything coming
+            next.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => {
-              captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED, {
-                tool: "timetable_import",
-              });
-              setShowImport(true);
-            }}
-          >
-            <Upload className="h-4 w-4" />
-            Import PDF or image
-          </Button>
-          <Button
-            onClick={() => {
-              captureProductEvent(PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED, {
-                tool: "timetable_manual",
-              });
-              setShowManual(true);
-            }}
-            variant="secondary"
-          >
-            <Plus className="h-4 w-4" />
-            Add manually
+        <div className="hidden items-center gap-2 sm:flex">
+          <Button onClick={() => setShowImport(true)} size="sm">
+            <Upload className="h-4 w-4" /> Import timetable
           </Button>
         </div>
       </div>
+
+      <nav
+        aria-label="Academic tools"
+        className="mt-6 grid grid-cols-3 border-b border-border"
+      >
+        {(
+          [
+            ["today", "Today", LayoutDashboard],
+            ["schedule", "Schedule", CalendarDays],
+            ["tasks", "Tasks", ListTodo],
+          ] as const
+        ).map(([value, label, Icon]) => (
+          <button
+            aria-current={section === value ? "page" : undefined}
+            className={`relative flex min-h-12 items-center justify-center gap-2 px-2 text-sm font-black transition ${
+              section === value
+                ? "text-kondo-green"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            key={value}
+            onClick={() => setSection(value)}
+            type="button"
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+            <span
+              className={`absolute inset-x-[18%] bottom-0 h-0.5 rounded-full bg-kondo-green transition-all duration-300 ${
+                section === value
+                  ? "scale-x-100 opacity-100"
+                  : "scale-x-0 opacity-0"
+              }`}
+            />
+          </button>
+        ))}
+      </nav>
+
       {error ? (
         <p
           role="alert"
@@ -730,167 +912,360 @@ export function ScheduleWorkspace({
         </p>
       ) : null}
 
-      <section className="mt-7 grid gap-5 xl:grid-cols-[minmax(0,1fr)_290px]">
-        <Card className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
-            <div>
-              {schedules.length ? (
-                <select
-                  aria-label="Timetable"
-                  className={input}
-                  onChange={(event) => setSelectedSchedule(event.target.value)}
-                  value={schedule?.id}
-                >
-                  {schedules.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="font-black">My timetable</p>
-              )}
-            </div>
-            <div className="flex rounded-full bg-muted p-1">
-              {(["today", "week", "semester"] as const).map((view) => (
-                <button
-                  className={
-                    mode === view
-                      ? "rounded-full bg-card px-4 py-2 text-xs font-black shadow-sm"
-                      : "px-4 py-2 text-xs font-bold text-muted-foreground"
-                  }
-                  key={view}
-                  onClick={() => setMode(view)}
-                  type="button"
-                >
-                  {view[0]?.toUpperCase()}
-                  {view.slice(1)}
-                </button>
-              ))}
+      {section === "today" ? (
+        <section className="mt-6 space-y-5">
+          <div className="rounded-[2rem] border border-border bg-gradient-to-br from-card via-card to-kondo-mint/35 p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-muted-foreground">
+                  {new Intl.DateTimeFormat("en", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    timeZone: schedule?.timezone ?? "Asia/Shanghai",
+                  }).format(new Date())}
+                </p>
+                <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">
+                  Good day, {userName}.
+                </h2>
+              </div>
+              <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
+                <QuickAction
+                  icon={Upload}
+                  label="Import"
+                  onClick={() => setShowImport(true)}
+                />
+                <QuickAction
+                  icon={Plus}
+                  label="Course"
+                  onClick={() => setShowManual(true)}
+                />
+                <QuickAction
+                  icon={ListTodo}
+                  label="Task"
+                  onClick={() => openTask()}
+                />
+              </div>
             </div>
           </div>
+
           {!schedule ? (
-            <div className="grid min-h-96 place-items-center p-8 text-center">
-              <div>
-                <CalendarDays className="mx-auto h-10 w-10 text-kondo-green" />
-                <h2 className="mt-4 text-xl font-black">
-                  Build your first timetable
-                </h2>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                  Import your university timetable or add the first course
-                  manually. Nothing is saved until you confirm it.
-                </p>
-              </div>
-            </div>
-          ) : mode === "week" ? (
-            <div className="grid min-w-[760px] grid-cols-7 divide-x divide-border overflow-x-auto">
-              {DAY_NAMES.map((day, index) => (
-                <div className="min-h-[430px] p-2.5" key={day}>
-                  <p className="mb-3 text-center text-xs font-black uppercase tracking-wide text-muted-foreground">
-                    {day.slice(0, 3)}
-                  </p>
-                  <div className="space-y-2">
-                    {schedule.courses
-                      .filter((course) => course.dayOfWeek === index + 1)
-                      .map((course) => (
-                        <CourseCard
-                          course={course}
-                          key={course.id}
-                          onDelete={() => deleteCourse(course.id)}
-                          onEdit={() => editCourse(course)}
-                        />
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <AcademicEmptyState
+              onImport={() => setShowImport(true)}
+              onManual={() => setShowManual(true)}
+            />
           ) : (
-            <div className="min-h-96 p-5">
-              <div className="space-y-3">
-                {visibleCourses.map((course) => (
-                  <CourseRow
-                    course={course}
-                    key={course.id}
-                    onDelete={() => deleteCourse(course.id)}
-                    onEdit={() => editCourse(course)}
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FocusClassCard
+                    course={todaySummary.current}
+                    eyebrow="Current class"
+                    empty="No class is running now"
                   />
-                ))}
-                {!visibleCourses.length ? (
-                  <p className="py-16 text-center text-sm text-muted-foreground">
-                    No classes in this view.
-                  </p>
-                ) : null}
+                  <FocusClassCard
+                    course={todaySummary.next}
+                    eyebrow="Next class"
+                    empty="No more classes today"
+                  />
+                </div>
+                <Card className="p-0">
+                  <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+                        Today&apos;s schedule
+                      </p>
+                      <h3 className="mt-1 font-black">
+                        {todaySummary.today.length} class
+                        {todaySummary.today.length === 1 ? "" : "es"}
+                      </h3>
+                    </div>
+                    <Button
+                      onClick={() => setSection("schedule")}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Full schedule <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {todaySummary.today.map((course) => (
+                      <TodayCourseRow course={course} key={course.id} />
+                    ))}
+                    {!todaySummary.today.length ? (
+                      <p className="px-5 py-12 text-center text-sm text-muted-foreground">
+                        Nothing scheduled today.
+                      </p>
+                    ) : null}
+                  </div>
+                </Card>
               </div>
+
+              <aside className="space-y-4">
+                <TodayCollection
+                  empty="No pending work."
+                  icon={ListTodo}
+                  items={pendingTasks.filter(
+                    (task) => !["EXAM", "EVENT"].includes(task.kind),
+                  )}
+                  onOpen={() => setSection("tasks")}
+                  title="Pending tasks"
+                />
+                <TodayCollection
+                  empty="No upcoming exams."
+                  icon={GraduationCap}
+                  items={upcomingExams}
+                  onOpen={() => setSection("tasks")}
+                  title="Upcoming exams"
+                />
+                <TodayCollection
+                  empty="No upcoming events."
+                  icon={CalendarDays}
+                  items={upcomingEvents}
+                  onOpen={() => setSection("tasks")}
+                  title="Upcoming events"
+                />
+              </aside>
             </div>
           )}
-        </Card>
-        <aside className="space-y-4">
-          <Card>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
-              Schedule details
-            </p>
-            <h2 className="mt-2 font-black">
-              {schedule?.university?.name ?? "No university selected"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {schedule?.academicTerm?.name ?? "Semester not linked"}
-            </p>
-            <div className="mt-4 flex items-center gap-2 text-xs font-bold text-muted-foreground">
-              <Clock3 className="h-4 w-4" />
-              {schedule?.timezone ?? "Asia/Shanghai"}
+        </section>
+      ) : null}
+
+      {section === "schedule" ? (
+        <section className="mt-6">
+          <Card className="overflow-hidden p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:p-5">
+              <div>
+                {schedules.length ? (
+                  <select
+                    aria-label="Timetable"
+                    className={input}
+                    onChange={(event) =>
+                      setSelectedSchedule(event.target.value)
+                    }
+                    value={schedule?.id}
+                  >
+                    {schedules.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="font-black">My timetable</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowManual(true)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  <Plus className="h-4 w-4" /> Class
+                </Button>
+                <Button onClick={() => setShowImport(true)} size="sm">
+                  <Upload className="h-4 w-4" /> Import
+                </Button>
+              </div>
             </div>
+            <div className="border-b border-border px-4 pt-2 sm:px-5">
+              <div className="grid grid-cols-3">
+                {(["week", "month", "semester"] as const).map((view) => (
+                  <button
+                    className={`relative min-h-11 text-sm font-black transition ${
+                      mode === view
+                        ? "text-kondo-green"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    key={view}
+                    onClick={() => setMode(view)}
+                    type="button"
+                  >
+                    {view[0]?.toUpperCase()}
+                    {view.slice(1)}
+                    <span
+                      className={`absolute inset-x-[22%] bottom-0 h-0.5 rounded-full bg-kondo-green transition-transform ${
+                        mode === view ? "scale-x-100" : "scale-x-0"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+            {!schedule ? (
+              <AcademicEmptyState
+                onImport={() => setShowImport(true)}
+                onManual={() => setShowManual(true)}
+              />
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
+                  <Button
+                    aria-label="Previous week"
+                    onClick={() =>
+                      setWeekAnchor((current) => {
+                        const previous = new Date(current);
+                        previous.setDate(current.getDate() - 7);
+                        return previous;
+                      })
+                    }
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <div className="text-center">
+                    <p className="text-sm font-black">
+                      {formatWeekRange(weekDates)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {schedule.university?.name ?? "My university"}
+                      {schedule.campus?.name
+                        ? ` · ${schedule.campus.name}`
+                        : ""}
+                    </p>
+                  </div>
+                  <Button
+                    aria-label="Next week"
+                    onClick={() =>
+                      setWeekAnchor((current) => {
+                        const next = new Date(current);
+                        next.setDate(current.getDate() + 7);
+                        return next;
+                      })
+                    }
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+                {mode === "week" ? (
+                  <WeekScheduleGrid
+                    courses={schedule.courses}
+                    dates={weekDates}
+                    onDelete={deleteCourse}
+                    onEdit={editCourse}
+                  />
+                ) : (
+                  <ScheduleCourseList
+                    courses={schedule.courses}
+                    mode={mode}
+                    onDelete={deleteCourse}
+                    onEdit={editCourse}
+                  />
+                )}
+              </>
+            )}
           </Card>
-          <Card>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
-              Recent imports
-            </p>
-            <div className="mt-3 space-y-2">
-              {recentImports.map((item) => (
-                <div className="rounded-2xl bg-muted p-3 text-xs" key={item.id}>
-                  <div className="flex items-center justify-between gap-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Card>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+                Schedule details
+              </p>
+              <h2 className="mt-2 font-black">
+                {schedule?.university?.name ?? "No university selected"}
+              </h2>
+              <p className="mt-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                <Clock3 className="h-4 w-4" />
+                {schedule?.timezone ?? "Asia/Shanghai"}
+              </p>
+              {schedule?.campus?.name ? (
+                <p className="mt-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                  <MapPin className="h-4 w-4" /> {schedule.campus.name}
+                </p>
+              ) : null}
+            </Card>
+            <Card>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+                Recent imports
+              </p>
+              <div className="mt-3 space-y-2">
+                {recentImports.slice(0, 3).map((item) => (
+                  <button
+                    className="flex w-full items-center justify-between rounded-2xl bg-muted p-3 text-left text-xs transition hover:bg-kondo-mint/50"
+                    disabled={busy}
+                    key={item.id}
+                    onClick={() => void resumeImport(item.id)}
+                    type="button"
+                  >
                     <span className="font-bold">
                       {new Date(item.createdAt).toLocaleDateString()}
                     </span>
-                    <span className="rounded-full bg-card px-2 py-1 font-black">
+                    <span className="font-black">
                       {item.status.replaceAll("_", " ")}
                     </span>
-                  </div>
-                  {item.errorMessage ? (
-                    <p className="mt-2 leading-5 text-red-700 dark:text-red-300">
-                      {item.errorMessage}
-                    </p>
-                  ) : null}
-                  {[
-                    "UPLOADED",
-                    "ANALYZING",
-                    "REVIEW_REQUIRED",
-                    "FAILED",
-                    "CONFIRMED",
-                  ].includes(item.status) ? (
-                    <button
-                      className="mt-2 font-black text-kondo-green transition hover:underline disabled:cursor-wait disabled:opacity-60"
-                      disabled={busy}
-                      onClick={() => void resumeImport(item.id)}
-                      type="button"
-                    >
-                      {item.status === "REVIEW_REQUIRED"
-                        ? "Resume review"
-                        : item.status === "CONFIRMED"
-                          ? "Open timetable"
-                          : item.status === "ANALYZING"
-                            ? "Check progress"
-                            : "Retry import"}
-                    </button>
-                  ) : null}
-                </div>
+                  </button>
+                ))}
+                {!recentImports.length ? (
+                  <p className="text-sm text-muted-foreground">
+                    No imports yet.
+                  </p>
+                ) : null}
+              </div>
+            </Card>
+          </div>
+        </section>
+      ) : null}
+
+      {section === "tasks" ? (
+        <section className="mt-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+                Coursework
+              </p>
+              <h2 className="mt-1 text-2xl font-black">Tasks and deadlines</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Every task can be connected directly to one of your courses.
+              </p>
+            </div>
+            <Button onClick={() => openTask()}>
+              <Plus className="h-4 w-4" /> Add task
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <TaskMetric
+              label="Pending"
+              value={pendingTasks.length}
+              tone="emerald"
+            />
+            <TaskMetric
+              label="Exams"
+              value={upcomingExams.length}
+              tone="violet"
+            />
+            <TaskMetric
+              label="Completed"
+              value={tasks.filter((task) => task.status === "COMPLETED").length}
+              tone="blue"
+            />
+          </div>
+          <Card className="p-0">
+            <div className="divide-y divide-border">
+              {tasks.map((task) => (
+                <TaskRow
+                  disabled={busy}
+                  key={task.id}
+                  onDelete={() => void deleteTask(task)}
+                  onEdit={() => openTask(task)}
+                  onToggle={() => void toggleTask(task)}
+                  task={task}
+                />
               ))}
-              {!recentImports.length ? (
-                <p className="text-sm text-muted-foreground">No imports yet.</p>
+              {!tasks.length ? (
+                <div className="px-5 py-16 text-center">
+                  <ListTodo className="mx-auto h-9 w-9 text-kondo-green" />
+                  <h3 className="mt-3 font-black">No academic tasks yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add an assignment, exam, project, reminder or event.
+                  </p>
+                </div>
               ) : null}
             </div>
           </Card>
-        </aside>
-      </section>
+        </section>
+      ) : null}
 
       {showImport ? (
         <Modal
@@ -1090,6 +1465,131 @@ export function ScheduleWorkspace({
           </form>
         </Modal>
       ) : null}
+      {showTask ? (
+        <Modal
+          title={editingTaskId ? "Edit task" : "Add an academic task"}
+          onClose={() => {
+            if (!busy) {
+              setShowTask(false);
+              setEditingTaskId(null);
+              setTaskDraft({ ...emptyTask });
+            }
+          }}
+        >
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={saveTask}>
+            <label className="sm:col-span-2">
+              <span className="mb-1 block text-xs font-bold">Task</span>
+              <input
+                className={input}
+                maxLength={200}
+                onChange={(event) =>
+                  setTaskDraft((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
+                placeholder="Submit research paper"
+                required
+                value={taskDraft.title}
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-bold">Type</span>
+              <select
+                className={input}
+                onChange={(event) =>
+                  setTaskDraft((current) => ({
+                    ...current,
+                    kind: event.target.value as AcademicTask["kind"],
+                  }))
+                }
+                value={taskDraft.kind}
+              >
+                <option value="ASSIGNMENT">Assignment</option>
+                <option value="PROJECT">Project</option>
+                <option value="EXAM">Exam</option>
+                <option value="REMINDER">Reminder</option>
+                <option value="EVENT">Event</option>
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-bold">Priority</span>
+              <select
+                className={input}
+                onChange={(event) =>
+                  setTaskDraft((current) => ({
+                    ...current,
+                    priority: event.target.value as AcademicTask["priority"],
+                  }))
+                }
+                value={taskDraft.priority}
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-bold">Course</span>
+              <select
+                className={input}
+                onChange={(event) =>
+                  setTaskDraft((current) => ({
+                    ...current,
+                    courseId: event.target.value,
+                  }))
+                }
+                value={taskDraft.courseId}
+              >
+                <option value="">General</option>
+                {schedule?.courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.courseName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-bold">Due date</span>
+              <input
+                className={input}
+                onChange={(event) =>
+                  setTaskDraft((current) => ({
+                    ...current,
+                    dueAt: event.target.value,
+                  }))
+                }
+                type="datetime-local"
+                value={taskDraft.dueAt}
+              />
+            </label>
+            <label className="sm:col-span-2">
+              <span className="mb-1 block text-xs font-bold">
+                Notes (optional)
+              </span>
+              <textarea
+                className="min-h-28 w-full rounded-2xl border border-border bg-background p-3 text-sm outline-none transition focus:border-kondo-green"
+                maxLength={2000}
+                onChange={(event) =>
+                  setTaskDraft((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+                value={taskDraft.description}
+              />
+            </label>
+            <Button className="sm:col-span-2" disabled={busy} type="submit">
+              {busy ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              {editingTaskId ? "Save changes" : "Add task"}
+            </Button>
+          </form>
+        </Modal>
+      ) : null}
       {review ? (
         <div className="fixed inset-0 z-[80] h-[var(--visual-viewport-height,100dvh)] overflow-y-auto bg-kondo-navy/70 p-3 backdrop-blur-sm sm:p-6">
           <div className="mx-auto max-w-5xl rounded-4xl bg-card p-5 shadow-2xl sm:p-8">
@@ -1246,6 +1746,575 @@ export function ScheduleWorkspace({
   );
 }
 
+function formatWeekRange(dates: Date[]) {
+  const first = dates[0];
+  const last = dates.at(-1);
+  if (!first || !last) return "";
+  const firstLabel = first.toLocaleDateString("en", {
+    month: "short",
+    day: "numeric",
+  });
+  const lastLabel = last.toLocaleDateString("en", {
+    month: first.getMonth() === last.getMonth() ? undefined : "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `${firstLabel} – ${lastLabel}`;
+}
+
+function QuickAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 text-xs font-black shadow-sm transition hover:-translate-y-0.5 hover:border-kondo-green/40 hover:shadow-md active:translate-y-0"
+      onClick={onClick}
+      type="button"
+    >
+      <Icon className="h-4 w-4 text-kondo-green" />
+      {label}
+    </button>
+  );
+}
+
+function FocusClassCard({
+  course,
+  eyebrow,
+  empty,
+}: {
+  course: Course | null;
+  eyebrow: string;
+  empty: string;
+}) {
+  return (
+    <Card className="relative min-h-40 overflow-hidden">
+      <span
+        className="absolute inset-y-0 left-0 w-1.5"
+        style={{ backgroundColor: course?.color ?? "var(--border)" }}
+      />
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+        {eyebrow}
+      </p>
+      {course ? (
+        <>
+          <h3 className="mt-3 text-xl font-black tracking-[-0.025em]">
+            {course.courseName}
+          </h3>
+          <p className="mt-2 flex items-center gap-2 text-sm font-bold text-muted-foreground">
+            <Clock3 className="h-4 w-4" /> {formatCourseTime(course)}
+          </p>
+          <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+            <MapPin className="h-4 w-4" />
+            {course.room || course.campusLabel || "Room not specified"}
+          </p>
+        </>
+      ) : (
+        <p className="mt-7 text-sm font-bold text-muted-foreground">{empty}</p>
+      )}
+    </Card>
+  );
+}
+
+function TodayCourseRow({ course }: { course: Course }) {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4">
+      <div className="w-[72px] shrink-0">
+        <p className="text-sm font-black">{course.startTime ?? "—"}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {course.endTime ?? formatCourseTime(course)}
+        </p>
+      </div>
+      <span
+        className="h-11 w-1 rounded-full"
+        style={{ backgroundColor: course.color }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-black">{course.courseName}</p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {[course.room, course.teacher].filter(Boolean).join(" · ") ||
+            "Class details"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TodayCollection({
+  title,
+  icon: Icon,
+  items,
+  empty,
+  onOpen,
+}: {
+  title: string;
+  icon: LucideIcon;
+  items: AcademicTask[];
+  empty: string;
+  onOpen: () => void;
+}) {
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm font-black">
+          <Icon className="h-4 w-4 text-kondo-green" /> {title}
+        </p>
+        <button
+          className="text-xs font-black text-kondo-green"
+          onClick={onOpen}
+          type="button"
+        >
+          View all
+        </button>
+      </div>
+      <div className="mt-3 space-y-2">
+        {items.slice(0, 3).map((task) => (
+          <div className="rounded-2xl bg-muted/70 p-3" key={task.id}>
+            <p className="line-clamp-1 text-sm font-black">{task.title}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {task.course?.courseName ?? task.kind.replaceAll("_", " ")}
+              {task.dueAt ? ` · ${formatTaskDue(task.dueAt)}` : ""}
+            </p>
+          </div>
+        ))}
+        {!items.length ? (
+          <p className="py-3 text-xs text-muted-foreground">{empty}</p>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function AcademicEmptyState({
+  onImport,
+  onManual,
+}: {
+  onImport: () => void;
+  onManual: () => void;
+}) {
+  return (
+    <div className="grid min-h-[420px] place-items-center p-6 text-center">
+      <div className="max-w-md">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-kondo-mint text-kondo-forest">
+          <BookOpen className="h-8 w-8" />
+        </div>
+        <h2 className="mt-5 text-2xl font-black">
+          Build your academic workspace
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Import a university timetable or add your first class. Kondo will
+          generate Today and Schedule automatically after confirmation.
+        </p>
+        <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+          <Button onClick={onImport}>
+            <Upload className="h-4 w-4" /> Import timetable
+          </Button>
+          <Button onClick={onManual} variant="secondary">
+            <Plus className="h-4 w-4" /> Add class
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekScheduleGrid({
+  courses,
+  dates,
+  onEdit,
+  onDelete,
+}: {
+  courses: Course[];
+  dates: Date[];
+  onEdit: (course: Course) => void;
+  onDelete: (courseId: string) => Promise<void>;
+}) {
+  const hours = Array.from({ length: 11 }, (_, index) => index + 8);
+  const todayKey = new Date().toDateString();
+  const [mobileDay, setMobileDay] = useState(() => new Date().getDay() || 7);
+  const mobileCourses = courses
+    .filter((course) => course.dayOfWeek === mobileDay)
+    .sort((left, right) =>
+      String(left.startTime ?? left.startPeriod).localeCompare(
+        String(right.startTime ?? right.startPeriod),
+      ),
+    );
+  return (
+    <>
+      <div className="border-t border-border md:hidden">
+        <div className="grid grid-cols-7 border-b border-border bg-muted/25 px-1">
+          {dates.map((date, index) => {
+            const dayNumber = index + 1;
+            const active = mobileDay === dayNumber;
+            return (
+              <button
+                className={`py-3 text-center transition ${
+                  active ? "text-kondo-green" : "text-muted-foreground"
+                }`}
+                key={date.toISOString()}
+                onClick={() => setMobileDay(dayNumber)}
+                type="button"
+              >
+                <span className="block text-[9px] font-black uppercase">
+                  {DAY_NAMES[index]?.slice(0, 1)}
+                </span>
+                <span
+                  className={`mt-1 inline-grid h-7 w-7 place-items-center rounded-full text-xs font-black ${
+                    active ? "bg-kondo-green text-white" : ""
+                  }`}
+                >
+                  {date.getDate()}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="divide-y divide-border">
+          {mobileCourses.map((course) => (
+            <div className="flex items-center gap-3 px-4 py-4" key={course.id}>
+              <span
+                className="h-12 w-1 rounded-full"
+                style={{ backgroundColor: course.color }}
+              />
+              <div className="w-16 shrink-0">
+                <p className="text-xs font-black">
+                  {course.startTime ??
+                    (course.startPeriod ? `P${course.startPeriod}` : "Time")}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  {course.endTime ??
+                    (course.endPeriod ? `P${course.endPeriod}` : "TBC")}
+                </p>
+              </div>
+              <button
+                className="min-w-0 flex-1 text-left"
+                onClick={() => onEdit(course)}
+                type="button"
+              >
+                <p className="truncate text-sm font-black">
+                  {course.courseName}
+                </p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
+                  {course.room || course.teacher || "Class"}
+                </p>
+              </button>
+              <Button
+                aria-label={`Delete ${course.courseName}`}
+                onClick={() => void onDelete(course.id)}
+                size="icon"
+                variant="ghost"
+              >
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </Button>
+            </div>
+          ))}
+          {!mobileCourses.length ? (
+            <p className="px-4 py-14 text-center text-sm text-muted-foreground">
+              No classes on {DAY_NAMES[mobileDay - 1]}.
+            </p>
+          ) : null}
+        </div>
+      </div>
+      <div className="hidden overflow-x-auto border-t border-border md:block">
+        <div className="min-w-[760px]">
+          <div className="grid grid-cols-[58px_repeat(7,minmax(92px,1fr))] border-b border-border bg-muted/25">
+            <div />
+            {dates.map((date, index) => {
+              const active = date.toDateString() === todayKey;
+              return (
+                <div className="px-1 py-3 text-center" key={date.toISOString()}>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
+                    {DAY_NAMES[index]?.slice(0, 3)}
+                  </p>
+                  <span
+                    className={`mt-1 inline-grid h-8 w-8 place-items-center rounded-full text-sm font-black ${
+                      active
+                        ? "bg-kondo-green text-white shadow-sm"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {date.getDate()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-[58px_repeat(7,minmax(92px,1fr))]">
+            <div className="relative h-[660px] border-r border-border">
+              {hours.map((hour, index) => (
+                <span
+                  className="absolute right-2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground"
+                  key={hour}
+                  style={{ top: `${(index / 10) * 100}%` }}
+                >
+                  {String(hour).padStart(2, "0")}:00
+                </span>
+              ))}
+            </div>
+            {DAY_NAMES.map((day, index) => (
+              <div
+                className="relative h-[660px] border-r border-border last:border-r-0"
+                key={day}
+              >
+                {hours.map((hour, hourIndex) => (
+                  <span
+                    className="absolute inset-x-0 border-t border-border/60"
+                    key={hour}
+                    style={{ top: `${(hourIndex / 10) * 100}%` }}
+                  />
+                ))}
+                {courses
+                  .filter((course) => course.dayOfWeek === index + 1)
+                  .map((course) => {
+                    const position = academicCalendarPosition(course);
+                    const fallbackTop = Math.max(
+                      0,
+                      Math.min(90, ((course.startPeriod ?? 1) - 1) * 7.5),
+                    );
+                    return (
+                      <div
+                        className="group absolute inset-x-1 z-10 overflow-hidden rounded-xl border p-2 text-left shadow-sm transition hover:z-20 hover:-translate-y-0.5 hover:shadow-md"
+                        key={course.id}
+                        style={{
+                          top: `${position?.top ?? fallbackTop}%`,
+                          height: `${position?.height ?? 10}%`,
+                          minHeight: "54px",
+                          borderColor: course.color,
+                          backgroundColor: `${course.color}1A`,
+                        }}
+                      >
+                        <button
+                          className="w-full text-left"
+                          onClick={() => onEdit(course)}
+                          type="button"
+                        >
+                          <p className="line-clamp-2 text-[11px] font-black leading-4">
+                            {course.courseName}
+                          </p>
+                          <p className="mt-0.5 truncate text-[9px] font-bold text-muted-foreground">
+                            {course.room || course.teacher || "Class"}
+                          </p>
+                        </button>
+                        <button
+                          aria-label={`Delete ${course.courseName}`}
+                          className="absolute right-1 top-1 hidden rounded-full bg-card/90 p-1 text-red-600 shadow group-hover:block"
+                          onClick={() => void onDelete(course.id)}
+                          type="button"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-4 border-t border-border px-4 py-3">
+            {[
+              ...new Map(
+                courses.map((course) => [
+                  course.courseName,
+                  { name: course.courseName, color: course.color },
+                ]),
+              ).values(),
+            ]
+              .slice(0, 8)
+              .map((course) => (
+                <span
+                  className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground"
+                  key={course.name}
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: course.color }}
+                  />
+                  {course.name}
+                </span>
+              ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ScheduleCourseList({
+  courses,
+  mode,
+  onEdit,
+  onDelete,
+}: {
+  courses: Course[];
+  mode: "month" | "semester";
+  onEdit: (course: Course) => void;
+  onDelete: (courseId: string) => Promise<void>;
+}) {
+  return (
+    <div className="min-h-[420px] border-t border-border p-4 sm:p-5">
+      <div className="mb-4">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
+          {mode === "month" ? "Recurring this month" : "Semester overview"}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Courses remain grouped by weekday and use the same confirmed timetable
+          data.
+        </p>
+      </div>
+      <div className="space-y-5">
+        {DAY_NAMES.map((day, index) => {
+          const dayCourses = courses.filter(
+            (course) => course.dayOfWeek === index + 1,
+          );
+          if (!dayCourses.length) return null;
+          return (
+            <section key={day}>
+              <h3 className="mb-2 text-sm font-black">{day}</h3>
+              <div className="space-y-2">
+                {dayCourses.map((course) => (
+                  <CourseRow
+                    course={course}
+                    key={course.id}
+                    onDelete={() => void onDelete(course.id)}
+                    onEdit={() => onEdit(course)}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TaskMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "emerald" | "violet" | "blue";
+}) {
+  const toneClass = {
+    emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    blue: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  }[tone];
+  return (
+    <div className={`rounded-3xl p-4 sm:p-5 ${toneClass}`}>
+      <p className="text-2xl font-black">{value}</p>
+      <p className="mt-1 text-xs font-black uppercase tracking-wide">{label}</p>
+    </div>
+  );
+}
+
+function formatTaskDue(value: string) {
+  const due = new Date(value);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const sameDay = (left: Date, right: Date) =>
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate();
+  const prefix = sameDay(due, today)
+    ? "Today"
+    : sameDay(due, tomorrow)
+      ? "Tomorrow"
+      : due.toLocaleDateString("en", { month: "short", day: "numeric" });
+  return `${prefix}, ${due.toLocaleTimeString("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+function TaskRow({
+  task,
+  disabled,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  task: AcademicTask;
+  disabled: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const completed = task.status === "COMPLETED";
+  return (
+    <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
+      <button
+        aria-label={completed ? "Mark task pending" : "Complete task"}
+        className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition ${
+          completed
+            ? "border-kondo-green bg-kondo-green text-white"
+            : "border-border hover:border-kondo-green"
+        }`}
+        disabled={disabled}
+        onClick={onToggle}
+        type="button"
+      >
+        {completed ? <Check className="h-3.5 w-3.5" /> : null}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p
+            className={`font-black ${
+              completed ? "text-muted-foreground line-through" : ""
+            }`}
+          >
+            {task.title}
+          </p>
+          <span className="rounded-full bg-muted px-2 py-1 text-[9px] font-black uppercase tracking-wide text-muted-foreground">
+            {task.kind}
+          </span>
+          {task.priority === "HIGH" ? (
+            <span className="rounded-full bg-red-500/10 px-2 py-1 text-[9px] font-black text-red-700 dark:text-red-300">
+              HIGH
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {task.course?.courseName ?? "General"}
+          {task.dueAt ? ` · ${formatTaskDue(task.dueAt)}` : " · No due date"}
+        </p>
+        {task.description ? (
+          <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+            {task.description}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 gap-1">
+        <Button
+          aria-label={`Edit ${task.title}`}
+          disabled={disabled}
+          onClick={onEdit}
+          size="icon"
+          variant="ghost"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          aria-label={`Delete ${task.title}`}
+          disabled={disabled}
+          onClick={onDelete}
+          size="icon"
+          variant="ghost"
+        >
+          <Trash2 className="h-4 w-4 text-red-600" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Modal({
   title,
   onClose,
@@ -1295,23 +2364,12 @@ function UniversityFields({ universities }: { universities: University[] }) {
           selected={selected}
         />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div>
         <label>
           <span className="mb-2 block text-sm font-black">Campus</span>
           <select className={input} name="campusId">
             <option value="">All campuses</option>
             {university?.campuses.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="mb-2 block text-sm font-black">Semester</span>
-          <select className={input} name="academicTermId">
-            <option value="">Not specified</option>
-            {university?.academicTerms.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
@@ -1519,46 +2577,6 @@ function CourseFields({
   );
 }
 
-function CourseCard({
-  course,
-  onDelete,
-  onEdit,
-}: {
-  course: Course;
-  onDelete: () => void;
-  onEdit: () => void;
-}) {
-  return (
-    <div
-      className="group rounded-2xl border-l-4 bg-muted/70 p-3"
-      style={{ borderLeftColor: course.color }}
-    >
-      <p className="line-clamp-2 text-xs font-black">{course.courseName}</p>
-      <p className="mt-1 text-[11px] font-bold text-muted-foreground">
-        {formatCourseTime(course)}
-      </p>
-      <p className="mt-1 line-clamp-1 text-[10px] text-muted-foreground">
-        {course.room || course.teacher || "Class"}
-      </p>
-      <button
-        aria-label={`Edit ${course.courseName}`}
-        className="mt-2 mr-2 inline-flex text-kondo-green"
-        onClick={onEdit}
-        type="button"
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        aria-label={`Delete ${course.courseName}`}
-        className="mt-2 inline-flex text-red-600"
-        onClick={onDelete}
-        type="button"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
 function CourseRow({
   course,
   onDelete,

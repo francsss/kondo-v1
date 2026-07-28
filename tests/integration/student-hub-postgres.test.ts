@@ -107,6 +107,35 @@ postgresDescribe("Student Hub PostgreSQL persistence", () => {
     expect(reloaded?.courses[0]?.courseName).toBe("International Business");
   });
 
+  it("persists coursework linked to the same schedule and course", async () => {
+    const schedule = await prisma.studentSchedule.findFirstOrThrow({
+      where: { ownerId, title: "Spring timetable" },
+      include: { courses: true },
+    });
+    const task = await prisma.academicTask.create({
+      data: {
+        ownerId,
+        scheduleId: schedule.id,
+        courseId: schedule.courses[0]!.id,
+        title: "Prepare the case study",
+        kind: "ASSIGNMENT",
+        priority: "HIGH",
+        dueAt: new Date("2026-08-01T12:00:00.000Z"),
+      },
+    });
+
+    const reloaded = await prisma.academicTask.findFirst({
+      where: { id: task.id, ownerId },
+      include: { course: true, schedule: true },
+    });
+    expect(reloaded).toMatchObject({
+      title: "Prepare the case study",
+      status: "PENDING",
+      course: { courseName: "International Business" },
+      schedule: { title: "Spring timetable" },
+    });
+  });
+
   it("atomically saves a successful analyzed import and its extraction", async () => {
     const scheduleImport = await prisma.scheduleImport.create({
       data: {
@@ -304,6 +333,81 @@ postgresDescribe("Student Hub PostgreSQL persistence", () => {
       endPeriod: 2,
       startTime: "08:00",
       endTime: "09:40",
+    });
+  });
+
+  it("prefers the selected campus period mapping over the university default", async () => {
+    const campus = await prisma.campus.create({
+      data: {
+        universityId,
+        name: "South Campus",
+        isActive: true,
+      },
+    });
+    await prisma.universityPeriodConfiguration.create({
+      data: {
+        universityId,
+        campusId: campus.id,
+        name: "South Campus periods",
+        timezone: "Asia/Shanghai",
+        isActive: true,
+        isDefault: false,
+        periods: {
+          create: {
+            periodNumber: 1,
+            label: "Period 1",
+            startTime: "09:10",
+            endTime: "10:00",
+            displayOrder: 1,
+            isActive: true,
+          },
+        },
+      },
+    });
+    const scheduleImport = await prisma.scheduleImport.create({
+      data: {
+        ownerId,
+        universityId,
+        campusId: campus.id,
+        status: "REVIEW_REQUIRED",
+      },
+    });
+
+    const saved = await saveScheduleImport({
+      importId: scheduleImport.id,
+      ownerId,
+      expectedStatus: "REVIEW_REQUIRED",
+      title: "Campus timetable",
+      courses: [
+        {
+          courseName: "Campus Seminar",
+          teacher: null,
+          dayOfWeek: 3,
+          specificDate: null,
+          startPeriod: 1,
+          endPeriod: 1,
+          startTime: null,
+          endTime: null,
+          room: null,
+          building: null,
+          campusLabel: null,
+          startWeek: 1,
+          endWeek: 16,
+          weekPattern: "ALL",
+          weeks: [],
+          language: "en",
+          notes: null,
+          color: "#8B5CF6",
+          isOptional: false,
+          confidence: 0.9,
+          source: "IMPORT",
+        },
+      ],
+    });
+
+    expect(saved.schedule.courses[0]).toMatchObject({
+      startTime: "09:10",
+      endTime: "10:00",
     });
   });
 

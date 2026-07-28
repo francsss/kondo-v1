@@ -48,6 +48,45 @@ export function parseScheduleForPersistence(normalized: NormalizedSchedule) {
   });
 }
 
+export async function findApplicablePeriodConfiguration(input: {
+  universityId: string | null;
+  campusId: string | null;
+  includeBreaks?: boolean;
+}) {
+  if (!input.universityId) return null;
+
+  const configurations = await prisma.universityPeriodConfiguration.findMany({
+    where: {
+      universityId: input.universityId,
+      isActive: true,
+      OR: input.campusId
+        ? [{ campusId: input.campusId }, { campusId: null }]
+        : [{ campusId: null }],
+    },
+    include: {
+      periods: {
+        where: {
+          isActive: true,
+          ...(input.includeBreaks ? {} : { isBreak: false }),
+        },
+        orderBy: { displayOrder: "asc" },
+      },
+    },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+  });
+
+  if (input.campusId) {
+    return (
+      configurations.find(
+        (configuration) => configuration.campusId === input.campusId,
+      ) ??
+      configurations.find((configuration) => configuration.campusId === null) ??
+      null
+    );
+  }
+  return configurations[0] ?? null;
+}
+
 function resolveCourseTimesFromPeriods(
   courses: Array<Record<string, unknown>>,
   periods: Array<{
@@ -110,21 +149,10 @@ export async function saveScheduleImport(input: {
     );
   }
 
-  const configuration = await prisma.universityPeriodConfiguration.findFirst({
-    where: {
-      universityId: scheduleImport.universityId ?? "",
-      isActive: true,
-      OR: scheduleImport.campusId
-        ? [{ campusId: scheduleImport.campusId }, { campusId: null }]
-        : [{ campusId: null }],
-    },
-    include: {
-      periods: {
-        where: { isActive: true },
-        orderBy: { displayOrder: "asc" },
-      },
-    },
-    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+  const configuration = await findApplicablePeriodConfiguration({
+    universityId: scheduleImport.universityId,
+    campusId: scheduleImport.campusId,
+    includeBreaks: true,
   });
   const resolvedCourses = resolveCourseTimesFromPeriods(
     input.courses,
