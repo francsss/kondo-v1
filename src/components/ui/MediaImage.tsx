@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 
 export function MediaImage({
   mediaId,
@@ -9,6 +12,7 @@ export function MediaImage({
   sizes,
   priority = false,
   privateMedia = false,
+  fallbackSrc,
 }: {
   mediaId: string;
   alt: string;
@@ -18,16 +22,20 @@ export function MediaImage({
   sizes?: string;
   priority?: boolean;
   privateMedia?: boolean;
+  fallbackSrc?: string;
 }) {
+  const [failed, setFailed] = useState(false);
+
   return (
     <Image
       alt={alt}
       className={className}
       height={height}
+      onError={fallbackSrc ? () => setFailed(true) : undefined}
       priority={priority}
       sizes={sizes}
-      src={`/api/media/${mediaId}`}
-      unoptimized={privateMedia}
+      src={failed && fallbackSrc ? fallbackSrc : `/api/media/${mediaId}`}
+      unoptimized={privateMedia || Boolean(fallbackSrc)}
       width={width}
     />
   );

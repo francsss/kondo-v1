@@ -9,6 +9,7 @@ import {
   LoaderCircle,
   MapPin,
   MessageCircle,
+  RefreshCw,
   School,
   ShieldCheck,
   Sparkles,
@@ -20,6 +21,11 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { MEET_PREMIUM_FEATURES } from "@/features/meet/config";
 import {
+  baiduMapSdkUrl,
+  hasRequiredBaiduMapConstructors,
+} from "@/lib/baidu-map-readiness";
+import {
+  meetMapKnownAnchor,
   meetMapRadiusKm,
   meetMapZoom,
   privacySafeMapCoordinate,
@@ -74,7 +80,10 @@ type BaiduMapInstance = {
 type BaiduMapsApi = {
   Map: new (
     container: HTMLElement,
-    options?: { enableMapClick?: boolean },
+    options?: {
+      enableMapClick?: boolean;
+      displayOptions?: { language?: "en" | "zh" };
+    },
   ) => BaiduMapInstance;
   Point: new (lng: number, lat: number) => BaiduPoint;
   Geocoder: new () => {
@@ -114,26 +123,69 @@ type BaiduMapsApi = {
 
 declare global {
   interface Window {
-    BMapGL?: BaiduMapsApi;
-    __kondoBaiduMapReady?: () => void;
+    BMAP_PROTOCOL?: string;
+    BMapGL?: unknown;
+    BMapGL_loadScriptTime?: number;
   }
 }
 
 let baiduLoader: Promise<BaiduMapsApi> | null = null;
 const geocodeCache = new Map<string, BaiduPoint>();
-const BAIDU_LOAD_TIMEOUT_MS = 10_000;
+const BAIDU_LOAD_TIMEOUT_MS = 15_000;
+const BAIDU_LOAD_ATTEMPTS = 3;
+const BAIDU_RETRY_DELAY_MS = 600;
 const AREA_SEARCH_TIMEOUT_MS = 7_000;
 const AREA_SEARCH_STAGGER_MS = 250;
+const MAP_AVATAR_TIMEOUT_MS = 4_000;
+
+function resolveMapAvatarUrl(profile: MeetDiscoveryProfile) {
+  const fallback = defaultAvatarDataUri(
+    profile.firstName,
+    profile.lastName,
+    profile.id,
+  );
+  if (!profile.avatarMediaId) return Promise.resolve(fallback);
+
+  return new Promise<string>((resolve) => {
+    const image = new window.Image();
+    let settled = false;
+    const finish = (url: string) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      resolve(url);
+    };
+    const timeout = window.setTimeout(
+      () => finish(fallback),
+      MAP_AVATAR_TIMEOUT_MS,
+    );
+    image.onload = () =>
+      finish(
+        image.naturalWidth > 0 && image.naturalHeight > 0
+          ? `/api/media/${profile.avatarMediaId}`
+          : fallback,
+      );
+    image.onerror = () => finish(fallback);
+    image.src = `/api/media/${profile.avatarMediaId}`;
+  });
+}
 
 function loadBaiduMaps(apiKey: string) {
-  if (window.BMapGL) return Promise.resolve(window.BMapGL);
+  if (hasRequiredBaiduMapConstructors(window.BMapGL)) {
+    return Promise.resolve(window.BMapGL as BaiduMapsApi);
+  }
   if (baiduLoader) return baiduLoader;
   baiduLoader = new Promise<BaiduMapsApi>((resolve, reject) => {
     const existing = document.getElementById("kondo-baidu-map-script");
+    let loadAttempt = 0;
+    let retryTimer: number | null = null;
     let settled = false;
     const cleanup = () => {
       window.clearTimeout(timeout);
       window.clearInterval(readinessPoll);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
     const complete = (api: BaiduMapsApi) => {
       if (settled) return;
@@ -153,23 +205,51 @@ function loadBaiduMaps(apiKey: string) {
       fail(new Error("Baidu Maps took too long to load."));
     }, BAIDU_LOAD_TIMEOUT_MS);
     const readinessPoll = window.setInterval(() => {
-      if (window.BMapGL) complete(window.BMapGL);
+      if (hasRequiredBaiduMapConstructors(window.BMapGL)) {
+        complete(window.BMapGL as BaiduMapsApi);
+      }
     }, 100);
-    window.__kondoBaiduMapReady = () => {
-      if (window.BMapGL) complete(window.BMapGL);
-      else fail(new Error("Baidu Maps did not initialize."));
-    };
     existing?.remove();
-    const script = document.createElement("script");
-    script.id = "kondo-baidu-map-script";
-    script.async = true;
-    script.defer = true;
-    script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${encodeURIComponent(apiKey)}&callback=__kondoBaiduMapReady`;
-    script.onerror = () => {
-      script.remove();
-      fail(new Error("Baidu Maps could not be loaded."));
+    window.BMAP_PROTOCOL = "https";
+    window.BMapGL_loadScriptTime = Date.now();
+    if (!window.BMapGL || typeof window.BMapGL !== "object") {
+      window.BMapGL = {};
+    }
+    const namespace = window.BMapGL as { apiLoad?: () => void };
+    namespace.apiLoad = () => {
+      delete namespace.apiLoad;
+      if (hasRequiredBaiduMapConstructors(window.BMapGL)) {
+        complete(window.BMapGL as BaiduMapsApi);
+      }
     };
-    document.head.appendChild(script);
+    if (!document.querySelector('link[data-kondo-baidu-map-styles="true"]')) {
+      const stylesheet = document.createElement("link");
+      stylesheet.rel = "stylesheet";
+      stylesheet.href = "https://api.map.baidu.com/res/webgl/10/bmap.css";
+      stylesheet.dataset.kondoBaiduMapStyles = "true";
+      document.head.appendChild(stylesheet);
+    }
+    const appendScript = () => {
+      loadAttempt += 1;
+      const script = document.createElement("script");
+      script.id = "kondo-baidu-map-script";
+      script.async = true;
+      script.defer = true;
+      script.src = baiduMapSdkUrl(apiKey);
+      script.onerror = () => {
+        script.remove();
+        if (loadAttempt < BAIDU_LOAD_ATTEMPTS) {
+          retryTimer = window.setTimeout(
+            appendScript,
+            BAIDU_RETRY_DELAY_MS * loadAttempt,
+          );
+          return;
+        }
+        fail(new Error("Baidu Maps could not be loaded."));
+      };
+      document.head.appendChild(script);
+    };
+    appendScript();
   });
   return baiduLoader;
 }
@@ -313,6 +393,7 @@ export function MeetDiscoveryMap({
         ? ""
         : "Choose a study university and city before opening the nearby map.",
   );
+  const [mapAttempt, setMapAttempt] = useState(0);
   const canViewFullProfile = premiumFeatures.includes(
     MEET_PREMIUM_FEATURES.FULL_PROFILES,
   );
@@ -330,8 +411,17 @@ export function MeetDiscoveryMap({
       .then(async (api) => {
         if (cancelled) return;
         container.replaceChildren();
-        const map = new api.Map(container, { enableMapClick: false });
-        const anchor = await locateStudyArea(api, mapQueries, cityQueries);
+        const map = new api.Map(container, {
+          enableMapClick: false,
+          // Baidu's English vector layer is served from api.map.baidu.com.
+          // The default Chinese layer uses apimaponline*.bdimg.com, which is
+          // frequently unreachable through local fake-IP/proxy setups.
+          displayOptions: { language: "en" },
+        });
+        const knownAnchor = meetMapKnownAnchor(mapQueries);
+        const anchor = knownAnchor
+          ? new api.Point(knownAnchor.lng, knownAnchor.lat)
+          : await locateStudyArea(api, mapQueries, cityQueries);
         if (cancelled) return;
         map.centerAndZoom(anchor, meetMapZoom(distanceRange));
         map.enableScrollWheelZoom(true);
@@ -347,7 +437,11 @@ export function MeetDiscoveryMap({
           }),
         );
         setMapStatus("ready");
-        for (const profile of profiles) {
+        const avatarUrls = await Promise.all(
+          profiles.map((profile) => resolveMapAvatarUrl(profile)),
+        );
+        if (cancelled) return;
+        for (const [index, profile] of profiles.entries()) {
           const coordinate = privacySafeMapCoordinate(
             anchor,
             profile.id,
@@ -356,13 +450,12 @@ export function MeetDiscoveryMap({
           const point = new api.Point(coordinate.lng, coordinate.lat);
           const size = new api.Size(48, 48);
           const icon = new api.Icon(
-            profile.avatarMediaId
-              ? `/api/media/${profile.avatarMediaId}`
-              : defaultAvatarDataUri(
-                  profile.firstName,
-                  profile.lastName,
-                  profile.id,
-                ),
+            avatarUrls[index] ??
+              defaultAvatarDataUri(
+                profile.firstName,
+                profile.lastName,
+                profile.id,
+              ),
             size,
             {
               imageSize: size,
@@ -389,7 +482,7 @@ export function MeetDiscoveryMap({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, cityQueries, distanceRange, mapQueries, profiles]);
+  }, [apiKey, cityQueries, distanceRange, mapAttempt, mapQueries, profiles]);
 
   return (
     <section
@@ -441,6 +534,18 @@ export function MeetDiscoveryMap({
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               {mapError}
             </p>
+            {mapStatus === "error" ? (
+              <Button
+                className="mt-4"
+                onClick={() => setMapAttempt((attempt) => attempt + 1)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Retry map
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}

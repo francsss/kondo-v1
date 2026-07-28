@@ -29,6 +29,7 @@ export function Avatar({
         <MediaImage
           alt={`Portrait of ${name}`}
           className="h-full w-full object-cover"
+          fallbackSrc={defaultAvatarDataUri(firstName, lastName, seed)}
           height={192}
           mediaId={mediaId}
           privateMedia

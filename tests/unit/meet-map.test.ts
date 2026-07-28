@@ -5,6 +5,7 @@ import {
 } from "@/lib/china-map-aliases";
 import {
   meetMapCityQueries,
+  meetMapKnownAnchor,
   meetMapRadiusKm,
   meetMapSearchQueries,
   meetMapSearchQuery,
@@ -48,6 +49,31 @@ describe("Meet privacy-safe real-map coordinates", () => {
     expect(approximateDistanceKm(jiaxingUniversity, first)).toBeGreaterThan(
       0.5,
     );
+  });
+
+  it("places two nearby students at distinct privacy-safe points within 5 km", () => {
+    const students = ["jiaxing-student-one", "jiaxing-student-two"].map(
+      (profileId) =>
+        privacySafeMapCoordinate(jiaxingUniversity, profileId, "KM_5"),
+    );
+
+    expect(students[0]).not.toEqual(students[1]);
+    expect(
+      students.every(
+        (coordinate) =>
+          approximateDistanceKm(jiaxingUniversity, coordinate) < 5,
+      ),
+    ).toBe(true);
+  });
+
+  it("uses the verified Jiaxing study-area anchor without another network lookup", () => {
+    expect(
+      meetMapKnownAnchor([
+        "嘉兴市嘉兴大学",
+        "嘉兴大学",
+        "Jiaxing University, Jiaxing, China",
+      ]),
+    ).toEqual(jiaxingUniversity);
   });
 
   it("uses public study-area labels rather than exact user coordinates", () => {

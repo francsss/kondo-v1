@@ -19,6 +19,16 @@ const ZOOM_LEVEL: Record<MeetMapDistance, number> = {
   OTHER_CITY: 12,
 };
 
+const KNOWN_STUDY_AREA_ANCHORS: Array<{
+  aliases: string[];
+  coordinate: MapCoordinate;
+}> = [
+  {
+    aliases: ["嘉兴大学", "jiaxing university"],
+    coordinate: { lng: 120.755, lat: 30.746 },
+  },
+];
+
 function stableHash(value: string) {
   let hash = 2_166_136_261;
   for (const character of value) {
@@ -34,6 +44,17 @@ export function meetMapRadiusKm(distance: MeetMapDistance) {
 
 export function meetMapZoom(distance: MeetMapDistance) {
   return ZOOM_LEVEL[distance];
+}
+
+export function meetMapKnownAnchor(queries: string[]) {
+  const normalizedQueries = queries.map((query) => query.trim().toLowerCase());
+  return (
+    KNOWN_STUDY_AREA_ANCHORS.find(({ aliases }) =>
+      aliases.some((alias) =>
+        normalizedQueries.some((query) => query.includes(alias)),
+      ),
+    )?.coordinate ?? null
+  );
 }
 
 export function privacySafeMapCoordinate(
