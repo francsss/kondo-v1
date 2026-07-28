@@ -2,6 +2,7 @@ export type MeetMapDistance =
   "KM_5" | "KM_10" | "KM_20" | "CITY" | "OTHER_CITY";
 
 export type MapCoordinate = { lng: number; lat: number };
+export const MEET_MAP_COORDINATE_SYSTEM = "BD09" as const;
 
 const RADIUS_KM: Record<MeetMapDistance, number> = {
   KM_5: 5,
@@ -25,6 +26,7 @@ const KNOWN_STUDY_AREA_ANCHORS: Array<{
 }> = [
   {
     aliases: ["嘉兴大学", "jiaxing university"],
+    // Verified Baidu longitude/latitude. Never replace with raw GPS coordinates.
     coordinate: { lng: 120.755, lat: 30.746 },
   },
 ];

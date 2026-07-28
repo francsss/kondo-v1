@@ -21,9 +21,16 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { MEET_PREMIUM_FEATURES } from "@/features/meet/config";
 import {
-  baiduMapSdkUrl,
-  hasRequiredBaiduMapConstructors,
-} from "@/lib/baidu-map-readiness";
+  type BaiduMapInstance,
+  type BaiduMapsApi,
+  type BaiduOverlay,
+  type BaiduPoint,
+  loadBaiduMapsSdk,
+  logBaiduMapEvent,
+  resetBaiduMapsSdkAfterFailure,
+  waitForBaiduMapContainer,
+  waitForBaiduMapRenderer,
+} from "@/lib/baidu-map-sdk";
 import {
   meetMapKnownAnchor,
   meetMapRadiusKm,
@@ -31,7 +38,6 @@ import {
   privacySafeMapCoordinate,
   type MeetMapDistance,
 } from "@/lib/meet-map";
-import { defaultAvatarDataUri } from "@/lib/presentation";
 
 export type MeetDiscoveryProfile = {
   id: string;
@@ -60,91 +66,21 @@ export type MeetDiscoveryProfile = {
   } | null;
 };
 
-type BaiduPoint = { lng: number; lat: number };
-type BaiduOverlay = {
-  addEventListener?(event: string, listener: () => void): void;
-};
-type BaiduLocalResultPoi = {
-  point?: BaiduPoint;
-};
-type BaiduLocalResult = {
-  getPoi(index: number): BaiduLocalResultPoi | null;
-};
-type BaiduMapInstance = {
-  centerAndZoom(point: BaiduPoint, zoom: number): void;
-  enableScrollWheelZoom(enabled: boolean): void;
-  addControl(control: unknown): void;
-  addOverlay(overlay: BaiduOverlay): void;
-  clearOverlays(): void;
-};
-type BaiduMapsApi = {
-  Map: new (
-    container: HTMLElement,
-    options?: { enableMapClick?: boolean },
-  ) => BaiduMapInstance;
-  Point: new (lng: number, lat: number) => BaiduPoint;
-  Geocoder: new () => {
-    getPoint(
-      query: string,
-      callback: (point: BaiduPoint | null) => void,
-      city?: string,
-    ): void;
-  };
-  LocalSearch?: new (
-    location: string,
-    options: {
-      pageCapacity?: number;
-      onSearchComplete: (result: BaiduLocalResult | BaiduLocalResult[]) => void;
-    },
-  ) => {
-    search(query: string, options?: { forceLocal?: boolean }): void;
-  };
-  NavigationControl: new () => unknown;
-  ScaleControl: new () => unknown;
-  Size: new (width: number, height: number) => unknown;
-  Icon: new (
-    imageUrl: string,
-    size: unknown,
-    options?: { imageSize?: unknown; anchor?: unknown },
-  ) => unknown;
-  Marker: new (
-    point: BaiduPoint,
-    options?: { icon?: unknown; title?: string },
-  ) => BaiduOverlay;
-  Circle: new (
-    point: BaiduPoint,
-    radiusMeters: number,
-    options?: Record<string, unknown>,
-  ) => BaiduOverlay;
-};
+export type MeetMapViewer = Pick<
+  MeetDiscoveryProfile,
+  "id" | "firstName" | "lastName" | "avatarMediaId"
+>;
 
-declare global {
-  interface Window {
-    BMap?: unknown;
-  }
-}
-
-let baiduLoader: Promise<BaiduMapsApi> | null = null;
 const geocodeCache = new Map<string, BaiduPoint>();
-const BAIDU_LOAD_TIMEOUT_MS = 15_000;
-const BAIDU_LOAD_ATTEMPTS = 3;
-const BAIDU_RETRY_DELAY_MS = 600;
-const AREA_SEARCH_TIMEOUT_MS = 7_000;
-const AREA_SEARCH_STAGGER_MS = 250;
 const MAP_AVATAR_TIMEOUT_MS = 4_000;
 
-function resolveMapAvatarUrl(profile: MeetDiscoveryProfile) {
-  const fallback = defaultAvatarDataUri(
-    profile.firstName,
-    profile.lastName,
-    profile.id,
-  );
-  if (!profile.avatarMediaId) return Promise.resolve(fallback);
+function resolveMapAvatarUrl(profile: MeetMapViewer): Promise<string | null> {
+  if (!profile.avatarMediaId) return Promise.resolve(null);
 
-  return new Promise<string>((resolve) => {
+  return new Promise<string | null>((resolve) => {
     const image = new window.Image();
     let settled = false;
-    const finish = (url: string) => {
+    const finish = (url: string | null) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeout);
@@ -153,87 +89,18 @@ function resolveMapAvatarUrl(profile: MeetDiscoveryProfile) {
       resolve(url);
     };
     const timeout = window.setTimeout(
-      () => finish(fallback),
+      () => finish(null),
       MAP_AVATAR_TIMEOUT_MS,
     );
     image.onload = () =>
       finish(
         image.naturalWidth > 0 && image.naturalHeight > 0
           ? `/api/media/${profile.avatarMediaId}`
-          : fallback,
+          : null,
       );
-    image.onerror = () => finish(fallback);
+    image.onerror = () => finish(null);
     image.src = `/api/media/${profile.avatarMediaId}`;
   });
-}
-
-function loadBaiduMaps(apiKey: string) {
-  if (hasRequiredBaiduMapConstructors(window.BMap)) {
-    return Promise.resolve(window.BMap as BaiduMapsApi);
-  }
-  if (baiduLoader) return baiduLoader;
-  baiduLoader = new Promise<BaiduMapsApi>((resolve, reject) => {
-    const existing = document.getElementById("kondo-baidu-map-script");
-    let loadAttempt = 0;
-    let retryTimer: number | null = null;
-    let settled = false;
-    const cleanup = () => {
-      window.clearTimeout(timeout);
-      window.clearInterval(readinessPoll);
-      if (retryTimer !== null) window.clearTimeout(retryTimer);
-    };
-    const complete = (api: BaiduMapsApi) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(api);
-    };
-    const fail = (error: Error) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      baiduLoader = null;
-      reject(error);
-    };
-    const timeout = window.setTimeout(() => {
-      document.getElementById("kondo-baidu-map-script")?.remove();
-      fail(new Error("Baidu Maps took too long to load."));
-    }, BAIDU_LOAD_TIMEOUT_MS);
-    const readinessPoll = window.setInterval(() => {
-      if (hasRequiredBaiduMapConstructors(window.BMap)) {
-        complete(window.BMap as BaiduMapsApi);
-      }
-    }, 100);
-    existing?.remove();
-    delete window.BMap;
-    const appendScript = () => {
-      loadAttempt += 1;
-      const script = document.createElement("script");
-      script.id = "kondo-baidu-map-script";
-      script.async = true;
-      script.defer = true;
-      script.src = baiduMapSdkUrl(apiKey);
-      script.onload = () => {
-        if (hasRequiredBaiduMapConstructors(window.BMap)) {
-          complete(window.BMap as BaiduMapsApi);
-        }
-      };
-      script.onerror = () => {
-        script.remove();
-        if (loadAttempt < BAIDU_LOAD_ATTEMPTS) {
-          retryTimer = window.setTimeout(
-            appendScript,
-            BAIDU_RETRY_DELAY_MS * loadAttempt,
-          );
-          return;
-        }
-        fail(new Error("Baidu Maps could not be loaded."));
-      };
-      document.head.appendChild(script);
-    };
-    appendScript();
-  });
-  return baiduLoader;
 }
 
 function intentLabel(intent: string) {
@@ -250,12 +117,7 @@ function maskedFirstName(firstName: string) {
   )}`;
 }
 
-function firstLocalSearchPoint(result: BaiduLocalResult | BaiduLocalResult[]) {
-  const firstResult = Array.isArray(result) ? result[0] : result;
-  return firstResult?.getPoi(0)?.point ?? null;
-}
-
-function locateStudyArea(
+async function locateStudyArea(
   api: BaiduMapsApi,
   mapQueries: string[],
   cityQueries: string[],
@@ -270,80 +132,75 @@ function locateStudyArea(
     .join("|")
     .toLowerCase()}`;
   const cached = geocodeCache.get(cacheKey);
-  if (cached) return Promise.resolve(cached);
+  if (cached) {
+    logBaiduMapEvent("geocoder.cache_hit", { cacheKey });
+    return cached;
+  }
   if (!queries.length) {
-    return Promise.reject(new Error("The selected study area was not found."));
+    throw new Error("No study-area label was provided to Baidu Maps.");
   }
 
-  return new Promise<BaiduPoint>((resolve, reject) => {
-    const geocoder = new api.Geocoder();
-    const attemptTimers: number[] = [];
-    let settled = false;
-    const cleanup = () => {
-      window.clearTimeout(deadline);
-      attemptTimers.forEach((timer) => window.clearTimeout(timer));
-    };
-    const succeed = (point: BaiduPoint | null | undefined) => {
-      if (settled || !point) return;
-      settled = true;
-      cleanup();
+  const geocoder = new api.Geocoder();
+  const primaryCity = cities[0] ?? "China";
+  const attempts = [
+    ...cities.map((city) => ({ query: city, city })),
+    ...queries.map((query) => ({ query, city: primaryCity })),
+  ].filter(
+    (attempt, index, values) =>
+      values.findIndex(
+        (candidate) =>
+          candidate.query === attempt.query && candidate.city === attempt.city,
+      ) === index,
+  );
+
+  for (const [index, attempt] of attempts.entries()) {
+    logBaiduMapEvent("geocoder.request", {
+      attempt: index + 1,
+      query: attempt.query,
+      city: attempt.city,
+    });
+    try {
+      const point = await new Promise<BaiduPoint | null>((resolve, reject) => {
+        try {
+          geocoder.getPoint(attempt.query, resolve, attempt.city);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      if (!point) {
+        logBaiduMapEvent("geocoder.empty", {
+          attempt: index + 1,
+          query: attempt.query,
+        });
+        continue;
+      }
       if (geocodeCache.size >= 100) {
         const oldest = geocodeCache.keys().next().value;
         if (oldest) geocodeCache.delete(oldest);
       }
       geocodeCache.set(cacheKey, point);
-      resolve(point);
-    };
-    const deadline = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(new Error("Baidu Maps could not locate the selected study area."));
-    }, AREA_SEARCH_TIMEOUT_MS);
-
-    const attempts: Array<() => void> = [];
-    const primaryCity = cities[0] ?? "China";
-
-    const LocalSearch = api.LocalSearch;
-    if (LocalSearch) {
-      for (const query of queries.slice(0, 4)) {
-        attempts.push(() => {
-          const search = new LocalSearch(primaryCity, {
-            pageCapacity: 1,
-            onSearchComplete: (result) =>
-              succeed(firstLocalSearchPoint(result)),
-          });
-          search.search(query, { forceLocal: true });
-        });
-      }
-    }
-
-    for (const city of cities) {
-      attempts.push(() => {
-        geocoder.getPoint(city, succeed, city);
+      logBaiduMapEvent("geocoder.resolved", {
+        attempt: index + 1,
+        query: attempt.query,
+        coordinateSystem: "BD09",
+      });
+      return point;
+    } catch (error) {
+      console.error("[Kondo Meet Map]", "geocoder.request_failed", {
+        attempt: index + 1,
+        query: attempt.query,
+        error,
       });
     }
-    for (const query of queries.slice(0, 4)) {
-      attempts.push(() => {
-        geocoder.getPoint(query, succeed, primaryCity);
-      });
-    }
+  }
 
-    for (const [index, attempt] of attempts.entries()) {
-      const timer = window.setTimeout(() => {
-        if (settled) return;
-        try {
-          attempt();
-        } catch {
-          // Continue through the remaining Baidu POI and geocoder fallbacks.
-        }
-      }, index * AREA_SEARCH_STAGGER_MS);
-      attemptTimers.push(timer);
-    }
-  });
+  throw new Error(
+    "Baidu could not resolve the selected study area. Enable address geocoding for this browser AK or configure a verified BD-09 study-area anchor.",
+  );
 }
 
 export function MeetDiscoveryMap({
+  viewer,
   profiles,
   mode,
   areaLabel,
@@ -353,6 +210,7 @@ export function MeetDiscoveryMap({
   premiumFeatures,
   onPremiumRequest,
 }: {
+  viewer: MeetMapViewer;
   profiles: MeetDiscoveryProfile[];
   mode: "NEARBY" | "LOOKING_FOR";
   areaLabel: string;
@@ -364,6 +222,10 @@ export function MeetDiscoveryMap({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_BAIDU_MAP_AK?.trim();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<BaiduMapInstance | null>(null);
+  const apiRef = useRef<BaiduMapsApi | null>(null);
+  const anchorRef = useRef<BaiduPoint | null>(null);
+  const markerOverlaysRef = useRef<BaiduOverlay[]>([]);
   const [selected, setSelected] = useState<MeetDiscoveryProfile | null>(null);
   const [mapStatus, setMapStatus] = useState<
     "loading" | "ready" | "unconfigured" | "error"
@@ -376,6 +238,9 @@ export function MeetDiscoveryMap({
         : "Choose a study university and city before opening the nearby map.",
   );
   const [mapAttempt, setMapAttempt] = useState(0);
+  const [mapRevision, setMapRevision] = useState(0);
+  const mapQueryKey = mapQueries.join("\u0001");
+  const cityQueryKey = cityQueries.join("\u0001");
   const canViewFullProfile = premiumFeatures.includes(
     MEET_PREMIUM_FEATURES.FULL_PROFILES,
   );
@@ -385,21 +250,87 @@ export function MeetDiscoveryMap({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!apiKey || !container || !mapQueries.length) return;
-    let cancelled = false;
+    const activeMapQueries = mapQueryKey
+      .split("\u0001")
+      .filter((query) => query.length > 0);
+    const activeCityQueries = cityQueryKey
+      .split("\u0001")
+      .filter((query) => query.length > 0);
+    if (!apiKey || !container || !activeMapQueries.length) return;
+    const controller = new AbortController();
+    let localMap: BaiduMapInstance | null = null;
+    let tilesLoadedListener: (() => void) | null = null;
+    let styleLoadErrorListener: (() => void) | null = null;
+    let styleLoadTimeoutListener: (() => void) | null = null;
+    let mapFailed = false;
     setMapStatus("loading");
     setMapError("");
-    void loadBaiduMaps(apiKey)
-      .then(async (api) => {
-        if (cancelled) return;
+
+    void Promise.all([
+      loadBaiduMapsSdk(apiKey),
+      waitForBaiduMapContainer(container, controller.signal),
+    ])
+      .then(async ([api, measurement]) => {
+        if (controller.signal.aborted || mapRef.current) return;
         container.replaceChildren();
         const map = new api.Map(container, { enableMapClick: false });
-        const knownAnchor = meetMapKnownAnchor(mapQueries);
+        localMap = map;
+        mapRef.current = map;
+        apiRef.current = api;
+        logBaiduMapEvent("map.created", {
+          width: Math.round(measurement.width),
+          height: Math.round(measurement.height),
+        });
+
+        tilesLoadedListener = () => {
+          if (controller.signal.aborted) return;
+          logBaiduMapEvent("map.tiles_loaded");
+        };
+        map.addEventListener("tilesloaded", tilesLoadedListener);
+        map.addEventListener("ontilesloaded", tilesLoadedListener);
+        styleLoadErrorListener = () => {
+          if (controller.signal.aborted) return;
+          mapFailed = true;
+          const message =
+            "Baidu loaded the SDK but failed to load the map style.";
+          console.error("[Kondo Meet Map]", "map.style_load_failed", {
+            message,
+          });
+          setMapStatus("error");
+          setMapError(message);
+        };
+        styleLoadTimeoutListener = () => {
+          if (controller.signal.aborted) return;
+          mapFailed = true;
+          const message =
+            "Baidu loaded the SDK but its map style service did not respond.";
+          console.error("[Kondo Meet Map]", "map.style_load_timeout", {
+            message,
+          });
+          setMapStatus("error");
+          setMapError(message);
+        };
+        map.addEventListener("onstyle_loaded_error", styleLoadErrorListener);
+        map.addEventListener(
+          "onstyle_loaded_timeout",
+          styleLoadTimeoutListener,
+        );
+
+        const knownAnchor = meetMapKnownAnchor(activeMapQueries);
         const anchor = knownAnchor
           ? new api.Point(knownAnchor.lng, knownAnchor.lat)
-          : await locateStudyArea(api, mapQueries, cityQueries);
-        if (cancelled) return;
+          : await locateStudyArea(api, activeMapQueries, activeCityQueries);
+        if (controller.signal.aborted) return;
+        anchorRef.current = anchor;
+        logBaiduMapEvent("map.anchor_resolved", {
+          source: knownAnchor ? "verified_anchor" : "baidu_geocoder",
+          coordinateSystem: "BD09",
+        });
         map.centerAndZoom(anchor, meetMapZoom(distanceRange));
+        logBaiduMapEvent("map.center_set", {
+          zoom: meetMapZoom(distanceRange),
+          radiusKm: meetMapRadiusKm(distanceRange),
+        });
         map.enableScrollWheelZoom(true);
         map.addControl(new api.NavigationControl());
         map.addControl(new api.ScaleControl());
@@ -412,11 +343,110 @@ export function MeetDiscoveryMap({
             fillOpacity: 0.08,
           }),
         );
+        await waitForBaiduMapRenderer(map, container, controller.signal);
+        if (controller.signal.aborted || mapFailed) return;
         setMapStatus("ready");
-        const avatarUrls = await Promise.all(
-          profiles.map((profile) => resolveMapAvatarUrl(profile)),
+        setMapRevision((revision) => revision + 1);
+      })
+      .catch((error) => {
+        if (
+          controller.signal.aborted ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
+          return;
+        }
+        console.error("[Kondo Meet Map]", "map.initialization_failed", error);
+        setMapStatus("error");
+        setMapError(
+          error instanceof Error
+            ? error.message
+            : "Baidu Maps failed with an unknown initialization error.",
         );
-        if (cancelled) return;
+      });
+
+    return () => {
+      controller.abort();
+      if (localMap && tilesLoadedListener) {
+        localMap.removeEventListener("tilesloaded", tilesLoadedListener);
+        localMap.removeEventListener("ontilesloaded", tilesLoadedListener);
+      }
+      if (localMap && styleLoadErrorListener) {
+        localMap.removeEventListener(
+          "onstyle_loaded_error",
+          styleLoadErrorListener,
+        );
+      }
+      if (localMap && styleLoadTimeoutListener) {
+        localMap.removeEventListener(
+          "onstyle_loaded_timeout",
+          styleLoadTimeoutListener,
+        );
+      }
+      if (localMap) {
+        localMap.clearOverlays();
+        localMap.destroy?.();
+        logBaiduMapEvent("map.cleanup");
+      }
+      if (mapRef.current === localMap) {
+        mapRef.current = null;
+        apiRef.current = null;
+        anchorRef.current = null;
+        markerOverlaysRef.current = [];
+      }
+    };
+  }, [apiKey, cityQueryKey, distanceRange, mapAttempt, mapQueryKey]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const api = apiRef.current;
+    const anchor = anchorRef.current;
+    if (!map || !api || !anchor || !mapRevision) return;
+
+    let cancelled = false;
+    for (const overlay of markerOverlaysRef.current) {
+      map.removeOverlay(overlay);
+    }
+    markerOverlaysRef.current = [];
+
+    void Promise.all([
+      resolveMapAvatarUrl(viewer),
+      ...profiles.map((profile) => resolveMapAvatarUrl(profile)),
+    ])
+      .then(([viewerAvatarUrl, ...profileAvatarUrls]) => {
+        if (cancelled || mapRef.current !== map) return;
+        const overlays: BaiduOverlay[] = [];
+
+        const viewerSize = new api.Size(54, 54);
+        const viewerIcon = viewerAvatarUrl
+          ? new api.Icon(viewerAvatarUrl, viewerSize, {
+              imageSize: viewerSize,
+              anchor: new api.Size(27, 27),
+            })
+          : undefined;
+        const viewerMarker = new api.Marker(anchor, {
+          icon: viewerIcon,
+          title: "Your approximate study area",
+        });
+        const viewerLabel = new api.Label("You", {
+          position: anchor,
+          offset: new api.Size(18, -42),
+        });
+        viewerLabel.setStyle?.({
+          background: "#063c31",
+          border: "2px solid #ffffff",
+          borderRadius: "999px",
+          boxShadow: "0 6px 18px rgba(6, 60, 49, 0.24)",
+          color: "#ffffff",
+          fontSize: "11px",
+          fontWeight: "800",
+          lineHeight: "20px",
+          padding: "0 8px",
+          whiteSpace: "nowrap",
+        });
+        viewerMarker.setLabel?.(viewerLabel);
+        map.addOverlay(viewerMarker);
+        overlays.push(viewerMarker);
+
         for (const [index, profile] of profiles.entries()) {
           const coordinate = privacySafeMapCoordinate(
             anchor,
@@ -425,40 +455,42 @@ export function MeetDiscoveryMap({
           );
           const point = new api.Point(coordinate.lng, coordinate.lat);
           const size = new api.Size(48, 48);
-          const icon = new api.Icon(
-            avatarUrls[index] ??
-              defaultAvatarDataUri(
-                profile.firstName,
-                profile.lastName,
-                profile.id,
-              ),
-            size,
-            {
-              imageSize: size,
-              anchor: new api.Size(24, 24),
-            },
-          );
+          const avatarUrl = profileAvatarUrls[index];
+          const icon = avatarUrl
+            ? new api.Icon(avatarUrl, size, {
+                imageSize: size,
+                anchor: new api.Size(24, 24),
+              })
+            : undefined;
           const marker = new api.Marker(point, {
             icon,
             title: `Approximate area for ${maskedFirstName(profile.firstName)}`,
           });
           marker.addEventListener?.("click", () => setSelected(profile));
           map.addOverlay(marker);
+          overlays.push(marker);
         }
+
+        markerOverlaysRef.current = overlays;
+        logBaiduMapEvent("markers.added", {
+          currentUser: 1,
+          nearbyUsers: profiles.length,
+          coordinateSystem: "BD09",
+        });
       })
       .catch((error) => {
-        if (cancelled) return;
-        setMapStatus("error");
-        setMapError(
-          error instanceof Error
-            ? `${error.message} Refresh the map or update your study area in Discovery Settings.`
-            : "The real map could not be loaded.",
-        );
+        console.error("[Kondo Meet Map]", "markers.failed", error);
       });
+
     return () => {
       cancelled = true;
+      for (const overlay of markerOverlaysRef.current) {
+        map.removeOverlay(overlay);
+      }
+      markerOverlaysRef.current = [];
+      logBaiduMapEvent("markers.cleanup");
     };
-  }, [apiKey, cityQueries, distanceRange, mapAttempt, mapQueries, profiles]);
+  }, [distanceRange, mapRevision, profiles, viewer]);
 
   return (
     <section
@@ -513,7 +545,10 @@ export function MeetDiscoveryMap({
             {mapStatus === "error" ? (
               <Button
                 className="mt-4"
-                onClick={() => setMapAttempt((attempt) => attempt + 1)}
+                onClick={() => {
+                  resetBaiduMapsSdkAfterFailure();
+                  setMapAttempt((attempt) => attempt + 1);
+                }}
                 size="sm"
                 type="button"
                 variant="secondary"

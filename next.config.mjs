@@ -9,14 +9,17 @@ const configuredDevOrigins = (process.env.KONDO_DEV_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const baiduDevelopmentSources = isDevelopment
+  ? " http://api.map.baidu.com http://*.baidu.com http://*.bdimg.com http://*.bcebos.com"
+  : "";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://*.posthog.com https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline' https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com",
-  "img-src 'self' data: blob: https:",
+  `script-src 'self' 'unsafe-inline' https://*.posthog.com https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  `style-src 'self' 'unsafe-inline' https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}`,
+  `img-src 'self' data: blob: https:${isDevelopment ? " http:" : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self' https: wss:${isDevelopment ? " ws:" : ""}`,
+  `connect-src 'self' https: wss:${isDevelopment ? " http: ws:" : ""}`,
   "worker-src 'self' blob: data:",
   "frame-ancestors 'none'",
   "base-uri 'self'",

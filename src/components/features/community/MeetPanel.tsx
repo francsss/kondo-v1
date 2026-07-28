@@ -18,6 +18,7 @@ import { MeetDiscoveryCarousel } from "@/components/features/community/MeetDisco
 import {
   MeetDiscoveryMap,
   type MeetDiscoveryProfile,
+  type MeetMapViewer,
 } from "@/components/features/community/MeetDiscoveryMap";
 import {
   MeetDiscoveryProfileForm,
@@ -51,6 +52,7 @@ const POLL_INTERVAL_MS = 2_500;
 const AVAILABILITY_WINDOW_MS = 20_000;
 
 export function MeetPanel({
+  viewer,
   initialGender,
   initialNearbyEnabled,
   initialIntents,
@@ -65,6 +67,7 @@ export function MeetPanel({
   initialCityId,
   initialUniversityId,
 }: {
+  viewer: MeetMapViewer;
   initialGender: Gender | null;
   initialNearbyEnabled: boolean;
   initialIntents: string[];
@@ -802,6 +805,7 @@ export function MeetPanel({
                 onPremiumRequest={setPremiumReason}
                 premiumFeatures={premiumAccess.featureKeys}
                 profiles={profiles}
+                viewer={viewer}
               />
             ) : (
               <section className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-dashed border-border bg-gradient-to-br from-kondo-mint/60 via-card to-muted/50 p-8 dark:from-emerald-400/5">

@@ -186,6 +186,12 @@ export default async function CommunitiesPage({
             universityName={
               user.university?.shortName ?? user.university?.name ?? null
             }
+            viewer={{
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              avatarMediaId: user.avatarMediaId,
+            }}
           />
         </section>
       ) : null}

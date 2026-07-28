@@ -8,15 +8,20 @@ const REQUIRED_BAIDU_CONSTRUCTORS = [
   "Icon",
   "Marker",
   "Circle",
+  "Label",
+  "Convertor",
 ] as const;
 
-export function baiduMapSdkUrl(apiKey: string) {
+export const BAIDU_MAP_CALLBACK = "__kondoBaiduMapReady";
+
+export function baiduMapSdkUrl(apiKey: string, callback = BAIDU_MAP_CALLBACK) {
   const parameters = new URLSearchParams({
-    v: "3.0",
+    type: "webgl",
+    v: "4.0",
     ak: apiKey,
-    services: "",
+    callback,
   });
-  return `https://api.map.baidu.com/getscript?${parameters.toString()}`;
+  return `https://api.map.baidu.com/api?${parameters.toString()}`;
 }
 
 export function hasRequiredBaiduMapConstructors(value: unknown) {

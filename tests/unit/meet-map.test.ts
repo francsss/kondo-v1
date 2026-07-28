@@ -5,6 +5,7 @@ import {
 } from "@/lib/china-map-aliases";
 import {
   meetMapCityQueries,
+  MEET_MAP_COORDINATE_SYSTEM,
   meetMapKnownAnchor,
   meetMapRadiusKm,
   meetMapSearchQueries,
@@ -77,6 +78,7 @@ describe("Meet privacy-safe real-map coordinates", () => {
   });
 
   it("uses public study-area labels rather than exact user coordinates", () => {
+    expect(MEET_MAP_COORDINATE_SYSTEM).toBe("BD09");
     expect(meetMapSearchQuery("Jiaxing University", "Jiaxing")).toBe(
       "Jiaxing University, Jiaxing, China",
     );
