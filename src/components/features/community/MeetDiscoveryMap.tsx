@@ -80,10 +80,7 @@ type BaiduMapInstance = {
 type BaiduMapsApi = {
   Map: new (
     container: HTMLElement,
-    options?: {
-      enableMapClick?: boolean;
-      displayOptions?: { language?: "en" | "zh" };
-    },
+    options?: { enableMapClick?: boolean },
   ) => BaiduMapInstance;
   Point: new (lng: number, lat: number) => BaiduPoint;
   Geocoder: new () => {
@@ -123,9 +120,7 @@ type BaiduMapsApi = {
 
 declare global {
   interface Window {
-    BMAP_PROTOCOL?: string;
-    BMapGL?: unknown;
-    BMapGL_loadScriptTime?: number;
+    BMap?: unknown;
   }
 }
 
@@ -173,8 +168,8 @@ function resolveMapAvatarUrl(profile: MeetDiscoveryProfile) {
 }
 
 function loadBaiduMaps(apiKey: string) {
-  if (hasRequiredBaiduMapConstructors(window.BMapGL)) {
-    return Promise.resolve(window.BMapGL as BaiduMapsApi);
+  if (hasRequiredBaiduMapConstructors(window.BMap)) {
+    return Promise.resolve(window.BMap as BaiduMapsApi);
   }
   if (baiduLoader) return baiduLoader;
   baiduLoader = new Promise<BaiduMapsApi>((resolve, reject) => {
@@ -205,30 +200,12 @@ function loadBaiduMaps(apiKey: string) {
       fail(new Error("Baidu Maps took too long to load."));
     }, BAIDU_LOAD_TIMEOUT_MS);
     const readinessPoll = window.setInterval(() => {
-      if (hasRequiredBaiduMapConstructors(window.BMapGL)) {
-        complete(window.BMapGL as BaiduMapsApi);
+      if (hasRequiredBaiduMapConstructors(window.BMap)) {
+        complete(window.BMap as BaiduMapsApi);
       }
     }, 100);
     existing?.remove();
-    window.BMAP_PROTOCOL = "https";
-    window.BMapGL_loadScriptTime = Date.now();
-    if (!window.BMapGL || typeof window.BMapGL !== "object") {
-      window.BMapGL = {};
-    }
-    const namespace = window.BMapGL as { apiLoad?: () => void };
-    namespace.apiLoad = () => {
-      delete namespace.apiLoad;
-      if (hasRequiredBaiduMapConstructors(window.BMapGL)) {
-        complete(window.BMapGL as BaiduMapsApi);
-      }
-    };
-    if (!document.querySelector('link[data-kondo-baidu-map-styles="true"]')) {
-      const stylesheet = document.createElement("link");
-      stylesheet.rel = "stylesheet";
-      stylesheet.href = "https://api.map.baidu.com/res/webgl/10/bmap.css";
-      stylesheet.dataset.kondoBaiduMapStyles = "true";
-      document.head.appendChild(stylesheet);
-    }
+    delete window.BMap;
     const appendScript = () => {
       loadAttempt += 1;
       const script = document.createElement("script");
@@ -236,6 +213,11 @@ function loadBaiduMaps(apiKey: string) {
       script.async = true;
       script.defer = true;
       script.src = baiduMapSdkUrl(apiKey);
+      script.onload = () => {
+        if (hasRequiredBaiduMapConstructors(window.BMap)) {
+          complete(window.BMap as BaiduMapsApi);
+        }
+      };
       script.onerror = () => {
         script.remove();
         if (loadAttempt < BAIDU_LOAD_ATTEMPTS) {
@@ -411,13 +393,7 @@ export function MeetDiscoveryMap({
       .then(async (api) => {
         if (cancelled) return;
         container.replaceChildren();
-        const map = new api.Map(container, {
-          enableMapClick: false,
-          // Baidu's English vector layer is served from api.map.baidu.com.
-          // The default Chinese layer uses apimaponline*.bdimg.com, which is
-          // frequently unreachable through local fake-IP/proxy setups.
-          displayOptions: { language: "en" },
-        });
+        const map = new api.Map(container, { enableMapClick: false });
         const knownAnchor = meetMapKnownAnchor(mapQueries);
         const anchor = knownAnchor
           ? new api.Point(knownAnchor.lng, knownAnchor.lat)

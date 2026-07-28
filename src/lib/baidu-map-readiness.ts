@@ -12,8 +12,7 @@ const REQUIRED_BAIDU_CONSTRUCTORS = [
 
 export function baiduMapSdkUrl(apiKey: string) {
   const parameters = new URLSearchParams({
-    type: "webgl",
-    v: "1.0",
+    v: "3.0",
     ak: apiKey,
     services: "",
   });

@@ -21,8 +21,8 @@ describe("Baidu Maps SDK readiness", () => {
     const url = new URL(baiduMapSdkUrl("public-browser-key"));
 
     expect(url.pathname).toBe("/getscript");
-    expect(url.searchParams.get("type")).toBe("webgl");
-    expect(url.searchParams.get("v")).toBe("1.0");
+    expect(url.searchParams.get("type")).toBeNull();
+    expect(url.searchParams.get("v")).toBe("3.0");
     expect(url.searchParams.get("ak")).toBe("public-browser-key");
   });
 
