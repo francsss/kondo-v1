@@ -32,8 +32,11 @@ import {
   observeBaiduMapResourceFailures,
   resetBaiduMapsSdkAfterFailure,
   waitForBaiduMapContainer,
+  waitForBaiduMapRenderer,
 } from "@/lib/baidu-map-sdk";
 import {
+  deduplicateMeetMapItems,
+  isValidMeetMapCoordinate,
   JIAXING_UNIVERSITY_BD09,
   meetMapKnownAnchor,
   meetMapRadiusKm,
@@ -221,6 +224,7 @@ export function MeetDiscoveryMap({
   mapQueries,
   cityQueries,
   distanceRange,
+  showEmptyState,
   premiumFeatures,
   onPremiumRequest,
 }: {
@@ -231,6 +235,7 @@ export function MeetDiscoveryMap({
   mapQueries: string[];
   cityQueries: string[];
   distanceRange: MeetMapDistance;
+  showEmptyState?: boolean;
   premiumFeatures: string[];
   onPremiumRequest: (reason: string) => void;
 }) {
@@ -239,6 +244,7 @@ export function MeetDiscoveryMap({
   const mapRef = useRef<BaiduMapInstance | null>(null);
   const apiRef = useRef<BaiduMapsApi | null>(null);
   const anchorRef = useRef<BaiduPoint | null>(null);
+  const areaOverlayRef = useRef<BaiduOverlay | null>(null);
   const markerOverlaysRef = useRef<BaiduOverlay[]>([]);
   const [selected, setSelected] = useState<MeetDiscoveryProfile | null>(null);
   const [mapStatus, setMapStatus] = useState<
@@ -275,13 +281,23 @@ export function MeetDiscoveryMap({
       .filter((query) => query.length > 0);
     if (!apiKey || !container || !activeMapQueries.length) return;
     const controller = new AbortController();
+    let resourceFailureReported = false;
     const stopObservingResources = observeBaiduMapResourceFailures(
       controller.signal,
+      (message) => {
+        if (controller.signal.aborted) return;
+        resourceFailureReported = true;
+        setTileStatus("error");
+        setMapStatus("error");
+        setMapError(message);
+      },
     );
     let localMap: BaiduMapInstance | null = null;
     let tilesLoadedListener: (() => void) | null = null;
     let styleLoadErrorListener: (() => void) | null = null;
     let styleLoadTimeoutListener: (() => void) | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let resizeFrame = 0;
     setMapStatus("loading");
     setTileStatus("loading");
     setMapError("");
@@ -299,7 +315,7 @@ export function MeetDiscoveryMap({
           initialCoordinate.lng,
           initialCoordinate.lat,
         );
-        const zoom = meetMapZoom(distanceRange);
+        const zoom = meetMapZoom("CITY");
         const map = new api.Map(container, {
           enableAutoResize: true,
           enableMapClick: false,
@@ -316,7 +332,6 @@ export function MeetDiscoveryMap({
 
         tilesLoadedListener = () => {
           if (controller.signal.aborted) return;
-          setTileStatus("loaded");
           logBaiduMapEvent("map.tiles_loaded", {
             ...inspectBaiduMapRenderer(map, container),
           });
@@ -329,6 +344,7 @@ export function MeetDiscoveryMap({
           console.error("[Kondo Meet Map]", "map.style_load_failed", {
             message,
           });
+          resourceFailureReported = true;
           setTileStatus("error");
           setMapStatus("error");
           setMapError(message);
@@ -340,45 +356,41 @@ export function MeetDiscoveryMap({
           console.error("[Kondo Meet Map]", "map.style_load_timeout", {
             message,
           });
+          resourceFailureReported = true;
           setTileStatus("error");
           setMapStatus("error");
           setMapError(message);
         };
         map.addEventListener("style_loaded_error", styleLoadErrorListener);
         map.addEventListener("style_loaded_timeout", styleLoadTimeoutListener);
+        const rendererReady = waitForBaiduMapRenderer(
+          map,
+          container,
+          controller.signal,
+        );
 
         map.centerAndZoom(initialPoint, zoom);
         logBaiduMapEvent("map.center_set", {
           source: knownAnchor ? "verified_anchor" : "startup_anchor",
           coordinateSystem: "BD09",
           zoom,
-          radiusKm: meetMapRadiusKm(distanceRange),
+          radiusKm: meetMapRadiusKm("CITY"),
         });
         map.enableScrollWheelZoom();
         map.addControl(new api.NavigationControl());
         map.addControl(new api.ScaleControl());
         map.checkResize?.();
-        setMapStatus("ready");
-        logBaiduMapEvent("map.visible", {
-          ...inspectBaiduMapRenderer(map, container),
-        });
 
         const finishAnchor = (
           anchor: BaiduPoint,
-          source: "verified_anchor" | "baidu_geocoder",
+          source: "startup_anchor" | "verified_anchor" | "baidu_geocoder",
         ) => {
           if (controller.signal.aborted || mapRef.current !== map) return;
+          if (!isValidMeetMapCoordinate(anchor)) {
+            console.error("[MeetMap]", "anchor.invalid", { source });
+            return;
+          }
           anchorRef.current = anchor;
-          map.centerAndZoom(anchor, zoom);
-          map.addOverlay(
-            new api.Circle(anchor, meetMapRadiusKm(distanceRange) * 1_000, {
-              strokeColor: "#16a36a",
-              strokeWeight: 1,
-              strokeOpacity: 0.48,
-              fillColor: "#34d399",
-              fillOpacity: 0.08,
-            }),
-          );
           logBaiduMapEvent("map.anchor_resolved", {
             source,
             coordinateSystem: "BD09",
@@ -386,31 +398,46 @@ export function MeetDiscoveryMap({
           setMapRevision((revision) => revision + 1);
         };
 
-        if (knownAnchor) {
-          finishAnchor(initialPoint, "verified_anchor");
-          return;
+        finishAnchor(
+          initialPoint,
+          knownAnchor ? "verified_anchor" : "startup_anchor",
+        );
+
+        if (!knownAnchor) {
+          void locateStudyArea(api, activeMapQueries, activeCityQueries)
+            .then((geocodedAnchor) => {
+              finishAnchor(geocodedAnchor, "baidu_geocoder");
+            })
+            .catch((error) => {
+              console.error("[MeetMap]", "map.anchor_failed", error);
+            });
         }
 
-        try {
-          const geocodedAnchor = await locateStudyArea(
-            api,
-            activeMapQueries,
-            activeCityQueries,
-          );
-          finishAnchor(geocodedAnchor, "baidu_geocoder");
-        } catch (error) {
-          console.error("[Kondo Meet Map]", "map.anchor_failed", error);
-          if (controller.signal.aborted) return;
-          setMapError(
-            error instanceof Error
-              ? error.message
-              : "Baidu could not locate the selected study area.",
-          );
+        if (typeof ResizeObserver === "function") {
+          resizeObserver = new ResizeObserver(() => {
+            if (controller.signal.aborted || mapRef.current !== map) return;
+            if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+            resizeFrame = window.requestAnimationFrame(() => {
+              map.checkResize?.();
+              logBaiduMapEvent("map.resize_completed", {
+                height: Math.round(container.getBoundingClientRect().height),
+                width: Math.round(container.getBoundingClientRect().width),
+              });
+            });
+          });
+          resizeObserver.observe(container);
         }
+
+        const renderer = await rendererReady;
+        if (controller.signal.aborted || resourceFailureReported) return;
+        setTileStatus("loaded");
+        setMapStatus("ready");
+        logBaiduMapEvent("map.visible", renderer);
       })
       .catch((error) => {
         if (
           controller.signal.aborted ||
+          resourceFailureReported ||
           (error instanceof DOMException && error.name === "AbortError")
         ) {
           return;
@@ -427,6 +454,8 @@ export function MeetDiscoveryMap({
     return () => {
       controller.abort();
       stopObservingResources();
+      resizeObserver?.disconnect();
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
       if (localMap && tilesLoadedListener) {
         localMap.removeEventListener("tilesloaded", tilesLoadedListener);
       }
@@ -451,10 +480,50 @@ export function MeetDiscoveryMap({
         mapRef.current = null;
         apiRef.current = null;
         anchorRef.current = null;
+        areaOverlayRef.current = null;
         markerOverlaysRef.current = [];
       }
     };
-  }, [apiKey, cityQueryKey, distanceRange, mapAttempt, mapQueryKey]);
+  }, [apiKey, cityQueryKey, mapAttempt, mapQueryKey]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const api = apiRef.current;
+    const anchor = anchorRef.current;
+    if (!map || !api || !anchor || !mapRevision) return;
+
+    if (areaOverlayRef.current) {
+      map.removeOverlay(areaOverlayRef.current);
+    }
+    const zoom = meetMapZoom(distanceRange);
+    const radiusKm = meetMapRadiusKm(distanceRange);
+    const circle = new api.Circle(anchor, radiusKm * 1_000, {
+      strokeColor: "#16a36a",
+      strokeWeight: 1,
+      strokeOpacity: 0.48,
+      fillColor: "#34d399",
+      fillOpacity: 0.08,
+    });
+    areaOverlayRef.current = circle;
+    map.centerAndZoom(anchor, zoom);
+    map.addOverlay(circle);
+    const resizeFrame = window.requestAnimationFrame(() => {
+      map.checkResize?.();
+    });
+    logBaiduMapEvent("map.center_updated", {
+      coordinateSystem: "BD09",
+      radiusKm,
+      zoom,
+    });
+
+    return () => {
+      window.cancelAnimationFrame(resizeFrame);
+      if (areaOverlayRef.current === circle) {
+        map.removeOverlay(circle);
+        areaOverlayRef.current = null;
+      }
+    };
+  }, [distanceRange, mapRevision]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -497,12 +566,19 @@ export function MeetDiscoveryMap({
         hydrateMarkerAvatar(api, viewerMarker, viewer, 54, controller.signal),
       );
 
-      for (const profile of profiles) {
+      const uniqueProfiles = deduplicateMeetMapItems(profiles);
+      for (const profile of uniqueProfiles) {
         const coordinate = privacySafeMapCoordinate(
           anchor,
           profile.id,
           distanceRange,
         );
+        if (!isValidMeetMapCoordinate(coordinate)) {
+          console.error("[MeetMap]", "marker.invalid_coordinate", {
+            profileId: profile.id,
+          });
+          continue;
+        }
         const point = new api.Point(coordinate.lng, coordinate.lat);
         const marker = new api.Marker(point, {
           title: `Approximate area for ${maskedFirstName(profile.firstName)}`,
@@ -535,7 +611,7 @@ export function MeetDiscoveryMap({
       markerOverlaysRef.current = overlays;
       logBaiduMapEvent("markers.added", {
         currentUser: 1,
-        nearbyUsers: profiles.length,
+        nearbyUsers: overlays.length - 1,
         coordinateSystem: "BD09",
       });
     } catch (error) {
@@ -623,7 +699,7 @@ export function MeetDiscoveryMap({
         </div>
       ) : null}
 
-      {mapStatus === "ready" && !profiles.length ? (
+      {mapStatus === "ready" && showEmptyState && !profiles.length ? (
         <div className="absolute inset-0 z-10 grid place-items-center px-6 pt-16">
           <div className="max-w-sm rounded-[1.75rem] border border-white/70 bg-card/90 p-6 text-center shadow-xl backdrop-blur-xl dark:border-white/10">
             <Sparkles className="mx-auto h-7 w-7 text-kondo-green" />

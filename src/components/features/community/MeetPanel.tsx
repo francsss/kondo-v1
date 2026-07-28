@@ -778,58 +778,35 @@ export function MeetPanel({
               </div>
             </Card>
 
-            {discoveryStarted ? (
-              <MeetDiscoveryMap
-                areaLabel={
-                  mode === "NEARBY"
-                    ? `Around ${
-                        activeMapUniversityName ??
-                        activeMapCityName ??
-                        "your study area"
-                      }`
-                    : "Your discovery constellation"
-                }
-                cityQueries={meetMapCityQueries(
-                  activeMapCityName,
-                  activeMapCityNativeName,
-                )}
-                distanceRange={distanceRange}
-                key={`${mode}:${distanceRange}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
-                mapQueries={meetMapSearchQueries({
-                  universityName: activeMapUniversityName,
-                  universityNativeName: activeMapUniversityNativeName,
-                  cityName: activeMapCityName,
-                  cityNativeName: activeMapCityNativeName,
-                })}
-                mode={mode}
-                onPremiumRequest={setPremiumReason}
-                premiumFeatures={premiumAccess.featureKeys}
-                profiles={profiles}
-                viewer={viewer}
-              />
-            ) : (
-              <section className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-dashed border-border bg-gradient-to-br from-kondo-mint/60 via-card to-muted/50 p-8 dark:from-emerald-400/5">
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-[radial-gradient(circle_at_25%_30%,rgba(52,211,153,.18),transparent_22%),radial-gradient(circle_at_75%_65%,rgba(45,212,191,.14),transparent_25%)]"
-                />
-                <div className="relative grid h-full min-h-[360px] place-items-center text-center">
-                  <div className="max-w-md">
-                    <span className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-card text-kondo-green shadow-xl">
-                      <Sparkles className="h-7 w-7" />
-                    </span>
-                    <h3 className="mt-5 text-2xl font-black tracking-tight">
-                      Your map begins with your choices
-                    </h3>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Set the filters that matter to you. Kondo will open the
-                      real map around your study area and place compatible
-                      profiles using privacy-safe approximate positions.
-                    </p>
-                  </div>
-                </div>
-              </section>
-            )}
+            <MeetDiscoveryMap
+              areaLabel={
+                mode === "NEARBY"
+                  ? `Around ${
+                      activeMapUniversityName ??
+                      activeMapCityName ??
+                      "your study area"
+                    }`
+                  : "Your discovery constellation"
+              }
+              cityQueries={meetMapCityQueries(
+                activeMapCityName,
+                activeMapCityNativeName,
+              )}
+              distanceRange={distanceRange}
+              key={`${mode}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
+              mapQueries={meetMapSearchQueries({
+                universityName: activeMapUniversityName,
+                universityNativeName: activeMapUniversityNativeName,
+                cityName: activeMapCityName,
+                cityNativeName: activeMapCityNativeName,
+              })}
+              mode={mode}
+              onPremiumRequest={setPremiumReason}
+              premiumFeatures={premiumAccess.featureKeys}
+              profiles={profiles}
+              showEmptyState={discoveryStarted}
+              viewer={viewer}
+            />
           </div>
         </div>
       )}

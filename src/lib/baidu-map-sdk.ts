@@ -112,7 +112,9 @@ export type BaiduMapErrorCode =
   | "SDK_CALLBACK_INCOMPLETE"
   | "SDK_AK_REJECTED"
   | "SDK_KEY_CHANGED"
-  | "SDK_NAMESPACE_MISMATCH";
+  | "SDK_NAMESPACE_MISMATCH"
+  | "MAP_CONTAINER_INVALID"
+  | "MAP_RENDER_FAILED";
 
 export type BaiduCoordinateSystem = "BD09" | "GCJ02" | "WGS84";
 
@@ -130,7 +132,9 @@ export function logBaiduMapEvent(
   event: string,
   details: Record<string, unknown> = {},
 ) {
-  console.info("[Kondo Meet Map]", event, details);
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[MeetMap]", event, details);
+  }
 }
 
 function baiduWindow() {
@@ -154,7 +158,12 @@ export function loadBaiduMapsSdk(apiKey: string): Promise<BaiduMapsApi> {
       ),
     );
   }
-  if (hasRequiredBaiduMapConstructors(scope.BMap)) {
+  const readyNamespace = hasRequiredBaiduMapConstructors(scope.BMapGL)
+    ? scope.BMapGL
+    : hasRequiredBaiduMapConstructors(scope.BMap)
+      ? scope.BMap
+      : null;
+  if (readyNamespace) {
     if (authWasRejected(scope)) {
       return Promise.reject(
         new BaiduMapError(
@@ -164,7 +173,7 @@ export function loadBaiduMapsSdk(apiKey: string): Promise<BaiduMapsApi> {
       );
     }
     logBaiduMapEvent("sdk.already_ready");
-    return Promise.resolve(scope.BMap as BaiduMapsApi);
+    return Promise.resolve(readyNamespace as BaiduMapsApi);
   }
   const existingState = scope.__kondoBaiduMapLoaderState;
   if (existingState) {
@@ -197,7 +206,7 @@ export function loadBaiduMapsSdk(apiKey: string): Promise<BaiduMapsApi> {
   );
   logBaiduMapEvent("sdk.load_started", {
     endpoint: "https://api.map.baidu.com/api",
-    namespace: "BMap",
+    namespace: "BMapGL",
     version: BAIDU_MAP_VERSION,
   });
 
@@ -205,7 +214,7 @@ export function loadBaiduMapsSdk(apiKey: string): Promise<BaiduMapsApi> {
     ak: normalizedKey,
     version: BAIDU_MAP_VERSION,
     protocol: "https",
-    timeout: 0,
+    timeout: 20_000,
     globalConfig: {
       coordType: "bd09ll",
     },
@@ -217,26 +226,26 @@ export function loadBaiduMapsSdk(apiKey: string): Promise<BaiduMapsApi> {
           "Baidu rejected the browser API key. Verify that JavaScript API is enabled and the production, preview, and localhost Referers are allowed.",
         );
       }
-      const namespace = scope.BMap ?? loadedNamespace;
+      const namespace = hasRequiredBaiduMapConstructors(scope.BMapGL)
+        ? scope.BMapGL
+        : hasRequiredBaiduMapConstructors(scope.BMap)
+          ? scope.BMap
+          : loadedNamespace;
       if (!hasRequiredBaiduMapConstructors(namespace)) {
-        if (hasRequiredBaiduMapConstructors(scope.BMapGL)) {
-          throw new BaiduMapError(
-            "SDK_NAMESPACE_MISMATCH",
-            "Baidu loaded the legacy BMapGL namespace instead of the JSAPI 4.0 BMap namespace.",
-          );
-        }
         throw new BaiduMapError(
           "SDK_CALLBACK_INCOMPLETE",
-          "Baidu completed its SDK callback without a complete JSAPI 4.0 BMap namespace.",
+          "Baidu completed its SDK callback without a complete JSAPI 4.0 BMapGL namespace.",
         );
       }
       const state = scope.__kondoBaiduMapLoaderState;
       if (state) state.status = "ready";
       logBaiduMapEvent("sdk.ready", {
-        hasBMap: true,
+        hasBMap: hasRequiredBaiduMapConstructors(scope.BMap),
         hasBMapGL: hasRequiredBaiduMapConstructors(scope.BMapGL),
         loaderStatus: BMapLoader.getStatus(),
-        namespace: "BMap",
+        namespace: hasRequiredBaiduMapConstructors(scope.BMapGL)
+          ? "BMapGL"
+          : "BMap",
         version: BAIDU_MAP_VERSION,
       });
       return namespace as BaiduMapsApi;
@@ -335,9 +344,12 @@ export function convertCoordinateToBd09(
 export function resetBaiduMapsSdkAfterFailure() {
   const scope = baiduWindow();
   const state = scope.__kondoBaiduMapLoaderState;
+  const sdkIsReady =
+    hasRequiredBaiduMapConstructors(scope.BMapGL) ||
+    hasRequiredBaiduMapConstructors(scope.BMap);
   if (
     state?.status === "loading" ||
-    (state?.status !== "failed" && hasRequiredBaiduMapConstructors(scope.BMap))
+    (state?.status !== "failed" && sdkIsReady)
   ) {
     return false;
   }
@@ -370,7 +382,10 @@ function isBaiduResource(value: string) {
   );
 }
 
-export function observeBaiduMapResourceFailures(signal: AbortSignal) {
+export function observeBaiduMapResourceFailures(
+  signal: AbortSignal,
+  onFailure?: (message: string) => void,
+) {
   const handleResourceError = (event: Event) => {
     const target = event.target;
     const resource =
@@ -386,6 +401,9 @@ export function observeBaiduMapResourceFailures(signal: AbortSignal) {
       host: safeResourceHost(resource),
       tag: target instanceof Element ? target.tagName.toLowerCase() : "unknown",
     });
+    onFailure?.(
+      `A required Baidu map resource failed to load (${safeResourceHost(resource)}).`,
+    );
   };
   const handleSecurityPolicyViolation = (
     event: SecurityPolicyViolationEvent,
@@ -395,6 +413,12 @@ export function observeBaiduMapResourceFailures(signal: AbortSignal) {
       blockedHost: safeResourceHost(event.blockedURI),
       directive: event.effectiveDirective,
     });
+    onFailure?.(
+      event.effectiveDirective === "worker-src" ||
+        event.effectiveDirective === "child-src"
+        ? "The page security policy blocked Baidu's vector-tile worker."
+        : `The page security policy blocked a Baidu map resource (${event.effectiveDirective}).`,
+    );
   };
   const cleanup = () => {
     window.removeEventListener("error", handleResourceError, true);
@@ -429,12 +453,15 @@ function containerMeasurement(container: HTMLElement) {
 export function waitForBaiduMapContainer(
   container: HTMLElement,
   signal: AbortSignal,
+  timeoutMs = 10_000,
 ) {
   return new Promise<{ width: number; height: number }>((resolve, reject) => {
     let animationFrame = 0;
+    let timeout = 0;
     let observer: ResizeObserver | null = null;
     const cleanup = () => {
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      if (timeout) window.clearTimeout(timeout);
       observer?.disconnect();
       signal.removeEventListener("abort", handleAbort);
     };
@@ -476,6 +503,16 @@ export function waitForBaiduMapContainer(
       observer = new ResizeObserver(check);
       observer.observe(container);
     }
+    timeout = window.setTimeout(() => {
+      const measurement = containerMeasurement(container);
+      cleanup();
+      reject(
+        new BaiduMapError(
+          "MAP_CONTAINER_INVALID",
+          `The Baidu map container never became visible at a usable size (${Math.round(measurement.width)}×${Math.round(measurement.height)}, display: ${measurement.display}, visibility: ${measurement.visibility}).`,
+        ),
+      );
+    }, timeoutMs);
     check();
   });
 }
@@ -494,4 +531,72 @@ export function inspectBaiduMapRenderer(
     canvasWidth: drawableCanvas?.width ?? 0,
     initialized: map.isLoaded?.() ?? true,
   };
+}
+
+export function waitForBaiduMapRenderer(
+  map: BaiduMapInstance,
+  container: HTMLElement,
+  signal: AbortSignal,
+  timeoutMs = 20_000,
+) {
+  return new Promise<ReturnType<typeof inspectBaiduMapRenderer>>(
+    (resolve, reject) => {
+      let animationFrame = 0;
+      let timeout = 0;
+      let settled = false;
+
+      const cleanup = () => {
+        if (animationFrame) window.cancelAnimationFrame(animationFrame);
+        if (timeout) window.clearTimeout(timeout);
+        map.removeEventListener("tilesloaded", handleTilesLoaded);
+        signal.removeEventListener("abort", handleAbort);
+      };
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        callback();
+      };
+      const inspect = () => {
+        const renderer = inspectBaiduMapRenderer(map, container);
+        if (
+          renderer.canvasCount > 0 &&
+          renderer.canvasWidth > 0 &&
+          renderer.canvasHeight > 0
+        ) {
+          finish(() => resolve(renderer));
+          return;
+        }
+        animationFrame = window.requestAnimationFrame(inspect);
+      };
+      const handleTilesLoaded = () => {
+        if (signal.aborted) return;
+        if (animationFrame) window.cancelAnimationFrame(animationFrame);
+        animationFrame = window.requestAnimationFrame(inspect);
+      };
+      const handleAbort = () => {
+        finish(() =>
+          reject(
+            new DOMException("Map rendering was cancelled.", "AbortError"),
+          ),
+        );
+      };
+
+      map.addEventListener("tilesloaded", handleTilesLoaded);
+      signal.addEventListener("abort", handleAbort, { once: true });
+      timeout = window.setTimeout(() => {
+        const renderer = inspectBaiduMapRenderer(map, container);
+        finish(() =>
+          reject(
+            new BaiduMapError(
+              "MAP_RENDER_FAILED",
+              renderer.canvasCount
+                ? "Baidu created a canvas, but its vector tiles did not become drawable."
+                : "Baidu did not create a drawable map canvas. Check WebGL, worker-src, and tile requests.",
+            ),
+          ),
+        );
+      }, timeoutMs);
+    },
+  );
 }

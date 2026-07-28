@@ -20,7 +20,13 @@ const contentSecurityPolicy = [
   `img-src 'self' data: blob: https:${isDevelopment ? " http:" : ""}`,
   "font-src 'self' data:",
   `connect-src 'self' https: wss:${isDevelopment ? " http: ws:" : ""}`,
-  "worker-src 'self' blob: data:",
+  // Baidu JSAPI 4 decodes its vector tiles inside Web Workers loaded from
+  // api.map.baidu.com. Blocking that worker leaves only the Baidu logo and an
+  // empty map surface even though the SDK callback and Map constructor succeed.
+  "worker-src 'self' blob: data: https://api.map.baidu.com",
+  // Safari versions that predate CSP worker-src use child-src as the worker
+  // fallback. Keep this list deliberately narrower than script-src.
+  "child-src 'self' blob: https://api.map.baidu.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
