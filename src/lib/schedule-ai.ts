@@ -36,7 +36,7 @@ type PeriodContext = {
   }>;
 };
 
-const DEEPSEEK_TIMETABLE_MODEL = "deepseek-v4-flash";
+export const DEEPSEEK_TIMETABLE_MODEL = "deepseek-v4-flash";
 
 export type ScheduleAnalysis = {
   extraction: ExtractedSchedule;

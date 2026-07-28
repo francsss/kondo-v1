@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  deriveUniversityPeriodDuration,
+  validateUniversityPeriodDrafts,
+} from "@/lib/university-periods";
 
 export const scheduleDaySchema = z.enum([
   "MONDAY",
@@ -289,17 +293,30 @@ export const periodConfigurationSchema = z
     periods: z.array(classPeriodSchema).min(1).max(40),
   })
   .superRefine((configuration, context) => {
-    const seen = new Set<number>();
-    configuration.periods.forEach((period, index) => {
-      if (seen.has(period.periodNumber)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Period ${period.periodNumber} is duplicated.`,
-          path: ["periods", index, "periodNumber"],
-        });
-      }
-      seen.add(period.periodNumber);
-    });
+    const issues = validateUniversityPeriodDrafts(
+      configuration.periods.map((period) => ({
+        periodNumber: period.periodNumber,
+        startTime: period.startTime,
+        durationMinutes:
+          deriveUniversityPeriodDuration(period.startTime, period.endTime) ?? 0,
+      })),
+    );
+    for (const issue of issues) {
+      const index = issue.indexes.at(-1) ?? 0;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: issue.message,
+        path: [
+          "periods",
+          index,
+          issue.code === "DUPLICATE_PERIOD"
+            ? "periodNumber"
+            : issue.code === "INVALID_DURATION"
+              ? "endTime"
+              : "startTime",
+        ],
+      });
+    }
   });
 
 export const SCHEDULE_EXTRACTION_JSON_SCHEMA = {

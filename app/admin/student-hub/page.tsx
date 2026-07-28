@@ -19,7 +19,10 @@ export default async function AdminStudentHubPage() {
       periodConfigurations: {
         include: {
           campus: { select: { name: true } },
-          periods: { orderBy: { displayOrder: "asc" } },
+          periods: {
+            where: { isBreak: false },
+            orderBy: { displayOrder: "asc" },
+          },
         },
         orderBy: [{ isActive: "desc" }, { updatedAt: "desc" }],
       },
@@ -29,7 +32,7 @@ export default async function AdminStudentHubPage() {
   return (
     <div className="mx-auto max-w-[1320px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <PageHeader
-        description="Configure university campuses and official numbered periods used by private timetable imports."
+        description="Configure official university periods manually or extract them from an official timetable with DeepSeek."
         eyebrow="Kondo operations"
         title="Student Hub"
       />
