@@ -15,11 +15,17 @@ const baiduDevelopmentSources = isDevelopment
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://*.posthog.com https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  // JSAPI 4 compiles Baidu's vector renderer from WebAssembly. In production,
+  // blocking Wasm compilation lets the SDK and logo load but prevents the map
+  // from ever creating its drawable canvas. `wasm-unsafe-eval` permits Wasm
+  // compilation without enabling arbitrary JavaScript eval.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://*.posthog.com https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}${isDevelopment ? " 'unsafe-eval'" : ""}`,
   `style-src 'self' 'unsafe-inline' https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}`,
   `img-src 'self' data: blob: https:${isDevelopment ? " http:" : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self' https: wss:${isDevelopment ? " http: ws:" : ""}`,
+  // Baidu's vector worker fetches generated data/blob texture URLs while
+  // decoding tiles. These are worker-local map assets, not remote endpoints.
+  `connect-src 'self' data: blob: https: wss:${isDevelopment ? " http: ws:" : ""}`,
   // Baidu JSAPI 4 decodes its vector tiles inside Web Workers loaded from
   // api.map.baidu.com. Blocking that worker leaves only the Baidu logo and an
   // empty map surface even though the SDK callback and Map constructor succeed.
