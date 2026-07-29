@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   description:
     "The trusted community, marketplace, and student guide for Africans studying in China.",
   applicationName: "Kondo",
+  manifest: "/manifest.webmanifest",
   keywords: [
     "African students in China",
     "student community",

@@ -25,6 +25,14 @@ type PreferenceUpdate = {
   notificationMeet?: boolean;
   notificationAcademic?: boolean;
   notificationRecommendations?: boolean;
+  notificationFriends?: boolean;
+  notificationEvents?: boolean;
+  notificationTransfers?: boolean;
+  notificationUniversity?: boolean;
+  notificationSecurity?: boolean;
+  notificationMarketing?: boolean;
+  notificationSounds?: boolean;
+  notificationHaptics?: boolean;
   emailDigest?: NotificationDigest;
 };
 
@@ -39,6 +47,14 @@ const preferenceSelect = {
   notificationMeet: true,
   notificationAcademic: true,
   notificationRecommendations: true,
+  notificationFriends: true,
+  notificationEvents: true,
+  notificationTransfers: true,
+  notificationUniversity: true,
+  notificationSecurity: true,
+  notificationMarketing: true,
+  notificationSounds: true,
+  notificationHaptics: true,
   emailDigest: true,
   updatedAt: true,
 } satisfies Prisma.UserPreferenceSelect;
@@ -54,6 +70,14 @@ const defaultPreferences = {
   notificationMeet: true,
   notificationAcademic: true,
   notificationRecommendations: true,
+  notificationFriends: true,
+  notificationEvents: true,
+  notificationTransfers: true,
+  notificationUniversity: true,
+  notificationSecurity: true,
+  notificationMarketing: false,
+  notificationSounds: false,
+  notificationHaptics: true,
   emailDigest: "NEVER" as const,
 };
 
@@ -83,6 +107,14 @@ function preferenceDto(
     notificationMeet: preference.notificationMeet,
     notificationAcademic: preference.notificationAcademic,
     notificationRecommendations: preference.notificationRecommendations,
+    notificationFriends: preference.notificationFriends,
+    notificationEvents: preference.notificationEvents,
+    notificationTransfers: preference.notificationTransfers,
+    notificationUniversity: preference.notificationUniversity,
+    notificationSecurity: preference.notificationSecurity,
+    notificationMarketing: preference.notificationMarketing,
+    notificationSounds: preference.notificationSounds,
+    notificationHaptics: preference.notificationHaptics,
     emailDigest: preference.emailDigest,
     updatedAt: preference.updatedAt?.toISOString() ?? null,
   };

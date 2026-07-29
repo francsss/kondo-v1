@@ -151,19 +151,27 @@ directly to Vercel.
 
 ### 1. Vercel
 
-| Item                         | Why                                                                       | Where to obtain                                                          | Requirement                                    |
-| ---------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- |
-| Vercel project/team access   | Import GitHub, set production values, inspect deployments, and smoke test | Vercel team → Settings → Members                                         | Mandatory for configuration                    |
-| `NEXT_PUBLIC_APP_URL`        | Canonical metadata and all email links                                    | The chosen production HTTPS origin/domain                                | Mandatory runtime variable                     |
-| `NEXT_PUBLIC_BAIDU_MAP_AK`   | Baidu JSAPI GL rendering for privacy-safe Meet discovery                  | Browser key restricted to Kondo Production and approved Preview domains  | Mandatory public runtime variable              |
-| Node.js 24                   | Supported LTS runtime pinned by `package.json`                            | Vercel project → Settings → Build and Deployment                         | Mandatory; selected automatically              |
-| `VERCEL_TOKEN`               | CLI/API automation without interactive dashboard access                   | Vercel Account Settings → Tokens                                         | Optional; operator credential, not app runtime |
-| `VERCEL_ORG_ID`              | Identifies the owning Vercel team for CLI/CI                              | Project `.vercel/project.json` after linking, or Vercel project settings | Optional; required with token-based automation |
-| `VERCEL_PROJECT_ID`          | Identifies this Vercel project for CLI/CI                                 | Project `.vercel/project.json` after linking, or Vercel project settings | Optional; required with token-based automation |
-| Production domain/DNS access | Configure the canonical domain, R2 CORS origin, and Resend DNS records    | Domain registrar/DNS provider                                            | Mandatory if replacing the `vercel.app` domain |
+| Item                                    | Why                                                                                              | Where to obtain                                                                                                     | Requirement                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Vercel project/team access              | Import GitHub, set production values, inspect deployments, and smoke test                        | Vercel team → Settings → Members                                                                                    | Mandatory for configuration                    |
+| `NEXT_PUBLIC_APP_URL`                   | Canonical metadata and all email links                                                           | The chosen production HTTPS origin/domain                                                                           | Mandatory runtime variable                     |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`       | Google Maps JavaScript rendering and public study-area geocoding for privacy-safe Meet discovery | Browser key restricted to Maps JavaScript API, Geocoding API, Kondo Production, and approved Preview HTTP referrers | Mandatory public runtime variable              |
+| `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` | Browser-visible VAPID key used when a member enables push notifications                          | Generate one VAPID pair with `npx web-push generate-vapid-keys`                                                     | Optional public; required for Web Push         |
+| `WEB_PUSH_VAPID_PRIVATE_KEY`            | Signs Web Push payloads on the server                                                            | Private key from the same generated VAPID pair                                                                      | Optional secret; required for Web Push         |
+| `WEB_PUSH_SUBJECT`                      | Identifies the push sender to browser push services                                              | A monitored `mailto:` address or an HTTPS contact URL                                                               | Optional; required for Web Push                |
+| Node.js 24                              | Supported LTS runtime pinned by `package.json`                                                   | Vercel project → Settings → Build and Deployment                                                                    | Mandatory; selected automatically              |
+| `VERCEL_TOKEN`                          | CLI/API automation without interactive dashboard access                                          | Vercel Account Settings → Tokens                                                                                    | Optional; operator credential, not app runtime |
+| `VERCEL_ORG_ID`                         | Identifies the owning Vercel team for CLI/CI                                                     | Project `.vercel/project.json` after linking, or Vercel project settings                                            | Optional; required with token-based automation |
+| `VERCEL_PROJECT_ID`                     | Identifies this Vercel project for CLI/CI                                                        | Project `.vercel/project.json` after linking, or Vercel project settings                                            | Optional; required with token-based automation |
+| Production domain/DNS access            | Configure the canonical domain, R2 CORS origin, and Resend DNS records                           | Domain registrar/DNS provider                                                                                       | Mandatory if replacing the `vercel.app` domain |
 
 Vercel applies environment changes only to new deployments, so redeploy after
 the final values are set.
+
+Web Push is enabled only when all three VAPID variables are configured together.
+The private key must remain server-only. Without them, the notification center
+and foreground in-app banners continue to work, while browser push is reported
+as unconfigured instead of failing the application.
 
 ### 2. Neon PostgreSQL
 

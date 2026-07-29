@@ -13,7 +13,11 @@ const validProductionEnvironment = {
     "postgresql://app:secret@ep-kondo.us-east-2.aws.neon.tech/kondo?sslmode=require",
   JWT_SECRET: "jwt-secret-that-is-at-least-thirty-two-bytes-long",
   NEXT_PUBLIC_APP_URL: "https://kondo.app",
-  NEXT_PUBLIC_BAIDU_MAP_AK: "baidu-browser-key",
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "AIza-google-maps-browser-key-for-tests",
+  NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY:
+    "BNv6cSN6w9D0dLJzFyR-QeMwSGBx9JLlHmZGZ0TA_KziGLcSYeR1pZxT_7oMUCDyJaQG9s8cV0kVeUJEnDi_UYE",
+  WEB_PUSH_VAPID_PRIVATE_KEY: "BKjtk_2fEf3z3AqSgGATg8bk9n0E7jLDVMHO9sWAzcQ",
+  WEB_PUSH_SUBJECT: "mailto:notifications@kondo.app",
   STORAGE_DRIVER: "s3",
   STORAGE_BUCKET: "kondo-production",
   STORAGE_REGION: "auto",
@@ -79,5 +83,24 @@ describe("production environment validation", () => {
       if (previous === undefined) delete process.env.JWT_SECRET;
       else process.env.JWT_SECRET = previous;
     }
+  });
+
+  it("requires a complete, correctly formatted VAPID configuration", () => {
+    const incomplete = {
+      ...validProductionEnvironment,
+      WEB_PUSH_VAPID_PRIVATE_KEY: undefined,
+    };
+    expect(productionEnvironmentIssues(incomplete)).toContain(
+      "Web Push requires NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY, and WEB_PUSH_SUBJECT together.",
+    );
+
+    expect(
+      productionEnvironmentIssues({
+        ...validProductionEnvironment,
+        NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY: "not-a-vapid-key",
+      }),
+    ).toContain(
+      "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY must be a URL-safe VAPID public key.",
+    );
   });
 });

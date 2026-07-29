@@ -5,7 +5,7 @@ const REQUIRED_PRODUCTION_VALUES = [
   "DIRECT_URL",
   "JWT_SECRET",
   "NEXT_PUBLIC_APP_URL",
-  "NEXT_PUBLIC_BAIDU_MAP_AK",
+  "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
   "STORAGE_BUCKET",
   "STORAGE_REGION",
   "STORAGE_ENDPOINT",
@@ -149,10 +149,45 @@ export function productionEnvironmentIssues(
     issues.push("NEXT_PUBLIC_APP_URL cannot point to localhost in production.");
   }
   if (
-    environment.NEXT_PUBLIC_BAIDU_MAP_AK &&
-    environment.NEXT_PUBLIC_BAIDU_MAP_AK.trim().length < 8
+    environment.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY &&
+    !environment.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.trim().startsWith("AIza")
   ) {
-    issues.push("NEXT_PUBLIC_BAIDU_MAP_AK must be a valid browser API key.");
+    issues.push(
+      "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY must be a Google Maps browser API key.",
+    );
+  }
+  const webPushValues = [
+    environment.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY?.trim(),
+    environment.WEB_PUSH_VAPID_PRIVATE_KEY?.trim(),
+    environment.WEB_PUSH_SUBJECT?.trim(),
+  ];
+  if (
+    webPushValues.some(Boolean) &&
+    !webPushValues.every((value) => Boolean(value))
+  ) {
+    issues.push(
+      "Web Push requires NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY, and WEB_PUSH_SUBJECT together.",
+    );
+  }
+  if (webPushValues[0] && !/^[A-Za-z0-9_-]{80,100}$/.test(webPushValues[0])) {
+    issues.push(
+      "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY must be a URL-safe VAPID public key.",
+    );
+  }
+  if (webPushValues[1] && !/^[A-Za-z0-9_-]{40,60}$/.test(webPushValues[1])) {
+    issues.push(
+      "WEB_PUSH_VAPID_PRIVATE_KEY must be a URL-safe VAPID private key.",
+    );
+  }
+  if (
+    webPushValues[2] &&
+    !/^(?:mailto:[^@\s]+@[^@\s]+\.[^@\s]+|https:\/\/[^\s]+)$/i.test(
+      webPushValues[2],
+    )
+  ) {
+    issues.push(
+      "WEB_PUSH_SUBJECT must be a monitored mailto: address or HTTPS URL.",
+    );
   }
 
   if (environment.STORAGE_DRIVER !== "s3") {

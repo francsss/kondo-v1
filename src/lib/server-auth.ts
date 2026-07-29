@@ -47,6 +47,8 @@ const currentUserSelect = {
     select: {
       theme: true,
       language: true,
+      notificationSounds: true,
+      notificationHaptics: true,
     },
   },
   createdAt: true,

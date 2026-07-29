@@ -1,49 +1,41 @@
 export type MeetMapDistance =
   "KM_5" | "KM_10" | "KM_20" | "CITY" | "OTHER_CITY";
 
+export type MeetNearbyRadiusMeters = 100 | 300 | 500 | 1000 | 2000 | 5000;
+
 export type MapCoordinate = { lng: number; lat: number };
 export type Wgs84Coordinate = MapCoordinate & {
   readonly coordinateSystem: "WGS84";
 };
-export type Gcj02Coordinate = MapCoordinate & {
-  readonly coordinateSystem: "GCJ02";
-};
-export type Bd09Coordinate = MapCoordinate & {
-  readonly coordinateSystem: "BD09";
-};
-export const MEET_MAP_COORDINATE_SYSTEM = "BD09" as const;
-export const JIAXING_UNIVERSITY_BD09: Bd09Coordinate = {
-  lng: 120.730282,
-  lat: 30.747312,
-  coordinateSystem: "BD09",
+
+export const MEET_MAP_COORDINATE_SYSTEM = "WGS84" as const;
+export const DEFAULT_MEET_NEARBY_RADIUS_METERS: MeetNearbyRadiusMeters = 500;
+export const MAX_MEET_NEARBY_RADIUS_METERS: MeetNearbyRadiusMeters = 5000;
+
+// Public WGS-84 center of Jiaxing University's Lianglin campus. It is a
+// university anchor, never a student's device position.
+export const JIAXING_UNIVERSITY_WGS84: Wgs84Coordinate = {
+  lng: 120.719407,
+  lat: 30.743861,
+  coordinateSystem: "WGS84",
 };
 
-const RADIUS_KM: Record<MeetMapDistance, number> = {
-  KM_5: 5,
-  KM_10: 10,
-  KM_20: 20,
-  CITY: 15,
-  OTHER_CITY: 15,
-};
-
-const ZOOM_LEVEL: Record<MeetMapDistance, number> = {
-  KM_5: 14,
-  KM_10: 13,
-  KM_20: 12,
-  CITY: 12,
-  OTHER_CITY: 12,
+const ZOOM_LEVEL: Record<MeetNearbyRadiusMeters, number> = {
+  100: 18,
+  300: 17,
+  500: 16,
+  1000: 15,
+  2000: 14,
+  5000: 13,
 };
 
 const KNOWN_STUDY_AREA_ANCHORS: Array<{
   aliases: string[];
-  coordinate: Bd09Coordinate;
+  coordinate: Wgs84Coordinate;
 }> = [
   {
     aliases: ["嘉兴大学", "嘉兴学院", "jiaxing university"],
-    // Baidu BD-09 center for the Lianglin campus near the university's
-    // official address at 899 Guangqiong Road. This avoids geocoding during
-    // map startup and must never be replaced with raw WGS-84 GPS coordinates.
-    coordinate: JIAXING_UNIVERSITY_BD09,
+    coordinate: JIAXING_UNIVERSITY_WGS84,
   },
 ];
 
@@ -60,9 +52,8 @@ export function isValidMeetMapCoordinate(
     return false;
   }
 
-  // Meet is currently limited to study areas in mainland China. These bounds
-  // also catch the common latitude/longitude reversal before BMapGL.Point is
-  // constructed.
+  // Meet currently supports study areas in mainland China. The bounds also
+  // catch a common latitude/longitude reversal before a provider receives it.
   return (
     coordinate.lng! >= 73 &&
     coordinate.lng! <= 136 &&
@@ -95,12 +86,8 @@ function stableHash(value: string) {
   return hash >>> 0;
 }
 
-export function meetMapRadiusKm(distance: MeetMapDistance) {
-  return RADIUS_KM[distance];
-}
-
-export function meetMapZoom(distance: MeetMapDistance) {
-  return ZOOM_LEVEL[distance];
+export function meetMapZoom(radiusMeters: MeetNearbyRadiusMeters) {
+  return ZOOM_LEVEL[radiusMeters];
 }
 
 export function meetMapKnownAnchor(queries: string[]) {
@@ -117,10 +104,9 @@ export function meetMapKnownAnchor(queries: string[]) {
 export function privacySafeMapCoordinate(
   anchor: MapCoordinate,
   profileId: string,
-  distance: MeetMapDistance,
 ): MapCoordinate {
   if (!isValidMeetMapCoordinate(anchor)) {
-    throw new Error("Meet map anchor must be a valid China BD-09 coordinate.");
+    throw new Error("Meet map anchor must be a valid China WGS-84 coordinate.");
   }
   if (!profileId.trim()) {
     throw new Error("Meet map profile ID is required.");
@@ -128,11 +114,15 @@ export function privacySafeMapCoordinate(
   const first = stableHash(`${profileId}:angle`);
   const second = stableHash(`${profileId}:radius`);
   const angle = (first / 0xffffffff) * Math.PI * 2;
-  const radius =
-    RADIUS_KM[distance] * (0.18 + Math.sqrt(second / 0xffffffff) * 0.7);
-  const latitudeDelta = (Math.sin(angle) * radius) / 111.32;
+  // Squaring biases the privacy-safe distribution toward campus while keeping
+  // a stable long tail out to 5 km. Changing the selected filter never moves a
+  // marker; it only changes which approximate points are visible.
+  const normalizedRadius = second / 0xffffffff;
+  const radiusMeters = 45 + normalizedRadius ** 2 * 4_800;
+  const latitudeDelta = (Math.sin(angle) * radiusMeters) / 111_320;
   const longitudeScale = Math.max(0.2, Math.cos((anchor.lat * Math.PI) / 180));
-  const longitudeDelta = (Math.cos(angle) * radius) / (111.32 * longitudeScale);
+  const longitudeDelta =
+    (Math.cos(angle) * radiusMeters) / (111_320 * longitudeScale);
   const coordinate = {
     lng: Number((anchor.lng + longitudeDelta).toFixed(6)),
     lat: Number((anchor.lat + latitudeDelta).toFixed(6)),
@@ -141,6 +131,53 @@ export function privacySafeMapCoordinate(
     throw new Error("Generated Meet map coordinate is outside China.");
   }
   return coordinate;
+}
+
+export function privacySafeViewerCoordinate(
+  anchor: MapCoordinate,
+  profileId: string,
+) {
+  const distributed = privacySafeMapCoordinate(anchor, `${profileId}:viewer`);
+  return {
+    lat: Number(
+      (anchor.lat + (distributed.lat - anchor.lat) * 0.018).toFixed(6),
+    ),
+    lng: Number(
+      (anchor.lng + (distributed.lng - anchor.lng) * 0.018).toFixed(6),
+    ),
+  };
+}
+
+export function approximateDistanceMeters(
+  first: MapCoordinate,
+  second: MapCoordinate,
+) {
+  const earthRadiusMeters = 6_371_000;
+  const latitudeDelta = ((second.lat - first.lat) * Math.PI) / 180;
+  const longitudeDelta = ((second.lng - first.lng) * Math.PI) / 180;
+  const firstLatitude = (first.lat * Math.PI) / 180;
+  const secondLatitude = (second.lat * Math.PI) / 180;
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(firstLatitude) *
+      Math.cos(secondLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return Math.round(
+    earthRadiusMeters *
+      2 *
+      Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine)),
+  );
+}
+
+export function friendlyApproximateDistance(distanceMeters: number) {
+  if (distanceMeters < 100) return "Less than 100 m";
+  if (distanceMeters < 250) return "Around 200 m";
+  if (distanceMeters < 400) return "Around 300 m";
+  if (distanceMeters < 750) return "Around 500 m";
+  if (distanceMeters < 1_500) return "Around 1 km";
+  if (distanceMeters < 3_000) return "Around 2 km";
+  if (distanceMeters <= 5_000) return "Around 5 km";
+  return "More than 5 km";
 }
 
 export function meetMapSearchQuery(
@@ -169,16 +206,16 @@ export function meetMapSearchQueries(input: {
   const universityNativeName = input.universityNativeName?.trim() || null;
   const cityNativeName = input.cityNativeName?.trim() || null;
   const queries = [
-    universityNativeName && cityNativeName
-      ? `${cityNativeName}${universityNativeName}`
-      : universityNativeName,
-    universityNativeName,
     universityName && cityName
       ? meetMapSearchQuery(universityName, cityName)
       : universityName,
     universityName,
-    cityNativeName,
+    universityNativeName && cityNativeName
+      ? `${cityNativeName}${universityNativeName}`
+      : universityNativeName,
+    universityNativeName,
     cityName,
+    cityNativeName,
   ].filter((value): value is string => Boolean(value));
 
   return [...new Set(queries)];
@@ -188,7 +225,7 @@ export function meetMapCityQueries(
   cityName: string | null,
   cityNativeName?: string | null,
 ) {
-  return [cityNativeName?.trim() || null, cleanCityLabel(cityName)].filter(
+  return [cleanCityLabel(cityName), cityNativeName?.trim() || null].filter(
     (value, index, values): value is string =>
       Boolean(value) && values.indexOf(value) === index,
   );

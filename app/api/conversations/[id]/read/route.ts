@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
-import { markConversationRead, MessagingError } from "@/lib/messaging";
+import {
+  getUnreadMessageCount,
+  markConversationRead,
+  MessagingError,
+} from "@/lib/messaging";
 import { hasTrustedOrigin, jsonError } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
 import { conversationReadSchema } from "@/lib/validation";
@@ -24,13 +28,15 @@ export async function PATCH(
   }
 
   try {
-    return Response.json(
-      await markConversationRead({
-        conversationId: id,
-        userId: user.id,
-        latestMessageId: parsed.data.latestMessageId,
-      }),
-    );
+    const result = await markConversationRead({
+      conversationId: id,
+      userId: user.id,
+      latestMessageId: parsed.data.latestMessageId,
+    });
+    return Response.json({
+      ...result,
+      unreadCount: await getUnreadMessageCount(user.id),
+    });
   } catch (error) {
     if (error instanceof MessagingError) {
       return jsonError(error.message, error.status);

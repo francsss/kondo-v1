@@ -27,12 +27,17 @@ import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytic
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
+import { NotificationExperience } from "@/components/features/notifications/NotificationExperience";
 import { RestoreStoryScroll } from "@/components/features/stories/RestoreStoryScroll";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { canAccessAdmin } from "@/lib/authorization";
 import { usesImmersiveAppShell } from "@/lib/app-shell";
+import {
+  MESSAGE_COUNT_EVENT,
+  NOTIFICATION_COUNT_EVENT,
+} from "@/lib/notification-client";
 import { resetProductAnalytics } from "@/lib/product-analytics-client";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +52,8 @@ type ShellUser = {
   preference?: {
     theme: "LIGHT" | "DARK" | "SYSTEM";
     language: "ENGLISH" | "FRENCH" | "CHINESE" | "ARABIC";
+    notificationSounds?: boolean;
+    notificationHaptics?: boolean;
   } | null;
   notificationUnreadCount?: number;
   messageUnreadCount?: number;
@@ -220,6 +227,12 @@ export function AppShell({
   const router = useRouter();
   const reducedMotion = useReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(
+    user.notificationUnreadCount ?? 0,
+  );
+  const [messageUnreadCount, setMessageUnreadCount] = useState(
+    user.messageUnreadCount ?? 0,
+  );
   const isAdmin = canAccessAdmin(user.role);
 
   useEffect(() => {
@@ -234,7 +247,63 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [router]);
 
+  useEffect(() => {
+    const updateCount = (event: Event) => {
+      const unreadCount = (event as CustomEvent<{ unreadCount?: unknown }>)
+        .detail?.unreadCount;
+      const delta = (
+        event as CustomEvent<{ unreadCount?: unknown; delta?: unknown }>
+      ).detail?.delta;
+      if (typeof unreadCount === "number") {
+        setNotificationUnreadCount(Math.max(0, Math.floor(unreadCount)));
+      } else if (typeof delta === "number") {
+        setNotificationUnreadCount((current) =>
+          Math.max(0, current + Math.trunc(delta)),
+        );
+      }
+    };
+    window.addEventListener(NOTIFICATION_COUNT_EVENT, updateCount);
+    return () =>
+      window.removeEventListener(NOTIFICATION_COUNT_EVENT, updateCount);
+  }, []);
+
+  useEffect(() => {
+    const updateCount = (event: Event) => {
+      const unreadCount = (event as CustomEvent<{ unreadCount?: unknown }>)
+        .detail?.unreadCount;
+      const delta = (
+        event as CustomEvent<{ unreadCount?: unknown; delta?: unknown }>
+      ).detail?.delta;
+      if (typeof unreadCount === "number") {
+        setMessageUnreadCount(Math.max(0, Math.floor(unreadCount)));
+      } else if (typeof delta === "number") {
+        setMessageUnreadCount((current) =>
+          Math.max(0, current + Math.trunc(delta)),
+        );
+      }
+    };
+    window.addEventListener(MESSAGE_COUNT_EVENT, updateCount);
+    return () => window.removeEventListener(MESSAGE_COUNT_EVENT, updateCount);
+  }, []);
+
   async function logout() {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker
+        .getRegistration("/")
+        .catch(() => undefined);
+      const subscription = await registration?.pushManager
+        .getSubscription()
+        .catch(() => null);
+      if (subscription) {
+        await fetch("/api/notifications/push", {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        }).catch(() => null);
+        await subscription.unsubscribe().catch(() => false);
+      }
+    }
     const response = await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
@@ -250,6 +319,10 @@ export function AppShell({
       <div className="min-h-screen bg-background text-foreground">
         <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
         <PresenceHeartbeat />
+        <NotificationExperience
+          hapticsEnabled={user.preference?.notificationHaptics ?? true}
+          soundEnabled={user.preference?.notificationSounds ?? false}
+        />
         <ProductAnalyticsIdentity user={user} />
         <RestoreStoryScroll />
         {children}
@@ -262,6 +335,10 @@ export function AppShell({
     <div className="min-h-screen bg-background text-foreground">
       <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
       <PresenceHeartbeat />
+      <NotificationExperience
+        hapticsEnabled={user.preference?.notificationHaptics ?? true}
+        soundEnabled={user.preference?.notificationSounds ?? false}
+      />
       <ProductAnalyticsIdentity user={user} />
       <RestoreStoryScroll />
       <KondoPet enabled={kondoPetEnabled} />
@@ -273,7 +350,7 @@ export function AppShell({
           {navigation.map((item) => (
             <NavLink
               badgeCount={
-                item.href === "/messages" ? user.messageUnreadCount : undefined
+                item.href === "/messages" ? messageUnreadCount : undefined
               }
               key={item.href}
               {...item}
@@ -353,18 +430,18 @@ export function AppShell({
               <Button asChild className="relative" size="icon" variant="ghost">
                 <Link
                   aria-label={`Notifications${
-                    user.notificationUnreadCount
-                      ? `, ${user.notificationUnreadCount} unread`
+                    notificationUnreadCount
+                      ? `, ${notificationUnreadCount} unread`
                       : ""
                   }`}
                   href="/notifications"
                 >
                   <Bell aria-hidden="true" className="h-[18px] w-[18px]" />
-                  {user.notificationUnreadCount ? (
+                  {notificationUnreadCount ? (
                     <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-background bg-warning px-1 text-[9px] font-black leading-none text-warning-foreground">
-                      {user.notificationUnreadCount > 99
+                      {notificationUnreadCount > 99
                         ? "99+"
-                        : user.notificationUnreadCount}
+                        : notificationUnreadCount}
                     </span>
                   ) : null}
                 </Link>
@@ -433,9 +510,7 @@ export function AppShell({
             {navigation.map((item) => (
               <NavLink
                 badgeCount={
-                  item.href === "/messages"
-                    ? user.messageUnreadCount
-                    : undefined
+                  item.href === "/messages" ? messageUnreadCount : undefined
                 }
                 key={item.href}
                 {...item}
@@ -502,11 +577,9 @@ export function AppShell({
             >
               <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
               <span className="max-w-full truncate px-1">{label}</span>
-              {href === "/messages" && user.messageUnreadCount ? (
+              {href === "/messages" && messageUnreadCount ? (
                 <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-warning px-1 text-[8px] font-black text-warning-foreground">
-                  {user.messageUnreadCount > 99
-                    ? "99+"
-                    : user.messageUnreadCount}
+                  {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
                 </span>
               ) : null}
             </Link>

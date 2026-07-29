@@ -16,6 +16,11 @@ import {
   updateNotificationTemplate,
 } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import {
+  getPushSubscriptionStatus,
+  removePushSubscription,
+  savePushSubscription,
+} from "@/lib/push-notifications";
 import { generateSmartNotificationJobs } from "@/lib/smart-notifications";
 
 const isIsolatedPostgres =
@@ -243,6 +248,73 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
     expect(result.notifications[0]).not.toHaveProperty("data");
   });
 
+  it("persists, reports, and safely disables a browser push subscription", async () => {
+    const previousPublicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY;
+    const previousPrivateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
+    const previousSubject = process.env.WEB_PUSH_SUBJECT;
+    process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY = "public-test-key";
+    process.env.WEB_PUSH_VAPID_PRIVATE_KEY = "private-test-key";
+    process.env.WEB_PUSH_SUBJECT = "mailto:notifications@kondo.test";
+    const endpoint = `https://push.example.test/${randomUUID()}`;
+
+    try {
+      await expect(
+        savePushSubscription(
+          fixture.recipient.id,
+          {
+            endpoint,
+            expirationTime: Date.now() + 60_000,
+            keys: {
+              auth: "browser-auth-secret",
+              p256dh: "browser-public-key-material",
+            },
+          },
+          "Kondo integration test browser",
+        ),
+      ).resolves.toEqual({ enabled: true });
+      await expect(
+        getPushSubscriptionStatus(fixture.recipient.id),
+      ).resolves.toEqual({ configured: true, enabled: true });
+      await expect(
+        prisma.pushSubscription.findUnique({
+          where: { endpoint },
+          select: {
+            userId: true,
+            disabledAt: true,
+            failureCount: true,
+          },
+        }),
+      ).resolves.toEqual({
+        userId: fixture.recipient.id,
+        disabledAt: null,
+        failureCount: 0,
+      });
+
+      await expect(
+        removePushSubscription(fixture.recipient.id, endpoint),
+      ).resolves.toEqual({ enabled: false, updated: 1 });
+      await expect(
+        getPushSubscriptionStatus(fixture.recipient.id),
+      ).resolves.toEqual({ configured: true, enabled: false });
+    } finally {
+      if (previousPublicKey === undefined) {
+        delete process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY = previousPublicKey;
+      }
+      if (previousPrivateKey === undefined) {
+        delete process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
+      } else {
+        process.env.WEB_PUSH_VAPID_PRIVATE_KEY = previousPrivateKey;
+      }
+      if (previousSubject === undefined) {
+        delete process.env.WEB_PUSH_SUBJECT;
+      } else {
+        process.env.WEB_PUSH_SUBJECT = previousSubject;
+      }
+    }
+  });
+
   it("makes persisted preferences executable while always delivering moderation outcomes", async () => {
     await enqueueNotificationJob({
       recipientId: fixture.disabledRecipient.id,
@@ -300,6 +372,77 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
     await expect(
       getUnreadNotificationCount(fixture.disabledRecipient.id),
     ).resolves.toBe(1);
+  });
+
+  it("silences a notification through the category its recipient actually sees", async () => {
+    // A scholarship match is typed RECOMMENDATION but presents as University, so
+    // the University toggle has to silence it even while recommendations stay on.
+    const quiet = await prisma.user.create({
+      data: {
+        email: `university-muted-${randomUUID().replaceAll("-", "")}@${testDomain}`,
+        firstName: "Zola",
+        lastName: "Quiet",
+        status: "ACTIVE",
+        preference: {
+          create: {
+            notificationRecommendations: true,
+            notificationUniversity: false,
+            notificationFriends: false,
+          },
+        },
+      },
+    });
+
+    await enqueueNotificationJob({
+      recipientId: quiet.id,
+      type: "RECOMMENDATION",
+      templateKey: "SCHOLARSHIP_MATCH",
+      data: { scholarshipTitle: "CSC Full Scholarship" },
+      href: "/student-hub",
+      dedupeKey: "scholarship:muted-category",
+    });
+    await enqueueNotificationJob({
+      recipientId: quiet.id,
+      type: "MEET_ACTIVITY",
+      templateKey: "MEET_MATCHES",
+      data: { areaName: "Jiaxing", count: 2, intention: "study group" },
+      href: "/communities?tab=meet",
+      dedupeKey: "meet:muted-category",
+    });
+    await enqueueNotificationJob({
+      recipientId: quiet.id,
+      actorId: fixture.admin.id,
+      type: "MODERATION_UPDATE",
+      templateKey: "MODERATION_RESULT",
+      data: { outcome: "Your safety report was reviewed." },
+      href: "/notifications",
+      dedupeKey: "security:always-delivered",
+    });
+    await processNotificationJobs(20);
+
+    const jobs = await prisma.notificationJob.findMany({
+      where: { recipientId: quiet.id },
+      orderBy: { dedupeKey: "asc" },
+      select: { dedupeKey: true, status: true, lastErrorCode: true },
+    });
+    expect(jobs).toEqual([
+      {
+        dedupeKey: "meet:muted-category",
+        status: "SKIPPED",
+        lastErrorCode: "PREFERENCE_DISABLED",
+      },
+      {
+        dedupeKey: "scholarship:muted-category",
+        status: "SKIPPED",
+        lastErrorCode: "PREFERENCE_DISABLED",
+      },
+      {
+        dedupeKey: "security:always-delivered",
+        status: "COMPLETED",
+        lastErrorCode: null,
+      },
+    ]);
+    await expect(getUnreadNotificationCount(quiet.id)).resolves.toBe(1);
   });
 
   it("creates one useful onboarding reminder and deduplicates repeated smart-worker runs", async () => {

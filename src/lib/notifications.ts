@@ -3,9 +3,14 @@ import {
   type NotificationJobStatus,
   type NotificationType,
 } from "@prisma/client";
+import {
+  CATEGORY_PREFERENCE_FIELD,
+  notificationPresentation,
+} from "@/features/notifications/presentation";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { deliverPushNotificationForJob } from "@/lib/push-notifications";
 
 export const NOTIFICATION_TEMPLATE_KEYS = [
   "MESSAGE_NEW",
@@ -227,21 +232,46 @@ export function enqueuePostCommentNotification(
   });
 }
 
+type NotificationPreferences = {
+  notificationMessages: boolean;
+  notificationComments: boolean;
+  notificationMarketplace: boolean;
+  notificationAnnouncements: boolean;
+  notificationCommunity: boolean;
+  notificationMeet: boolean;
+  notificationAcademic: boolean;
+  notificationRecommendations: boolean;
+  notificationFriends: boolean;
+  notificationEvents: boolean;
+  notificationTransfers: boolean;
+  notificationUniversity: boolean;
+};
+
+/**
+ * The category toggles in Settings are keyed off the presentation layer, not off
+ * NotificationType, because that is the grouping the recipient actually sees on
+ * the notification itself. Gating here keeps the label and the delivery rule in
+ * sync for kinds whose type is broader than their category — a scholarship match
+ * is typed RECOMMENDATION but presents as University.
+ */
+function categoryPreferenceAllows(
+  type: NotificationType,
+  templateKey: string | null,
+  preference: NotificationPreferences,
+) {
+  const { category } = notificationPresentation({ type, templateKey });
+  const field = CATEGORY_PREFERENCE_FIELD[category];
+  return field === null ? true : preference[field];
+}
+
 function preferenceAllows(
   type: NotificationType,
-  preference: {
-    notificationMessages: boolean;
-    notificationComments: boolean;
-    notificationMarketplace: boolean;
-    notificationAnnouncements: boolean;
-    notificationCommunity: boolean;
-    notificationMeet: boolean;
-    notificationAcademic: boolean;
-    notificationRecommendations: boolean;
-  } | null,
+  templateKey: string | null,
+  preference: NotificationPreferences | null,
 ) {
   if (type === "MODERATION_UPDATE" || type === "ACCOUNT") return true;
   if (!preference) return true;
+  if (!categoryPreferenceAllows(type, templateKey, preference)) return false;
   if (type === "MESSAGE") return preference.notificationMessages;
   if (type === "COMMENT" || type === "REPLY") {
     return preference.notificationComments;
@@ -328,6 +358,10 @@ async function deliverClaimedJob(jobId: string) {
                 notificationMeet: true,
                 notificationAcademic: true,
                 notificationRecommendations: true,
+                notificationFriends: true,
+                notificationEvents: true,
+                notificationTransfers: true,
+                notificationUniversity: true,
               },
             },
           },
@@ -340,7 +374,11 @@ async function deliverClaimedJob(jobId: string) {
         ? "RECIPIENT_INACTIVE"
         : !job.template.isActive
           ? "TEMPLATE_INACTIVE"
-          : !preferenceAllows(job.type, job.recipient.preference)
+          : !preferenceAllows(
+                job.type,
+                job.templateKey,
+                job.recipient.preference,
+              )
             ? "PREFERENCE_DISABLED"
             : null;
     if (skipCode) {
@@ -428,6 +466,9 @@ export async function processNotificationJobNow(jobId: string) {
   });
   try {
     const result = await deliverClaimedJob(jobId);
+    if (result === "COMPLETED") {
+      await deliverPushNotificationForJob(jobId).catch(() => null);
+    }
     if (job.announcementId) {
       await completeAnnouncementIfFinished(job.announcementId);
     }
@@ -487,13 +528,16 @@ export async function processNotificationJobs(limit = 100) {
   let completed = 0;
   let skipped = 0;
   let failed = 0;
+  const completedJobIds: string[] = [];
   const announcementIds = new Set<string>();
   for (const job of claimed) {
     if (job.announcementId) announcementIds.add(job.announcementId);
     try {
       const result = await deliverClaimedJob(job.id);
-      if (result === "COMPLETED") completed += 1;
-      else skipped += 1;
+      if (result === "COMPLETED") {
+        completed += 1;
+        completedJobIds.push(job.id);
+      } else skipped += 1;
     } catch {
       const attempts = job.attempts + 1;
       const terminal = attempts >= 3;
@@ -512,6 +556,9 @@ export async function processNotificationJobs(limit = 100) {
   for (const announcementId of announcementIds) {
     await completeAnnouncementIfFinished(announcementId);
   }
+  await Promise.allSettled(
+    completedJobIds.map((jobId) => deliverPushNotificationForJob(jobId)),
+  );
   return {
     claimed: claimed.length,
     completed,
@@ -526,6 +573,7 @@ function notificationDto(notification: {
   title: string;
   body: string | null;
   href: string | null;
+  templateKey: string | null;
   readAt: Date | null;
   createdAt: Date;
   actor: {
@@ -541,6 +589,7 @@ function notificationDto(notification: {
     title: notification.title,
     body: notification.body,
     href: safeStoredHref(notification.href),
+    templateKey: notification.templateKey,
     readAt: notification.readAt?.toISOString() ?? null,
     createdAt: notification.createdAt.toISOString(),
     actor: notification.actor,
@@ -568,6 +617,7 @@ export async function listNotifications(
         title: true,
         body: true,
         href: true,
+        templateKey: true,
         readAt: true,
         createdAt: true,
         actor: {

@@ -2,17 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Bell,
-  BookOpen,
   ChevronLeft,
   ChevronRight,
-  GraduationCap,
-  Handshake,
-  Megaphone,
-  MessageCircle,
-  ShieldCheck,
-  ShoppingBag,
-  Sparkles,
-  UsersRound,
+  SlidersHorizontal,
 } from "lucide-react";
 import { MarkAllReadButton } from "@/components/features/notifications/MarkAllReadButton";
 import { NotificationAnalytics } from "@/components/features/notifications/NotificationAnalytics";
@@ -25,20 +17,6 @@ import { formatRelativeDate } from "@/lib/presentation";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Notifications" };
-
-const icons = {
-  ACCOUNT: Sparkles,
-  MESSAGE: MessageCircle,
-  COMMENT: MessageCircle,
-  REPLY: MessageCircle,
-  MARKETPLACE_UPDATE: ShoppingBag,
-  COMMUNITY_ANNOUNCEMENT: Megaphone,
-  COMMUNITY_ACTIVITY: UsersRound,
-  MEET_ACTIVITY: Handshake,
-  ACADEMIC: BookOpen,
-  RECOMMENDATION: GraduationCap,
-  MODERATION_UPDATE: ShieldCheck,
-};
 
 export default async function NotificationsPage({
   searchParams,
@@ -55,40 +33,51 @@ export default async function NotificationsPage({
   return (
     <div className="mx-auto max-w-[920px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <PageHeader
-        action={<MarkAllReadButton unreadCount={result.unreadCount} />}
-        description="Only the updates that help you respond, connect, or act."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="secondary">
+              <Link href="/settings/notifications">
+                <SlidersHorizontal className="h-4 w-4" />
+                Preferences
+              </Link>
+            </Button>
+            <MarkAllReadButton unreadCount={result.unreadCount} />
+          </div>
+        }
+        description="Messages, communities, study reminders and important Kondo updates—all in one calm, recognizable place."
+        eyebrow="Kondo updates"
         title="Notifications"
       />
       <NotificationAnalytics
         count={result.notifications.length}
         unreadCount={result.unreadCount}
       />
-      <Card className="mt-8 overflow-hidden p-0">
+      <div className="mt-8">
         {result.notifications.length ? (
-          result.notifications.map((notification, index) => {
-            const Icon = icons[notification.type];
-            return (
+          <div className="space-y-3">
+            {result.notifications.map((notification) => (
               <NotificationItem
-                bordered={Boolean(index)}
-                icon={<Icon className="h-4 w-4" />}
                 key={notification.id}
                 notification={notification}
                 timestamp={formatRelativeDate(new Date(notification.createdAt))}
               />
-            );
-          })
+            ))}
+          </div>
         ) : (
-          <div className="px-6 py-16 text-center">
-            <Bell className="mx-auto h-8 w-8 text-muted-foreground" />
+          <Card className="relative overflow-hidden px-6 py-16 text-center">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-kondo-green via-emerald-300 to-kondo-lime" />
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
+              <Bell className="h-6 w-6" />
+            </span>
             <h2 className="mt-4 font-black text-kondo-ink dark:text-white">
               You’re all caught up
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Useful updates will appear here.
             </p>
-          </div>
+          </Card>
         )}
-      </Card>
+      </div>
       {result.pageCount > 1 ? (
         <div className="mt-6 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">

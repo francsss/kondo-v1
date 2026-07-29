@@ -72,6 +72,16 @@ export const meetDiscoveryRequestSchema = z.object({
   distanceRange: z
     .enum(["KM_5", "KM_10", "KM_20", "CITY", "OTHER_CITY"])
     .default("CITY"),
+  nearbyRadiusMeters: z
+    .union([
+      z.literal(100),
+      z.literal(300),
+      z.literal(500),
+      z.literal(1000),
+      z.literal(2000),
+      z.literal(5000),
+    ])
+    .default(500),
   otherCityId: z.string().cuid().nullable().optional(),
 });
 

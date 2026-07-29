@@ -218,6 +218,148 @@ textarea {
       scroll-snap-type: x proximity;
     }
   }
+
+  .meet-map-marker {
+    position: absolute;
+    display: flex;
+    width: max-content;
+    max-width: 8rem;
+    cursor: pointer;
+    flex-direction: column;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #063c31;
+    transform: translate(-50%, -50%);
+  }
+
+  .meet-map-marker__beacon {
+    position: relative;
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+  }
+
+  .meet-map-marker__wave {
+    position: absolute;
+    inset: 0.35rem;
+    border: 1px solid rgb(16 185 129 / 58%);
+    border-radius: 999px;
+    background: rgb(52 211 153 / 20%);
+    animation: meet-map-pulse 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) infinite;
+    pointer-events: none;
+    will-change: opacity, transform;
+  }
+
+  .meet-map-marker__wave--two {
+    animation-delay: 1.4s;
+  }
+
+  .meet-map-marker__core {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    overflow: hidden;
+    border: 2px solid white;
+    border-radius: 999px;
+    background: #0f8a64;
+    box-shadow:
+      0 7px 20px rgb(6 60 49 / 28%),
+      0 0 0 2px rgb(16 185 129 / 16%);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 900;
+  }
+
+  .meet-map-marker__core img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .meet-map-marker__caption {
+    display: flex;
+    max-width: 8rem;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid rgb(6 60 49 / 14%);
+    border-radius: 0.75rem;
+    margin-top: -0.1rem;
+    background: rgb(255 255 255 / 94%);
+    box-shadow: 0 5px 16px rgb(6 60 49 / 15%);
+    padding: 0.25rem 0.45rem;
+    font-size: 0.58rem;
+    line-height: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .meet-map-marker__caption strong {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meet-map-marker__caption span {
+    color: #477069;
+    font-weight: 700;
+  }
+
+  .meet-map-marker--current .meet-map-marker__wave {
+    border-color: rgb(59 130 246 / 60%);
+    background: rgb(96 165 250 / 20%);
+    animation-duration: 2.35s;
+  }
+
+  .meet-map-marker--current .meet-map-marker__core {
+    width: 2.2rem;
+    height: 2.2rem;
+    background: #2563eb;
+    box-shadow:
+      0 8px 22px rgb(37 99 235 / 30%),
+      0 0 0 2px rgb(96 165 250 / 22%);
+  }
+
+  .meet-map-marker--university {
+    pointer-events: none;
+  }
+
+  .meet-map-marker--university .meet-map-marker__beacon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .meet-map-marker--university .meet-map-marker__wave {
+    display: none;
+  }
+
+  .meet-map-marker--university .meet-map-marker__core {
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 0.65rem;
+    background: #063c31;
+  }
+
+  .meet-map-marker--university .meet-map-marker__caption span {
+    display: none;
+  }
+}
+
+@keyframes meet-map-pulse {
+  0% {
+    opacity: 0.72;
+    transform: scale(0.65);
+  }
+
+  72%,
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

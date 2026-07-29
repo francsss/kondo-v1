@@ -400,6 +400,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       mode: parsed.data.mode,
       distanceRange: parsed.data.distanceRange,
+      nearbyRadiusMeters: parsed.data.nearbyRadiusMeters,
       candidateCount: candidates.length,
       resultCount: profiles.length,
       premium: access.active,

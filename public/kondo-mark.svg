@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Kondo">
+  <defs>
+    <linearGradient id="kondo" x1="24" y1="18" x2="168" y2="174" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#20c997"/>
+      <stop offset="1" stop-color="#087f5b"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="54" fill="#f8f7f2"/>
+  <rect x="16" y="16" width="160" height="160" rx="46" fill="url(#kondo)"/>
+  <path fill="#fff" d="M55 47h27v40l35-40h34l-43 47 46 51h-35l-37-44v44H55V47Z"/>
+  <circle cx="150" cy="45" r="10" fill="#d9ff8f"/>
+</svg>

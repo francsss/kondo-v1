@@ -29,12 +29,16 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
-  MEET_DISTANCE_OPTIONS,
   MEET_INTENTS,
+  MEET_NEARBY_RADIUS_OPTIONS,
   MEET_PREMIUM_FEATURES,
 } from "@/features/meet/config";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
-import { meetMapCityQueries, meetMapSearchQueries } from "@/lib/meet-map";
+import {
+  DEFAULT_MEET_NEARBY_RADIUS_METERS,
+  meetMapSearchQueries,
+  type MeetNearbyRadiusMeters,
+} from "@/lib/meet-map";
 import type { PremiumAccess } from "@/lib/premium";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -127,6 +131,8 @@ export function MeetPanel({
       ? "CITY"
       : (initialProfile?.distanceRange ?? "CITY"),
   );
+  const [nearbyRadiusMeters, setNearbyRadiusMeters] =
+    useState<MeetNearbyRadiusMeters>(DEFAULT_MEET_NEARBY_RADIUS_METERS);
   const [otherCityId, setOtherCityId] = useState("");
   const [matching, setMatching] = useState(false);
   const [discovering, setDiscovering] = useState(false);
@@ -191,6 +197,7 @@ export function MeetPanel({
         countryPreferenceCode: "",
         intents,
         distanceRange: distanceRange === "OTHER_CITY" ? "CITY" : distanceRange,
+        nearbyRadiusMeters,
         otherCityId: null,
       }),
     })
@@ -212,6 +219,7 @@ export function MeetPanel({
     distanceRange,
     genderPreference,
     intents,
+    nearbyRadiusMeters,
     profileIsComplete,
   ]);
 
@@ -365,7 +373,8 @@ export function MeetPanel({
           genderPreference,
           countryPreferenceCode,
           intents,
-          distanceRange,
+          distanceRange: distanceRange === "OTHER_CITY" ? "OTHER_CITY" : "KM_5",
+          nearbyRadiusMeters,
           otherCityId: distanceRange === "OTHER_CITY" ? otherCityId : null,
         }),
       });
@@ -414,7 +423,8 @@ export function MeetPanel({
           genderPreference,
           countryPreferenceCode,
           intents,
-          distanceRange,
+          distanceRange: distanceRange === "OTHER_CITY" ? "OTHER_CITY" : "KM_5",
+          nearbyRadiusMeters,
           otherCityId: distanceRange === "OTHER_CITY" ? otherCityId : null,
         }),
       })
@@ -455,6 +465,7 @@ export function MeetPanel({
     genderPreference,
     intents,
     mode,
+    nearbyRadiusMeters,
     otherCityId,
   ]);
 
@@ -701,32 +712,27 @@ export function MeetPanel({
                 {mode === "NEARBY" ? (
                   <fieldset>
                     <legend className="mb-2 text-sm font-bold text-foreground">
-                      Discovery area
+                      Nearby radius
                     </legend>
-                    <div className="grid grid-cols-2 gap-2">
-                      {MEET_DISTANCE_OPTIONS.map((option) => (
+                    <div className="grid grid-cols-3 gap-2">
+                      {MEET_NEARBY_RADIUS_OPTIONS.map((option) => (
                         <button
-                          aria-pressed={distanceRange === option.value}
+                          aria-pressed={
+                            nearbyRadiusMeters === option.value &&
+                            distanceRange !== "OTHER_CITY"
+                          }
                           className={cn(
-                            "rounded-2xl border p-3 text-left text-xs transition active:scale-[0.98]",
-                            distanceRange === option.value
+                            "rounded-2xl border px-3 py-3 text-center text-xs transition active:scale-[0.98]",
+                            nearbyRadiusMeters === option.value &&
+                              distanceRange !== "OTHER_CITY"
                               ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
                               : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
                           )}
                           key={option.value}
                           onClick={() => {
-                            if (
-                              option.value === "OTHER_CITY" &&
-                              !premiumAccess.featureKeys.includes(
-                                MEET_PREMIUM_FEATURES.OTHER_CITY,
-                              )
-                            ) {
-                              setPremiumReason(
-                                "Meet Premium unlocks discovery in another study city.",
-                              );
-                              return;
-                            }
-                            setDistanceRange(option.value);
+                            setNearbyRadiusMeters(option.value);
+                            setDistanceRange("KM_5");
+                            setOtherCityId("");
                           }}
                           type="button"
                         >
@@ -734,6 +740,35 @@ export function MeetPanel({
                         </button>
                       ))}
                     </div>
+                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+                      Only privacy-safe approximate markers inside this radius
+                      are displayed.
+                    </p>
+                    <button
+                      aria-pressed={distanceRange === "OTHER_CITY"}
+                      className={cn(
+                        "mt-3 w-full rounded-2xl border px-3 py-3 text-left text-xs transition",
+                        distanceRange === "OTHER_CITY"
+                          ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+                          : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
+                      )}
+                      onClick={() => {
+                        if (
+                          !premiumAccess.featureKeys.includes(
+                            MEET_PREMIUM_FEATURES.OTHER_CITY,
+                          )
+                        ) {
+                          setPremiumReason(
+                            "Meet Premium unlocks discovery in another study city.",
+                          );
+                          return;
+                        }
+                        setDistanceRange("OTHER_CITY");
+                      }}
+                      type="button"
+                    >
+                      Explore another city
+                    </button>
                   </fieldset>
                 ) : null}
 
@@ -788,11 +823,6 @@ export function MeetPanel({
                     }`
                   : "Your discovery constellation"
               }
-              cityQueries={meetMapCityQueries(
-                activeMapCityName,
-                activeMapCityNativeName,
-              )}
-              distanceRange={distanceRange}
               key={`${mode}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
               mapQueries={meetMapSearchQueries({
                 universityName: activeMapUniversityName,
@@ -804,6 +834,7 @@ export function MeetPanel({
               onPremiumRequest={setPremiumReason}
               premiumFeatures={premiumAccess.featureKeys}
               profiles={profiles}
+              radiusMeters={nearbyRadiusMeters}
               showEmptyState={discoveryStarted}
               viewer={viewer}
             />

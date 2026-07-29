@@ -9,30 +9,16 @@ const configuredDevOrigins = (process.env.KONDO_DEV_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
-const baiduDevelopmentSources = isDevelopment
-  ? " http://api.map.baidu.com http://*.baidu.com http://*.bdimg.com http://*.bcebos.com"
-  : "";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  // JSAPI 4 compiles Baidu's vector renderer from WebAssembly. In production,
-  // blocking Wasm compilation lets the SDK and logo load but prevents the map
-  // from ever creating its drawable canvas. `wasm-unsafe-eval` permits Wasm
-  // compilation without enabling arbitrary JavaScript eval.
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://*.posthog.com https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}${isDevelopment ? " 'unsafe-eval'" : ""}`,
-  `style-src 'self' 'unsafe-inline' https://api.map.baidu.com https://*.baidu.com https://*.bdimg.com https://*.bcebos.com${baiduDevelopmentSources}`,
+  `script-src 'self' 'unsafe-inline' https://*.posthog.com https://maps.googleapis.com https://maps.gstatic.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   `img-src 'self' data: blob: https:${isDevelopment ? " http:" : ""}`,
-  "font-src 'self' data:",
-  // Baidu's vector worker fetches generated data/blob texture URLs while
-  // decoding tiles. These are worker-local map assets, not remote endpoints.
-  `connect-src 'self' data: blob: https: wss:${isDevelopment ? " http: ws:" : ""}`,
-  // Baidu JSAPI 4 decodes its vector tiles inside Web Workers loaded from
-  // api.map.baidu.com. Blocking that worker leaves only the Baidu logo and an
-  // empty map surface even though the SDK callback and Map constructor succeed.
-  "worker-src 'self' blob: data: https://api.map.baidu.com",
-  // Safari versions that predate CSP worker-src use child-src as the worker
-  // fallback. Keep this list deliberately narrower than script-src.
-  "child-src 'self' blob: https://api.map.baidu.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  `connect-src 'self' https: wss:${isDevelopment ? " http: ws:" : ""}`,
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

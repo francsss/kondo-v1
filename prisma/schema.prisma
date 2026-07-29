@@ -629,6 +629,7 @@ model User {
   scholarshipFavorites             ScholarshipFavorite[]
   bookmarks                        Bookmark[]
   notifications                    Notification[]                @relation("NotificationRecipient")
+  pushSubscriptions                PushSubscription[]
   triggeredNotifications           Notification[]                @relation("NotificationActor")
   notificationJobs                 NotificationJob[]             @relation("NotificationJobRecipient")
   triggeredNotificationJobs        NotificationJob[]             @relation("NotificationJobActor")
@@ -710,6 +711,14 @@ model UserPreference {
   notificationMeet            Boolean            @default(true)
   notificationAcademic        Boolean            @default(true)
   notificationRecommendations Boolean            @default(true)
+  notificationFriends         Boolean            @default(true)
+  notificationEvents          Boolean            @default(true)
+  notificationTransfers       Boolean            @default(true)
+  notificationUniversity      Boolean            @default(true)
+  notificationSecurity        Boolean            @default(true)
+  notificationMarketing       Boolean            @default(false)
+  notificationSounds          Boolean            @default(false)
+  notificationHaptics         Boolean            @default(true)
   emailDigest                 NotificationDigest @default(NEVER)
   lastDigestSentAt            DateTime?
   createdAt                   DateTime           @default(now())
@@ -1786,6 +1795,24 @@ model Notification {
   @@index([recipientId, readAt, createdAt])
   @@index([recipientId, hiddenAt, createdAt])
   @@index([actorId])
+}
+
+model PushSubscription {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint        String    @unique @db.Text
+  p256dh          String    @db.Text
+  auth            String    @db.Text
+  userAgent       String?   @db.VarChar(320)
+  expiresAt       DateTime?
+  lastDeliveredAt DateTime?
+  failureCount    Int       @default(0)
+  disabledAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, disabledAt])
 }
 
 model NotificationTemplate {

@@ -4,6 +4,7 @@ import { CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { broadcastNotificationCount } from "@/lib/notification-client";
 
 export function MarkAllReadButton({ unreadCount }: { unreadCount: number }) {
   const router = useRouter();
@@ -16,7 +17,10 @@ export function MarkAllReadButton({ unreadCount }: { unreadCount: number }) {
       credentials: "include",
     }).catch(() => null);
     setLoading(false);
-    if (response?.ok) router.refresh();
+    if (response?.ok) {
+      broadcastNotificationCount(0);
+      router.refresh();
+    }
   }
 
   return (
