@@ -67,10 +67,6 @@ ALTER TABLE "Organization"
   ADD COLUMN IF NOT EXISTS "publicProfileBlockReason" VARCHAR(1200),
   ADD COLUMN IF NOT EXISTS "correctionRequestedAt" TIMESTAMP(3);
 
-UPDATE "Organization"
-SET "representationConfirmedAt" = "setupCompletedAt"
-WHERE "setupCompletedAt" IS NOT NULL;
-
 CREATE TABLE IF NOT EXISTS "OrganizationContactChannel" (
   "id" TEXT NOT NULL,
   "organizationId" TEXT NOT NULL,
@@ -279,6 +275,13 @@ GENERATED ALWAYS AS (
 
 CREATE INDEX IF NOT EXISTS "Organization_searchVector_idx"
   ON "Organization" USING GIN ("searchVector");
+
+-- Run data changes only after all Organization DDL. Production has deferred
+-- triggers on this table, and PostgreSQL blocks later index creation while
+-- their events are pending in the current migration transaction.
+UPDATE "Organization"
+SET "representationConfirmedAt" = "setupCompletedAt"
+WHERE "setupCompletedAt" IS NOT NULL;
 
 INSERT INTO "NotificationTemplate" (
   "key",
