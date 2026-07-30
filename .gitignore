@@ -13,3 +13,5 @@ prisma/dev.db
 /playwright-report
 /test-results
 /blob-report
+.vercel
+.env*

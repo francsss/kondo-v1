@@ -48,6 +48,27 @@ function run(command, args, attempts = 1) {
 }
 
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+const rollbackMigration =
+  buildEnvironment.PRISMA_ROLLBACK_FAILED_MIGRATION?.trim();
+
+if (rollbackMigration) {
+  if (!/^\d{14}_[a-z0-9_]+$/.test(rollbackMigration)) {
+    throw new Error(
+      "PRISMA_ROLLBACK_FAILED_MIGRATION must be a valid Prisma migration name.",
+    );
+  }
+  console.warn(
+    `[build] Marking failed migration ${rollbackMigration} as rolled back before deployment.`,
+  );
+  run(npx, [
+    "prisma",
+    "migrate",
+    "resolve",
+    "--rolled-back",
+    rollbackMigration,
+  ]);
+}
+
 run(npx, ["prisma", "migrate", "deploy"], 3);
 run(npx, ["prisma", "generate"]);
 run(npx, ["next", "build"]);
