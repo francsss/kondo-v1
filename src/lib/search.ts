@@ -7,6 +7,8 @@ import {
   publishedPostVisibilityWhere,
   publishedQuestionWhere,
 } from "@/lib/content-visibility";
+import { organizationTypeLabel } from "@/features/organizations/registry";
+import { organizationPublicVisibilityWhere } from "@/lib/organization-public-visibility";
 import { prisma } from "@/lib/prisma";
 import {
   safePublicUserSelect,
@@ -25,6 +27,7 @@ export class SearchError extends Error {
 }
 
 export const SEARCH_CATEGORIES = [
+  "organizations",
   "communities",
   "listings",
   "guides",
@@ -39,6 +42,7 @@ type RankedRow = { id: string; rank: number };
 type Cursor = { rank: number; id: string };
 
 const CATEGORY_TABLE: Record<SearchCategory, Prisma.Sql> = {
+  organizations: Prisma.sql`"Organization"`,
   communities: Prisma.sql`"Community"`,
   listings: Prisma.sql`"MarketplaceListing"`,
   guides: Prisma.sql`"Guide"`,
@@ -52,6 +56,7 @@ const CATEGORY_TABLE: Record<SearchCategory, Prisma.Sql> = {
 // (community privacy, post-community visibility) is intentionally left out here
 // and re-checked through the existing typed Prisma policies in content-visibility.ts.
 const CATEGORY_FILTER: Record<SearchCategory, Prisma.Sql> = {
+  organizations: Prisma.sql`AND "lifecycleStatus" = 'ACTIVE' AND "publicProfileStatus" = 'PUBLISHED' AND "publicProfileBlockedAt" IS NULL`,
   communities: Prisma.empty,
   listings: Prisma.sql`AND "status" = 'ACTIVE' AND "expiresAt" > now() AND EXISTS (SELECT 1 FROM "MarketplaceCategory" c WHERE c."id" = "MarketplaceListing"."categoryId" AND c."isActive")`,
   guides: Prisma.sql`AND "published" = true`,
@@ -63,6 +68,7 @@ const CATEGORY_FILTER: Record<SearchCategory, Prisma.Sql> = {
 // Categories whose CATEGORY_FILTER above cannot fully encode visibility and may
 // therefore return raw candidates that a later Prisma-level check rejects.
 const NEEDS_OVERFETCH: Record<SearchCategory, boolean> = {
+  organizations: false,
   communities: true,
   listings: false,
   guides: false,
@@ -77,6 +83,72 @@ async function rankedIds(
   limit: number,
   cursor?: Cursor,
 ): Promise<RankedRow[]> {
+  if (category === "organizations") {
+    const publicContext = Prisma.sql`
+      to_tsvector(
+        'simple',
+        concat_ws(
+          ' ',
+          "Organization"."type"::text,
+          array_to_string("Organization"."supportedLanguages", ' '),
+          coalesce(city."name", ''),
+          coalesce(country."name", ''),
+          coalesce(
+            (
+              SELECT string_agg(capability."key"::text, ' ')
+              FROM "OrganizationCapability" capability
+              WHERE capability."organizationId" = "Organization"."id"
+                AND capability."status" = 'ENABLED'
+            ),
+            ''
+          )
+        )
+      )
+    `;
+    const organizationRank = Prisma.sql`
+      (
+        ts_rank(
+          "Organization"."searchVector",
+          websearch_to_tsquery('simple', ${term})
+        )::float8
+        + ts_rank(
+          ${publicContext},
+          websearch_to_tsquery('simple', ${term})
+        )::float8
+        + CASE
+            WHEN lower("Organization"."publicName") = lower(${term}) THEN 2.0
+            WHEN lower("Organization"."publicName") LIKE lower(${`${term}%`})
+              THEN 0.5
+            ELSE 0.0
+          END
+      )
+    `;
+    const organizationCursor = cursor
+      ? Prisma.sql`AND (${organizationRank}, "Organization"."id") < (${cursor.rank}::float8, ${cursor.id})`
+      : Prisma.empty;
+    return prisma.$queryRaw<RankedRow[]>(Prisma.sql`
+      SELECT
+        "Organization"."id",
+        ${organizationRank} AS "rank"
+      FROM "Organization"
+      INNER JOIN "Country" country
+        ON country."id" = "Organization"."countryId"
+      LEFT JOIN "City" city
+        ON city."id" = "Organization"."cityId"
+      WHERE "Organization"."lifecycleStatus" = 'ACTIVE'
+        AND "Organization"."publicProfileStatus" = 'PUBLISHED'
+        AND "Organization"."publicProfileBlockedAt" IS NULL
+        AND (
+          "Organization"."searchVector"
+            @@ websearch_to_tsquery('simple', ${term})
+          OR ${publicContext} @@ websearch_to_tsquery('simple', ${term})
+          OR lower("Organization"."publicName") LIKE lower(${`%${term}%`})
+        )
+        ${organizationCursor}
+      ORDER BY "rank" DESC, "Organization"."id" DESC
+      LIMIT ${limit}
+    `);
+  }
   const table = CATEGORY_TABLE[category];
   const filter = CATEGORY_FILTER[category];
   // Cast rank to double precision so the value that leaves PostgreSQL and the
@@ -148,6 +220,7 @@ export async function searchKondo(
   const term = query.trim();
   if (term.length < 2 || term.length > 100) {
     return {
+      organizations: [],
       communities: [],
       listings: [],
       guides: [],
@@ -176,6 +249,7 @@ export async function searchKondo(
     questionRanks,
     userRanks,
     postRanks,
+    organizationRanks,
   ] = await Promise.all([
     rankedIds("communities", term, overfetchLimit),
     rankedIds("listings", term, previewLimit),
@@ -183,6 +257,7 @@ export async function searchKondo(
     rankedIds("questions", term, previewLimit),
     rankedIds("users", term, previewLimit),
     rankedIds("posts", term, overfetchLimit),
+    rankedIds("organizations", term, previewLimit),
   ]);
 
   const [
@@ -192,6 +267,7 @@ export async function searchKondo(
     questions,
     users,
     posts,
+    organizations,
     universities,
     countries,
     cities,
@@ -281,6 +357,23 @@ export async function searchKondo(
         author: { select: safePublicUserSelect },
       },
     }),
+    prisma.organization.findMany({
+      where: {
+        ...organizationPublicVisibilityWhere,
+        id: { in: organizationRanks.map((row) => row.id) },
+      },
+      select: {
+        id: true,
+        slug: true,
+        publicName: true,
+        type: true,
+        shortDescription: true,
+        verificationStatus: true,
+        isOfficialPartner: true,
+        city: { select: { name: true } },
+        country: { select: { name: true } },
+      },
+    }),
     prisma.university.findMany({
       where: {
         isActive: true,
@@ -348,6 +441,25 @@ export async function searchKondo(
   ]);
 
   return {
+    organizations: orderByRank(organizations, organizationRanks).map(
+      (organization) => ({
+        id: organization.id,
+        slug: organization.slug,
+        name: organization.publicName,
+        organizationType: organization.type,
+        organizationTypeLabel: organizationTypeLabel(organization.type),
+        shortDescription: organization.shortDescription,
+        cityName: organization.city?.name ?? null,
+        countryName: organization.country.name,
+        verificationState:
+          organization.verificationStatus === "VERIFIED"
+            ? ("VERIFIED" as const)
+            : ("UNVERIFIED" as const),
+        partner:
+          organization.verificationStatus === "VERIFIED" &&
+          organization.isOfficialPartner,
+      }),
+    ),
     communities: orderByRank(communities, communityRanks)
       .slice(0, previewLimit)
       .map((community) => ({
@@ -470,6 +582,42 @@ async function fetchCategoryItems(
 ): Promise<Array<{ id: string } & Record<string, unknown>>> {
   const ids = ranked.map((row) => row.id);
   switch (category) {
+    case "organizations": {
+      const organizations = await prisma.organization.findMany({
+        where: {
+          ...organizationPublicVisibilityWhere,
+          id: { in: ids },
+        },
+        select: {
+          id: true,
+          slug: true,
+          publicName: true,
+          type: true,
+          shortDescription: true,
+          verificationStatus: true,
+          isOfficialPartner: true,
+          city: { select: { name: true } },
+          country: { select: { name: true } },
+        },
+      });
+      return organizations.map((organization) => ({
+        id: organization.id,
+        slug: organization.slug,
+        name: organization.publicName,
+        organizationType: organization.type,
+        organizationTypeLabel: organizationTypeLabel(organization.type),
+        shortDescription: organization.shortDescription,
+        cityName: organization.city?.name ?? null,
+        countryName: organization.country.name,
+        verificationState:
+          organization.verificationStatus === "VERIFIED"
+            ? "VERIFIED"
+            : "UNVERIFIED",
+        partner:
+          organization.verificationStatus === "VERIFIED" &&
+          organization.isOfficialPartner,
+      }));
+    }
     case "communities": {
       const communities = await prisma.community.findMany({
         where: {

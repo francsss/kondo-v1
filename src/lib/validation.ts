@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ORGANIZATION_TYPE_KEYS } from "@/features/organizations/registry";
 import { isAfricanCountryCode } from "@/lib/african-countries";
 import { SUPPORTED_CURRENCY_CODES } from "@/lib/currencies";
 import { STUDENT_SKILL_CATEGORIES } from "@/lib/peer-marketplace";
@@ -104,6 +105,15 @@ const optionalTrimmedText = (maximum: number) =>
   z.preprocess(
     (value) => (typeof value === "string" && !value.trim() ? undefined : value),
     z.string().trim().max(maximum).optional(),
+  );
+
+const clearableTrimmedText = (maximum: number) =>
+  z.preprocess(
+    (value) =>
+      value === null || (typeof value === "string" && !value.trim())
+        ? null
+        : value,
+    z.string().trim().max(maximum).nullable().optional(),
   );
 
 const optionalWebsiteUrl = z.preprocess(
@@ -275,17 +285,7 @@ const optionalCuid = z.preprocess(
   z.string().cuid().optional(),
 );
 
-const organizationTypeSchema = z.enum([
-  "COMPANY",
-  "UNIVERSITY",
-  "EDUCATION_AGENCY",
-  "HOUSING_PROVIDER",
-  "STUDENT_ASSOCIATION",
-  "EMBASSY_OR_CONSULATE",
-  "RECRUITMENT_ORGANIZATION",
-  "SERVICE_PROVIDER",
-  "OTHER",
-]);
+const organizationTypeSchema = z.enum(ORGANIZATION_TYPE_KEYS);
 
 export const organizationDraftCreateSchema = z.object({
   publicName: z.string().trim().min(2).max(160),
@@ -476,6 +476,68 @@ export const organizationPartnerUpdateSchema = z.object({
   reason: z.string().trim().min(4).max(1_200),
 });
 
+export const organizationContactChannelSchema = z.object({
+  id: optionalCuid,
+  type: z.enum(["WEBSITE", "EMAIL", "PHONE", "WECHAT", "WHATSAPP", "OTHER"]),
+  label: optionalTrimmedText(80),
+  value: z.string().trim().min(2).max(500),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]),
+});
+
+export const organizationPublicProfileUpdateSchema = z.object({
+  tagline: clearableTrimmedText(160),
+  shortDescription: clearableTrimmedText(500),
+  extendedDescription: clearableTrimmedText(5_000),
+  publicAddress: clearableTrimmedText(300),
+  serviceAreas: z.array(z.string().trim().min(2).max(120)).max(30),
+  supportedLanguages: z.array(z.string().trim().min(2).max(40)).max(20),
+  representationConfirmed: z.boolean(),
+  contacts: z.array(organizationContactChannelSchema).max(12),
+});
+
+export const organizationPublicationSchema = z.object({
+  confirm: z.literal(true),
+});
+
+export const organizationGalleryCreateSchema = z.object({
+  mediaId: z.string().cuid(),
+  caption: optionalTrimmedText(240),
+  altText: z.string().trim().min(2).max(240),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
+});
+
+export const organizationGalleryUpdateSchema = z.object({
+  caption: optionalTrimmedText(240),
+  altText: z.string().trim().min(2).max(240).optional(),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
+  sortOrder: z.number().int().min(0).max(30).optional(),
+});
+
+export const organizationGalleryReorderSchema = z.object({
+  mediaIds: z.array(z.string().cuid()).min(1).max(12),
+});
+
+export const organizationReportSchema = z.object({
+  category: z.enum([
+    "MISLEADING_IDENTITY",
+    "IMPERSONATION",
+    "SCAM_OR_FRAUD",
+    "UNSAFE_HOUSING_CLAIM",
+    "FALSE_SCHOLARSHIP_CLAIM",
+    "SUSPICIOUS_JOB",
+    "PROHIBITED_SERVICE",
+    "INAPPROPRIATE_CONTENT",
+    "OUTDATED_INFORMATION",
+    "OTHER",
+  ]),
+  details: z.string().trim().min(10).max(1_000),
+});
+
+export const organizationPublicModerationSchema = z.object({
+  action: z.enum(["REQUEST_CORRECTION", "UNPUBLISH", "RESTORE"]),
+  reason: z.string().trim().min(10).max(1_200),
+});
+
 const referenceSlugSchema = z
   .string()
   .trim()
@@ -524,6 +586,7 @@ export const mediaUploadIntentSchema = z
       "PROFILE_AVATAR",
       "ORGANIZATION_LOGO",
       "ORGANIZATION_COVER",
+      "ORGANIZATION_GALLERY_IMAGE",
       "ORGANIZATION_VERIFICATION_DOCUMENT",
       "COMMUNITY_COVER",
       "POST_IMAGE",

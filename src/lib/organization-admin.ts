@@ -8,6 +8,8 @@ import {
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/authorization";
 import { assertOrganizationLifecycleTransition } from "@/lib/organization-lifecycle";
+import { getOrganizationPublicationReadiness } from "@/lib/organization-publication";
+import { revalidateOrganizationPublicSurfaces } from "@/lib/organization-cache";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { OrganizationError } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
@@ -150,6 +152,27 @@ export async function getAdminOrganization(
       country: { select: { name: true, code: true } },
       city: { select: { name: true, province: true } },
       capabilities: { orderBy: { createdAt: "asc" } },
+      contactChannels: {
+        select: {
+          id: true,
+          type: true,
+          label: true,
+          visibility: true,
+          sortOrder: true,
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      },
+      publicMedia: {
+        select: {
+          id: true,
+          mediaId: true,
+          caption: true,
+          altText: true,
+          visibility: true,
+          sortOrder: true,
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      },
       memberships: {
         include: {
           user: {
@@ -194,7 +217,22 @@ export async function getAdminOrganization(
   });
   if (!organization)
     throw new OrganizationError("Organization not found.", 404);
-  return organization;
+  const [reports, publicationReadiness] = await Promise.all([
+    prisma.report.findMany({
+      where: { targetType: "Organization", targetId: organizationId },
+      select: {
+        id: true,
+        reason: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+    }),
+    getOrganizationPublicationReadiness(organizationId),
+  ]);
+  return { ...organization, reports, publicationReadiness };
 }
 
 export async function updateOrganizationLifecycleAsAdmin(
@@ -224,6 +262,7 @@ export async function updateOrganizationLifecycleAsAdmin(
           where: { status: "ACTIVE" },
           select: { userId: true },
         },
+        city: { select: { slug: true } },
       },
     });
     if (!current) throw new OrganizationError("Organization not found.", 404);
@@ -284,8 +323,13 @@ export async function updateOrganizationLifecycleAsAdmin(
       },
       ...meta,
     });
-    return updated;
+    return {
+      ...updated,
+      slug: current.slug,
+      citySlug: current.city?.slug ?? null,
+    };
   });
+  revalidateOrganizationPublicSurfaces(result);
   await captureServerProductEvent({
     distinctId: actor.id,
     event: PRODUCT_EVENTS.ORGANIZATION_LIFECYCLE_CHANGED,
@@ -313,6 +357,8 @@ export async function updateOrganizationPartnerStatus(
       select: {
         isOfficialPartner: true,
         verificationStatus: true,
+        slug: true,
+        city: { select: { slug: true } },
       },
     });
     if (!current) throw new OrganizationError("Organization not found.", 404);
@@ -333,6 +379,8 @@ export async function updateOrganizationPartnerStatus(
         id: true,
         isOfficialPartner: true,
         partnerSince: true,
+        slug: true,
+        city: { select: { slug: true } },
       },
     });
     await writeAuditLogWithClient(tx, {
@@ -347,8 +395,12 @@ export async function updateOrganizationPartnerStatus(
       newValue: { isOfficialPartner, reason },
       ...meta,
     });
-    return updated;
+    return {
+      ...updated,
+      citySlug: updated.city?.slug ?? null,
+    };
   });
+  revalidateOrganizationPublicSurfaces(result);
   await captureServerProductEvent({
     distinctId: actor.id,
     event: PRODUCT_EVENTS.ORGANIZATION_PARTNER_STATUS_CHANGED,

@@ -7,6 +7,8 @@ import type {
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { attachMediaAsset, MediaError } from "@/lib/media";
+import { normalizeOrganizationContact } from "@/lib/organization-contact";
+import { revalidateOrganizationPublicSurfaces } from "@/lib/organization-cache";
 import { organizationAllowsMutation } from "@/lib/organization-lifecycle";
 import { requireOrganizationPermission } from "@/lib/organization-permissions";
 import {
@@ -132,6 +134,12 @@ export async function updateOrganizationProfile(
       const countryId = input.countryId ?? current.countryId;
       const cityId =
         input.cityId === undefined ? current.cityId : input.cityId || null;
+      const previousCity = current.cityId
+        ? await tx.city.findUnique({
+            where: { id: current.cityId },
+            select: { slug: true },
+          })
+        : null;
       if (input.countryId !== undefined || input.cityId !== undefined) {
         await validateLocation(tx, countryId, cityId);
       }
@@ -181,6 +189,23 @@ export async function updateOrganizationProfile(
         });
       }
 
+      const publicPresentationChanged = Boolean(
+        input.publicName !== undefined ||
+        input.slug !== undefined ||
+        input.type !== undefined ||
+        input.tagline !== undefined ||
+        input.shortDescription !== undefined ||
+        input.extendedDescription !== undefined ||
+        input.foundingYear !== undefined ||
+        input.sizeRange !== undefined ||
+        input.countryId !== undefined ||
+        input.cityId !== undefined ||
+        input.publicAddress !== undefined ||
+        input.serviceAreas !== undefined ||
+        input.supportedLanguages !== undefined ||
+        input.logoMediaId !== undefined ||
+        input.coverMediaId !== undefined,
+      );
       const updated = await tx.organization.update({
         where: { id: organizationId },
         data: {
@@ -209,14 +234,87 @@ export async function updateOrganizationProfile(
           contactAudience: input.contactAudience,
           logoMediaId: input.logoMediaId,
           coverMediaId: input.coverMediaId,
+          lastPublicUpdateAt:
+            current.publicProfileStatus === "PUBLISHED" &&
+            publicPresentationChanged
+              ? new Date()
+              : undefined,
+          publicationVersion:
+            current.publicProfileStatus === "PUBLISHED" &&
+            publicPresentationChanged
+              ? { increment: 1 }
+              : undefined,
         },
         select: {
           id: true,
           slug: true,
           publicName: true,
           updatedAt: true,
+          city: { select: { slug: true } },
         },
       });
+      const legacyContacts = [
+        {
+          type: "WEBSITE" as const,
+          label: "Official website",
+          inputValue: input.website,
+        },
+        {
+          type: "EMAIL" as const,
+          label: "Professional email",
+          inputValue: input.professionalEmail,
+        },
+        {
+          type: "PHONE" as const,
+          label: "Professional phone",
+          inputValue: input.professionalPhone,
+        },
+        {
+          type: "WECHAT" as const,
+          label: "WeChat",
+          inputValue: input.websiteWechat,
+        },
+      ];
+      for (const contact of legacyContacts) {
+        if (contact.inputValue === undefined) continue;
+        const normalized = normalizeOrganizationContact({
+          type: contact.type,
+          label: contact.label,
+          value: contact.inputValue,
+          visibility:
+            (input.contactAudience ?? current.contactAudience) === "PUBLIC"
+              ? "PUBLIC"
+              : "PRIVATE",
+        });
+        const existing = await tx.organizationContactChannel.findFirst({
+          where: { organizationId, type: contact.type },
+          select: { id: true },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        });
+        if (existing) {
+          await tx.organizationContactChannel.update({
+            where: { id: existing.id },
+            data: {
+              label: normalized.label,
+              value: normalized.value,
+              visibility: normalized.visibility,
+            },
+          });
+        } else {
+          await tx.organizationContactChannel.create({
+            data: {
+              organizationId,
+              type: normalized.type,
+              label: normalized.label,
+              value: normalized.value,
+              visibility: normalized.visibility,
+              sortOrder: legacyContacts.findIndex(
+                ({ type }) => type === contact.type,
+              ),
+            },
+          });
+        }
+      }
       await writeAuditLogWithClient(tx, {
         actorId: actor.id,
         organizationId,
@@ -238,7 +336,16 @@ export async function updateOrganizationProfile(
       return {
         ...updated,
         updatedAt: updated.updatedAt.toISOString(),
+        previousSlug: current.slug,
+        previousCitySlug: previousCity?.slug ?? null,
+        citySlug: updated.city?.slug ?? null,
       };
+    });
+    revalidateOrganizationPublicSurfaces({
+      slug: updated.slug,
+      previousSlug: updated.previousSlug,
+      citySlug: updated.citySlug,
+      previousCitySlug: updated.previousCitySlug,
     });
     await captureServerProductEvent({
       distinctId: actor.id,
@@ -252,7 +359,8 @@ export async function updateOrganizationProfile(
     }
     if (
       error instanceof Error &&
-      error.message.startsWith("Organization slug")
+      (error.message.startsWith("Organization slug") ||
+        error.message === "This organization address is reserved by Kondo.")
     ) {
       throw new OrganizationError(error.message);
     }
@@ -275,7 +383,12 @@ export async function updateOrganizationCapabilities(
     );
     const organization = await tx.organization.findUnique({
       where: { id: organizationId },
-      select: { lifecycleStatus: true },
+      select: {
+        lifecycleStatus: true,
+        slug: true,
+        city: { select: { slug: true } },
+        publicProfileStatus: true,
+      },
     });
     if (!organization)
       throw new OrganizationError("Organization not found.", 404);
@@ -306,8 +419,22 @@ export async function updateOrganizationCapabilities(
       newValue: { capabilities: [...selected] },
       ...meta,
     });
-    return { capabilities: [...selected] };
+    if (organization.publicProfileStatus === "PUBLISHED") {
+      await tx.organization.update({
+        where: { id: organizationId },
+        data: {
+          lastPublicUpdateAt: new Date(),
+          publicationVersion: { increment: 1 },
+        },
+      });
+    }
+    return {
+      capabilities: [...selected],
+      slug: organization.slug,
+      citySlug: organization.city?.slug ?? null,
+    };
   });
+  revalidateOrganizationPublicSurfaces(result);
   await captureServerProductEvent({
     distinctId: actor.id,
     event: PRODUCT_EVENTS.ORGANIZATION_CAPABILITIES_UPDATED,

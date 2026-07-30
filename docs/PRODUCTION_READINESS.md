@@ -310,6 +310,45 @@ platform-owned and documented in the file header. GitHub
 `PRODUCTION_APP_URL` and operator credentials such as `VERCEL_TOKEN` are
 intentionally excluded because they are not application runtime variables.
 
+## Part 3 public organization release checks
+
+Migration `20260730200000_organization_public_profiles` is additive. It keeps
+all existing organizations private, backfills representation confirmation only
+for completed setups, normalizes existing professional contacts using their
+current audience, adds ordered gallery/contact relations, adds publication and
+moderation fields/indexes, and adds the generated public-field search vector.
+It does not publish existing records, delete legacy fields, mutate City Hub
+snapshots, or convert ScholarshipAgent/Community data.
+
+Before deployment:
+
+1. Review the migration SQL and run `prisma migrate status` against the
+   intended direct database URL.
+2. Verify private/ready/unpublished/suspended/archived organizations return the
+   same safe not-found response on public routes and cannot enter Search,
+   directory, Explore, metadata, or sitemap output.
+3. Verify Owner/Admin publication and unpublication, Editor media editing, and
+   Viewer denial.
+4. Verify Admin correction, unpublish, and restriction-lift permissions,
+   AuditLog records, notification jobs, and cache invalidation.
+5. Verify old-slug permanent redirects and canonical metadata.
+6. Run the organization unit, PostgreSQL integration, and Playwright journeys
+   against a production build.
+
+Provider-dependent deployed smoke checks:
+
+- upload and deliver a public logo, cover, and gallery image through R2;
+- confirm a private verification document remains unavailable;
+- load the public Open Graph image and canonical metadata;
+- search and filter a published profile, including from its city;
+- unpublish and suspend the profile, then confirm immediate removal from every
+  public surface;
+- verify mobile hero, horizontal section navigation, gallery keyboard controls,
+  contact dialog focus behavior, light/dark contrast, and reduced motion;
+- process an Admin moderation notification through the configured worker.
+
+No new environment variable is introduced by Part 3.
+
 ## Final release gate
 
 After credentials are supplied, follow

@@ -13,6 +13,7 @@ import {
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { ORGANIZATION_TYPES } from "@/features/organizations/registry";
 import { uploadMediaFile } from "@/lib/client-media";
 import { ORGANIZATION_CAPABILITIES } from "@/lib/organization-capabilities";
 import { captureProductEvent } from "@/lib/product-analytics-client";
@@ -55,18 +56,6 @@ type OrganizationSetup = {
   country: { name: string; emoji: string | null };
   city: { name: string } | null;
 };
-
-const organizationTypes = [
-  ["COMPANY", "Company"],
-  ["UNIVERSITY", "University"],
-  ["EDUCATION_AGENCY", "Education agency"],
-  ["HOUSING_PROVIDER", "Housing provider"],
-  ["STUDENT_ASSOCIATION", "Student association"],
-  ["EMBASSY_OR_CONSULATE", "Embassy or consulate"],
-  ["RECRUITMENT_ORGANIZATION", "Recruitment organization"],
-  ["SERVICE_PROVIDER", "Service provider"],
-  ["OTHER", "Other organization"],
-] as const;
 
 const stepLabels = ["Identity", "Activity areas", "Introduction", "Review"];
 
@@ -494,8 +483,8 @@ export function OrganizationOnboardingFlow({
               logoMediaId={form.logoMediaId}
               name={form.publicName}
               type={
-                organizationTypes.find(([value]) => value === form.type)?.[1] ??
-                form.type
+                ORGANIZATION_TYPES.find(({ key }) => key === form.type)
+                  ?.label ?? form.type
               }
             />
           ) : null}
@@ -579,8 +568,8 @@ function IdentityStep({
           value={form.type}
         >
           <option value="">Select a type</option>
-          {organizationTypes.map(([value, label]) => (
-            <option key={value} value={value}>
+          {ORGANIZATION_TYPES.map(({ key, label }) => (
+            <option key={key} value={key}>
               {label}
             </option>
           ))}

@@ -123,3 +123,12 @@ referenced by the codebase. Platform-owned flags are documented in its header.
 GitHub's `PRODUCTION_APP_URL` is an Actions repository variable rather than an
 application runtime variable, so it is documented here and intentionally not
 placed in `.env.example`.
+
+## Public Organization profiles
+
+Public Organization profiles, the directory, Search projection, Explore city
+rail, reporting, and Admin publication moderation introduce no new runtime
+variable. They reuse `DATABASE_URL`/`DIRECT_URL`, the existing private media
+provider configuration, notification worker configuration, and
+`NEXT_PUBLIC_APP_URL` for canonical public URLs. Do not add a separate public
+bucket or expose R2 credentials to the browser.

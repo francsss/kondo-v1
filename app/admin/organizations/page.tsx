@@ -11,23 +11,13 @@ import { AdminNav } from "@/components/features/admin/AdminNav";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ORGANIZATION_TYPE_KEYS } from "@/features/organizations/registry";
 import { listAdminOrganizations } from "@/lib/organization-admin";
 import { ORGANIZATION_CAPABILITIES } from "@/lib/organization-capabilities";
 import { requireAdminPermission } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Admin organizations" };
 
-const TYPES = [
-  "COMPANY",
-  "UNIVERSITY",
-  "EDUCATION_AGENCY",
-  "HOUSING_PROVIDER",
-  "STUDENT_ASSOCIATION",
-  "EMBASSY_OR_CONSULATE",
-  "RECRUITMENT_ORGANIZATION",
-  "SERVICE_PROVIDER",
-  "OTHER",
-] as const;
 const LIFECYCLES = ["DRAFT", "ACTIVE", "SUSPENDED", "ARCHIVED"] as const;
 const VERIFICATIONS = [
   "NOT_SUBMITTED",
@@ -82,7 +72,8 @@ export default async function AdminOrganizationsPage({
   const actor = await requireAdminPermission("ORGANIZATIONS_VIEW");
   const params = await searchParams;
   const query = one(params.q)?.trim() || undefined;
-  const type = member(TYPES, one(params.type)) as OrganizationType | undefined;
+  const type = member(ORGANIZATION_TYPE_KEYS, one(params.type)) as
+    OrganizationType | undefined;
   const lifecycleStatus = member(LIFECYCLES, one(params.lifecycle)) as
     OrganizationLifecycleStatus | undefined;
   const verificationStatus = member(VERIFICATIONS, one(params.verification)) as
@@ -135,7 +126,7 @@ export default async function AdminOrganizationsPage({
             name="type"
           >
             <option value="">All organization types</option>
-            {TYPES.map((value) => (
+            {ORGANIZATION_TYPE_KEYS.map((value) => (
               <option key={value} value={value}>
                 {value.replaceAll("_", " ")}
               </option>

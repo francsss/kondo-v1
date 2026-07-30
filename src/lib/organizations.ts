@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { Prisma, type OrganizationCapabilityKey } from "@prisma/client";
+import {
+  Prisma,
+  type OrganizationCapabilityKey,
+  type OrganizationType,
+} from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import {
   canDeleteOrArchiveOrganization,
@@ -19,16 +23,7 @@ type RequestMeta = {
 
 type OrganizationDraftInput = {
   publicName: string;
-  type:
-    | "COMPANY"
-    | "UNIVERSITY"
-    | "EDUCATION_AGENCY"
-    | "HOUSING_PROVIDER"
-    | "STUDENT_ASSOCIATION"
-    | "EMBASSY_OR_CONSULATE"
-    | "RECRUITMENT_ORGANIZATION"
-    | "SERVICE_PROVIDER"
-    | "OTHER";
+  type: OrganizationType;
   countryId: string;
   cityId?: string;
 };

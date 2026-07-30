@@ -11,6 +11,7 @@ import { OrganizationError } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { captureServerProductEvent } from "@/lib/product-analytics-server";
+import { revalidateOrganizationPublicSurfaces } from "@/lib/organization-cache";
 
 type Actor = { id: string; role: string };
 type RequestMeta = {
@@ -426,6 +427,7 @@ export async function listOrganizationVerificationRequests(
             legalName: true,
             type: true,
             verificationStatus: true,
+            city: { select: { slug: true } },
             isOfficialPartner: true,
           },
         },
@@ -552,6 +554,7 @@ export async function decideOrganizationVerification(
             slug: true,
             publicName: true,
             verificationStatus: true,
+            city: { select: { slug: true } },
             memberships: {
               where: {
                 status: "ACTIVE",
@@ -637,8 +640,11 @@ export async function decideOrganizationVerification(
       status: request.status,
       verificationStatus: summaryStatus,
       reviewedAt: reviewedAt.toISOString(),
+      slug: current.organization.slug,
+      citySlug: current.organization.city?.slug ?? null,
     };
   });
+  revalidateOrganizationPublicSurfaces(result);
   await captureServerProductEvent({
     distinctId: actor.id,
     event: PRODUCT_EVENTS.ORGANIZATION_VERIFICATION_REVIEWED,

@@ -86,6 +86,18 @@ export function toSafePublicUser(user: SafePublicUserSource): SafePublicUser {
 }
 
 export type SearchResultsDto = {
+  organizations: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    organizationType: string;
+    organizationTypeLabel: string;
+    shortDescription: string | null;
+    cityName: string | null;
+    countryName: string;
+    verificationState: "VERIFIED" | "UNVERIFIED";
+    partner: boolean;
+  }>;
   communities: Array<{
     id: string;
     slug: string;

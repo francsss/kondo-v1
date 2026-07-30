@@ -1593,7 +1593,37 @@ The following are not currently complete product capabilities:
 12. **Automatic external scholarship application** — discovery and tracking
     exist; Kondo does not submit applications.
 
-## 18. Required validation for changes
+## 18. Public organization profiles (Part 3)
+
+Implemented public identity:
+
+- public directory at `/organizations`;
+- public profile at `/organizations/[slug]`;
+- permission-protected shared-renderer preview at
+  `/organizations/[slug]/preview`;
+- workspace management at `/organizations/[slug]/public-profile`;
+- server-computed readiness and separate `PRIVATE`, `READY`, `PUBLISHED`, and
+  `UNPUBLISHED` publication states;
+- centralized `ACTIVE + PUBLISHED + unrestricted` public visibility;
+- explicit public/private contact channels;
+- ordered public gallery through the existing media pipeline;
+- stable old-slug redirects through `OrganizationSlugAlias`;
+- safe metadata, canonical URLs, bounded sitemap inclusion, Search category,
+  and additive Explore city rail;
+- shared organization verification mark with a separate partner presentation;
+- reports through the existing moderation system;
+- permission-protected Admin correction, unpublish, and restriction-lift
+  actions with audit, notification, and cache invalidation;
+- typed future section providers that stay hidden without real public domain
+  content.
+
+The following are intentionally not implemented in Part 3: Housing listings,
+roommate matching, bookings/payments, organization reviews or followers,
+organization inboxes, scholarship submissions, job applications, product
+checkout/orders, automatic City Hub company conversion, Community membership
+merging, and ScholarshipAgent conversion.
+
+## 19. Required validation for changes
 
 Minimum code-quality gate:
 
@@ -1636,7 +1666,7 @@ Provider-dependent smoke tests must use the deployed environment:
 - City Hub independent entry save and public publication;
 - Story upload/playback/moderation/scheduled publish.
 
-## 19. Copyable instruction block for future AI work
+## 20. Copyable instruction block for future AI work
 
 Use the following at the beginning of future implementation prompts:
 

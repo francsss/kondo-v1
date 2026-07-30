@@ -28,6 +28,7 @@ const workspaceOrganizationSelect = {
   logoMediaId: true,
   coverMediaId: true,
   lifecycleStatus: true,
+  publicProfileStatus: true,
   verificationStatus: true,
   isOfficialPartner: true,
   setupCompletedAt: true,

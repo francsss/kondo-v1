@@ -18,6 +18,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { CategoryResults } from "@/components/features/search/CategoryResults";
 import { ResultCard } from "@/components/features/search/ResultCard";
+import { OrganizationSearchResultCard } from "@/components/features/search/OrganizationSearchResultCard";
 import { formatPrice } from "@/lib/presentation";
 import {
   SEARCH_CATEGORIES,
@@ -29,6 +30,7 @@ import { requireUser } from "@/lib/server-auth";
 export const metadata: Metadata = { title: "Search" };
 
 const CATEGORY_LABEL: Record<SearchCategory, string> = {
+  organizations: "Organizations",
   communities: "Communities",
   listings: "Marketplace",
   guides: "Guides",
@@ -119,6 +121,9 @@ export default async function SearchPage({
             <p className="text-sm text-muted-foreground">{total} results</p>
           </div>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
+            {results.organizations.map((item) => (
+              <OrganizationSearchResultCard key={item.id} organization={item} />
+            ))}
             {results.communities.map((item) => (
               <ResultCard
                 href={`/communities/${item.slug}`}

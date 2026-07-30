@@ -38,6 +38,8 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
   "ORGANIZATION_OWNERSHIP_TRANSFER",
   "ORGANIZATION_VERIFICATION_UPDATE",
   "ORGANIZATION_STATUS_UPDATE",
+  "ORGANIZATION_PUBLIC_PROFILE_STATUS",
+  "ORGANIZATION_PUBLIC_PROFILE_CORRECTION",
 ] as const;
 
 export type NotificationTemplateKey =
@@ -104,6 +106,8 @@ const allowedTemplateTokens: Record<
   ORGANIZATION_OWNERSHIP_TRANSFER: ["organizationName", "outcome"],
   ORGANIZATION_VERIFICATION_UPDATE: ["organizationName", "outcome"],
   ORGANIZATION_STATUS_UPDATE: ["organizationName", "outcome"],
+  ORGANIZATION_PUBLIC_PROFILE_STATUS: ["organizationName", "outcome"],
+  ORGANIZATION_PUBLIC_PROFILE_CORRECTION: ["organizationName", "outcome"],
 };
 
 const safeRoutePrefixes = [

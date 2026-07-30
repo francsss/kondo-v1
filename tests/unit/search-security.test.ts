@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   cityFindMany: vi.fn(),
   guideFindMany: vi.fn(),
   listingFindMany: vi.fn(),
+  organizationFindMany: vi.fn(),
   postFindMany: vi.fn(),
   questionFindMany: vi.fn(),
   userFindMany: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     city: { findMany: mocks.cityFindMany },
     guide: { findMany: mocks.guideFindMany },
     marketplaceListing: { findMany: mocks.listingFindMany },
+    organization: { findMany: mocks.organizationFindMany },
     post: { findMany: mocks.postFindMany },
     question: { findMany: mocks.questionFindMany },
     user: { findMany: mocks.userFindMany },
@@ -51,6 +53,21 @@ describe("search result minimization", () => {
     mocks.cityFindMany.mockResolvedValue([]);
     mocks.universityFindMany.mockResolvedValue([]);
     mocks.scholarshipFindMany.mockResolvedValue([]);
+    mocks.organizationFindMany.mockResolvedValue([
+      {
+        id: "organization-1",
+        slug: "public-organization",
+        publicName: "Public Organization",
+        legalName: "Private Legal Name",
+        professionalEmail: "private-organization@example.com",
+        type: "SERVICE_PROVIDER",
+        shortDescription: "A safe public description.",
+        verificationStatus: "VERIFIED",
+        isOfficialPartner: false,
+        city: { name: "Jiaxing" },
+        country: { name: "China" },
+      },
+    ]);
     mocks.communityFindMany.mockResolvedValue([
       {
         id: "community-1",
@@ -120,6 +137,7 @@ describe("search result minimization", () => {
       ["question-1"],
       ["user-1"],
       ["post-1"],
+      ["organization-1"],
     ]);
     const { searchKondo } = await import("@/lib/search");
     const result = await searchKondo("jia", "viewer-1");
@@ -146,9 +164,38 @@ describe("search result minimization", () => {
       officialOrganizationName: null,
       officialVerifiedAt: null,
     });
+    expect(result.organizations[0]).toEqual({
+      id: "organization-1",
+      slug: "public-organization",
+      name: "Public Organization",
+      organizationType: "SERVICE_PROVIDER",
+      organizationTypeLabel: "Service provider",
+      shortDescription: "A safe public description.",
+      cityName: "Jiaxing",
+      countryName: "China",
+      verificationState: "VERIFIED",
+      partner: false,
+    });
     expect(JSON.stringify(result)).not.toContain("private@example.com");
     expect(JSON.stringify(result)).not.toContain("passwordHash");
     expect(JSON.stringify(result)).not.toContain('"role"');
+    expect(JSON.stringify(result)).not.toContain("Private Legal Name");
+    expect(JSON.stringify(result)).not.toContain(
+      "private-organization@example.com",
+    );
+    expect(mocks.organizationFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          lifecycleStatus: "ACTIVE",
+          publicProfileStatus: "PUBLISHED",
+          publicProfileBlockedAt: null,
+        }),
+        select: expect.not.objectContaining({
+          legalName: true,
+          professionalEmail: true,
+        }),
+      }),
+    );
     expect(mocks.userFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ status: "ACTIVE" }),

@@ -230,3 +230,33 @@ The Admin back office introduces no new secrets. It uses the existing Neon,
 R2, Upstash, Resend, session, and worker variables documented in
 `ENVIRONMENT_VARIABLES.md`. Secrets remain exclusively in provider dashboards
 and environment variables and are never readable from `/admin/settings`.
+
+## Public organization profile operations
+
+The existing organization detail page includes a public-profile panel. It
+shows publication state, public URL eligibility, readiness, public contact and
+gallery counts, trust states, publication timestamps, moderation restriction,
+and related `Report` cases. Legal identity and team information remain in
+their pre-existing private Admin sections and are never copied into the public
+DTO.
+
+Public-profile permissions are independent:
+
+| Permission                               | Purpose                                               |
+| ---------------------------------------- | ----------------------------------------------------- |
+| `ORGANIZATION_PUBLIC_PROFILES_VIEW`      | Inspect public-profile operational state.             |
+| `ORGANIZATION_PUBLIC_PROFILES_MODERATE`  | Request a user-visible profile correction.            |
+| `ORGANIZATION_PUBLIC_PROFILES_UNPUBLISH` | Remove a published profile and restrict it.           |
+| `ORGANIZATION_PUBLIC_PROFILES_RESTORE`   | Lift a restriction so normal republishing can resume. |
+
+Buttons do not grant permission: the Admin API and domain service recheck the
+exact permission. A correction request is preferred when immediate removal is
+not necessary. Unpublishing preserves data and historical references, records
+an AuditLog entry, notifies active Owner/Admin members through the outbox, and
+invalidates the public page, API, directory, Search, sitemap, and related city
+rail. Lifting a restriction does not silently verify, partner, activate, or
+publish the organization.
+
+Suspension and archive continue through the existing lifecycle controls and
+override publication immediately. Verification and official partnership
+remain separate decisions.

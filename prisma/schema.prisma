@@ -85,6 +85,13 @@ enum OrganizationLifecycleStatus {
   ARCHIVED
 }
 
+enum OrganizationPublicProfileStatus {
+  PRIVATE
+  READY
+  PUBLISHED
+  UNPUBLISHED
+}
+
 enum OrganizationVerificationStatus {
   NOT_SUBMITTED
   PENDING
@@ -172,6 +179,24 @@ enum OrganizationSizeRange {
   ELEVEN_TO_FIFTY
   FIFTY_ONE_TO_TWO_HUNDRED
   TWO_HUNDRED_PLUS
+}
+
+enum OrganizationContactType {
+  WEBSITE
+  EMAIL
+  PHONE
+  WECHAT
+  WHATSAPP
+  OTHER
+}
+
+enum OrganizationContactVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum OrganizationMediaKind {
+  GALLERY
 }
 
 enum ProfileAudience {
@@ -464,6 +489,7 @@ enum ReportEvidenceKind {
   COMMUNITY_CONTENT_SNAPSHOT
   MARKETPLACE_LISTING_SNAPSHOT
   SCHOLARSHIP_AGENT_SNAPSHOT
+  ORGANIZATION_SNAPSHOT
 }
 
 enum PetFeedbackCategory {
@@ -490,6 +516,7 @@ enum MediaPurpose {
   PROFILE_AVATAR
   ORGANIZATION_LOGO
   ORGANIZATION_COVER
+  ORGANIZATION_GALLERY_IMAGE
   ORGANIZATION_VERIFICATION_DOCUMENT
   COMMUNITY_COVER
   POST_IMAGE
@@ -732,6 +759,7 @@ model User {
   initiatedOrganizationTransfers     OrganizationOwnershipTransfer[]   @relation("OrganizationOwnershipTransferInitiator")
   targetedOrganizationTransfers      OrganizationOwnershipTransfer[]   @relation("OrganizationOwnershipTransferTarget")
   grantedOrganizationPartnerships    Organization[]                    @relation("OrganizationPartnerGranter")
+  createdOrganizationMedia           OrganizationMedia[]               @relation("OrganizationMediaCreator")
   nearbyDiscoveryEnabled             Boolean                           @default(true)
   meetIntents                        String[]                          @default([])
   studyYear                          Int?
@@ -982,60 +1010,111 @@ model UserTargetUniversity {
 }
 
 model Organization {
-  id                   String                            @id @default(cuid())
-  publicName           String                            @db.VarChar(160)
-  legalName            String?                           @db.VarChar(200)
-  slug                 String                            @unique @db.VarChar(120)
-  type                 OrganizationType
-  tagline              String?                           @db.VarChar(160)
-  shortDescription     String?                           @db.VarChar(500)
-  extendedDescription  String?                           @db.Text
-  foundingYear         Int?
-  sizeRange            OrganizationSizeRange?
-  countryId            String
-  country              Country                           @relation(fields: [countryId], references: [id], onDelete: Restrict)
-  cityId               String?
-  city                 City?                             @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  website              String?                           @db.VarChar(500)
-  professionalEmail    String?                           @db.VarChar(320)
-  professionalPhone    String?                           @db.VarChar(40)
-  websiteWechat        String?                           @db.VarChar(120)
-  publicAddress        String?                           @db.VarChar(300)
-  serviceAreas         String[]                          @default([])
-  supportedLanguages   String[]                          @default([])
-  contactAudience      ProfileAudience                   @default(PUBLIC)
-  logoMediaId          String?                           @unique
-  logoMedia            MediaAsset?                       @relation("OrganizationLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
-  coverMediaId         String?                           @unique
-  coverMedia           MediaAsset?                       @relation("OrganizationCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
-  lifecycleStatus      OrganizationLifecycleStatus       @default(DRAFT)
-  verificationStatus   OrganizationVerificationStatus    @default(NOT_SUBMITTED)
-  isOfficialPartner    Boolean                           @default(false)
-  partnerSince         DateTime?
-  partnerGrantedById   String?
-  partnerGrantedBy     User?                             @relation("OrganizationPartnerGranter", fields: [partnerGrantedById], references: [id], onDelete: SetNull)
-  setupStep            Int                               @default(1)
-  setupCompletedAt     DateTime?
-  suspendedAt          DateTime?
-  suspensionReason     String?                           @db.VarChar(1200)
-  archivedAt           DateTime?
-  createdById          String
-  createdBy            User                              @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  memberships          OrganizationMembership[]
-  capabilities         OrganizationCapability[]
-  invitations          OrganizationInvitation[]
-  ownershipTransfers   OrganizationOwnershipTransfer[]
-  verificationRequests OrganizationVerificationRequest[]
-  slugAliases          OrganizationSlugAlias[]
-  auditLogs            AuditLog[]
-  createdAt            DateTime                          @default(now())
-  updatedAt            DateTime                          @updatedAt
+  id                        String                            @id @default(cuid())
+  publicName                String                            @db.VarChar(160)
+  legalName                 String?                           @db.VarChar(200)
+  slug                      String                            @unique @db.VarChar(120)
+  type                      OrganizationType
+  tagline                   String?                           @db.VarChar(160)
+  shortDescription          String?                           @db.VarChar(500)
+  extendedDescription       String?                           @db.Text
+  foundingYear              Int?
+  sizeRange                 OrganizationSizeRange?
+  countryId                 String
+  country                   Country                           @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId                    String?
+  city                      City?                             @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  website                   String?                           @db.VarChar(500)
+  professionalEmail         String?                           @db.VarChar(320)
+  professionalPhone         String?                           @db.VarChar(40)
+  websiteWechat             String?                           @db.VarChar(120)
+  publicAddress             String?                           @db.VarChar(300)
+  serviceAreas              String[]                          @default([])
+  supportedLanguages        String[]                          @default([])
+  contactAudience           ProfileAudience                   @default(PUBLIC)
+  logoMediaId               String?                           @unique
+  logoMedia                 MediaAsset?                       @relation("OrganizationLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  coverMediaId              String?                           @unique
+  coverMedia                MediaAsset?                       @relation("OrganizationCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  lifecycleStatus           OrganizationLifecycleStatus       @default(DRAFT)
+  publicProfileStatus       OrganizationPublicProfileStatus   @default(PRIVATE)
+  representationConfirmedAt DateTime?
+  publishedAt               DateTime?
+  unpublishedAt             DateTime?
+  lastPublicUpdateAt        DateTime?
+  publicationVersion        Int                               @default(1)
+  publicProfileBlockedAt    DateTime?
+  publicProfileBlockReason  String?                           @db.VarChar(1200)
+  correctionRequestedAt     DateTime?
+  verificationStatus        OrganizationVerificationStatus    @default(NOT_SUBMITTED)
+  isOfficialPartner         Boolean                           @default(false)
+  partnerSince              DateTime?
+  partnerGrantedById        String?
+  partnerGrantedBy          User?                             @relation("OrganizationPartnerGranter", fields: [partnerGrantedById], references: [id], onDelete: SetNull)
+  setupStep                 Int                               @default(1)
+  setupCompletedAt          DateTime?
+  suspendedAt               DateTime?
+  suspensionReason          String?                           @db.VarChar(1200)
+  archivedAt                DateTime?
+  createdById               String
+  createdBy                 User                              @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships               OrganizationMembership[]
+  capabilities              OrganizationCapability[]
+  invitations               OrganizationInvitation[]
+  ownershipTransfers        OrganizationOwnershipTransfer[]
+  verificationRequests      OrganizationVerificationRequest[]
+  slugAliases               OrganizationSlugAlias[]
+  contactChannels           OrganizationContactChannel[]
+  publicMedia               OrganizationMedia[]
+  auditLogs                 AuditLog[]
+  createdAt                 DateTime                          @default(now())
+  updatedAt                 DateTime                          @updatedAt
+  searchVector              Unsupported("tsvector")?
 
   @@index([createdById, lifecycleStatus, updatedAt])
   @@index([countryId, cityId])
   @@index([lifecycleStatus, verificationStatus])
+  @@index([publicProfileStatus, lifecycleStatus, updatedAt], map: "Organization_publicProfileStatus_lifecycle_updatedAt_idx")
+  @@index([cityId, publicProfileStatus, lifecycleStatus], map: "Organization_cityId_publicProfileStatus_lifecycle_idx")
+  @@index([countryId, publicProfileStatus, lifecycleStatus], map: "Organization_countryId_publicProfileStatus_lifecycle_idx")
   @@index([type, lifecycleStatus, createdAt])
   @@index([isOfficialPartner, lifecycleStatus])
+}
+
+model OrganizationContactChannel {
+  id             String                        @id @default(cuid())
+  organizationId String
+  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           OrganizationContactType
+  label          String?                       @db.VarChar(80)
+  value          String                        @db.VarChar(500)
+  visibility     OrganizationContactVisibility @default(PRIVATE)
+  sortOrder      Int                           @default(0)
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  @@index([organizationId, visibility, sortOrder], map: "OrganizationContactChannel_org_visibility_sort_idx")
+  @@index([organizationId, type], map: "OrganizationContactChannel_org_type_idx")
+}
+
+model OrganizationMedia {
+  id             String                        @id @default(cuid())
+  organizationId String
+  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mediaId        String                        @unique
+  media          MediaAsset                    @relation("OrganizationGalleryMedia", fields: [mediaId], references: [id], onDelete: Restrict)
+  kind           OrganizationMediaKind         @default(GALLERY)
+  caption        String?                       @db.VarChar(240)
+  altText        String                        @db.VarChar(240)
+  sortOrder      Int                           @default(0)
+  visibility     OrganizationContactVisibility @default(PRIVATE)
+  createdById    String
+  createdBy      User                          @relation("OrganizationMediaCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  @@index([organizationId, visibility, sortOrder], map: "OrganizationMedia_org_visibility_sort_idx")
+  @@index([createdById, createdAt], map: "OrganizationMedia_createdById_createdAt_idx")
 }
 
 model OrganizationMembership {
@@ -2591,6 +2670,7 @@ model MediaAsset {
   profileAvatarFor                 User?                             @relation("UserAvatar")
   organizationLogoFor              Organization?                     @relation("OrganizationLogo")
   organizationCoverFor             Organization?                     @relation("OrganizationCover")
+  organizationGalleryFor           OrganizationMedia?                @relation("OrganizationGalleryMedia")
   messageAttachment                Message?                          @relation("MessageMedia")
   communityCoverFor                Community?                        @relation("CommunityCover")
   postMedia                        PostMedia?                        @relation("PostMedia")

@@ -81,8 +81,11 @@ Browser
   capability registry, hashed invitations, immediate member revocation,
   two-step ownership transfer, private verification review, lifecycle and
   partner controls, audit, notifications, analytics, and an Admin operations
-  surface. Public organization pages and capability-backed content publishing
-  are intentionally reserved for the next organization module.
+  surface. Part 3 adds independently published public profiles, private
+  preview, a bounded public directory, global-search results, a live City Hub
+  projection, explicit public contacts, secure gallery media, reporting, and
+  Admin publication moderation. Capability-backed domain content remains
+  reserved for its later module.
 - Community: reviewed community CRUD, a single transferable owner, scoped Moderator/Member roles, open/request/invite access, posts, threaded comments, reactions, validated events, announcements, pinning, reports, retained evidence, and Admin CMS.
 - Marketplace: categories, listings, media metadata, favorites, location filters, and seller contact handoff. There is intentionally no payment model.
 - Student Hub: one navigation surface that composes the existing guide library and help-center routes with checklists, tips, articles, Q&A, and upcoming student events. `/guides` and `/help` remain stable content routes. Timetable tools are shown only for admitted/current students and the retained legacy incoming value.
@@ -127,6 +130,43 @@ Browser
 - Message media remains private, attaches atomically to the conversation and message, and is delivered only to its owner, a current participant, or exact media operations staff. Message/API DTOs never contain provider object keys.
 - Conversation reports preserve a bounded evidence snapshot independently from the live conversation. Deleting the source conversation or a participating account does not expose or erase the retained report snapshot through member APIs.
 - The destructive demo seed is guarded before any deletion. It requires an explicit local/demo opt-in and refuses both Node and Vercel production environments unconditionally.
+
+## Public organization identity boundary
+
+`Organization.lifecycleStatus` and `Organization.publicProfileStatus` are
+independent. Lifecycle controls whether the managed resource may operate;
+publication controls whether its explicitly serialized public identity may
+appear at `/organizations/[slug]`, in `/organizations`, Search, the sitemap,
+or the bounded Explore city rail. `ACTIVE` never means public by itself.
+
+`src/lib/organization-public-visibility.ts` is the single public eligibility
+policy. It requires `ACTIVE + PUBLISHED + no moderation block`.
+`src/lib/organization-public-profile.ts` owns the allowlisted DTO and never
+serializes legal identity, members, verification evidence, private contacts,
+internal notes, suspension reasons, or provider object keys.
+`src/lib/organization-publication.ts` owns server-side readiness and the
+`PRIVATE → READY → PUBLISHED → UNPUBLISHED` workflow.
+
+The page renderer is shared by the public route and protected preview.
+Organization logo, cover, and gallery assets reuse the existing private upload,
+validation, scan, attachment, and `/api/media/:id` delivery boundary. Delivery
+becomes public only when the attachment and its organization pass publication
+visibility; private organization verification media is unaffected.
+
+Public contacts are normalized rows with per-channel `PUBLIC` or `PRIVATE`
+visibility. Public reports remain ordinary `Report` records with an immutable,
+bounded organization snapshot. Admin moderation uses explicit permissions,
+AuditLog, the notification outbox, and cache revalidation.
+
+`src/features/organizations/public-sections.ts` is the future projection
+contract. Housing, scholarships, jobs, products, services, events, and
+university information keep their own persistence and visibility rules; an
+unavailable provider returns no section rather than fake content.
+
+City Hub company entries remain editorial snapshot content. Managed
+Organizations are operational identities and may appear only in a separate
+live city rail. ScholarshipAgent and Community remain independent entities.
+Full reconciliation is deferred to later parts.
 
 ## Error and observability strategy
 

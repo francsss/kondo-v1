@@ -7,6 +7,8 @@ import {
 } from "@/features/explore/registry";
 import { trackEvent } from "@/lib/analytics";
 import { resolvePublishedCity } from "@/lib/city-hub";
+import { listPublicOrganizationsForCity } from "@/lib/organization-public-profile";
+import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 import { getContextualStories } from "@/lib/stories";
 
@@ -42,10 +44,21 @@ export default async function ExploreCityPage({ params }: PageProps) {
     properties: { city: city.slug },
   });
 
-  const stories = await getContextualStories(user, {
-    citySlug: city.slug,
-    limit: 6,
-  });
+  const [stories, cityRecord] = await Promise.all([
+    getContextualStories(user, {
+      citySlug: city.slug,
+      limit: 6,
+    }),
+    prisma.city.findUnique({
+      where: { slug: city.slug },
+      select: { id: true },
+    }),
+  ]);
+  const organizations = cityRecord
+    ? await listPublicOrganizationsForCity(cityRecord.id, 6)
+    : [];
 
-  return <CityHubView city={city} stories={stories} />;
+  return (
+    <CityHubView city={city} organizations={organizations} stories={stories} />
+  );
 }

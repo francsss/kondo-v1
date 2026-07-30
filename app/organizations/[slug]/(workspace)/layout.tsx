@@ -1,7 +1,13 @@
 import { notFound, redirect } from "next/navigation";
+import { AppShell } from "@/components/app/AppShell";
 import { OrganizationWorkspaceShell } from "@/components/organizations/OrganizationWorkspaceShell";
+import { getUnreadMessageCount } from "@/lib/messaging";
+import { getUnreadNotificationCount } from "@/lib/notifications";
 import { OrganizationAccessError } from "@/lib/organization-permissions";
-import { getOrganizationWorkspace } from "@/lib/organization-workspaces";
+import {
+  getOrganizationWorkspace,
+  listOrganizationWorkspaces,
+} from "@/lib/organization-workspaces";
 import { requireUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
@@ -30,12 +36,23 @@ export default async function OrganizationLayout({
     }
     notFound();
   }
+  const [notificationUnreadCount, messageUnreadCount, workspaces] =
+    await Promise.all([
+      getUnreadNotificationCount(user.id),
+      getUnreadMessageCount(user.id),
+      listOrganizationWorkspaces(user.id),
+    ]);
   return (
-    <OrganizationWorkspaceShell
-      organization={workspace.organization}
-      role={workspace.membership.role}
+    <AppShell
+      user={{ ...user, notificationUnreadCount, messageUnreadCount }}
+      workspaces={workspaces}
     >
-      {children}
-    </OrganizationWorkspaceShell>
+      <OrganizationWorkspaceShell
+        organization={workspace.organization}
+        role={workspace.membership.role}
+      >
+        {children}
+      </OrganizationWorkspaceShell>
+    </AppShell>
   );
 }

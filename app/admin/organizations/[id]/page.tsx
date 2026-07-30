@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Building2, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  ExternalLink,
+  Flag,
+  Globe2,
+  Image as ImageIcon,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { AdminNav } from "@/components/features/admin/AdminNav";
 import { OrganizationAdminActions } from "@/components/features/admin/OrganizationAdminActions";
+import { OrganizationPublicAdminActions } from "@/components/features/admin/OrganizationPublicAdminActions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -112,6 +122,153 @@ export default async function AdminOrganizationDetailPage({
           </Card>
 
           <Card>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-green">
+                  <Globe2 className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-black">Public profile</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Publication is separate from lifecycle, verification and
+                    partnership.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {hasAdminPermission(
+                  actor.role,
+                  "ORGANIZATION_PUBLIC_PROFILES_VIEW",
+                ) ? (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link
+                      href={`/admin/organizations/${organization.id}/public-profile-preview`}
+                    >
+                      Preview <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
+                {organization.publicProfileStatus === "PUBLISHED" &&
+                !organization.publicProfileBlockedAt &&
+                organization.lifecycleStatus === "ACTIVE" ? (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/organizations/${organization.slug}`}>
+                      Open public page <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Fact
+                label="Publication state"
+                value={organization.publicProfileStatus}
+              />
+              <Fact
+                label="Profile completion"
+                value={`${organization.publicationReadiness.profileCompletionSummary.percentage}%`}
+              />
+              <Fact
+                label="Moderation restriction"
+                value={organization.publicProfileBlockedAt ? "Active" : "None"}
+              />
+              <Fact
+                label="Published"
+                value={
+                  organization.publishedAt
+                    ? new Date(organization.publishedAt).toLocaleString()
+                    : "Never"
+                }
+              />
+              <Fact
+                label="Last public update"
+                value={
+                  organization.lastPublicUpdateAt
+                    ? new Date(organization.lastPublicUpdateAt).toLocaleString()
+                    : "—"
+                }
+              />
+              <Fact
+                label="Public contacts"
+                value={String(
+                  organization.contactChannels.filter(
+                    ({ visibility }) => visibility === "PUBLIC",
+                  ).length,
+                )}
+              />
+            </dl>
+            <div className="mt-5 grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
+              <div className="rounded-2xl bg-muted/60 p-4">
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
+                  <ImageIcon className="h-4 w-4 text-kondo-green" />
+                  Visible media
+                </p>
+                <p className="mt-2 text-sm font-semibold">
+                  {
+                    organization.publicMedia.filter(
+                      ({ visibility }) => visibility === "PUBLIC",
+                    ).length
+                  }{" "}
+                  gallery image(s)
+                </p>
+              </div>
+              <div className="rounded-2xl bg-muted/60 p-4">
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
+                  <ShieldCheck className="h-4 w-4 text-kondo-green" />
+                  Public visibility
+                </p>
+                <p className="mt-2 text-sm font-semibold">
+                  {organization.lifecycleStatus === "ACTIVE" &&
+                  organization.publicProfileStatus === "PUBLISHED" &&
+                  !organization.publicProfileBlockedAt
+                    ? "Eligible for public surfaces"
+                    : "Hidden from public surfaces"}
+                </p>
+              </div>
+            </div>
+            {organization.publicProfileBlockReason ? (
+              <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-950 dark:bg-amber-400/10 dark:text-amber-100">
+                Restriction reason: {organization.publicProfileBlockReason}
+              </p>
+            ) : null}
+          </Card>
+
+          <Card>
+            <div className="flex items-center gap-3">
+              <Flag className="h-5 w-5 text-kondo-green" />
+              <h2 className="font-black">
+                Related reports · {organization.reports.length}
+              </h2>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {organization.reports.map((report) => (
+                <Link
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 p-4 transition hover:bg-muted"
+                  href={`/admin/reports/${report.id}`}
+                  key={report.id}
+                >
+                  <div>
+                    <p className="text-sm font-black">
+                      {report.reason.replaceAll("_", " ")}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatRelativeDate(report.createdAt)}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-card px-3 py-1 text-xs font-black">
+                    {report.status}
+                  </span>
+                </Link>
+              ))}
+              {!organization.reports.length ? (
+                <p className="text-sm text-muted-foreground">
+                  No reports currently reference this organization.
+                </p>
+              ) : null}
+            </div>
+          </Card>
+
+          <Card>
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-kondo-green" />
               <h2 className="font-black">
@@ -216,6 +373,25 @@ export default async function AdminOrganizationDetailPage({
               organizationId={organization.id}
               verificationStatus={organization.verificationStatus}
             />
+            <div className="mt-5">
+              <OrganizationPublicAdminActions
+                blocked={Boolean(organization.publicProfileBlockedAt)}
+                canModerate={hasAdminPermission(
+                  actor.role,
+                  "ORGANIZATION_PUBLIC_PROFILES_MODERATE",
+                )}
+                canRestore={hasAdminPermission(
+                  actor.role,
+                  "ORGANIZATION_PUBLIC_PROFILES_RESTORE",
+                )}
+                canUnpublish={hasAdminPermission(
+                  actor.role,
+                  "ORGANIZATION_PUBLIC_PROFILES_UNPUBLISH",
+                )}
+                organizationId={organization.id}
+                publicProfileStatus={organization.publicProfileStatus}
+              />
+            </div>
           </div>
         </Card>
       </div>

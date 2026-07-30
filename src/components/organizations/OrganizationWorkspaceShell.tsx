@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Building2,
+  Globe2,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 const workspaceNavigation = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["profile", "Profile", Building2],
+  ["public-profile", "Public profile", Globe2],
   ["team", "Team", Users],
   ["verification", "Verification", ShieldCheck],
   ["activity", "Activity", Activity],
@@ -34,6 +36,7 @@ export function OrganizationWorkspaceShell({
     type: string;
     logoMediaId: string | null;
     lifecycleStatus: string;
+    publicProfileStatus: string;
     verificationStatus: string;
     suspensionReason: string | null;
   };
@@ -60,7 +63,8 @@ export function OrganizationWorkspaceShell({
             <p className="mt-1 text-sm text-muted-foreground">
               {organization.type.replaceAll("_", " ").toLowerCase()} ·{" "}
               {role.toLowerCase()} ·{" "}
-              {organization.lifecycleStatus.toLowerCase()}
+              {organization.lifecycleStatus.toLowerCase()} · public profile{" "}
+              {organization.publicProfileStatus.toLowerCase()}
             </p>
           </div>
           <div className="sm:ml-auto">

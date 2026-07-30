@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   BookOpenText,
+  Building2,
   CircleHelp,
   Loader2,
   MessageSquareText,
@@ -16,11 +17,22 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { formatPrice } from "@/lib/presentation";
 import { ResultCard } from "./ResultCard";
+import {
+  OrganizationSearchResultCard,
+  type OrganizationSearchResult,
+} from "./OrganizationSearchResultCard";
 
 type Category =
-  "communities" | "listings" | "guides" | "questions" | "users" | "posts";
+  | "organizations"
+  | "communities"
+  | "listings"
+  | "guides"
+  | "questions"
+  | "users"
+  | "posts";
 
 const CATEGORY_ICON: Record<Category, React.ReactNode> = {
+  organizations: <Building2 />,
   communities: <Users />,
   listings: <ShoppingBag />,
   guides: <BookOpenText />,
@@ -31,6 +43,13 @@ const CATEGORY_ICON: Record<Category, React.ReactNode> = {
 
 function renderItem(category: Category, item: Record<string, unknown>) {
   switch (category) {
+    case "organizations":
+      return (
+        <OrganizationSearchResultCard
+          key={item.id as string}
+          organization={item as OrganizationSearchResult}
+        />
+      );
     case "communities":
       return (
         <ResultCard

@@ -676,6 +676,7 @@ export async function getMediaForDelivery(
     throw new MediaError("Media was not found.", 404);
   }
 
+  let publiclyAuthorized = false;
   let authorized =
     asset.visibility === "PUBLIC" || asset.ownerId === viewer?.id;
   if (!authorized && viewer && hasAdminPermission(viewer.role, "MEDIA_VIEW")) {
@@ -720,20 +721,76 @@ export async function getMediaForDelivery(
   }
   if (
     !authorized &&
-    viewer &&
     (asset.attachmentType === "ORGANIZATION_LOGO" ||
       asset.attachmentType === "ORGANIZATION_COVER") &&
     asset.attachmentId
   ) {
+    const organization = await prisma.organization.findUnique({
+      where: { id: asset.attachmentId },
+      select: {
+        lifecycleStatus: true,
+        publicProfileStatus: true,
+        publicProfileBlockedAt: true,
+        memberships: viewer
+          ? {
+              where: { userId: viewer.id, status: "ACTIVE" },
+              select: { userId: true },
+              take: 1,
+            }
+          : false,
+      },
+    });
+    publiclyAuthorized = Boolean(
+      organization?.lifecycleStatus === "ACTIVE" &&
+      organization.publicProfileStatus === "PUBLISHED" &&
+      !organization.publicProfileBlockedAt,
+    );
     authorized = Boolean(
-      await prisma.organizationMembership.findFirst({
-        where: {
-          organizationId: asset.attachmentId,
-          userId: viewer.id,
-          status: "ACTIVE",
+      publiclyAuthorized ||
+      (organization &&
+        "memberships" in organization &&
+        organization.memberships.length),
+    );
+  }
+  if (
+    !authorized &&
+    asset.attachmentType === "ORGANIZATION_GALLERY" &&
+    asset.attachmentId
+  ) {
+    const gallery = await prisma.organizationMedia.findFirst({
+      where: {
+        mediaId: asset.id,
+        organizationId: asset.attachmentId,
+      },
+      select: {
+        visibility: true,
+        organization: {
+          select: {
+            lifecycleStatus: true,
+            publicProfileStatus: true,
+            publicProfileBlockedAt: true,
+            memberships: viewer
+              ? {
+                  where: { userId: viewer.id, status: "ACTIVE" },
+                  select: { userId: true },
+                  take: 1,
+                }
+              : false,
+          },
         },
-        select: { organizationId: true },
-      }),
+      },
+    });
+    publiclyAuthorized = Boolean(
+      gallery?.visibility === "PUBLIC" &&
+      gallery.organization.lifecycleStatus === "ACTIVE" &&
+      gallery.organization.publicProfileStatus === "PUBLISHED" &&
+      !gallery.organization.publicProfileBlockedAt,
+    );
+    authorized = Boolean(
+      publiclyAuthorized ||
+      (gallery &&
+        "memberships" in gallery.organization &&
+        gallery.organization.memberships.length),
     );
   }
   if (
@@ -769,7 +826,9 @@ export async function getMediaForDelivery(
     );
   }
   if (!authorized) throw new MediaError("Media was not found.", 404);
-  return asset;
+  return publiclyAuthorized
+    ? { ...asset, visibility: "PUBLIC" as const }
+    : asset;
 }
 
 export async function listAdminMedia(

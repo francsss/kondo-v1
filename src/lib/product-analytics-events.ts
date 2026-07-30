@@ -37,6 +37,23 @@ export const PRODUCT_EVENTS = {
   ORGANIZATION_VERIFICATION_REVIEWED: "organization_verification_reviewed",
   ORGANIZATION_LIFECYCLE_CHANGED: "organization_lifecycle_changed",
   ORGANIZATION_PARTNER_STATUS_CHANGED: "organization_partner_status_changed",
+  ORGANIZATION_PUBLIC_PROFILE_PREVIEWED:
+    "organization_public_profile_previewed",
+  ORGANIZATION_PUBLIC_PROFILE_PUBLISHED:
+    "organization_public_profile_published",
+  ORGANIZATION_PUBLIC_PROFILE_UNPUBLISHED:
+    "organization_public_profile_unpublished",
+  ORGANIZATION_PUBLIC_PROFILE_VIEWED: "organization_public_profile_viewed",
+  ORGANIZATION_DIRECTORY_VIEWED: "organization_directory_viewed",
+  ORGANIZATION_DIRECTORY_FILTERED: "organization_directory_filtered",
+  ORGANIZATION_SEARCH_RESULT_OPENED: "organization_search_result_opened",
+  ORGANIZATION_CONTACT_OPENED: "organization_contact_opened",
+  ORGANIZATION_WEBSITE_OPENED: "organization_website_opened",
+  ORGANIZATION_SHARED: "organization_shared",
+  ORGANIZATION_REPORT_STARTED: "organization_report_started",
+  ORGANIZATION_REPORT_SUBMITTED: "organization_report_submitted",
+  ORGANIZATION_GALLERY_OPENED: "organization_gallery_opened",
+  ORGANIZATION_CITY_CONTEXT_OPENED: "organization_city_context_opened",
   HOME_ARRIVED_AFTER_ONBOARDING: "home_arrived_after_onboarding",
   FEATURE_TIME_SPENT: "feature_time_spent",
   COMMUNITY_OPENED: "community_opened",
