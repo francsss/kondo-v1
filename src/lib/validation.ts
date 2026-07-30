@@ -3,6 +3,11 @@ import { isAfricanCountryCode } from "@/lib/african-countries";
 import { SUPPORTED_CURRENCY_CODES } from "@/lib/currencies";
 import { STUDENT_SKILL_CATEGORIES } from "@/lib/peer-marketplace";
 import { ORGANIZATION_CAPABILITY_KEYS } from "@/lib/organization-capabilities";
+import {
+  isHttpWebsiteUrl,
+  normalizeOptionalWebsiteUrl,
+  WEBSITE_URL_ERROR,
+} from "@/lib/website-url";
 
 const passwordSchema = z
   .string()
@@ -100,6 +105,17 @@ const optionalTrimmedText = (maximum: number) =>
     (value) => (typeof value === "string" && !value.trim() ? undefined : value),
     z.string().trim().max(maximum).optional(),
   );
+
+const optionalWebsiteUrl = z.preprocess(
+  normalizeOptionalWebsiteUrl,
+  z
+    .string()
+    .trim()
+    .url(WEBSITE_URL_ERROR)
+    .max(500)
+    .refine(isHttpWebsiteUrl, WEBSITE_URL_ERROR)
+    .optional(),
+);
 
 const personalOnboardingShape = {
   gender: z.enum(["MALE", "FEMALE"]),
@@ -285,13 +301,7 @@ export const organizationOnboardingDraftSchema = z.object({
   countryId: z.string().cuid().optional(),
   cityId: optionalCuid,
   shortDescription: optionalTrimmedText(500),
-  website: z
-    .preprocess(
-      (value) =>
-        typeof value === "string" && !value.trim() ? undefined : value,
-      z.string().trim().url().max(500).optional(),
-    )
-    .optional(),
+  website: optionalWebsiteUrl,
   professionalEmail: z
     .preprocess(
       (value) =>
@@ -346,13 +356,7 @@ export const organizationProfileUpdateSchema = z.object({
   sizeRange: organizationSizeRangeSchema.optional(),
   countryId: z.string().cuid().optional(),
   cityId: optionalCuid,
-  website: z
-    .preprocess(
-      (value) =>
-        typeof value === "string" && !value.trim() ? undefined : value,
-      z.string().trim().url().max(500).optional(),
-    )
-    .optional(),
+  website: optionalWebsiteUrl,
   professionalEmail: z
     .preprocess(
       (value) =>

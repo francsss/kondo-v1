@@ -357,6 +357,34 @@ describe("input validation", () => {
         confirm: true,
       }).success,
     ).toBe(false);
+
+    const normalizedWebsite = organizationOnboardingCompleteSchema.safeParse({
+      publicName: "Kondo Education",
+      type: "EDUCATION_AGENCY",
+      countryId,
+      shortDescription:
+        "Verified guidance and application support for future students.",
+      capabilities: ["STUDENT_SERVICES"],
+      website: "joinkondo.com",
+      confirm: true,
+    });
+    expect(normalizedWebsite.success).toBe(true);
+    if (normalizedWebsite.success) {
+      expect(normalizedWebsite.data.website).toBe("https://joinkondo.com");
+    }
+
+    expect(
+      organizationOnboardingCompleteSchema.safeParse({
+        publicName: "Kondo Education",
+        type: "EDUCATION_AGENCY",
+        countryId,
+        shortDescription:
+          "Verified guidance and application support for future students.",
+        capabilities: ["STUDENT_SERVICES"],
+        website: "ftp://joinkondo.com",
+        confirm: true,
+      }).success,
+    ).toBe(false);
   });
 
   it("normalizes and validates reference-data records", () => {

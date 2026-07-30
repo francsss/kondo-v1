@@ -18,6 +18,11 @@ import { ORGANIZATION_CAPABILITIES } from "@/lib/organization-capabilities";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
+import {
+  isHttpWebsiteUrl,
+  normalizeWebsiteUrl,
+  WEBSITE_URL_ERROR,
+} from "@/lib/website-url";
 
 type CountryOption = {
   id: string;
@@ -88,6 +93,7 @@ export function OrganizationOnboardingFlow({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState("");
+  const [websiteError, setWebsiteError] = useState("");
   const [complete, setComplete] = useState(
     Boolean(initialOrganization?.setupCompletedAt),
   );
@@ -117,6 +123,21 @@ export function OrganizationOnboardingFlow({
   }, [initialOrganization]);
 
   async function saveDraft(nextStep: number) {
+    const normalizedWebsite = normalizeWebsiteUrl(form.website);
+    if (
+      step === 2 &&
+      normalizedWebsite &&
+      !isHttpWebsiteUrl(normalizedWebsite)
+    ) {
+      setWebsiteError(WEBSITE_URL_ERROR);
+      setError("");
+      return false;
+    }
+    const draft = { ...form, website: normalizedWebsite };
+    if (normalizedWebsite !== form.website) {
+      setForm(draft);
+    }
+    setWebsiteError("");
     setLoading(true);
     setError("");
     try {
@@ -148,7 +169,7 @@ export function OrganizationOnboardingFlow({
           method: "PATCH",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...form, setupStep: nextStep + 1 }),
+          body: JSON.stringify({ ...draft, setupStep: nextStep + 1 }),
         },
       );
       const data = await response.json().catch(() => ({}));
@@ -168,6 +189,18 @@ export function OrganizationOnboardingFlow({
 
   async function finish() {
     if (!organizationId) return;
+    const normalizedWebsite = normalizeWebsiteUrl(form.website);
+    if (normalizedWebsite && !isHttpWebsiteUrl(normalizedWebsite)) {
+      setWebsiteError(WEBSITE_URL_ERROR);
+      setError("");
+      setStep(2);
+      return;
+    }
+    const draft = { ...form, website: normalizedWebsite };
+    if (normalizedWebsite !== form.website) {
+      setForm(draft);
+    }
+    setWebsiteError("");
     setLoading(true);
     setError("");
     try {
@@ -177,7 +210,7 @@ export function OrganizationOnboardingFlow({
           method: "PUT",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...form, confirm: true }),
+          body: JSON.stringify({ ...draft, confirm: true }),
         },
       );
       const data = await response.json().catch(() => ({}));
@@ -388,8 +421,24 @@ export function OrganizationOnboardingFlow({
               </label>
               <div className="grid gap-5 sm:grid-cols-2">
                 <TextInput
+                  error={websiteError}
                   label="Website (optional)"
-                  onChange={(website) => setForm({ ...form, website })}
+                  onBlur={(website) => {
+                    const normalized = normalizeWebsiteUrl(website);
+                    setForm((current) => ({
+                      ...current,
+                      website: normalized,
+                    }));
+                    setWebsiteError(
+                      normalized && !isHttpWebsiteUrl(normalized)
+                        ? WEBSITE_URL_ERROR
+                        : "",
+                    );
+                  }}
+                  onChange={(website) => {
+                    setForm({ ...form, website });
+                    if (websiteError) setWebsiteError("");
+                  }}
                   placeholder="https://example.org"
                   type="url"
                   value={form.website}
@@ -638,25 +687,45 @@ function TextInput({
   label,
   value,
   onChange,
+  onBlur,
   placeholder,
   type = "text",
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: (value: string) => void;
   placeholder?: string;
   type?: "text" | "email" | "url";
+  error?: string;
 }) {
   return (
     <label>
       <span className="mb-2 block text-sm font-bold">{label}</span>
       <input
-        className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-kondo-green focus:ring-4 focus:ring-kondo-green/10"
+        aria-describedby={error ? "organization-website-error" : undefined}
+        aria-invalid={Boolean(error)}
+        className={cn(
+          "h-12 w-full rounded-2xl border bg-background px-4 text-sm outline-none focus:ring-4",
+          error
+            ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+            : "border-border focus:border-kondo-green focus:ring-kondo-green/10",
+        )}
+        onBlur={(event) => onBlur?.(event.target.value)}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         type={type}
         value={value}
       />
+      {error ? (
+        <span
+          className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-300"
+          id="organization-website-error"
+        >
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }
