@@ -31,6 +31,16 @@ describe("product analytics privacy", () => {
     expect(normalizeAnalyticsRoute("/communities/private-slug?post=id")).toBe(
       "/communities/[community]",
     );
+    expect(
+      normalizeAnalyticsRoute(
+        "/organizations/private-slug/verification?request=private-id",
+      ),
+    ).toBe("/organizations/[organization]/[workspace-section]");
+    expect(
+      normalizeAnalyticsRoute(
+        "/organization-invitations/private-token?source=email",
+      ),
+    ).toBe("/organization-invitations/[invitation]");
   });
 
   it("maps routes to stable product areas", () => {
@@ -39,5 +49,8 @@ describe("product analytics privacy", () => {
     expect(productAreaForPath("/messages/conversation-id")).toBe("messages");
     expect(productAreaForPath("/stories")).toBe("student_stories");
     expect(productAreaForPath("/stories/submit")).toBe("student_stories");
+    expect(productAreaForPath("/organizations/acme/dashboard")).toBe(
+      "organizations",
+    );
   });
 });

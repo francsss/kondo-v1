@@ -1,7 +1,8 @@
 # Kondo — functional and technical project map
 
 > Source-of-truth snapshot: repository state including the additive
-> `20260730090000_identity_organization_foundation` migration, audited on
+> `20260730090000_identity_organization_foundation` and
+> `2026073015*_organization_professional_workspace*` migrations, audited on
 > 2026-07-30.
 >
 > This document describes what is present in the repository. It distinguishes
@@ -338,51 +339,73 @@ Profile visibility participates in Home activity, search, community exposure,
 Meet discovery, and Stories context. Any profile change must retain centralized
 audience filtering.
 
-### 4.5 Organization identity foundation — Partially implemented
+### 4.5 Professional organization workspaces — Implemented
 
 An organization never authenticates. A real human `User` signs in and may own
 or manage several `Organization` records through `OrganizationMembership`.
 
-Implemented in this foundation:
+Implemented:
 
 - independently resumable organization drafts;
-- organization types, country/optional city, public/legal identity, contact
-  context, private logo media, and capability selection;
+- a personal/organization workspace switcher and protected workspace routes;
+- organization dashboard, profile, team, verification, activity, and settings;
+- organization types, searchable country/optional city, public/legal identity,
+  professional contact, general service areas, logo/cover media, and profile
+  completeness;
 - exactly one active owner enforced by PostgreSQL;
-- server-side role checks for owner/admin/manager/member;
+- server-side Owner/Admin/Editor/Viewer permissions, with explicit migration
+  from the former Manager/Member vocabulary;
+- hashed, expiring, email-bound invitations with resend/cancel/accept/decline;
+- immediate role changes, member removal/leave, and two-step ownership
+  transfer;
 - explicit lifecycle and verification state, both separate from the legacy
   user-level Official Profile verification workflow;
+- private organization verification documents, draft/submission/review/
+  more-information/resubmission outcomes, and least-privilege Admin review;
+- separate Super Admin-controlled official-partner status;
+- lifecycle suspension/reactivation/archive controls with reasons,
+  notifications, and retained data;
 - atomic draft creation with owner membership and audit records;
 - completion into `ACTIVE` with `NOT_SUBMITTED` verification;
-- managed-organization settings and archive action;
-- multiple organizations per human operator.
+- capability enable/disable settings and central capability gates;
+- multiple organizations per human operator;
+- organization-scoped audit history, notification templates, product
+  analytics, loading/error/empty states, and paginated Admin lists.
 
 Primary locations:
 
 - `/onboarding/organization`
 - `/settings/organizations`
+- `/organizations/[slug]/{dashboard,profile,team,verification,activity,settings}`
+- `/organization-invitations/**`
+- `/admin/organizations/**`
+- `/admin/organization-verifications/**`
 - `app/api/organizations/**`
+- `app/api/organization-invitations/**`
+- `app/api/organization-ownership-transfers/**`
 - `src/components/onboarding/OrganizationOnboardingFlow.tsx`
-- `src/lib/organizations.ts`
+- `src/components/organizations/**`
+- `src/lib/organization-*.ts`
 - `src/lib/organization-authorization.ts`
 - `src/lib/organization-capabilities.ts`
 
 Persistence:
 
 - `Organization`, `OrganizationMembership`, `OrganizationCapability`,
-  `MediaAsset`, `AuditLog`.
+  `OrganizationInvitation`, `OrganizationOwnershipTransfer`,
+  `OrganizationVerificationRequest`, `OrganizationVerificationDocument`,
+  `OrganizationSlugAlias`, `MediaAsset`, `NotificationJob`, `AuditLog`.
 
-Not implemented in this foundation:
+Intentionally reserved for the next organization module:
 
-- organization team invitations/member management UI;
-- organization public pages/dashboards;
 - organization publishing/projection into Marketplace, City Hub, jobs, or
   scholarships;
-- organization verification submission/Admin review;
+- public organization directory/profile pages;
 - billing or organization analytics.
 
-Those are downstream organization phases and must reuse this foundation rather
-than create another organization or authentication system.
+Those downstream phases must project from these workspaces rather than create
+another organization, authentication, verification, media, notification, or
+authorization system.
 
 ### 4.6 OAuth — Reserved only
 
@@ -1354,6 +1377,8 @@ Canonical matrix:
 | `/admin/scholarships`                           | Scholarships and agents                                    |
 | `/admin/stories`                                | Story/categories/creator moderation                        |
 | `/admin/official-profiles`                      | Official verification review                               |
+| `/admin/organizations/**`                       | Organization operations, lifecycle, partner status         |
+| `/admin/organization-verifications/**`          | Private organization verification review                   |
 | `/admin/feedback/**`                            | Kondo Pet feedback queue                                   |
 | `/admin/live`                                   | Presence/live users                                        |
 | `/admin/analytics`                              | Product/database metrics                                   |
@@ -1383,7 +1408,10 @@ Identity/reference:
 
 Organizations:
 
-- `Organization`, `OrganizationMembership`, `OrganizationCapability`.
+- `Organization`, `OrganizationMembership`, `OrganizationCapability`,
+  `OrganizationInvitation`, `OrganizationOwnershipTransfer`,
+  `OrganizationVerificationRequest`, `OrganizationVerificationDocument`,
+  `OrganizationSlugAlias`.
 
 Academic:
 
@@ -1436,28 +1464,30 @@ Notifications:
 
 ### 15.2 API groups
 
-| Prefix                                              | Responsibility                                                            |
-| --------------------------------------------------- | ------------------------------------------------------------------------- |
-| `/api/auth/**`                                      | Registration, login/logout, current account, verification, password reset |
-| `/api/onboarding`                                   | Draft/complete onboarding                                                 |
-| `/api/organizations`, `/api/organizations/**`       | Organization draft creation, setup, listing, completion, and archive      |
-| `/api/profile`, `/api/profiles/**`                  | Profile read/update/report                                                |
-| `/api/settings/**`, `/api/account/**`               | Preferences, sessions, account requests                                   |
-| `/api/communities/**`, `/api/community-requests/**` | Community, membership, content, help requests                             |
-| `/api/posts/**`, `/api/comments/**`                 | Posts, reactions, comments, reports, moderation                           |
-| `/api/marketplace/**`                               | Listings, favorites, lifecycle, exchange, skills                          |
-| `/api/messages`, `/api/conversations/**`            | Messaging, conversation safety, private calls                             |
-| `/api/meet/**`, `/api/calls/**`                     | Discovery, queue, call presence/token                                     |
-| `/api/student-hub/**`                               | Imports, schedules, courses, tasks, custom periods, scholarships          |
-| `/api/stories/**`                                   | Feed/submission/revision/interactions/comments/captions/reports           |
-| `/api/media/**`                                     | Upload, completion, delivery                                              |
-| `/api/notifications/**`                             | Center, unread/read, push subscription                                    |
-| `/api/search`, `/api/activity`, `/api/presence/**`  | Cross-product discovery/activity/presence                                 |
-| `/api/questions/**`, `/api/answers/**`              | Q&A                                                                       |
-| `/api/official-profile`                             | Own verification request                                                  |
-| `/api/feedback`                                     | Kondo Pet submission                                                      |
-| `/api/admin/**`                                     | Permission-protected administration                                       |
-| `/api/internal/**`                                  | Secret-protected scheduled workers                                        |
+| Prefix                                              | Responsibility                                                                      |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `/api/auth/**`                                      | Registration, login/logout, current account, verification, password reset           |
+| `/api/onboarding`                                   | Draft/complete onboarding                                                           |
+| `/api/organizations`, `/api/organizations/**`       | Organization setup, profile, capabilities, team, ownership, verification, lifecycle |
+| `/api/organization-invitations/**`                  | Email-bound invitation decisions                                                    |
+| `/api/organization-ownership-transfers/**`          | Two-step ownership transfer decisions                                               |
+| `/api/profile`, `/api/profiles/**`                  | Profile read/update/report                                                          |
+| `/api/settings/**`, `/api/account/**`               | Preferences, sessions, account requests                                             |
+| `/api/communities/**`, `/api/community-requests/**` | Community, membership, content, help requests                                       |
+| `/api/posts/**`, `/api/comments/**`                 | Posts, reactions, comments, reports, moderation                                     |
+| `/api/marketplace/**`                               | Listings, favorites, lifecycle, exchange, skills                                    |
+| `/api/messages`, `/api/conversations/**`            | Messaging, conversation safety, private calls                                       |
+| `/api/meet/**`, `/api/calls/**`                     | Discovery, queue, call presence/token                                               |
+| `/api/student-hub/**`                               | Imports, schedules, courses, tasks, custom periods, scholarships                    |
+| `/api/stories/**`                                   | Feed/submission/revision/interactions/comments/captions/reports                     |
+| `/api/media/**`                                     | Upload, completion, delivery                                                        |
+| `/api/notifications/**`                             | Center, unread/read, push subscription                                              |
+| `/api/search`, `/api/activity`, `/api/presence/**`  | Cross-product discovery/activity/presence                                           |
+| `/api/questions/**`, `/api/answers/**`              | Q&A                                                                                 |
+| `/api/official-profile`                             | Own verification request                                                            |
+| `/api/feedback`                                     | Kondo Pet submission                                                                |
+| `/api/admin/**`                                     | Permission-protected administration                                                 |
+| `/api/internal/**`                                  | Secret-protected scheduled workers                                                  |
 
 ### 15.3 Production providers and environment variables
 
@@ -1515,28 +1545,28 @@ Cloudflare Worker implementation in this repository.
 
 ## 16. Change-impact matrix
 
-| If changing…                           | Inspect and retest…                                                                                                                                              |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `User`, registration, onboarding       | Auth/session serializers, national community transaction, profiles, Home personalization, Meet, search, Student Hub, notifications, Admin users                  |
-| `Organization` foundation              | Human operator membership, organization authorization, lifecycle/verification separation, logo media, future publishing/team/verification phases                 |
-| Country/city/university reference data | Onboarding filters, profiles, national communities, Meet anchors/discovery, Google geocoding, City Hub, scholarships, notification audiences, university periods |
-| Roles/permissions                      | Server layouts, Admin pages, every Admin route, community roles, audit, session revocation, tests                                                                |
-| Community membership/visibility        | Home feed/activity, community detail, post/search visibility, invitations/access, announcements, national onboarding                                             |
-| Posts/comments/reactions               | Home feed/activity, notifications, reports, events, community counts, search                                                                                     |
-| City Hub schema                        | Admin independent editors, publication validation, Explore public rendering, Student Hub internships/opportunities, static registry fallback                     |
-| Marketplace listing lifecycle          | Public queries, seller pages, favorites, expiration worker, notifications, moderation, search                                                                    |
-| Media policy/storage                   | Every uploader, R2/local adapters, upload completion, delivery authorization, cleanup, Admin media, Stories/timetables                                           |
-| Timetable extraction schema            | OCR/parser, DeepSeek prompt/JSON, review UI, validation diagnostics, period conversion, confirmation transaction, academic reminders                             |
-| University periods                     | Admin configuration, AI extraction, custom mappings, schedule snapshots, imported/manual course times                                                            |
-| Meet profile/compatibility             | Onboarding defaults, discovery settings, Nearby/Looking For queries, Random queue, smart notifications, privacy                                                  |
-| Map provider                           | Only generic map contract/adapter/factory where possible; then markers, radius, privacy positions, provider env, browser tests                                   |
-| LiveKit calls                          | Queue/call session lifecycle, conversation calls, token scope/expiry, presence, cleanup, browser permissions                                                     |
-| Notification template/type             | Presentation category, preference gate, tokens, producer, outbox worker, banner, push/email, Admin template UI                                                   |
-| Stories                                | Media codecs/policies, moderation, official identities, interactions, scheduled worker, contextual recommendations                                               |
-| Official verification                  | Private document media, Admin permissions, status machine, badge DTOs on every identity surface, audit/notifications                                             |
-| Premium entitlement                    | Plan feature keys, Meet gates, Admin plans; never activate from unverified client/payment state                                                                  |
-| Theme/navigation                       | Main shell, Student Hub shell, Admin subnavigation, mobile safe areas, foreground banner z-index, full-screen messages/calls                                     |
-| Search                                 | Visibility policy, indexes/query limits, result DTO/category UI, empty states, tests                                                                             |
+| If changing…                           | Inspect and retest…                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `User`, registration, onboarding       | Auth/session serializers, national community transaction, profiles, Home personalization, Meet, search, Student Hub, notifications, Admin users                     |
+| `Organization` workspace               | Human membership, role matrix, capabilities, invitations, ownership, lifecycle, verification/partner separation, private evidence, brand media, audit, Admin routes |
+| Country/city/university reference data | Onboarding filters, profiles, national communities, Meet anchors/discovery, Google geocoding, City Hub, scholarships, notification audiences, university periods    |
+| Roles/permissions                      | Server layouts, Admin pages, every Admin route, community roles, audit, session revocation, tests                                                                   |
+| Community membership/visibility        | Home feed/activity, community detail, post/search visibility, invitations/access, announcements, national onboarding                                                |
+| Posts/comments/reactions               | Home feed/activity, notifications, reports, events, community counts, search                                                                                        |
+| City Hub schema                        | Admin independent editors, publication validation, Explore public rendering, Student Hub internships/opportunities, static registry fallback                        |
+| Marketplace listing lifecycle          | Public queries, seller pages, favorites, expiration worker, notifications, moderation, search                                                                       |
+| Media policy/storage                   | Every uploader, R2/local adapters, upload completion, delivery authorization, cleanup, Admin media, Stories/timetables                                              |
+| Timetable extraction schema            | OCR/parser, DeepSeek prompt/JSON, review UI, validation diagnostics, period conversion, confirmation transaction, academic reminders                                |
+| University periods                     | Admin configuration, AI extraction, custom mappings, schedule snapshots, imported/manual course times                                                               |
+| Meet profile/compatibility             | Onboarding defaults, discovery settings, Nearby/Looking For queries, Random queue, smart notifications, privacy                                                     |
+| Map provider                           | Only generic map contract/adapter/factory where possible; then markers, radius, privacy positions, provider env, browser tests                                      |
+| LiveKit calls                          | Queue/call session lifecycle, conversation calls, token scope/expiry, presence, cleanup, browser permissions                                                        |
+| Notification template/type             | Presentation category, preference gate, tokens, producer, outbox worker, banner, push/email, Admin template UI                                                      |
+| Stories                                | Media codecs/policies, moderation, official identities, interactions, scheduled worker, contextual recommendations                                                  |
+| Official verification                  | Private document media, Admin permissions, status machine, badge DTOs on every identity surface, audit/notifications                                                |
+| Premium entitlement                    | Plan feature keys, Meet gates, Admin plans; never activate from unverified client/payment state                                                                     |
+| Theme/navigation                       | Main shell, Student Hub shell, Admin subnavigation, mobile safe areas, foreground banner z-index, full-screen messages/calls                                        |
+| Search                                 | Visibility policy, indexes/query limits, result DTO/category UI, empty states, tests                                                                                |
 
 ## 17. Known boundaries and claims another AI must not make
 

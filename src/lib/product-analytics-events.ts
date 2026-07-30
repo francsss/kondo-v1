@@ -19,6 +19,24 @@ export const PRODUCT_EVENTS = {
   ORGANIZATION_ONBOARDING_STARTED: "organization_onboarding_started",
   ORGANIZATION_DRAFT_CREATED: "organization_draft_created",
   ORGANIZATION_ONBOARDING_COMPLETED: "organization_onboarding_completed",
+  ORGANIZATION_WORKSPACE_OPENED: "organization_workspace_opened",
+  ORGANIZATION_PROFILE_UPDATED: "organization_profile_updated",
+  ORGANIZATION_CAPABILITIES_UPDATED: "organization_capabilities_updated",
+  ORGANIZATION_INVITATION_SENT: "organization_invitation_sent",
+  ORGANIZATION_INVITATION_ACCEPTED: "organization_invitation_accepted",
+  ORGANIZATION_INVITATION_DECLINED: "organization_invitation_declined",
+  ORGANIZATION_MEMBER_ROLE_CHANGED: "organization_member_role_changed",
+  ORGANIZATION_MEMBER_REMOVED: "organization_member_removed",
+  ORGANIZATION_OWNERSHIP_TRANSFER_REQUESTED:
+    "organization_ownership_transfer_requested",
+  ORGANIZATION_OWNERSHIP_TRANSFER_COMPLETED:
+    "organization_ownership_transfer_completed",
+  ORGANIZATION_VERIFICATION_DRAFT_SAVED:
+    "organization_verification_draft_saved",
+  ORGANIZATION_VERIFICATION_SUBMITTED: "organization_verification_submitted",
+  ORGANIZATION_VERIFICATION_REVIEWED: "organization_verification_reviewed",
+  ORGANIZATION_LIFECYCLE_CHANGED: "organization_lifecycle_changed",
+  ORGANIZATION_PARTNER_STATUS_CHANGED: "organization_partner_status_changed",
   HOME_ARRIVED_AFTER_ONBOARDING: "home_arrived_after_onboarding",
   FEATURE_TIME_SPENT: "feature_time_spent",
   COMMUNITY_OPENED: "community_opened",
@@ -153,6 +171,14 @@ export function sanitizeProductProperties(
 }
 
 const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
+  [
+    /^\/organizations\/[^/]+\/(dashboard|profile|team|verification|activity|settings)/,
+    "/organizations/[organization]/[workspace-section]",
+  ],
+  [
+    /^\/organization-invitations\/[^/]+/,
+    "/organization-invitations/[invitation]",
+  ],
   [/^\/messages\/[^/]+/, "/messages/[conversation]"],
   [/^\/profile\/[^/]+/, "/profile/[member]"],
   [/^\/stories\/[^/]+/, "/stories/[story-action]"],
@@ -200,6 +226,11 @@ export function productAreaForPath(pathname: string) {
   if (pathname.startsWith("/stories")) return "student_stories";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/settings")) return "settings";
+  if (
+    pathname.startsWith("/organizations") ||
+    pathname.startsWith("/organization-invitations")
+  )
+    return "organizations";
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/home") return "home";
   if (pathname === "/") return "landing";

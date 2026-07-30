@@ -31,6 +31,13 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
   "ACADEMIC_IMPORT_READY",
   "SCHOLARSHIP_MATCH",
   "MARKETPLACE_NEARBY",
+  "ORGANIZATION_INVITATION",
+  "ORGANIZATION_INVITATION_ACCEPTED",
+  "ORGANIZATION_ROLE_CHANGED",
+  "ORGANIZATION_MEMBER_REMOVED",
+  "ORGANIZATION_OWNERSHIP_TRANSFER",
+  "ORGANIZATION_VERIFICATION_UPDATE",
+  "ORGANIZATION_STATUS_UPDATE",
 ] as const;
 
 export type NotificationTemplateKey =
@@ -90,6 +97,13 @@ const allowedTemplateTokens: Record<
   ACADEMIC_IMPORT_READY: ["courseCount"],
   SCHOLARSHIP_MATCH: ["scholarshipTitle"],
   MARKETPLACE_NEARBY: ["listingTitle", "cityName"],
+  ORGANIZATION_INVITATION: ["organizationName", "role"],
+  ORGANIZATION_INVITATION_ACCEPTED: ["actorName", "organizationName"],
+  ORGANIZATION_ROLE_CHANGED: ["organizationName", "role"],
+  ORGANIZATION_MEMBER_REMOVED: ["organizationName"],
+  ORGANIZATION_OWNERSHIP_TRANSFER: ["organizationName", "outcome"],
+  ORGANIZATION_VERIFICATION_UPDATE: ["organizationName", "outcome"],
+  ORGANIZATION_STATUS_UPDATE: ["organizationName", "outcome"],
 };
 
 const safeRoutePrefixes = [
@@ -108,6 +122,8 @@ const safeRoutePrefixes = [
   "/language",
   "/onboarding",
   "/search",
+  "/organizations",
+  "/organization-invitations",
 ] as const;
 
 export class NotificationError extends Error {

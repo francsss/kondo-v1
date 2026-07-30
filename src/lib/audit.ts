@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 type AuditInput = {
   actorId?: string | null;
+  organizationId?: string | null;
   action: string;
   entityType: string;
   entityId: string;
@@ -23,6 +24,7 @@ export async function writeAuditLogWithClient(
   return client.auditLog.create({
     data: {
       actorId: input.actorId ?? null,
+      organizationId: input.organizationId ?? null,
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId,

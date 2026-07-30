@@ -88,6 +88,11 @@ async function clearDatabase() {
   await prisma.reaction.deleteMany();
   await prisma.comment.deleteMany();
   await prisma.post.deleteMany();
+  // Organizations reference their human creator with RESTRICT. Delete the
+  // organization parent first so workspace memberships, invitations,
+  // ownership transfers, verification requests, and aliases cascade before
+  // demo users are recreated.
+  await prisma.organization.deleteMany();
   // Delete the parent first so PostgreSQL cascades memberships after the
   // owner row is gone. Deleting owner memberships directly is intentionally
   // rejected by the community ownership integrity trigger.

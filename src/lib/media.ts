@@ -8,6 +8,7 @@ import type {
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
+import { hasOrganizationPermission } from "@/lib/organization-authorization";
 import { MediaPolicyError, validateMediaIntent } from "@/lib/media-policy";
 import {
   createMediaUploadToken,
@@ -715,6 +716,56 @@ export async function getMediaForDelivery(
         },
         select: { conversationId: true },
       }),
+    );
+  }
+  if (
+    !authorized &&
+    viewer &&
+    (asset.attachmentType === "ORGANIZATION_LOGO" ||
+      asset.attachmentType === "ORGANIZATION_COVER") &&
+    asset.attachmentId
+  ) {
+    authorized = Boolean(
+      await prisma.organizationMembership.findFirst({
+        where: {
+          organizationId: asset.attachmentId,
+          userId: viewer.id,
+          status: "ACTIVE",
+        },
+        select: { organizationId: true },
+      }),
+    );
+  }
+  if (
+    !authorized &&
+    viewer &&
+    asset.attachmentType === "ORGANIZATION_VERIFICATION" &&
+    asset.attachmentId
+  ) {
+    const document = await prisma.organizationVerificationDocument.findFirst({
+      where: {
+        mediaId: asset.id,
+        requestId: asset.attachmentId,
+      },
+      select: {
+        request: {
+          select: {
+            organization: {
+              select: {
+                memberships: {
+                  where: { userId: viewer.id },
+                  select: { role: true, status: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    authorized = hasOrganizationPermission(
+      document?.request.organization.memberships[0],
+      "ORGANIZATION_VIEW_PRIVATE_VERIFICATION",
     );
   }
   if (!authorized) throw new MediaError("Media was not found.", 404);

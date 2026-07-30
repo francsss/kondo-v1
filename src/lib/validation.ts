@@ -315,6 +315,163 @@ export const organizationOnboardingCompleteSchema =
     confirm: z.literal(true),
   });
 
+const organizationVisibleRoleSchema = z.enum(["ADMIN", "EDITOR", "VIEWER"]);
+const organizationSizeRangeSchema = z.enum([
+  "SOLO",
+  "TWO_TO_TEN",
+  "ELEVEN_TO_FIFTY",
+  "FIFTY_ONE_TO_TWO_HUNDRED",
+  "TWO_HUNDRED_PLUS",
+]);
+
+export const organizationProfileUpdateSchema = z.object({
+  publicName: z.string().trim().min(2).max(160).optional(),
+  legalName: optionalTrimmedText(200),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(100)
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Use lowercase letters, numbers, and hyphens.",
+    )
+    .optional(),
+  type: organizationTypeSchema.optional(),
+  tagline: optionalTrimmedText(160),
+  shortDescription: optionalTrimmedText(500),
+  extendedDescription: optionalTrimmedText(5_000),
+  foundingYear: z.number().int().min(1000).max(2200).optional(),
+  sizeRange: organizationSizeRangeSchema.optional(),
+  countryId: z.string().cuid().optional(),
+  cityId: optionalCuid,
+  website: z
+    .preprocess(
+      (value) =>
+        typeof value === "string" && !value.trim() ? undefined : value,
+      z.string().trim().url().max(500).optional(),
+    )
+    .optional(),
+  professionalEmail: z
+    .preprocess(
+      (value) =>
+        typeof value === "string" && !value.trim() ? undefined : value,
+      z.string().trim().email().max(320).optional(),
+    )
+    .optional(),
+  professionalPhone: optionalTrimmedText(40),
+  websiteWechat: optionalTrimmedText(120),
+  publicAddress: optionalTrimmedText(300),
+  serviceAreas: z.array(z.string().trim().min(2).max(120)).max(30).optional(),
+  supportedLanguages: z
+    .array(z.string().trim().min(2).max(40))
+    .max(20)
+    .optional(),
+  contactAudience: z.enum(["PUBLIC", "MEMBERS", "PRIVATE"]).optional(),
+  logoMediaId: optionalCuid,
+  coverMediaId: optionalCuid,
+});
+
+export const organizationCapabilitiesUpdateSchema = z.object({
+  capabilities: z.array(z.enum(ORGANIZATION_CAPABILITY_KEYS)).max(7),
+});
+
+export const organizationInvitationCreateSchema = z.object({
+  email: z.string().trim().email().max(320).toLowerCase(),
+  role: organizationVisibleRoleSchema,
+});
+
+export const organizationInvitationUpdateSchema = z.object({
+  action: z.enum(["RESEND", "CANCEL"]),
+  role: organizationVisibleRoleSchema.optional(),
+});
+
+export const organizationMemberUpdateSchema = z.object({
+  role: organizationVisibleRoleSchema,
+});
+
+export const organizationOwnershipTransferCreateSchema = z.object({
+  targetUserId: z.string().cuid(),
+  confirm: z.literal(true),
+});
+
+export const organizationInvitationDecisionSchema = z.object({
+  action: z.enum(["ACCEPT", "DECLINE"]),
+});
+
+const organizationVerificationDocumentTypeSchema = z.enum([
+  "BUSINESS_REGISTRATION",
+  "UNIVERSITY_AUTHORIZATION",
+  "ASSOCIATION_REGISTRATION",
+  "REPRESENTATIVE_AUTHORIZATION",
+  "OFFICIAL_LETTER",
+  "ADDRESS_PROOF",
+  "OTHER",
+]);
+
+export const organizationVerificationDraftSchema = z.object({
+  legalName: z.string().trim().min(2).max(200),
+  registrationNumber: optionalTrimmedText(160),
+  registrationCountryId: z.string().cuid(),
+  authorityDescription: z.string().trim().min(20).max(1_200),
+  officialWebsite: z
+    .preprocess(
+      (value) =>
+        typeof value === "string" && !value.trim() ? undefined : value,
+      z.string().trim().url().max(500).optional(),
+    )
+    .optional(),
+  publicContactEmail: z.string().trim().email().max(320).toLowerCase(),
+  documents: z
+    .array(
+      z.object({
+        mediaId: z.string().cuid(),
+        type: organizationVerificationDocumentTypeSchema,
+        label: z.string().trim().min(2).max(120),
+      }),
+    )
+    .max(12),
+});
+
+export const organizationVerificationSubmitSchema =
+  organizationVerificationDraftSchema.extend({
+    confirm: z.literal(true),
+    documents: z
+      .array(
+        z.object({
+          mediaId: z.string().cuid(),
+          type: organizationVerificationDocumentTypeSchema,
+          label: z.string().trim().min(2).max(120),
+        }),
+      )
+      .min(1)
+      .max(12),
+  });
+
+export const organizationVerificationDecisionSchema = z.object({
+  status: z.enum([
+    "UNDER_REVIEW",
+    "MORE_INFORMATION_REQUIRED",
+    "APPROVED",
+    "REJECTED",
+    "SUSPENDED",
+    "REVOKED",
+  ]),
+  userVisibleResponse: z.string().trim().min(4).max(1_200),
+  reviewerNote: optionalTrimmedText(2_000),
+});
+
+export const organizationLifecycleUpdateSchema = z.object({
+  status: z.enum(["ACTIVE", "SUSPENDED", "ARCHIVED"]),
+  reason: z.string().trim().min(4).max(1_200),
+});
+
+export const organizationPartnerUpdateSchema = z.object({
+  isOfficialPartner: z.boolean(),
+  reason: z.string().trim().min(4).max(1_200),
+});
+
 const referenceSlugSchema = z
   .string()
   .trim()
@@ -362,6 +519,8 @@ export const mediaUploadIntentSchema = z
     purpose: z.enum([
       "PROFILE_AVATAR",
       "ORGANIZATION_LOGO",
+      "ORGANIZATION_COVER",
+      "ORGANIZATION_VERIFICATION_DOCUMENT",
       "COMMUNITY_COVER",
       "POST_IMAGE",
       "LISTING_IMAGE",

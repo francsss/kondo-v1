@@ -10,7 +10,7 @@ import {
   EyeOff,
   UserRound,
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const nextPath = useSafeInternalNext();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -83,7 +84,7 @@ export default function RegisterPage() {
         role: data.user.role,
         onboarding_completed: false,
       });
-      router.replace(data.nextPath ?? "/onboarding");
+      router.replace(nextPath ?? data.nextPath ?? "/onboarding");
       router.refresh();
     } catch {
       captureProductEvent(PRODUCT_EVENTS.REGISTRATION_VALIDATION_ERROR, {
@@ -381,6 +382,32 @@ export default function RegisterPage() {
       </div>
     </main>
   );
+}
+
+const subscribeLocation = () => () => undefined;
+const getServerNextPath = () => null;
+function getBrowserNextPath() {
+  return safeInternalNext(
+    new URLSearchParams(window.location.search).get("next"),
+  );
+}
+function useSafeInternalNext() {
+  return useSyncExternalStore(
+    subscribeLocation,
+    getBrowserNextPath,
+    getServerNextPath,
+  );
+}
+
+function safeInternalNext(value: string | null) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\")
+  )
+    return null;
+  return value;
 }
 
 function Field({

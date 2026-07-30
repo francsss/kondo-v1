@@ -91,6 +91,8 @@ enum OrganizationVerificationStatus {
   VERIFIED
   REJECTED
   MORE_INFORMATION_REQUIRED
+  SUSPENDED
+  REVOKED
 }
 
 enum OrganizationMembershipRole {
@@ -98,6 +100,8 @@ enum OrganizationMembershipRole {
   ADMIN
   MANAGER
   MEMBER
+  EDITOR
+  VIEWER
 }
 
 enum OrganizationMembershipStatus {
@@ -121,6 +125,53 @@ enum OrganizationCapabilityStatus {
   ENABLED
   DISABLED
   RESTRICTED
+}
+
+enum OrganizationInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+  REVOKED
+}
+
+enum OrganizationOwnershipTransferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  EXPIRED
+}
+
+enum OrganizationVerificationRequestStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  MORE_INFORMATION_REQUIRED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  SUSPENDED
+  REVOKED
+}
+
+enum OrganizationVerificationDocumentType {
+  BUSINESS_REGISTRATION
+  UNIVERSITY_AUTHORIZATION
+  ASSOCIATION_REGISTRATION
+  REPRESENTATIVE_AUTHORIZATION
+  OFFICIAL_LETTER
+  ADDRESS_PROOF
+  OTHER
+}
+
+enum OrganizationSizeRange {
+  SOLO
+  TWO_TO_TEN
+  ELEVEN_TO_FIFTY
+  FIFTY_ONE_TO_TWO_HUNDRED
+  TWO_HUNDRED_PLUS
 }
 
 enum ProfileAudience {
@@ -438,6 +489,8 @@ enum MediaKind {
 enum MediaPurpose {
   PROFILE_AVATAR
   ORGANIZATION_LOGO
+  ORGANIZATION_COVER
+  ORGANIZATION_VERIFICATION_DOCUMENT
   COMMUNITY_COVER
   POST_IMAGE
   LISTING_IMAGE
@@ -629,135 +682,142 @@ enum OfficialOrganizationType {
 }
 
 model User {
-  id                               String                        @id @default(cuid())
-  email                            String                        @unique
-  emailVerifiedAt                  DateTime?
-  passwordHash                     String?
-  firstName                        String
-  lastName                         String
-  username                         String?                       @unique
-  avatarKey                        String?
-  avatarMediaId                    String?                       @unique
-  avatarMedia                      MediaAsset?                   @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
-  bio                              String?                       @db.VarChar(280)
-  phone                            String?
-  profileAudience                  ProfileAudience               @default(MEMBERS)
-  locationAudience                 ProfileAudience               @default(MEMBERS)
-  educationAudience                ProfileAudience               @default(MEMBERS)
-  languagesAudience                ProfileAudience               @default(MEMBERS)
-  communitiesAudience              ProfileAudience               @default(MEMBERS)
-  activityAudience                 ProfileAudience               @default(MEMBERS)
-  marketplaceAudience              ProfileAudience               @default(MEMBERS)
-  role                             Role                          @default(MEMBER)
-  status                           UserStatus                    @default(ACTIVE)
-  storyCreatorStatus               StoryCreatorStatus            @default(STANDARD)
-  officialProfileStatus            OfficialProfileStatus         @default(NOT_VERIFIED)
-  officialOrganizationType         OfficialOrganizationType?
-  officialOrganizationName         String?                       @db.VarChar(160)
-  officialVerifiedAt               DateTime?
-  officialReviewDueAt              DateTime?
-  gender                           UserGender?
-  countryId                        String?
-  country                          Country?                      @relation(fields: [countryId], references: [id], onDelete: SetNull)
-  cityId                           String?
-  city                             City?                         @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  universityId                     String?
-  university                       University?                   @relation(fields: [universityId], references: [id], onDelete: SetNull)
-  degree                           String?
-  studyLevel                       StudyLevel?
-  studentJourney                   StudentJourney?
-  onboardingIntent                 OnboardingIntent?
-  journeyDetail                    UserJourneyDetail?
-  targetCities                     UserTargetCity[]
-  targetUniversities               UserTargetUniversity[]
-  organizationMemberships          OrganizationMembership[]
-  createdOrganizations             Organization[]                @relation("OrganizationCreator")
-  nearbyDiscoveryEnabled           Boolean                       @default(true)
-  meetIntents                      String[]                      @default([])
-  studyYear                        Int?
-  arrivalDate                      DateTime?
-  languages                        String[]                      @default([])
-  interests                        String[]                      @default([])
-  onboardingCompletedAt            DateTime?
-  lastActiveAt                     DateTime?
-  createdCommunities               Community[]                   @relation("CommunityCreator")
-  ownedCommunities                 Community[]                   @relation("CommunityOwner")
-  communityMemberships             CommunityMember[]
-  communityAccessSubjects          CommunityAccessRequest[]      @relation("CommunityAccessSubject")
-  createdCommunityAccessRequests   CommunityAccessRequest[]      @relation("CommunityAccessCreator")
-  resolvedCommunityAccessRequests  CommunityAccessRequest[]      @relation("CommunityAccessResolver")
-  communityRequests                CommunityRequest[]            @relation("CommunityRequestCreator")
-  communityRequestHelpOffers       CommunityRequestHelpOffer[]
-  posts                            Post[]
-  comments                         Comment[]
-  reactions                        Reaction[]
-  stories                          Story[]                       @relation("StoryCreator")
-  storyComments                    StoryComment[]
-  storyLikes                       StoryLike[]
-  storySaves                       StorySave[]
-  storyHides                       StoryHide[]
-  storyModerationEvents            StoryModerationEvent[]        @relation("StoryModerationActor")
-  officialVerificationRequests     OfficialVerificationRequest[] @relation("OfficialVerificationApplicant")
-  reviewedOfficialVerifications    OfficialVerificationRequest[] @relation("OfficialVerificationReviewer")
-  marketplaceListings              MarketplaceListing[]
-  communityExchangeOffers          CommunityExchangeOffer[]
-  studentSkillOffers               StudentSkillOffer[]
-  listingFavorites                 ListingFavorite[]
-  guideProgress                    GuideProgress[]
-  createdGuides                    Guide[]                       @relation("GuideAuthor")
-  createdCityHubs                  CityHub[]                     @relation("CityHubAuthor")
-  updatedCityHubs                  CityHub[]                     @relation("CityHubEditor")
-  questions                        Question[]
-  answers                          Answer[]
-  answerVotes                      AnswerVote[]
-  studentSchedules                 StudentSchedule[]
-  scheduleImports                  ScheduleImport[]
-  academicTasks                    AcademicTask[]
-  customPeriodConfigurations       CustomPeriodConfiguration[]
-  scholarshipFavorites             ScholarshipFavorite[]
-  bookmarks                        Bookmark[]
-  notifications                    Notification[]                @relation("NotificationRecipient")
-  pushSubscriptions                PushSubscription[]
-  triggeredNotifications           Notification[]                @relation("NotificationActor")
-  notificationJobs                 NotificationJob[]             @relation("NotificationJobRecipient")
-  triggeredNotificationJobs        NotificationJob[]             @relation("NotificationJobActor")
-  updatedNotificationTemplates     NotificationTemplate[]        @relation("NotificationTemplateUpdater")
-  createdNotificationAnnouncements NotificationAnnouncement[]    @relation("NotificationAnnouncementCreator")
-  conversationMemberships          ConversationParticipant[]
-  sentMessages                     Message[]                     @relation("MessageSender")
-  meetQueueEntry                   MeetQueueEntry?
-  meetDiscoveryProfile             MeetDiscoveryProfile?
-  subscriptions                    UserSubscription[]
-  createdCallSessions              CallSession[]                 @relation("CallSessionCreator")
-  callParticipations               CallParticipant[]
-  blockedUsers                     UserBlock[]                   @relation("Blocker")
-  blockedByUsers                   UserBlock[]                   @relation("BlockedUser")
-  reports                          Report[]                      @relation("ReportReporter")
-  reportedSubjects                 Report[]                      @relation("ReportSubject")
-  assignedReports                  Report[]                      @relation("ReportAssignee")
-  reportAssignments                Report[]                      @relation("ReportAssignedBy")
-  resolvedReports                  Report[]                      @relation("ReportResolvedBy")
-  reopenedReports                  Report[]                      @relation("ReportReopenedBy")
-  reportNotes                      ReportNote[]
-  reportEvidenceCaptures           ReportEvidence[]
-  submittedPetFeedbacks            PetFeedback[]                 @relation("PetFeedbackAuthor")
-  resolvedPetFeedbacks             PetFeedback[]                 @relation("PetFeedbackResolver")
-  petFeedbackNotes                 PetFeedbackNote[]             @relation("PetFeedbackNoteAuthor")
-  ownedMedia                       MediaAsset[]                  @relation("MediaOwner")
-  removedMedia                     MediaAsset[]                  @relation("MediaRemovedBy")
-  accountRequests                  AccountRequest[]              @relation("AccountRequestOwner")
-  processedAccountRequests         AccountRequest[]              @relation("AccountRequestProcessor")
-  preference                       UserPreference?
-  auditLogs                        AuditLog[]                    @relation("AuditActor")
-  analyticsEvents                  AnalyticsEvent[]
-  presence                         UserPresence?
-  accounts                         OAuthAccount[]
-  sessions                         Session[]
-  emailVerificationTokens          EmailVerificationToken[]
-  passwordResetTokens              PasswordResetToken[]
-  createdAt                        DateTime                      @default(now())
-  updatedAt                        DateTime                      @updatedAt
-  searchVector                     Unsupported("tsvector")?
+  id                                 String                            @id @default(cuid())
+  email                              String                            @unique
+  emailVerifiedAt                    DateTime?
+  passwordHash                       String?
+  firstName                          String
+  lastName                           String
+  username                           String?                           @unique
+  avatarKey                          String?
+  avatarMediaId                      String?                           @unique
+  avatarMedia                        MediaAsset?                       @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  bio                                String?                           @db.VarChar(280)
+  phone                              String?
+  profileAudience                    ProfileAudience                   @default(MEMBERS)
+  locationAudience                   ProfileAudience                   @default(MEMBERS)
+  educationAudience                  ProfileAudience                   @default(MEMBERS)
+  languagesAudience                  ProfileAudience                   @default(MEMBERS)
+  communitiesAudience                ProfileAudience                   @default(MEMBERS)
+  activityAudience                   ProfileAudience                   @default(MEMBERS)
+  marketplaceAudience                ProfileAudience                   @default(MEMBERS)
+  role                               Role                              @default(MEMBER)
+  status                             UserStatus                        @default(ACTIVE)
+  storyCreatorStatus                 StoryCreatorStatus                @default(STANDARD)
+  officialProfileStatus              OfficialProfileStatus             @default(NOT_VERIFIED)
+  officialOrganizationType           OfficialOrganizationType?
+  officialOrganizationName           String?                           @db.VarChar(160)
+  officialVerifiedAt                 DateTime?
+  officialReviewDueAt                DateTime?
+  gender                             UserGender?
+  countryId                          String?
+  country                            Country?                          @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId                             String?
+  city                               City?                             @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  universityId                       String?
+  university                         University?                       @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  degree                             String?
+  studyLevel                         StudyLevel?
+  studentJourney                     StudentJourney?
+  onboardingIntent                   OnboardingIntent?
+  journeyDetail                      UserJourneyDetail?
+  targetCities                       UserTargetCity[]
+  targetUniversities                 UserTargetUniversity[]
+  organizationMemberships            OrganizationMembership[]
+  createdOrganizations               Organization[]                    @relation("OrganizationCreator")
+  sentOrganizationInvitations        OrganizationInvitation[]          @relation("OrganizationInvitationSender")
+  removedOrganizationMemberships     OrganizationMembership[]          @relation("OrganizationMembershipRemovedBy")
+  submittedOrganizationVerifications OrganizationVerificationRequest[] @relation("OrganizationVerificationSubmitter")
+  reviewedOrganizationVerifications  OrganizationVerificationRequest[] @relation("OrganizationVerificationReviewer")
+  initiatedOrganizationTransfers     OrganizationOwnershipTransfer[]   @relation("OrganizationOwnershipTransferInitiator")
+  targetedOrganizationTransfers      OrganizationOwnershipTransfer[]   @relation("OrganizationOwnershipTransferTarget")
+  grantedOrganizationPartnerships    Organization[]                    @relation("OrganizationPartnerGranter")
+  nearbyDiscoveryEnabled             Boolean                           @default(true)
+  meetIntents                        String[]                          @default([])
+  studyYear                          Int?
+  arrivalDate                        DateTime?
+  languages                          String[]                          @default([])
+  interests                          String[]                          @default([])
+  onboardingCompletedAt              DateTime?
+  lastActiveAt                       DateTime?
+  createdCommunities                 Community[]                       @relation("CommunityCreator")
+  ownedCommunities                   Community[]                       @relation("CommunityOwner")
+  communityMemberships               CommunityMember[]
+  communityAccessSubjects            CommunityAccessRequest[]          @relation("CommunityAccessSubject")
+  createdCommunityAccessRequests     CommunityAccessRequest[]          @relation("CommunityAccessCreator")
+  resolvedCommunityAccessRequests    CommunityAccessRequest[]          @relation("CommunityAccessResolver")
+  communityRequests                  CommunityRequest[]                @relation("CommunityRequestCreator")
+  communityRequestHelpOffers         CommunityRequestHelpOffer[]
+  posts                              Post[]
+  comments                           Comment[]
+  reactions                          Reaction[]
+  stories                            Story[]                           @relation("StoryCreator")
+  storyComments                      StoryComment[]
+  storyLikes                         StoryLike[]
+  storySaves                         StorySave[]
+  storyHides                         StoryHide[]
+  storyModerationEvents              StoryModerationEvent[]            @relation("StoryModerationActor")
+  officialVerificationRequests       OfficialVerificationRequest[]     @relation("OfficialVerificationApplicant")
+  reviewedOfficialVerifications      OfficialVerificationRequest[]     @relation("OfficialVerificationReviewer")
+  marketplaceListings                MarketplaceListing[]
+  communityExchangeOffers            CommunityExchangeOffer[]
+  studentSkillOffers                 StudentSkillOffer[]
+  listingFavorites                   ListingFavorite[]
+  guideProgress                      GuideProgress[]
+  createdGuides                      Guide[]                           @relation("GuideAuthor")
+  createdCityHubs                    CityHub[]                         @relation("CityHubAuthor")
+  updatedCityHubs                    CityHub[]                         @relation("CityHubEditor")
+  questions                          Question[]
+  answers                            Answer[]
+  answerVotes                        AnswerVote[]
+  studentSchedules                   StudentSchedule[]
+  scheduleImports                    ScheduleImport[]
+  academicTasks                      AcademicTask[]
+  customPeriodConfigurations         CustomPeriodConfiguration[]
+  scholarshipFavorites               ScholarshipFavorite[]
+  bookmarks                          Bookmark[]
+  notifications                      Notification[]                    @relation("NotificationRecipient")
+  pushSubscriptions                  PushSubscription[]
+  triggeredNotifications             Notification[]                    @relation("NotificationActor")
+  notificationJobs                   NotificationJob[]                 @relation("NotificationJobRecipient")
+  triggeredNotificationJobs          NotificationJob[]                 @relation("NotificationJobActor")
+  updatedNotificationTemplates       NotificationTemplate[]            @relation("NotificationTemplateUpdater")
+  createdNotificationAnnouncements   NotificationAnnouncement[]        @relation("NotificationAnnouncementCreator")
+  conversationMemberships            ConversationParticipant[]
+  sentMessages                       Message[]                         @relation("MessageSender")
+  meetQueueEntry                     MeetQueueEntry?
+  meetDiscoveryProfile               MeetDiscoveryProfile?
+  subscriptions                      UserSubscription[]
+  createdCallSessions                CallSession[]                     @relation("CallSessionCreator")
+  callParticipations                 CallParticipant[]
+  blockedUsers                       UserBlock[]                       @relation("Blocker")
+  blockedByUsers                     UserBlock[]                       @relation("BlockedUser")
+  reports                            Report[]                          @relation("ReportReporter")
+  reportedSubjects                   Report[]                          @relation("ReportSubject")
+  assignedReports                    Report[]                          @relation("ReportAssignee")
+  reportAssignments                  Report[]                          @relation("ReportAssignedBy")
+  resolvedReports                    Report[]                          @relation("ReportResolvedBy")
+  reopenedReports                    Report[]                          @relation("ReportReopenedBy")
+  reportNotes                        ReportNote[]
+  reportEvidenceCaptures             ReportEvidence[]
+  submittedPetFeedbacks              PetFeedback[]                     @relation("PetFeedbackAuthor")
+  resolvedPetFeedbacks               PetFeedback[]                     @relation("PetFeedbackResolver")
+  petFeedbackNotes                   PetFeedbackNote[]                 @relation("PetFeedbackNoteAuthor")
+  ownedMedia                         MediaAsset[]                      @relation("MediaOwner")
+  removedMedia                       MediaAsset[]                      @relation("MediaRemovedBy")
+  accountRequests                    AccountRequest[]                  @relation("AccountRequestOwner")
+  processedAccountRequests           AccountRequest[]                  @relation("AccountRequestProcessor")
+  preference                         UserPreference?
+  auditLogs                          AuditLog[]                        @relation("AuditActor")
+  analyticsEvents                    AnalyticsEvent[]
+  presence                           UserPresence?
+  accounts                           OAuthAccount[]
+  sessions                           Session[]
+  emailVerificationTokens            EmailVerificationToken[]
+  passwordResetTokens                PasswordResetToken[]
+  createdAt                          DateTime                          @default(now())
+  updatedAt                          DateTime                          @updatedAt
+  searchVector                       Unsupported("tsvector")?
 
   @@index([countryId])
   @@index([cityId])
@@ -767,22 +827,23 @@ model User {
 }
 
 model Country {
-  id                   String             @id @default(cuid())
-  code                 String             @unique @db.Char(2)
-  name                 String             @unique
-  emoji                String?
-  isActive             Boolean            @default(true)
-  verified             Boolean            @default(false)
-  users                User[]
-  cities               City[]
-  universities         University[]
-  communities          Community[]
-  scholarships         Scholarship[]
-  scholarshipAgents    ScholarshipAgent[]
-  meetQueuePreferences MeetQueueEntry[]   @relation("MeetCountryPreference")
-  organizations        Organization[]
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  id                               String                            @id @default(cuid())
+  code                             String                            @unique @db.Char(2)
+  name                             String                            @unique
+  emoji                            String?
+  isActive                         Boolean                           @default(true)
+  verified                         Boolean                           @default(false)
+  users                            User[]
+  cities                           City[]
+  universities                     University[]
+  communities                      Community[]
+  scholarships                     Scholarship[]
+  scholarshipAgents                ScholarshipAgent[]
+  meetQueuePreferences             MeetQueueEntry[]                  @relation("MeetCountryPreference")
+  organizations                    Organization[]
+  organizationVerificationRequests OrganizationVerificationRequest[]
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
 
   @@index([isActive, name])
 }
@@ -921,35 +982,60 @@ model UserTargetUniversity {
 }
 
 model Organization {
-  id                 String                         @id @default(cuid())
-  publicName         String                         @db.VarChar(160)
-  legalName          String?                        @db.VarChar(200)
-  slug               String                         @unique @db.VarChar(120)
-  type               OrganizationType
-  shortDescription   String?                        @db.VarChar(500)
-  countryId          String
-  country            Country                        @relation(fields: [countryId], references: [id], onDelete: Restrict)
-  cityId             String?
-  city               City?                          @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  website            String?                        @db.VarChar(500)
-  professionalEmail  String?                        @db.VarChar(320)
-  professionalPhone  String?                        @db.VarChar(40)
-  logoMediaId        String?                        @unique
-  logoMedia          MediaAsset?                    @relation("OrganizationLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
-  lifecycleStatus    OrganizationLifecycleStatus    @default(DRAFT)
-  verificationStatus OrganizationVerificationStatus @default(NOT_SUBMITTED)
-  setupStep          Int                            @default(1)
-  setupCompletedAt   DateTime?
-  createdById        String
-  createdBy          User                           @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  memberships        OrganizationMembership[]
-  capabilities       OrganizationCapability[]
-  createdAt          DateTime                       @default(now())
-  updatedAt          DateTime                       @updatedAt
+  id                   String                            @id @default(cuid())
+  publicName           String                            @db.VarChar(160)
+  legalName            String?                           @db.VarChar(200)
+  slug                 String                            @unique @db.VarChar(120)
+  type                 OrganizationType
+  tagline              String?                           @db.VarChar(160)
+  shortDescription     String?                           @db.VarChar(500)
+  extendedDescription  String?                           @db.Text
+  foundingYear         Int?
+  sizeRange            OrganizationSizeRange?
+  countryId            String
+  country              Country                           @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId               String?
+  city                 City?                             @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  website              String?                           @db.VarChar(500)
+  professionalEmail    String?                           @db.VarChar(320)
+  professionalPhone    String?                           @db.VarChar(40)
+  websiteWechat        String?                           @db.VarChar(120)
+  publicAddress        String?                           @db.VarChar(300)
+  serviceAreas         String[]                          @default([])
+  supportedLanguages   String[]                          @default([])
+  contactAudience      ProfileAudience                   @default(PUBLIC)
+  logoMediaId          String?                           @unique
+  logoMedia            MediaAsset?                       @relation("OrganizationLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  coverMediaId         String?                           @unique
+  coverMedia           MediaAsset?                       @relation("OrganizationCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  lifecycleStatus      OrganizationLifecycleStatus       @default(DRAFT)
+  verificationStatus   OrganizationVerificationStatus    @default(NOT_SUBMITTED)
+  isOfficialPartner    Boolean                           @default(false)
+  partnerSince         DateTime?
+  partnerGrantedById   String?
+  partnerGrantedBy     User?                             @relation("OrganizationPartnerGranter", fields: [partnerGrantedById], references: [id], onDelete: SetNull)
+  setupStep            Int                               @default(1)
+  setupCompletedAt     DateTime?
+  suspendedAt          DateTime?
+  suspensionReason     String?                           @db.VarChar(1200)
+  archivedAt           DateTime?
+  createdById          String
+  createdBy            User                              @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships          OrganizationMembership[]
+  capabilities         OrganizationCapability[]
+  invitations          OrganizationInvitation[]
+  ownershipTransfers   OrganizationOwnershipTransfer[]
+  verificationRequests OrganizationVerificationRequest[]
+  slugAliases          OrganizationSlugAlias[]
+  auditLogs            AuditLog[]
+  createdAt            DateTime                          @default(now())
+  updatedAt            DateTime                          @updatedAt
 
   @@index([createdById, lifecycleStatus, updatedAt])
   @@index([countryId, cityId])
   @@index([lifecycleStatus, verificationStatus])
+  @@index([type, lifecycleStatus, createdAt])
+  @@index([isOfficialPartner, lifecycleStatus])
 }
 
 model OrganizationMembership {
@@ -960,12 +1046,16 @@ model OrganizationMembership {
   role           OrganizationMembershipRole
   status         OrganizationMembershipStatus @default(ACTIVE)
   joinedAt       DateTime                     @default(now())
+  removedAt      DateTime?
+  removedById    String?
+  removedBy      User?                        @relation("OrganizationMembershipRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
   createdAt      DateTime                     @default(now())
   updatedAt      DateTime                     @updatedAt
 
   @@id([organizationId, userId])
   @@index([userId, status, updatedAt])
   @@index([organizationId, role, status])
+  @@index([removedById, removedAt])
 }
 
 model OrganizationCapability {
@@ -978,6 +1068,102 @@ model OrganizationCapability {
 
   @@id([organizationId, key])
   @@index([key, status])
+}
+
+model OrganizationInvitation {
+  id              String                       @id @default(cuid())
+  organizationId  String
+  organization    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  emailNormalized String                       @db.VarChar(320)
+  intendedRole    OrganizationMembershipRole
+  tokenHash       String                       @unique @db.Char(64)
+  invitedByUserId String
+  invitedBy       User                         @relation("OrganizationInvitationSender", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  status          OrganizationInvitationStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  declinedAt      DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  @@index([organizationId, status, createdAt])
+  @@index([emailNormalized, status, expiresAt])
+  @@index([expiresAt, status])
+}
+
+model OrganizationOwnershipTransfer {
+  id                String                              @id @default(cuid())
+  organizationId    String
+  organization      Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  initiatedByUserId String
+  initiatedBy       User                                @relation("OrganizationOwnershipTransferInitiator", fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+  targetUserId      String
+  targetUser        User                                @relation("OrganizationOwnershipTransferTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  status            OrganizationOwnershipTransferStatus @default(PENDING)
+  expiresAt         DateTime
+  acceptedAt        DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime                            @default(now())
+  updatedAt         DateTime                            @updatedAt
+
+  @@index([organizationId, status, createdAt])
+  @@index([targetUserId, status, expiresAt])
+  @@index([expiresAt, status])
+}
+
+model OrganizationVerificationRequest {
+  id                    String                                @id @default(cuid())
+  organizationId        String
+  organization          Organization                          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  submittedByUserId     String
+  submittedBy           User                                  @relation("OrganizationVerificationSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  status                OrganizationVerificationRequestStatus @default(DRAFT)
+  legalNameSnapshot     String                                @db.VarChar(200)
+  registrationNumber    String?                               @db.VarChar(160)
+  registrationCountryId String
+  registrationCountry   Country                               @relation(fields: [registrationCountryId], references: [id], onDelete: Restrict)
+  authorityDescription  String                                @db.VarChar(1200)
+  officialWebsite       String?                               @db.VarChar(500)
+  publicContactEmail    String                                @db.VarChar(320)
+  reviewerUserId        String?
+  reviewer              User?                                 @relation("OrganizationVerificationReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  reviewerNote          String?                               @db.VarChar(2000)
+  userVisibleResponse   String?                               @db.VarChar(1200)
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  version               Int                                   @default(1)
+  documents             OrganizationVerificationDocument[]
+  createdAt             DateTime                              @default(now())
+  updatedAt             DateTime                              @updatedAt
+
+  @@index([organizationId, status, createdAt])
+  @@index([status, submittedAt])
+  @@index([reviewerUserId, status, updatedAt])
+  @@index([registrationCountryId, status])
+}
+
+model OrganizationVerificationDocument {
+  id        String                               @id @default(cuid())
+  requestId String
+  request   OrganizationVerificationRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mediaId   String                               @unique
+  media     MediaAsset                           @relation("OrganizationVerificationDocument", fields: [mediaId], references: [id], onDelete: Restrict)
+  type      OrganizationVerificationDocumentType
+  label     String                               @db.VarChar(120)
+  createdAt DateTime                             @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+model OrganizationSlugAlias {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slug           String       @unique @db.VarChar(120)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
 }
 
 model Campus {
@@ -2373,55 +2559,57 @@ model PetFeedbackNote {
 }
 
 model MediaAsset {
-  id                           String                        @id @default(cuid())
-  ownerId                      String?
-  owner                        User?                         @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  objectKey                    String                        @unique
-  storageProvider              MediaStorageProvider
-  kind                         MediaKind
-  purpose                      MediaPurpose
-  visibility                   MediaVisibility
-  status                       MediaStatus                   @default(PENDING)
-  scanStatus                   MediaScanStatus               @default(PENDING)
-  originalFileName             String                        @db.VarChar(255)
-  extension                    String                        @db.VarChar(16)
-  declaredMime                 String                        @db.VarChar(120)
-  detectedMime                 String?                       @db.VarChar(120)
-  sizeBytes                    Int
-  width                        Int?
-  height                       Int?
-  durationSeconds              Int?
-  altText                      String?                       @db.VarChar(240)
-  checksumSha256               String?                       @db.Char(64)
-  uploadExpiresAt              DateTime
-  uploadedAt                   DateTime?
-  validatedAt                  DateTime?
-  attachedAt                   DateTime?
-  attachmentType               String?                       @db.VarChar(80)
-  attachmentId                 String?
-  replacesId                   String?
-  replaces                     MediaAsset?                   @relation("MediaReplacement", fields: [replacesId], references: [id], onDelete: SetNull)
-  replacedBy                   MediaAsset[]                  @relation("MediaReplacement")
-  profileAvatarFor             User?                         @relation("UserAvatar")
-  organizationLogoFor          Organization?                 @relation("OrganizationLogo")
-  messageAttachment            Message?                      @relation("MessageMedia")
-  communityCoverFor            Community?                    @relation("CommunityCover")
-  postMedia                    PostMedia?                    @relation("PostMedia")
-  listingImageFor              ListingImage?                 @relation("ListingImageMedia")
-  guideCoverFor                Guide?                        @relation("GuideCover")
-  scheduleImportFile           ScheduleImportFile?
-  storyVideoFor                Story?                        @relation("StoryVideo")
-  storyPosterFor               Story?                        @relation("StoryPoster")
-  officialVerificationDocument OfficialVerificationDocument? @relation("OfficialVerificationDocument")
-  rejectionReason              String?                       @db.VarChar(500)
-  retainedAt                   DateTime?
-  retentionReason              String?                       @db.VarChar(500)
-  removedAt                    DateTime?
-  removedById                  String?
-  removedBy                    User?                         @relation("MediaRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
-  storageDeletePending         Boolean                       @default(false)
-  createdAt                    DateTime                      @default(now())
-  updatedAt                    DateTime                      @updatedAt
+  id                               String                            @id @default(cuid())
+  ownerId                          String?
+  owner                            User?                             @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  objectKey                        String                            @unique
+  storageProvider                  MediaStorageProvider
+  kind                             MediaKind
+  purpose                          MediaPurpose
+  visibility                       MediaVisibility
+  status                           MediaStatus                       @default(PENDING)
+  scanStatus                       MediaScanStatus                   @default(PENDING)
+  originalFileName                 String                            @db.VarChar(255)
+  extension                        String                            @db.VarChar(16)
+  declaredMime                     String                            @db.VarChar(120)
+  detectedMime                     String?                           @db.VarChar(120)
+  sizeBytes                        Int
+  width                            Int?
+  height                           Int?
+  durationSeconds                  Int?
+  altText                          String?                           @db.VarChar(240)
+  checksumSha256                   String?                           @db.Char(64)
+  uploadExpiresAt                  DateTime
+  uploadedAt                       DateTime?
+  validatedAt                      DateTime?
+  attachedAt                       DateTime?
+  attachmentType                   String?                           @db.VarChar(80)
+  attachmentId                     String?
+  replacesId                       String?
+  replaces                         MediaAsset?                       @relation("MediaReplacement", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy                       MediaAsset[]                      @relation("MediaReplacement")
+  profileAvatarFor                 User?                             @relation("UserAvatar")
+  organizationLogoFor              Organization?                     @relation("OrganizationLogo")
+  organizationCoverFor             Organization?                     @relation("OrganizationCover")
+  messageAttachment                Message?                          @relation("MessageMedia")
+  communityCoverFor                Community?                        @relation("CommunityCover")
+  postMedia                        PostMedia?                        @relation("PostMedia")
+  listingImageFor                  ListingImage?                     @relation("ListingImageMedia")
+  guideCoverFor                    Guide?                            @relation("GuideCover")
+  scheduleImportFile               ScheduleImportFile?
+  storyVideoFor                    Story?                            @relation("StoryVideo")
+  storyPosterFor                   Story?                            @relation("StoryPoster")
+  officialVerificationDocument     OfficialVerificationDocument?     @relation("OfficialVerificationDocument")
+  organizationVerificationDocument OrganizationVerificationDocument? @relation("OrganizationVerificationDocument")
+  rejectionReason                  String?                           @db.VarChar(500)
+  retainedAt                       DateTime?
+  retentionReason                  String?                           @db.VarChar(500)
+  removedAt                        DateTime?
+  removedById                      String?
+  removedBy                        User?                             @relation("MediaRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
+  storageDeletePending             Boolean                           @default(false)
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
 
   @@index([ownerId, status, createdAt])
   @@index([status, uploadExpiresAt])
@@ -2454,19 +2642,22 @@ model AccountRequest {
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  actorId    String?
-  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
-  action     String
-  entityType String
-  entityId   String
-  oldValue   Json?
-  newValue   Json?
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  id             String        @id @default(cuid())
+  actorId        String?
+  actor          User?         @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  action         String
+  entityType     String
+  entityId       String
+  oldValue       Json?
+  newValue       Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
 
   @@index([actorId])
+  @@index([organizationId, createdAt])
   @@index([entityType, entityId])
   @@index([createdAt])
 }

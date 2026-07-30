@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   canDeleteOrArchiveOrganization,
   canEditOrganization,
+  canManageOrganizationMember,
   canManageOrganizationMembers,
   canResumeOrganizationSetup,
   canSubmitOrganizationForVerification,
   canViewOrganizationDraft,
+  hasOrganizationPermission,
+  visibleOrganizationRole,
 } from "@/lib/organization-authorization";
 
 describe("organization authorization", () => {
-  const active = (role: "OWNER" | "ADMIN" | "MANAGER" | "MEMBER") => ({
+  const active = (
+    role: "OWNER" | "ADMIN" | "EDITOR" | "VIEWER" | "MANAGER" | "MEMBER",
+  ) => ({
     role,
     status: "ACTIVE" as const,
   });
@@ -41,6 +46,43 @@ describe("organization authorization", () => {
   it("reserves archival for the active owner", () => {
     expect(canDeleteOrArchiveOrganization(active("OWNER"))).toBe(true);
     expect(canDeleteOrArchiveOrganization(active("ADMIN"))).toBe(false);
+  });
+
+  it("maps the final role vocabulary and preserves legacy compatibility", () => {
+    expect(visibleOrganizationRole("MANAGER")).toBe("EDITOR");
+    expect(visibleOrganizationRole("MEMBER")).toBe("VIEWER");
+    expect(canEditOrganization(active("EDITOR"))).toBe(true);
+    expect(canEditOrganization(active("VIEWER"))).toBe(false);
+    expect(
+      hasOrganizationPermission(
+        active("ADMIN"),
+        "ORGANIZATION_MANAGE_VERIFICATION",
+      ),
+    ).toBe(true);
+  });
+
+  it("prevents administrators from changing owners or peer administrators", () => {
+    expect(
+      canManageOrganizationMember({
+        actor: active("ADMIN"),
+        target: active("ADMIN"),
+        nextRole: "EDITOR",
+      }),
+    ).toBe(false);
+    expect(
+      canManageOrganizationMember({
+        actor: active("OWNER"),
+        target: active("ADMIN"),
+        nextRole: "EDITOR",
+      }),
+    ).toBe(true);
+    expect(
+      canManageOrganizationMember({
+        actor: active("OWNER"),
+        target: active("VIEWER"),
+        nextRole: "OWNER",
+      }),
+    ).toBe(false);
   });
 
   it("only resumes editable, unfinished drafts", () => {

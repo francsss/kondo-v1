@@ -9,6 +9,9 @@ describe("notification link safety", () => {
     expect(safeNotificationHref("/student-hub#arrival")).toBe(
       "/student-hub#arrival",
     );
+    expect(safeNotificationHref("/organization-invitations")).toBe(
+      "/organization-invitations",
+    );
     expect(safeNotificationHref(null)).toBeNull();
   });
 

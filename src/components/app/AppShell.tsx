@@ -30,6 +30,10 @@ import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { NotificationExperience } from "@/components/features/notifications/NotificationExperience";
 import { RestoreStoryScroll } from "@/components/features/stories/RestoreStoryScroll";
 import { KondoLogo } from "@/components/KondoLogo";
+import {
+  WorkspaceSwitcher,
+  type WorkspaceSwitcherItem,
+} from "@/components/organizations/WorkspaceSwitcher";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { canAccessAdmin } from "@/lib/authorization";
@@ -219,9 +223,11 @@ function NavLink({
 export function AppShell({
   children,
   user,
+  workspaces = [],
 }: {
   children: React.ReactNode;
   user: ShellUser;
+  workspaces?: WorkspaceSwitcherItem[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -425,6 +431,7 @@ export function AppShell({
                 ⌘ K
               </kbd>
             </Link>
+            <WorkspaceSwitcher user={user} workspaces={workspaces} />
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <ThemeToggle />
               <Button asChild className="relative" size="icon" variant="ghost">

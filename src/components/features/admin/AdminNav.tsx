@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   BellRing,
   BarChart3,
+  BadgeCheck,
   BookOpenText,
   Building2,
   Clapperboard,
@@ -149,6 +150,18 @@ const items = [
     label: "Official profiles",
     icon: Landmark,
     permission: "OFFICIAL_PROFILE_VIEW" as const,
+  },
+  {
+    href: "/admin/organizations",
+    label: "Organizations",
+    icon: Building2,
+    permission: "ORGANIZATIONS_VIEW" as const,
+  },
+  {
+    href: "/admin/organization-verifications",
+    label: "Organization verification",
+    icon: BadgeCheck,
+    permission: "ORGANIZATION_VERIFICATIONS_VIEW" as const,
   },
 ];
 

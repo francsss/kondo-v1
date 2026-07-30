@@ -45,8 +45,14 @@ Browser
 - `User` remains the only authentication identity. `Organization` is a managed
   domain resource linked to human operators through `OrganizationMembership`;
   there is no shared organization password, cookie, or parallel session model.
-  `src/lib/organizations.ts` owns draft/lifecycle persistence and
-  `src/lib/organization-authorization.ts` is the role-policy boundary.
+  `src/lib/organizations.ts` owns draft/lifecycle persistence,
+  `src/lib/organization-authorization.ts` is the role-policy boundary, and the
+  focused `organization-*` services own profiles, invitations, membership,
+  ownership transfer, verification, workspace reads, and Admin operations.
+  Invitation tokens are random and hash-only at rest. Verification documents
+  remain private media and are authorized independently from public brand
+  media. Verification, workspace lifecycle, capability enablement, and
+  official Kondo partner status are separate state machines.
 - `src/lib/maps/provider.ts` is the provider-neutral Meet map contract. The Meet UI creates maps, viewports, privacy radii, and markers only through this boundary. `src/lib/maps/google-map-provider.ts` is the current Google Maps JavaScript API adapter; a future AMap adapter can implement the same contract and replace the factory selection in `src/lib/maps/index.ts` without changing Meet business logic.
 - `src/lib/media.ts` is the media lifecycle boundary. It owns signed upload authorization, server-generated object keys, ownership, validation activation, replacement, attachment identity, secure delivery authorization, soft removal, Admin inspection, audit, and orphan cleanup. Community, Marketplace, profile, message, post, and Guide cover media all attach through this boundary; `src/lib/storage.ts` keeps local and S3-compatible drivers behind one contract.
 - `src/lib/profiles.ts` is the profile and account-request boundary. It owns stable public/member/owner DTOs, field-level audience rules, coherent visible counters, profile editing, validated avatar attachment, saved-content resolution, profile reports, data-export/deletion requests, and safe Admin user review. Module 17 added Admin status control (suspend/reactivate/deactivate) and session revocation to this boundary; both are blocked against self-targeting and against an Admin acting on a Super Admin.
@@ -70,11 +76,13 @@ Browser
 - Identity: email/password authentication, signed session cookie, database
   session revocation, OAuth account model, Personal/Organization registration
   intent, conditional personal onboarding, and profiles.
-- Organizations: an additive organization identity/membership/capability
-  foundation with resumable setup, server-side authorization, lifecycle,
-  separate verification status, private logo media, audit, and analytics.
-  Team invitations, verification review, public organization surfaces, and
-  organization content publishing are intentionally downstream work.
+- Organizations: additive professional workspaces with resumable setup,
+  owner/admin/editor/viewer authorization, independent brand profiles,
+  capability registry, hashed invitations, immediate member revocation,
+  two-step ownership transfer, private verification review, lifecycle and
+  partner controls, audit, notifications, analytics, and an Admin operations
+  surface. Public organization pages and capability-backed content publishing
+  are intentionally reserved for the next organization module.
 - Community: reviewed community CRUD, a single transferable owner, scoped Moderator/Member roles, open/request/invite access, posts, threaded comments, reactions, validated events, announcements, pinning, reports, retained evidence, and Admin CMS.
 - Marketplace: categories, listings, media metadata, favorites, location filters, and seller contact handoff. There is intentionally no payment model.
 - Student Hub: one navigation surface that composes the existing guide library and help-center routes with checklists, tips, articles, Q&A, and upcoming student events. `/guides` and `/help` remain stable content routes. Timetable tools are shown only for admitted/current students and the retained legacy incoming value.

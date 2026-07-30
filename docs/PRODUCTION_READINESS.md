@@ -20,6 +20,16 @@ memberships, and media. It introduces no new provider credential. Deploy the
 migration before the application so organization queries never run against an
 older schema.
 
+Professional organization workspaces additionally require
+`20260730150000_organization_professional_workspace_enums` followed by
+`20260730151000_organization_professional_workspace`. The enum additions are
+intentionally committed in their own migration because PostgreSQL cannot safely
+use a newly added enum value in the same transaction. The second migration is
+additive, explicitly maps legacy organization roles to Editor/Viewer, and
+preserves users, sessions, organizations, memberships, media, verification
+history, and all unrelated product data. No new environment variable is
+introduced.
+
 ### Resolved release findings
 
 1. **Production upload failure:** a real Home-feed upload reached the

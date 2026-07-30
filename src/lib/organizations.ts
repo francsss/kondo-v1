@@ -178,6 +178,7 @@ export async function createOrganizationDraft(
       });
       await writeAuditLogWithClient(tx, {
         actorId: actor.id,
+        organizationId: created.id,
         action: "ORGANIZATION_CREATED",
         entityType: "Organization",
         entityId: created.id,
@@ -191,6 +192,7 @@ export async function createOrganizationDraft(
       });
       await writeAuditLogWithClient(tx, {
         actorId: actor.id,
+        organizationId: created.id,
         action: "ORGANIZATION_OWNERSHIP_ESTABLISHED",
         entityType: "OrganizationMembership",
         entityId: `${created.id}:${actor.id}`,
@@ -317,6 +319,7 @@ async function updateOrganizationWithClient(
   });
   await writeAuditLogWithClient(tx, {
     actorId: actor.id,
+    organizationId,
     action: "ORGANIZATION_DRAFT_UPDATED",
     entityType: "Organization",
     entityId: organizationId,
@@ -376,6 +379,7 @@ export async function completeOrganizationOnboarding(
     });
     await writeAuditLogWithClient(tx, {
       actorId: actor.id,
+      organizationId,
       action: "ORGANIZATION_ONBOARDING_COMPLETED",
       entityType: "Organization",
       entityId: organizationId,
@@ -469,7 +473,7 @@ export async function listManagedOrganizations(userId: string) {
     where: {
       userId,
       status: "ACTIVE",
-      role: { in: ["OWNER", "ADMIN", "MANAGER"] },
+      organization: { lifecycleStatus: { not: "ARCHIVED" } },
     },
     select: {
       role: true,
@@ -498,11 +502,12 @@ export async function archiveOrganization(
     }
     const updated = await tx.organization.update({
       where: { id: organizationId },
-      data: { lifecycleStatus: "ARCHIVED" },
+      data: { lifecycleStatus: "ARCHIVED", archivedAt: new Date() },
       select: organizationSetupSelect,
     });
     await writeAuditLogWithClient(tx, {
       actorId: actor.id,
+      organizationId,
       action: "ORGANIZATION_ARCHIVED",
       entityType: "Organization",
       entityId: organizationId,

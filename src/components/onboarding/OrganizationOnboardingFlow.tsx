@@ -31,6 +31,7 @@ type CityOption = {
 };
 type OrganizationSetup = {
   id: string;
+  slug: string;
   publicName: string;
   legalName: string | null;
   type: string;
@@ -76,6 +77,9 @@ export function OrganizationOnboardingFlow({
   const router = useRouter();
   const [organizationId, setOrganizationId] = useState(
     initialOrganization?.id ?? "",
+  );
+  const [organizationSlug, setOrganizationSlug] = useState(
+    initialOrganization?.slug ?? "",
   );
   const [step, setStep] = useState(
     Math.min(Math.max((initialOrganization?.setupStep ?? 1) - 1, 0), 3),
@@ -134,6 +138,7 @@ export function OrganizationOnboardingFlow({
           return false;
         }
         setOrganizationId(data.organization.id);
+        setOrganizationSlug(data.organization.slug);
         setStep(nextStep);
         return true;
       }
@@ -243,7 +248,15 @@ export function OrganizationOnboardingFlow({
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Button asChild>
-            <Link href="/home">Continue to Kondo</Link>
+            <Link
+              href={
+                organizationSlug
+                  ? `/organizations/${organizationSlug}/dashboard`
+                  : "/settings/organizations"
+              }
+            >
+              Open organization workspace
+            </Link>
           </Button>
           <Button asChild variant="secondary">
             <Link href="/settings/organizations">View organizations</Link>

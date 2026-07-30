@@ -35,7 +35,11 @@ export default async function OrganizationSettingsPage() {
             <Card className="p-0" key={organization.id}>
               <Link
                 className="group flex items-center gap-4 p-5 transition hover:bg-muted/50"
-                href={`/onboarding/organization?id=${organization.id}`}
+                href={
+                  organization.setupCompletedAt
+                    ? `/organizations/${organization.slug}/dashboard`
+                    : `/onboarding/organization?id=${organization.id}`
+                }
               >
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
                   <Building2 className="h-5 w-5" />
@@ -76,8 +80,9 @@ export default async function OrganizationSettingsPage() {
 
       <p className="mt-7 flex items-start gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green" />
-        Organization verification and team invitations belong to the next
-        workspace phase. No draft is publicly searchable.
+        Team access, organization verification and audit history live inside
+        each professional workspace. Drafts and private verification documents
+        are never publicly searchable.
       </p>
     </div>
   );

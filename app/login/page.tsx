@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
 import {
@@ -15,6 +15,7 @@ import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export default function LoginPage() {
   const router = useRouter();
+  const nextPath = useSafeInternalNext();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +50,8 @@ export default function LoginPage() {
         onboarding_completed: data.user.onboardingComplete,
       });
       router.replace(
-        data.nextPath ??
+        nextPath ??
+          data.nextPath ??
           (data.user.onboardingComplete ? "/home" : "/onboarding"),
       );
       router.refresh();
@@ -150,7 +152,11 @@ export default function LoginPage() {
             New to Kondo?{" "}
             <Link
               className="font-black text-kondo-green hover:underline"
-              href="/register"
+              href={
+                nextPath
+                  ? `/register?next=${encodeURIComponent(nextPath)}`
+                  : "/register"
+              }
             >
               Create your account
             </Link>
@@ -196,4 +202,30 @@ export default function LoginPage() {
       </aside>
     </main>
   );
+}
+
+const subscribeLocation = () => () => undefined;
+const getServerNextPath = () => null;
+function getBrowserNextPath() {
+  return safeInternalNext(
+    new URLSearchParams(window.location.search).get("next"),
+  );
+}
+function useSafeInternalNext() {
+  return useSyncExternalStore(
+    subscribeLocation,
+    getBrowserNextPath,
+    getServerNextPath,
+  );
+}
+
+function safeInternalNext(value: string | null) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\")
+  )
+    return null;
+  return value;
 }

@@ -25,9 +25,11 @@ Roles:
 Platform roles are separate from organization-membership roles. A global
 `ADMIN` or `SUPER_ADMIN` does not become an organization owner through hidden
 side effects, and an organization `OWNER`/`ADMIN` does not receive platform
-Admin access. The organization foundation currently exposes operator setup and
-settings only; organization verification review and team administration are
-reserved for a later reviewed phase.
+Admin access. Organization Owner/Admin/Editor/Viewer permissions are checked
+inside the protected workspace and APIs. Platform Admins can inspect and
+suspend/archive organizations or review verification only when their exact
+platform permission allows it. Only a Super Admin can grant or remove official
+Kondo partner status.
 
 Only a Super Admin can assign or remove `ADMIN`/`SUPER_ADMIN` roles. An operator
 cannot change their own role or status, so the acting administrator cannot
@@ -36,27 +38,31 @@ revoke the target's sessions and create an `AuditLog` record.
 
 ## Routes
 
-| Route                                 | Purpose                                                                                                          |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `/admin`                              | Real operational overview, moderation queue, recent users, seven-day engagement, and recent audit activity.      |
-| `/admin/users`                        | Search, role/status filters, pagination, account review, suspension/reactivation, sessions, and role assignment. |
-| `/admin/communities`                  | User-community moderation plus creation and metadata management for explicitly official communities.             |
-| `/admin/marketplace`                  | Listing search, status/fraud review, moderation, seller context, and category management.                        |
-| `/admin/reports`                      | Central report queue, assignment, evidence, notes, decisions, and audit history.                                 |
-| `/admin/message-safety`               | Aggregate safety diagnostics only; it does not expose private conversations.                                     |
-| `/admin/city-hubs`                    | Multi-city editorial workflow and City Hub creation.                                                             |
-| `/admin/city-hubs/:id`                | Navigation between independently managed City Hub details and existing sections.                                 |
-| `/admin/city-hubs/:id/details`        | City identity, introduction, signals, and impact-point form.                                                     |
-| `/admin/city-hubs/:id/sections/:slug` | One existing section with independently persisted settings and entry CRUD.                                       |
-| `/admin/city-hubs/:id/preview`        | Protected preview of the current draft before publication.                                                       |
-| `/admin/guides`                       | Student Hub guide and ordered-step CMS.                                                                          |
-| `/admin/content`                      | Editorial index for Guides, City Hub, official communities, and validated community events.                      |
-| `/admin/media`                        | R2-backed media inspection, validation status, retention, and safe removal.                                      |
-| `/admin/notifications`                | Templates, targeted announcement composer, queue result, and worker diagnostics.                                 |
-| `/admin/analytics`                    | Real 7/30/90-day database metrics and recorded product-event counts.                                             |
-| `/admin/reference-data`               | Country, city, and university configuration.                                                                     |
-| `/admin/settings`                     | Safe non-secret configuration index.                                                                             |
-| `/admin/audit`                        | Filtered administrative audit history.                                                                           |
+| Route                                   | Purpose                                                                                                          |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `/admin`                                | Real operational overview, moderation queue, recent users, seven-day engagement, and recent audit activity.      |
+| `/admin/users`                          | Search, role/status filters, pagination, account review, suspension/reactivation, sessions, and role assignment. |
+| `/admin/communities`                    | User-community moderation plus creation and metadata management for explicitly official communities.             |
+| `/admin/marketplace`                    | Listing search, status/fraud review, moderation, seller context, and category management.                        |
+| `/admin/reports`                        | Central report queue, assignment, evidence, notes, decisions, and audit history.                                 |
+| `/admin/message-safety`                 | Aggregate safety diagnostics only; it does not expose private conversations.                                     |
+| `/admin/city-hubs`                      | Multi-city editorial workflow and City Hub creation.                                                             |
+| `/admin/city-hubs/:id`                  | Navigation between independently managed City Hub details and existing sections.                                 |
+| `/admin/city-hubs/:id/details`          | City identity, introduction, signals, and impact-point form.                                                     |
+| `/admin/city-hubs/:id/sections/:slug`   | One existing section with independently persisted settings and entry CRUD.                                       |
+| `/admin/city-hubs/:id/preview`          | Protected preview of the current draft before publication.                                                       |
+| `/admin/guides`                         | Student Hub guide and ordered-step CMS.                                                                          |
+| `/admin/content`                        | Editorial index for Guides, City Hub, official communities, and validated community events.                      |
+| `/admin/media`                          | R2-backed media inspection, validation status, retention, and safe removal.                                      |
+| `/admin/notifications`                  | Templates, targeted announcement composer, queue result, and worker diagnostics.                                 |
+| `/admin/analytics`                      | Real 7/30/90-day database metrics and recorded product-event counts.                                             |
+| `/admin/reference-data`                 | Country, city, and university configuration.                                                                     |
+| `/admin/organizations`                  | Search/filter organization workspaces by identity, type, lifecycle, verification, capability, country, or city.  |
+| `/admin/organizations/:id`              | Organization identity, team, capabilities, lifecycle, partner state, verification history, and scoped audit.     |
+| `/admin/organization-verifications`     | Private organization-verification review queue.                                                                  |
+| `/admin/organization-verifications/:id` | Least-privilege evidence review, reviewer note, user response, and reviewed status transitions.                  |
+| `/admin/settings`                       | Safe non-secret configuration index.                                                                             |
+| `/admin/audit`                          | Filtered administrative audit history.                                                                           |
 
 Student Hub administration intentionally remains under `/admin/guides`, because
 the public Student Hub composes the Guide library, Q&A, and validated community
@@ -155,6 +161,37 @@ stored on `NotificationAnnouncement`, recipient count is shown to the operator,
 delivery runs through the existing outbox worker, and no recipient identities
 appear in diagnostics.
 
+Organization invitations, role/member changes, ownership transfer,
+verification outcomes, and lifecycle decisions use the same notification
+outbox and safe internal-link policy. Verification reviewer notes remain
+internal; only the explicit user-visible response is sent to organization
+operators.
+
+## Organization operations
+
+Organizations never sign in directly. Team members use individual Kondo
+accounts and receive one of four workspace roles:
+
+| Workspace role | Main capabilities                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `OWNER`        | Full workspace control, archive, and two-step ownership transfer.                                              |
+| `ADMIN`        | Profile, capabilities, team, verification, analytics, and future publishing; no ownership transfer or archive. |
+| `EDITOR`       | Profile and future content editing; no team, verification, or lifecycle controls.                              |
+| `VIEWER`       | Dashboard and organization activity only.                                                                      |
+
+Invitations are bound to a normalized email, expire after seven days, and store
+only a SHA-256 token hash. Acceptance creates or reactivates one organization
+membership transactionally. Suspension blocks organization mutations and
+publishing while preserving authorized read access; archive removes the
+workspace from normal access without deleting its records or audit trail.
+
+Organization verification and official-partner status are deliberately
+separate. An approved verification request sets the organization verification
+state only. A Super Admin must make a second, reasoned decision to grant partner
+status. Organization verification files are private media and are available
+only to the owning organization roles with verification permission and
+platform roles with the exact review/media permission.
+
 ## Public visibility and cache behavior
 
 - Marketplace pages query persisted, active, non-expired Neon rows.
@@ -176,9 +213,16 @@ URL before deploying the application commit. Relevant additions include:
 - `20260721103000_official_communities`: additive `isOfficial` flag and index;
 - `20260721110000_guide_cover_media`: additive secure Guide-to-MediaAsset cover
   relation;
+- `20260730150000_organization_professional_workspace_enums`: additive enum
+  values committed separately for PostgreSQL compatibility;
+- `20260730151000_organization_professional_workspace`: additive profile,
+  invitation, transfer, verification, slug-alias, audit, media, lifecycle, and
+  partner fields/tables, plus the explicit Manager→Editor and Member→Viewer
+  membership-role data migration;
 - the existing City Hub and Marketplace migrations required by their workflows.
 
-No existing City Hub JSON is deleted or rewritten by these migrations.
+No user, session, organization, membership, media, community, City Hub JSON, or
+legacy verification record is deleted or rewritten by these migrations.
 
 ## Environment
 
