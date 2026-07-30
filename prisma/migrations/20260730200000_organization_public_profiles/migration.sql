@@ -1,8 +1,6 @@
 -- Part 3: additive public organization profiles.
 -- Existing organizations remain private until an authorized operator publishes them.
 
-BEGIN;
-
 -- A previous production attempt may have created some enum types before
 -- stopping. Keep the migration safe to resume without deleting live data.
 DO $$
@@ -314,5 +312,3 @@ VALUES
     CURRENT_TIMESTAMP
   )
 ON CONFLICT ("key") DO NOTHING;
-
-COMMIT;
