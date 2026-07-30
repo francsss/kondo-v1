@@ -14,6 +14,7 @@ import {
   requestIp,
 } from "@/lib/request";
 import { toSafeUser } from "@/lib/serializers";
+import { resolveSignedInLanding } from "@/lib/onboarding-routing";
 import {
   createDatabaseSession,
   hashSecurityIdentifier,
@@ -42,6 +43,21 @@ export async function POST(request: NextRequest) {
   try {
     const user = await prisma.user.findUnique({
       where: { email: parsed.data.email },
+      include: {
+        organizationMemberships: {
+          where: { status: "ACTIVE" },
+          select: {
+            role: true,
+            status: true,
+            organization: {
+              select: {
+                lifecycleStatus: true,
+                setupCompletedAt: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     const passwordOk = await bcrypt.compare(
@@ -91,7 +107,10 @@ export async function POST(request: NextRequest) {
       sessionId,
     });
     const response = NextResponse.json(
-      { user: toSafeUser(user) },
+      {
+        user: toSafeUser(user),
+        nextPath: resolveSignedInLanding(user),
+      },
       {
         headers: {
           "Cache-Control": "private, no-store, max-age=0",

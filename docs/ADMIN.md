@@ -22,6 +22,13 @@ Roles:
 | `ADMIN`       | Platform operations, CMS, users, reports, media, notifications, analytics, and safe settings. |
 | `SUPER_ADMIN` | All Admin permissions, security metadata, and administrator-role assignment.                  |
 
+Platform roles are separate from organization-membership roles. A global
+`ADMIN` or `SUPER_ADMIN` does not become an organization owner through hidden
+side effects, and an organization `OWNER`/`ADMIN` does not receive platform
+Admin access. The organization foundation currently exposes operator setup and
+settings only; organization verification review and team administration are
+reserved for a later reviewed phase.
+
 Only a Super Admin can assign or remove `ADMIN`/`SUPER_ADMIN` roles. An operator
 cannot change their own role or status, so the acting administrator cannot
 remove the platform's final active administrator through the UI. Role changes

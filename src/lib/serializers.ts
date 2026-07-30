@@ -10,6 +10,8 @@ export function toSafeUser(user: {
   avatarMediaId?: string | null;
   role: string;
   status: string;
+  onboardingIntent?: string | null;
+  studentJourney?: string | null;
   onboardingCompletedAt?: Date | null;
 }) {
   return {
@@ -22,6 +24,8 @@ export function toSafeUser(user: {
     avatarMediaId: user.avatarMediaId ?? null,
     role: user.role,
     status: user.status,
+    onboardingIntent: user.onboardingIntent ?? null,
+    studentJourney: user.studentJourney ?? null,
     onboardingComplete: Boolean(user.onboardingCompletedAt),
     fullName: `${user.firstName} ${user.lastName}`,
   };

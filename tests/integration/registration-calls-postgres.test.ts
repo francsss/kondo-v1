@@ -5,8 +5,19 @@ import {
   findMeetMatch,
   leaveMeetQueue,
 } from "@/lib/calls/service";
+import { completeOnboarding } from "@/lib/onboarding";
+import {
+  completeOrganizationOnboarding,
+  createOrganizationDraft,
+  getOrganizationForSetup,
+  listManagedOrganizations,
+  updateOrganizationDraft,
+} from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
-import { registerUserWithNationalCommunity } from "@/lib/registration";
+import {
+  registerHumanUser,
+  registerUserWithNationalCommunity,
+} from "@/lib/registration";
 
 const isIsolatedPostgres =
   process.env.DATABASE_URL?.includes("/kondo_module3_test") ?? false;
@@ -41,6 +52,9 @@ postgresDescribe("national registration and call coordination", () => {
     });
     await prisma.callSession.deleteMany({
       where: { participants: { some: { userId: { in: userIds } } } },
+    });
+    await prisma.organization.deleteMany({
+      where: { createdById: { in: userIds } },
     });
     await prisma.community.deleteMany({
       where: {
@@ -109,6 +123,157 @@ postgresDescribe("national registration and call coordination", () => {
         (membership) => membership.userId === testAdmin.id,
       )?.role,
     ).toMatch(/OWNER|MODERATOR/);
+  });
+
+  it("registers an organization operator as a human and persists independent organization drafts", async () => {
+    const suffix = randomUUID().replaceAll("-", "");
+    const registration = await registerHumanUser({
+      intent: "ORGANIZATION",
+      email: `operator-${suffix}@${testDomain}`,
+      passwordHash: "not-a-real-password-hash",
+      firstName: "Organization",
+      lastName: "Operator",
+    });
+    expect(registration.communityId).toBeNull();
+    expect(registration.user.onboardingIntent).toBe("ORGANIZATION");
+    expect(registration.user.countryId).toBeNull();
+    await expect(
+      prisma.communityMember.count({
+        where: { userId: registration.user.id },
+      }),
+    ).resolves.toBe(0);
+
+    const china = await prisma.country.upsert({
+      where: { code: "CN" },
+      update: { isActive: true, verified: true },
+      create: {
+        code: "CN",
+        name: "China",
+        emoji: "🇨🇳",
+        isActive: true,
+        verified: true,
+      },
+    });
+    const first = await createOrganizationDraft(registration.user, {
+      publicName: `Kondo Education ${suffix}`,
+      type: "EDUCATION_AGENCY",
+      countryId: china.id,
+    });
+    const second = await createOrganizationDraft(registration.user, {
+      publicName: `Kondo Services ${suffix}`,
+      type: "SERVICE_PROVIDER",
+      countryId: china.id,
+    });
+    expect(first.id).not.toBe(second.id);
+    await expect(
+      prisma.organizationMembership.count({
+        where: {
+          organizationId: first.id,
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.organizationMembership.delete({
+        where: {
+          organizationId_userId: {
+            organizationId: first.id,
+            userId: registration.user.id,
+          },
+        },
+      }),
+    ).rejects.toThrow(/exactly one active owner/i);
+    await expect(
+      prisma.organizationMembership.count({
+        where: {
+          organizationId: first.id,
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      }),
+    ).resolves.toBe(1);
+
+    const completed = await completeOrganizationOnboarding(
+      registration.user,
+      first.id,
+      {
+        publicName: first.publicName,
+        type: first.type,
+        countryId: china.id,
+        shortDescription:
+          "Application guidance and practical support for future students.",
+        capabilities: ["STUDENT_SERVICES", "UNIVERSITY_INFORMATION"],
+      },
+    );
+    expect(completed.lifecycleStatus).toBe("ACTIVE");
+    expect(completed.verificationStatus).toBe("NOT_SUBMITTED");
+    expect(completed.setupCompletedAt).toEqual(expect.any(String));
+    expect(completed.capabilities).toEqual([
+      "STUDENT_SERVICES",
+      "UNIVERSITY_INFORMATION",
+    ]);
+    await expect(
+      listManagedOrganizations(registration.user.id),
+    ).resolves.toHaveLength(2);
+
+    const ghana = await prisma.country.upsert({
+      where: { code: "GH" },
+      update: { isActive: true, verified: true },
+      create: {
+        code: "GH",
+        name: "Ghana",
+        emoji: "🇬🇭",
+        isActive: true,
+        verified: true,
+      },
+    });
+    const personalProfile = await completeOnboarding(registration.user.id, {
+      gender: "FEMALE",
+      studentJourney: "PROFESSIONAL",
+      countryId: ghana.id,
+      currentCityName: "Accra",
+      professionalArea: "Education",
+      chinaRelationship:
+        "I help prospective students understand study options in China.",
+      languages: ["English"],
+      interests: ["Student Guide"],
+    });
+    expect(personalProfile.studentJourney).toBe("PROFESSIONAL");
+    expect(personalProfile.universityId).toBeNull();
+    await expect(
+      prisma.organizationMembership.count({
+        where: { userId: registration.user.id, status: "ACTIVE" },
+      }),
+    ).resolves.toBe(2);
+    await expect(
+      prisma.communityMember.count({
+        where: {
+          userId: registration.user.id,
+          community: {
+            type: "COUNTRY",
+            isOfficial: true,
+            countryId: ghana.id,
+          },
+        },
+      }),
+    ).resolves.toBe(1);
+
+    const unrelated = await prisma.user.create({
+      data: {
+        email: `unrelated-${suffix}@${testDomain}`,
+        firstName: "Unrelated",
+        lastName: "Member",
+      },
+    });
+    await expect(
+      getOrganizationForSetup(unrelated, first.id),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      updateOrganizationDraft(unrelated, first.id, {
+        shortDescription: "This edit must not be accepted.",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
   });
 
   it("matches only mutually compatible users and protects the match from duplication", async () => {

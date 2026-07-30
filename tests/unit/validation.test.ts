@@ -18,6 +18,8 @@ import {
   profileUpdateSchema,
   notificationAnnouncementSchema,
   notificationTemplateUpdateSchema,
+  organizationDraftCreateSchema,
+  organizationOnboardingCompleteSchema,
   referenceCitySchema,
   referenceCountrySchema,
   referenceUniversitySchema,
@@ -59,6 +61,20 @@ describe("input validation", () => {
         acceptedTerms: true,
       }).success,
     ).toBe(false);
+  });
+
+  it("allows an organization operator to create a human account without personal profile fields", () => {
+    expect(
+      registerSchema.safeParse({
+        firstName: "Amina",
+        lastName: "Diallo",
+        email: "amina@organization.example",
+        intent: "ORGANIZATION",
+        password: "StrongPass1",
+        confirmPassword: "StrongPass1",
+        acceptedTerms: true,
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects posts without meaningful content", () => {
@@ -242,6 +258,103 @@ describe("input validation", () => {
         arrivalDate: "2026-09-01",
         languages: ["English"],
         interests: ["Housing"],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates each personal journey without forcing irrelevant study fields", () => {
+    const countryId = "ckz1234567890123456789012";
+    const cityId = "ckz1234567890123456789013";
+    const universityId = "ckz1234567890123456789014";
+    const base = {
+      gender: "FEMALE",
+      countryId,
+      languages: ["English"],
+      interests: [],
+    };
+
+    expect(
+      onboardingSchema.safeParse({
+        ...base,
+        studentJourney: "PROSPECTIVE_STUDENT",
+        studyLevel: "MASTERS",
+        applicationStage: "EXPLORING",
+        universityPreferenceMode: "NOT_CHOSEN",
+      }).success,
+    ).toBe(true);
+    expect(
+      onboardingSchema.safeParse({
+        ...base,
+        studentJourney: "ADMITTED_STUDENT",
+        cityId,
+        universityId,
+        degree: "Computer Science",
+        studyLevel: "MASTERS",
+      }).success,
+    ).toBe(true);
+    expect(
+      onboardingSchema.safeParse({
+        ...base,
+        studentJourney: "CURRENT_STUDENT",
+        cityId,
+        universityId,
+        degree: "Economics",
+        studyLevel: "BACHELORS",
+      }).success,
+    ).toBe(true);
+    expect(
+      onboardingSchema.safeParse({
+        ...base,
+        studentJourney: "ALUMNI",
+        graduationYear: 2023,
+      }).success,
+    ).toBe(true);
+    expect(
+      onboardingSchema.safeParse({
+        ...base,
+        studentJourney: "PROFESSIONAL",
+        currentCityName: "Douala",
+        professionalArea: "Education",
+        chinaRelationship: "I advise applicants preparing to study in China.",
+      }).success,
+    ).toBe(true);
+    expect(
+      onboardingSchema.safeParse({
+        ...base,
+        studentJourney: "PROFESSIONAL",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates organization drafts and requires a reviewed capability before completion", () => {
+    const countryId = "ckz1234567890123456789012";
+    expect(
+      organizationDraftCreateSchema.safeParse({
+        publicName: "Kondo Education",
+        type: "EDUCATION_AGENCY",
+        countryId,
+      }).success,
+    ).toBe(true);
+    expect(
+      organizationOnboardingCompleteSchema.safeParse({
+        publicName: "Kondo Education",
+        type: "EDUCATION_AGENCY",
+        countryId,
+        shortDescription:
+          "Verified guidance and application support for future students.",
+        capabilities: ["UNIVERSITY_INFORMATION", "STUDENT_SERVICES"],
+        confirm: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      organizationOnboardingCompleteSchema.safeParse({
+        publicName: "Kondo Education",
+        type: "EDUCATION_AGENCY",
+        countryId,
+        shortDescription:
+          "Verified guidance and application support for future students.",
+        capabilities: [],
+        confirm: true,
       }).success,
     ).toBe(false);
   });

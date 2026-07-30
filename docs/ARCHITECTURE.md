@@ -41,7 +41,12 @@ Browser
 - Admin authorization is permission-based rather than route-name based. `src/lib/authorization.ts` defines the distinct Moderator, Admin, and Super Admin capabilities; every Admin page and route handler rechecks its exact permission on the server.
 - The complete Admin route inventory, role matrix, first-Super-Admin procedure, City Hub workflow, and operator guidance live in [`docs/ADMIN.md`](./ADMIN.md). Super Admin-only role changes revoke target sessions and are audited; Admins can moderate user-created communities without rewriting their metadata, while explicitly official communities have administrator-owned metadata.
 - `src/lib/moderation.ts` is the report workflow boundary. It owns queue visibility, safe DTO serialization, assignment, optimistic version checks, lifecycle validation, internal notes, evidence redaction, AuditLog browsing, and active conversation-report reuse.
-- `src/lib/reference-data.ts` is the Country → City → University boundary. It owns safe Admin DTOs, active/verified lifecycle rules, dependency-safe CRUD, onboarding reference queries, and geographic validation. `src/lib/onboarding.ts` owns resumable draft persistence and atomic completion/update auditing.
+- `src/lib/reference-data.ts` is the Country → City → University boundary. It owns safe Admin DTOs, active/verified lifecycle rules, dependency-safe CRUD, onboarding reference queries, and geographic validation. `src/lib/onboarding.ts` owns conditional personal-journey draft persistence, normalized target cities/universities, and atomic completion/update auditing.
+- `User` remains the only authentication identity. `Organization` is a managed
+  domain resource linked to human operators through `OrganizationMembership`;
+  there is no shared organization password, cookie, or parallel session model.
+  `src/lib/organizations.ts` owns draft/lifecycle persistence and
+  `src/lib/organization-authorization.ts` is the role-policy boundary.
 - `src/lib/maps/provider.ts` is the provider-neutral Meet map contract. The Meet UI creates maps, viewports, privacy radii, and markers only through this boundary. `src/lib/maps/google-map-provider.ts` is the current Google Maps JavaScript API adapter; a future AMap adapter can implement the same contract and replace the factory selection in `src/lib/maps/index.ts` without changing Meet business logic.
 - `src/lib/media.ts` is the media lifecycle boundary. It owns signed upload authorization, server-generated object keys, ownership, validation activation, replacement, attachment identity, secure delivery authorization, soft removal, Admin inspection, audit, and orphan cleanup. Community, Marketplace, profile, message, post, and Guide cover media all attach through this boundary; `src/lib/storage.ts` keeps local and S3-compatible drivers behind one contract.
 - `src/lib/profiles.ts` is the profile and account-request boundary. It owns stable public/member/owner DTOs, field-level audience rules, coherent visible counters, profile editing, validated avatar attachment, saved-content resolution, profile reports, data-export/deletion requests, and safe Admin user review. Module 17 added Admin status control (suspend/reactivate/deactivate) and session revocation to this boundary; both are blocked against self-targeting and against an Admin acting on a Super Admin.
@@ -55,17 +60,24 @@ Browser
 - Media uploads use two phases. The application first creates a short-lived signed upload authorization and a `PENDING` metadata row; after bytes reach private storage, the server reads them back, verifies size, MIME signature, extension, image decoding/dimensions or constrained PDF structure, computes a checksum, and only then transitions the asset to `ACTIVE/CLEAN`.
 - Notification-producing transactions enqueue a deduplicated PostgreSQL `NotificationJob`. The scheduled worker applies current preferences/templates and records completion, skip, retry, or failure before creating the final notification.
 - Report mutations and their mandatory AuditLog record execute in the same Prisma transaction. Version-guarded `updateMany` operations and a PostgreSQL partial unique index prevent double claims and duplicate active conversation reports under concurrency.
-- Successful login and registration create the database session and their AuditLog event in one Prisma transaction. Registration also creates the member in that transaction, preventing partially created accounts when session or audit persistence fails.
+- Successful login and registration create the database session and their AuditLog event in one Prisma transaction. Personal registration also creates the member and national-community membership in that transaction. Organization-intent registration creates only the human operator; organization draft creation later atomically creates the organization and its sole active owner membership.
 - `src/lib/content-visibility.ts` is the shared policy boundary for community membership, published posts/questions/answers/guides, active listings, and polymorphic bookmark targets. Server Components, Prisma queries, Search, and mutations reuse these typed rules.
 - Search applies minimal Prisma `select` projections and maps them into explicit DTOs through `src/lib/serializers.ts`; adding a field to a Prisma model cannot automatically expose it through Search.
 - Public directory endpoints use short CDN cache windows. Personalized Search is authenticated, `private`, `no-store`, and varies by cookie so member-only results cannot cross users.
 
 ## Feature boundaries
 
-- Identity: email/password authentication, signed session cookie, database session revocation, OAuth account model, onboarding, and profiles.
+- Identity: email/password authentication, signed session cookie, database
+  session revocation, OAuth account model, Personal/Organization registration
+  intent, conditional personal onboarding, and profiles.
+- Organizations: an additive organization identity/membership/capability
+  foundation with resumable setup, server-side authorization, lifecycle,
+  separate verification status, private logo media, audit, and analytics.
+  Team invitations, verification review, public organization surfaces, and
+  organization content publishing are intentionally downstream work.
 - Community: reviewed community CRUD, a single transferable owner, scoped Moderator/Member roles, open/request/invite access, posts, threaded comments, reactions, validated events, announcements, pinning, reports, retained evidence, and Admin CMS.
 - Marketplace: categories, listings, media metadata, favorites, location filters, and seller contact handoff. There is intentionally no payment model.
-- Student Hub: one navigation surface that composes the existing guide library and help-center routes with checklists, tips, articles, Q&A, and upcoming student events. `/guides` and `/help` remain stable content routes.
+- Student Hub: one navigation surface that composes the existing guide library and help-center routes with checklists, tips, articles, Q&A, and upcoming student events. `/guides` and `/help` remain stable content routes. Timetable tools are shown only for admitted/current students and the retained legacy incoming value.
 - Meet discovery map: provider-neutral map rendering centered on public WGS-84 study-area anchors, stable privacy-safe approximate member positions, selectable 100 m–5 km display radii, friendly rounded distance bands, and CSS-driven presence markers. The browser map provider never receives an exact student device position.
 - Guides: categorized guides, ordered checklist steps, saved progress, persisted bookmarks, and editorial ownership.
 - Help center: categorized questions, answers, helpful votes, accepted answers, and contextual entry into private messaging.

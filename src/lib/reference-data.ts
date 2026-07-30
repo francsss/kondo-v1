@@ -333,6 +333,28 @@ export async function getOnboardingReferenceData() {
   };
 }
 
+export async function getOrganizationReferenceData() {
+  const [countries, cities] = await Promise.all([
+    prisma.country.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, code: true, name: true, emoji: true },
+    }),
+    prisma.city.findMany({
+      where: { isActive: true, country: { isActive: true } },
+      orderBy: [{ country: { name: "asc" } }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        province: true,
+        countryId: true,
+        country: { select: { name: true } },
+      },
+    }),
+  ]);
+  return { countries, cities };
+}
+
 export async function validateOnboardingReferences(
   input: { countryId?: string; cityId?: string; universityId?: string },
   client: ReferenceClient = prisma,
@@ -372,6 +394,7 @@ export async function validateOnboardingReferences(
         id: input.universityId,
         isActive: true,
         verified: true,
+        country: { isActive: true, code: "CN" },
         ...(city ? { cityId: city.id, countryId: city.countryId } : {}),
       },
       select: { id: true },

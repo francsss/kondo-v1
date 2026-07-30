@@ -68,6 +68,13 @@ async function cleanup() {
       ],
     },
   });
+  await prisma.community.deleteMany({
+    where: {
+      type: "COUNTRY",
+      isOfficial: true,
+      country: { code: "SC" },
+    },
+  });
   await prisma.user.deleteMany({
     where: { id: { in: users.map(({ id }) => id) } },
   });
@@ -120,6 +127,16 @@ async function createFixture() {
       lastName: "DraftMember",
       role: "MEMBER",
       status: "ACTIVE",
+    },
+  });
+  const prospectiveMember = await prisma.user.create({
+    data: {
+      email: `member-prospective-${suffix}@${testDomain}`,
+      firstName: "Module4",
+      lastName: "Prospective",
+      role: "MEMBER",
+      status: "ACTIVE",
+      onboardingIntent: "PERSONAL",
     },
   });
   const origin = await prisma.country.upsert({
@@ -187,6 +204,7 @@ async function createFixture() {
     admin,
     member,
     memberDraftOnly,
+    prospectiveMember,
     memberCitySwitch,
     origin,
     cityA,
@@ -256,15 +274,7 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
       prisma.meetDiscoveryProfile.findUnique({
         where: { userId: fixture.member.id },
       }),
-    ).resolves.toEqual(
-      expect.objectContaining({
-        gender: "FEMALE",
-        discoveryCityId: fixture.cityA.id,
-        discoveryUniversityId: fixture.universityA.id,
-        nearbyVisibility: true,
-        completedAt: expect.any(Date),
-      }),
-    );
+    ).resolves.toBeNull();
     await expect(
       prisma.auditLog.findFirst({
         where: {
@@ -295,6 +305,50 @@ postgresDescribe("Module 4 PostgreSQL reference data and onboarding", () => {
     });
     expect(withCity.cityId).toBe(fixture.cityA.id);
     expect(withCity.universityId).toBe(fixture.universityA.id);
+  });
+
+  it("persists normalized prospective targets without creating a Meet profile", async () => {
+    const completed = await completeOnboarding(fixture.prospectiveMember.id, {
+      gender: "FEMALE",
+      studentJourney: "PROSPECTIVE_STUDENT",
+      countryId: fixture.origin.id,
+      degree: "International Business",
+      studyLevel: "MASTERS",
+      languages: ["English", "French"],
+      interests: ["Scholarship", "Student Guide"],
+      applicationStage: "SEARCHING_SCHOLARSHIPS",
+      universityPreferenceMode: "CONSIDERING_SEVERAL",
+      targetCityIds: [fixture.cityA.id, fixture.cityB.id],
+      targetUniversityIds: [fixture.universityA.id, fixture.universityB.id],
+    });
+    expect(completed.cityId).toBeNull();
+    expect(completed.universityId).toBeNull();
+    expect(completed.targetCityIds).toEqual([
+      fixture.cityA.id,
+      fixture.cityB.id,
+    ]);
+    expect(completed.targetUniversityIds).toEqual([
+      fixture.universityA.id,
+      fixture.universityB.id,
+    ]);
+    expect(completed.applicationStage).toBe("SEARCHING_SCHOLARSHIPS");
+    await expect(
+      prisma.meetDiscoveryProfile.findUnique({
+        where: { userId: fixture.prospectiveMember.id },
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      prisma.communityMember.count({
+        where: {
+          userId: fixture.prospectiveMember.id,
+          community: {
+            type: "COUNTRY",
+            isOfficial: true,
+            countryId: fixture.origin.id,
+          },
+        },
+      }),
+    ).resolves.toBe(1);
   });
 
   it("clears a stale university when a member changes city without resending it", async () => {

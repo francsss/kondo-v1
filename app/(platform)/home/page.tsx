@@ -41,9 +41,12 @@ export default async function HomePage() {
     getStoryFeed(user, { limit: 6 }),
   ]);
   const guidePriority =
-    user.studentJourney === "INCOMING_STUDENT"
+    user.studentJourney === "INCOMING_STUDENT" ||
+    user.studentJourney === "ADMITTED_STUDENT" ||
+    user.studentJourney === "PROSPECTIVE_STUDENT"
       ? ["BEFORE_DEPARTURE", "ARRIVAL", "RESIDENCY"]
-      : user.studentJourney === "ALUMNI"
+      : user.studentJourney === "ALUMNI" ||
+          user.studentJourney === "PROFESSIONAL"
         ? ["MONEY", "UNIVERSITY"]
         : ["UNIVERSITY", "DAILY_LIFE"];
   const firstGuide = [...guides].sort((left, right) => {

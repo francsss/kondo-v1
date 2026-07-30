@@ -100,6 +100,16 @@ export default async function AdminUserDetailPage({
                 value={user.university?.name ?? "Not selected"}
               />
               <Fact
+                icon={UserRound}
+                label="Journey"
+                value={user.studentJourney ?? "Not selected"}
+              />
+              <Fact
+                icon={UserRound}
+                label="Initial onboarding intent"
+                value={user.onboardingIntent ?? "Legacy account"}
+              />
+              <Fact
                 icon={Clock3}
                 label="Joined"
                 value={new Date(user.createdAt).toLocaleString()}

@@ -35,6 +35,16 @@ const currentUserSelect = {
   degree: true,
   studyLevel: true,
   studentJourney: true,
+  onboardingIntent: true,
+  journeyDetail: true,
+  targetCities: {
+    orderBy: { displayOrder: "asc" },
+    select: { cityId: true },
+  },
+  targetUniversities: {
+    orderBy: { displayOrder: "asc" },
+    select: { universityId: true },
+  },
   nearbyDiscoveryEnabled: true,
   meetIntents: true,
   studyYear: true,

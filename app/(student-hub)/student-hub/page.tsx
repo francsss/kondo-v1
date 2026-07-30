@@ -30,9 +30,12 @@ export default async function StudentGuidePage({
   const { category, q = "", saved } = await searchParams;
   const guides = await getGuideLibrary(user.id);
   const journeyPriority =
-    user.studentJourney === "INCOMING_STUDENT"
+    user.studentJourney === "INCOMING_STUDENT" ||
+    user.studentJourney === "ADMITTED_STUDENT" ||
+    user.studentJourney === "PROSPECTIVE_STUDENT"
       ? ["BEFORE_DEPARTURE", "ARRIVAL", "RESIDENCY", "HEALTH"]
-      : user.studentJourney === "ALUMNI"
+      : user.studentJourney === "ALUMNI" ||
+          user.studentJourney === "PROFESSIONAL"
         ? ["MONEY", "UNIVERSITY", "DAILY_LIFE"]
         : ["UNIVERSITY", "DAILY_LIFE", "HEALTH", "TRANSPORT"];
   const visible = guides

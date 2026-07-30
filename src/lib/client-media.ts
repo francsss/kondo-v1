@@ -9,6 +9,7 @@ type UploadIntent = {
 
 type MediaPurpose =
   | "PROFILE_AVATAR"
+  | "ORGANIZATION_LOGO"
   | "COMMUNITY_COVER"
   | "GUIDE_COVER"
   | "POST_IMAGE"

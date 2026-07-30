@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   BellRing,
   Bell,
+  Building2,
   ChevronRight,
   Laptop,
   Languages,
@@ -11,6 +12,7 @@ import {
   Palette,
   ShieldCheck,
   UserRound,
+  Waypoints,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -24,6 +26,20 @@ const settings = [
     description:
       "Edit your avatar, bio, private contact field and profile visibility.",
     icon: UserRound,
+  },
+  {
+    href: "/onboarding/personal",
+    title: "Journey & personal context",
+    description:
+      "Update your journey, study targets, arrival plans or professional context.",
+    icon: Waypoints,
+  },
+  {
+    href: "/settings/organizations",
+    title: "Organizations",
+    description:
+      "Create an organization or continue a draft you are authorized to manage.",
+    icon: Building2,
   },
   {
     href: "/settings/appearance",

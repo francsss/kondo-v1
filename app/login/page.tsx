@@ -48,7 +48,10 @@ export default function LoginPage() {
         role: data.user.role,
         onboarding_completed: data.user.onboardingComplete,
       });
-      router.replace(data.user.onboardingComplete ? "/home" : "/onboarding");
+      router.replace(
+        data.nextPath ??
+          (data.user.onboardingComplete ? "/home" : "/onboarding"),
+      );
       router.refresh();
     } catch {
       setError("Kondo could not sign you in. Please try again.");

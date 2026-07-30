@@ -18,6 +18,7 @@ import {
 import { attachMediaAsset, finalizeMediaStorageDeletion } from "@/lib/media";
 import { publicOfficialProfile } from "@/lib/official-profiles";
 import { prisma } from "@/lib/prisma";
+import { personalJourneyLabel } from "@/lib/personal-journeys";
 
 type ProfileActor = {
   id: string;
@@ -102,6 +103,7 @@ const profileBaseSelect = {
   marketplaceAudience: true,
   degree: true,
   studyLevel: true,
+  studentJourney: true,
   languages: true,
   createdAt: true,
   country: { select: { code: true, name: true, emoji: true } },
@@ -330,6 +332,8 @@ export async function getPublicProfile(
           university: user.university,
           degree: user.degree,
           studyLevel: user.studyLevel,
+          journey: user.studentJourney,
+          journeyLabel: personalJourneyLabel(user.studentJourney),
         }
       : null,
     languages: audienceAllows(user.languagesAudience, user.id, viewer)
@@ -1085,6 +1089,8 @@ export async function getAdminUser(actor: ProfileActor, userId: string) {
       marketplaceAudience: true,
       degree: true,
       studyLevel: true,
+      studentJourney: true,
+      onboardingIntent: true,
       languages: true,
       interests: true,
       onboardingCompletedAt: true,

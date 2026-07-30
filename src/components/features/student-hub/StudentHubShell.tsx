@@ -8,6 +8,7 @@ import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytic
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import { studentHubAccessForJourney } from "@/lib/personal-journeys";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -29,9 +30,11 @@ function isActiveTab(pathname: string, href: (typeof tabs)[number]["href"]) {
 function StudentHubTabs({
   pathname,
   mobile = false,
+  showAcademicTools,
 }: {
   pathname: string;
   mobile?: boolean;
+  showAcademicTools: boolean;
 }) {
   return (
     <nav
@@ -42,38 +45,44 @@ function StudentHubTabs({
           : "subnav-row hidden border-b border-border md:flex",
       )}
     >
-      {tabs.map(({ href, label }) => {
-        const active = isActiveTab(pathname, href);
-        return (
-          <Link
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative isolate inline-flex items-center justify-center whitespace-nowrap font-bold transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              mobile
-                ? "min-h-10 px-3 text-xs"
-                : "h-11 px-3 text-[13px] lg:px-5 lg:text-sm",
-              active
-                ? "text-kondo-green"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            )}
-            data-product-event={PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED}
-            data-product-source={label.toLowerCase().replaceAll(" ", "_")}
-            href={href}
-            key={href}
-          >
-            {active ? (
-              <motion.span
-                className="absolute inset-x-3 bottom-0 -z-10 h-0.5 rounded-full bg-kondo-green shadow-[0_0_12px_rgba(52,211,153,0.35)]"
-                layoutId={
-                  mobile ? "student-hub-mobile-tab" : "student-hub-desktop-tab"
-                }
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              />
-            ) : null}
-            {label}
-          </Link>
-        );
-      })}
+      {tabs
+        .filter(
+          ({ href }) => href !== "/student-hub/tools" || showAcademicTools,
+        )
+        .map(({ href, label }) => {
+          const active = isActiveTab(pathname, href);
+          return (
+            <Link
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "relative isolate inline-flex items-center justify-center whitespace-nowrap font-bold transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                mobile
+                  ? "min-h-10 px-3 text-xs"
+                  : "h-11 px-3 text-[13px] lg:px-5 lg:text-sm",
+                active
+                  ? "text-kondo-green"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+              data-product-event={PRODUCT_EVENTS.STUDENT_HUB_TOOL_SELECTED}
+              data-product-source={label.toLowerCase().replaceAll(" ", "_")}
+              href={href}
+              key={href}
+            >
+              {active ? (
+                <motion.span
+                  className="absolute inset-x-3 bottom-0 -z-10 h-0.5 rounded-full bg-kondo-green shadow-[0_0_12px_rgba(52,211,153,0.35)]"
+                  layoutId={
+                    mobile
+                      ? "student-hub-mobile-tab"
+                      : "student-hub-desktop-tab"
+                  }
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              ) : null}
+              {label}
+            </Link>
+          );
+        })}
     </nav>
   );
 }
@@ -84,6 +93,7 @@ type StudentHubUser = {
   country?: { code: string; name: string } | null;
   city?: { slug: string; name: string } | null;
   university?: { slug: string; name: string } | null;
+  studentJourney?: string | null;
   onboardingCompletedAt?: Date | null;
 };
 
@@ -95,6 +105,7 @@ export function StudentHubShell({
   user: StudentHubUser;
 }) {
   const pathname = usePathname();
+  const access = studentHubAccessForJourney(user.studentJourney);
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PresenceHeartbeat />
@@ -110,10 +121,17 @@ export function StudentHubShell({
             <span className="hidden sm:inline">Back to Kondo</span>
             <span className="sm:hidden">Kondo</span>
           </Link>
-          <StudentHubTabs pathname={pathname} />
+          <StudentHubTabs
+            pathname={pathname}
+            showAcademicTools={access.academicTools}
+          />
         </div>
         <div className="px-4 pb-2 sm:px-6 md:hidden">
-          <StudentHubTabs mobile pathname={pathname} />
+          <StudentHubTabs
+            mobile
+            pathname={pathname}
+            showAcademicTools={access.academicTools}
+          />
         </div>
       </header>
       <main>{children}</main>

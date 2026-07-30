@@ -33,7 +33,7 @@ const CATEGORY_LABEL: Record<SearchCategory, string> = {
   listings: "Marketplace",
   guides: "Guides",
   questions: "Questions",
-  users: "Students",
+  users: "People",
   posts: "Posts",
 };
 
@@ -188,7 +188,7 @@ export default async function SearchPage({
                   />
                   <div>
                     <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
-                      Student
+                      Member
                     </p>
                     <div className="mt-1 flex items-center gap-1.5">
                       <h2 className="font-bold text-kondo-ink dark:text-white">

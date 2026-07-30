@@ -6,7 +6,7 @@ import { trackEvent } from "@/lib/analytics";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   RegistrationConfigurationError,
-  registerUserWithNationalCommunity,
+  registerHumanUser,
 } from "@/lib/registration";
 import {
   getRequestMeta,
@@ -42,16 +42,32 @@ export async function POST(request: NextRequest) {
 
   const meta = getRequestMeta(request);
   try {
-    const { user, sessionId } = await registerUserWithNationalCommunity({
+    const common = {
       email: parsed.data.email,
       passwordHash,
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
-      gender: parsed.data.gender,
-      countryCode: parsed.data.countryCode,
       ...meta,
+    };
+    const { user, sessionId } =
+      parsed.data.intent === "PERSONAL"
+        ? await registerHumanUser({
+            ...common,
+            intent: "PERSONAL",
+            gender: parsed.data.gender!,
+            countryCode: parsed.data.countryCode!,
+          })
+        : await registerHumanUser({
+            ...common,
+            intent: "ORGANIZATION",
+            gender: parsed.data.gender,
+          });
+    await trackEvent({
+      name: "USER_REGISTERED",
+      userId: user.id,
+      sessionId,
+      properties: { intent: parsed.data.intent },
     });
-    await trackEvent({ name: "USER_REGISTERED", userId: user.id, sessionId });
 
     const token = await createSessionToken({
       id: user.id,
@@ -60,7 +76,13 @@ export async function POST(request: NextRequest) {
       sessionId,
     });
     const response = NextResponse.json(
-      { user: toSafeUser(user) },
+      {
+        user: toSafeUser(user),
+        nextPath:
+          parsed.data.intent === "ORGANIZATION"
+            ? "/onboarding/organization"
+            : "/onboarding/personal",
+      },
       {
         status: 201,
         headers: {

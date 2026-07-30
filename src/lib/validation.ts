@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isAfricanCountryCode } from "@/lib/african-countries";
 import { SUPPORTED_CURRENCY_CODES } from "@/lib/currencies";
 import { STUDENT_SKILL_CATEGORIES } from "@/lib/peer-marketplace";
+import { ORGANIZATION_CAPABILITY_KEYS } from "@/lib/organization-capabilities";
 
 const passwordSchema = z
   .string()
@@ -15,17 +16,31 @@ export const registerSchema = z
     firstName: z.string().trim().min(2).max(60),
     lastName: z.string().trim().min(2).max(60),
     email: z.string().trim().email().toLowerCase(),
-    gender: z.enum(["MALE", "FEMALE"], {
-      required_error: "Select your gender.",
-    }),
-    countryCode: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .refine(isAfricanCountryCode, "Select a valid African country."),
+    intent: z.enum(["PERSONAL", "ORGANIZATION"]).default("PERSONAL"),
+    gender: z.enum(["MALE", "FEMALE"]).optional(),
+    countryCode: z.string().trim().toUpperCase().optional(),
     password: passwordSchema,
     confirmPassword: z.string(),
     acceptedTerms: z.literal(true),
+  })
+  .superRefine((data, context) => {
+    if (data.intent === "PERSONAL" && !data.gender) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select your gender.",
+        path: ["gender"],
+      });
+    }
+    if (
+      data.intent === "PERSONAL" &&
+      (!data.countryCode || !isAfricanCountryCode(data.countryCode))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select a valid African country.",
+        path: ["countryCode"],
+      });
+    }
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -60,13 +75,10 @@ const studentJourneySchema = z.enum([
   "CURRENT_STUDENT",
   "INCOMING_STUDENT",
   "ALUMNI",
+  "PROSPECTIVE_STUDENT",
+  "ADMITTED_STUDENT",
+  "PROFESSIONAL",
 ]);
-
-const onboardingReferenceSchema = {
-  countryId: z.string().cuid(),
-  cityId: z.string().cuid(),
-  universityId: z.string().cuid(),
-};
 
 // The onboarding wizard saves a draft after each step, so earlier steps in
 // the flow have not chosen a value yet. The client sends "" for an unset
@@ -78,16 +90,143 @@ const optionalReferenceId = z.preprocess(
   z.string().cuid().optional(),
 );
 
-export const onboardingSchema = z.object({
-  ...onboardingReferenceSchema,
+const optionalDate = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.coerce.date().optional(),
+);
+
+const optionalTrimmedText = (maximum: number) =>
+  z.preprocess(
+    (value) => (typeof value === "string" && !value.trim() ? undefined : value),
+    z.string().trim().max(maximum).optional(),
+  );
+
+const personalOnboardingShape = {
   gender: z.enum(["MALE", "FEMALE"]),
   studentJourney: studentJourneySchema,
-  degree: z.string().trim().min(2).max(120),
-  studyLevel: studyLevelSchema,
-  arrivalDate: z.coerce.date(),
-  languages: z.array(z.string().trim().min(2).max(40)).min(1).max(8),
-  interests: z.array(onboardingInterests).min(1),
-});
+  countryId: optionalReferenceId,
+  cityId: optionalReferenceId,
+  universityId: optionalReferenceId,
+  degree: optionalTrimmedText(120),
+  studyLevel: studyLevelSchema.optional(),
+  arrivalDate: optionalDate,
+  languages: z.array(z.string().trim().min(2).max(40)).max(8).default([]),
+  interests: z.array(onboardingInterests).max(7).default([]),
+  applicationStage: z
+    .enum([
+      "EXPLORING",
+      "SEARCHING_SCHOLARSHIPS",
+      "PREPARING_APPLICATION",
+      "APPLICATION_SUBMITTED",
+      "WAITING_FOR_DECISION",
+      "ADMITTED",
+      "PREPARING_ARRIVAL",
+    ])
+    .optional(),
+  universityPreferenceMode: z
+    .enum(["NOT_CHOSEN", "CONSIDERING_SEVERAL", "PREFERRED_SELECTED"])
+    .optional(),
+  targetCityIds: z.array(z.string().cuid()).max(8).default([]),
+  targetUniversityIds: z.array(z.string().cuid()).max(12).default([]),
+  expectedIntake: optionalDate,
+  campusName: optionalTrimmedText(160),
+  graduationYear: z.number().int().min(1900).max(2200).optional(),
+  professionalArea: optionalTrimmedText(160),
+  currentCityName: optionalTrimmedText(160),
+  chinaRelationship: optionalTrimmedText(500),
+  currentProfessionalContext: optionalTrimmedText(500),
+  arrivalPreparationContext: optionalTrimmedText(500),
+};
+
+export const onboardingSchema = z
+  .object(personalOnboardingShape)
+  .superRefine((data, context) => {
+    if (!data.countryId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select your country.",
+        path: ["countryId"],
+      });
+    }
+    if (
+      ["CURRENT_STUDENT", "ADMITTED_STUDENT", "INCOMING_STUDENT"].includes(
+        data.studentJourney,
+      )
+    ) {
+      if (!data.cityId) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Select your study city.",
+          path: ["cityId"],
+        });
+      }
+      if (!data.universityId) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Select your university.",
+          path: ["universityId"],
+        });
+      }
+      if (!data.degree || data.degree.length < 2) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter your program or study field.",
+          path: ["degree"],
+        });
+      }
+      if (!data.studyLevel) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Select your study level.",
+          path: ["studyLevel"],
+        });
+      }
+    }
+    if (
+      data.studentJourney === "PROSPECTIVE_STUDENT" &&
+      !data.studyLevel &&
+      (!data.degree || data.degree.length < 2)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select an intended study level or enter an education goal.",
+        path: ["studyLevel"],
+      });
+    }
+    if (data.studentJourney === "PROFESSIONAL") {
+      for (const [path, value, message] of [
+        ["currentCityName", data.currentCityName, "Enter your current city."],
+        [
+          "professionalArea",
+          data.professionalArea,
+          "Enter your professional area.",
+        ],
+        [
+          "chinaRelationship",
+          data.chinaRelationship,
+          "Explain your professional connection with China.",
+        ],
+      ] as const) {
+        if (!value || value.length < 2) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message,
+            path: [path],
+          });
+        }
+      }
+    }
+    if (
+      data.universityPreferenceMode === "PREFERRED_SELECTED" &&
+      data.targetUniversityIds.length === 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select at least one preferred university.",
+        path: ["targetUniversityIds"],
+      });
+    }
+  });
 
 export const onboardingDraftSchema = z.object({
   gender: z.enum(["MALE", "FEMALE"]).optional(),
@@ -97,10 +236,84 @@ export const onboardingDraftSchema = z.object({
   universityId: optionalReferenceId,
   degree: z.string().trim().max(120).optional(),
   studyLevel: studyLevelSchema.optional(),
-  arrivalDate: z.coerce.date().optional(),
+  arrivalDate: optionalDate,
   languages: z.array(z.string().trim().min(2).max(40)).min(1).max(8).optional(),
   interests: z.array(onboardingInterests).max(7).optional(),
+  applicationStage: personalOnboardingShape.applicationStage,
+  universityPreferenceMode: personalOnboardingShape.universityPreferenceMode,
+  targetCityIds: z.array(z.string().cuid()).max(8).optional(),
+  targetUniversityIds: z.array(z.string().cuid()).max(12).optional(),
+  expectedIntake: optionalDate,
+  campusName: optionalTrimmedText(160),
+  graduationYear: z.number().int().min(1900).max(2200).optional(),
+  professionalArea: optionalTrimmedText(160),
+  currentCityName: optionalTrimmedText(160),
+  chinaRelationship: optionalTrimmedText(500),
+  currentProfessionalContext: optionalTrimmedText(500),
+  arrivalPreparationContext: optionalTrimmedText(500),
+  onboardingStep: z.number().int().min(0).max(5).optional(),
 });
+
+const optionalCuid = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.string().cuid().optional(),
+);
+
+const organizationTypeSchema = z.enum([
+  "COMPANY",
+  "UNIVERSITY",
+  "EDUCATION_AGENCY",
+  "HOUSING_PROVIDER",
+  "STUDENT_ASSOCIATION",
+  "EMBASSY_OR_CONSULATE",
+  "RECRUITMENT_ORGANIZATION",
+  "SERVICE_PROVIDER",
+  "OTHER",
+]);
+
+export const organizationDraftCreateSchema = z.object({
+  publicName: z.string().trim().min(2).max(160),
+  type: organizationTypeSchema,
+  countryId: z.string().cuid(),
+  cityId: optionalCuid,
+});
+
+export const organizationOnboardingDraftSchema = z.object({
+  publicName: z.string().trim().min(2).max(160).optional(),
+  legalName: optionalTrimmedText(200),
+  type: organizationTypeSchema.optional(),
+  countryId: z.string().cuid().optional(),
+  cityId: optionalCuid,
+  shortDescription: optionalTrimmedText(500),
+  website: z
+    .preprocess(
+      (value) =>
+        typeof value === "string" && !value.trim() ? undefined : value,
+      z.string().trim().url().max(500).optional(),
+    )
+    .optional(),
+  professionalEmail: z
+    .preprocess(
+      (value) =>
+        typeof value === "string" && !value.trim() ? undefined : value,
+      z.string().trim().email().max(320).optional(),
+    )
+    .optional(),
+  professionalPhone: optionalTrimmedText(40),
+  logoMediaId: optionalCuid,
+  capabilities: z.array(z.enum(ORGANIZATION_CAPABILITY_KEYS)).max(7).optional(),
+  setupStep: z.number().int().min(1).max(4).optional(),
+});
+
+export const organizationOnboardingCompleteSchema =
+  organizationOnboardingDraftSchema.extend({
+    publicName: z.string().trim().min(2).max(160),
+    type: organizationTypeSchema,
+    countryId: z.string().cuid(),
+    shortDescription: z.string().trim().min(20).max(500),
+    capabilities: z.array(z.enum(ORGANIZATION_CAPABILITY_KEYS)).min(1).max(7),
+    confirm: z.literal(true),
+  });
 
 const referenceSlugSchema = z
   .string()
@@ -148,6 +361,7 @@ export const mediaUploadIntentSchema = z
   .object({
     purpose: z.enum([
       "PROFILE_AVATAR",
+      "ORGANIZATION_LOGO",
       "COMMUNITY_COVER",
       "POST_IMAGE",
       "LISTING_IMAGE",

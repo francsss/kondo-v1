@@ -12,6 +12,14 @@ can be fixed without provider credentials are resolved. Remaining work is
 limited to entering production credentials, applying provider configuration,
 running migrations, and completing the documented post-deploy smoke test.
 
+The additive identity/organization foundation requires
+`20260730090000_identity_organization_foundation` to be applied through the
+direct Neon URL before deploying the corresponding application code. It
+preserves existing users, sessions, journey enum values, community
+memberships, and media. It introduces no new provider credential. Deploy the
+migration before the application so organization queries never run against an
+older schema.
+
 ### Resolved release findings
 
 1. **Production upload failure:** a real Home-feed upload reached the

@@ -31,6 +31,17 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     maxHeight: 4096,
     altRequired: true,
   },
+  ORGANIZATION_LOGO: {
+    kind: "IMAGE",
+    visibility: "PRIVATE",
+    maxBytes: 5 * 1024 * 1024,
+    mimeExtensions: imageTypes,
+    minWidth: 128,
+    minHeight: 128,
+    maxWidth: 4096,
+    maxHeight: 4096,
+    altRequired: true,
+  },
   COMMUNITY_COVER: {
     kind: "IMAGE",
     visibility: "PUBLIC",

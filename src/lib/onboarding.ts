@@ -1,44 +1,52 @@
 import type {
   Prisma,
+  ProspectiveApplicationStage,
   StudentJourney,
   StudyLevel,
+  UniversityPreferenceMode,
   UserGender,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
-import { validateOnboardingReferences } from "@/lib/reference-data";
+import { captureServerProductEvent } from "@/lib/product-analytics-server";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import { ensurePersonalNationalCommunityWithClient } from "@/lib/registration";
+import {
+  ReferenceDataError,
+  validateOnboardingReferences,
+} from "@/lib/reference-data";
 
-type OnboardingReferences = {
-  countryId: string;
-  cityId: string;
-  universityId: string;
-};
-
-// A draft is saved after every onboarding step, so any reference the member
-// has not reached yet is legitimately absent — only completeOnboarding
-// requires the full triplet.
-type PartialOnboardingReferences = {
+type PersonalOnboardingFields = {
+  gender?: UserGender;
+  studentJourney?: StudentJourney;
   countryId?: string;
   cityId?: string;
   universityId?: string;
-};
-
-export type OnboardingDraftInput = PartialOnboardingReferences & {
-  gender?: UserGender;
-  studentJourney?: StudentJourney;
   degree?: string;
   studyLevel?: StudyLevel;
   arrivalDate?: Date;
   languages?: string[];
   interests?: string[];
+  applicationStage?: ProspectiveApplicationStage;
+  universityPreferenceMode?: UniversityPreferenceMode;
+  targetCityIds?: string[];
+  targetUniversityIds?: string[];
+  expectedIntake?: Date;
+  campusName?: string;
+  graduationYear?: number;
+  professionalArea?: string;
+  currentCityName?: string;
+  chinaRelationship?: string;
+  currentProfessionalContext?: string;
+  arrivalPreparationContext?: string;
+  onboardingStep?: number;
 };
 
-export type OnboardingInput = OnboardingReferences & {
+export type OnboardingDraftInput = PersonalOnboardingFields;
+
+export type OnboardingInput = PersonalOnboardingFields & {
   gender: UserGender;
   studentJourney: StudentJourney;
-  degree: string;
-  studyLevel: StudyLevel;
-  arrivalDate: Date;
   languages: string[];
   interests: string[];
 };
@@ -48,33 +56,193 @@ type RequestMetadata = {
   userAgent?: string | null;
 };
 
-function draftData(
-  input: OnboardingDraftInput,
-  options: { clearUniversity?: boolean } = {},
+function cleaned(value: string | undefined) {
+  return value === undefined ? undefined : value.trim() || null;
+}
+
+function userDraftData(
+  input: PersonalOnboardingFields,
+  options: { clearUniversity?: boolean; clearStudyAffiliation?: boolean } = {},
 ): Prisma.UserUncheckedUpdateInput {
-  // Prisma's relation-nested UserUpdateInput (`city: { connect }`) and its
-  // scalar UserUncheckedUpdateInput (`cityId: ...`) can't be mixed in one
-  // call — combining them makes Prisma validate against the relation-nested
-  // shape and silently reject/drop the scalar field. Using plain scalar IDs
-  // throughout keeps countryId/cityId/universityId in the same UPDATE
-  // statement, which the DB consistency trigger requires when a city change
-  // must also clear a now-mismatched university.
   return {
     gender: input.gender,
     studentJourney: input.studentJourney,
     countryId: input.countryId === undefined ? undefined : input.countryId,
-    cityId: input.cityId === undefined ? undefined : input.cityId,
-    universityId: options.clearUniversity
+    cityId: options.clearStudyAffiliation
       ? null
-      : input.universityId === undefined
+      : input.cityId === undefined
         ? undefined
-        : input.universityId,
-    degree:
-      input.degree === undefined ? undefined : input.degree.trim() || null,
+        : input.cityId || null,
+    universityId:
+      options.clearUniversity || options.clearStudyAffiliation
+        ? null
+        : input.universityId === undefined
+          ? undefined
+          : input.universityId || null,
+    degree: cleaned(input.degree),
     studyLevel: input.studyLevel,
     arrivalDate: input.arrivalDate,
     languages: input.languages ? { set: input.languages } : undefined,
     interests: input.interests ? { set: input.interests } : undefined,
+  };
+}
+
+function journeyDetailData(input: PersonalOnboardingFields) {
+  return {
+    applicationStage: input.applicationStage,
+    universityPreferenceMode: input.universityPreferenceMode,
+    expectedIntake: input.expectedIntake,
+    campusName: cleaned(input.campusName),
+    graduationYear: input.graduationYear,
+    professionalArea: cleaned(input.professionalArea),
+    currentCityName: cleaned(input.currentCityName),
+    chinaRelationship: cleaned(input.chinaRelationship),
+    currentProfessionalContext: cleaned(input.currentProfessionalContext),
+    arrivalPreparationContext: cleaned(input.arrivalPreparationContext),
+    onboardingStep: input.onboardingStep,
+  };
+}
+
+async function validateTargets(
+  tx: Prisma.TransactionClient,
+  input: {
+    targetCityIds?: string[];
+    targetUniversityIds?: string[];
+  },
+) {
+  if (input.targetCityIds) {
+    const uniqueCityIds = [...new Set(input.targetCityIds)];
+    if (uniqueCityIds.length !== input.targetCityIds.length) {
+      throw new ReferenceDataError(
+        "Preferred cities must not contain duplicates.",
+      );
+    }
+    const cityCount = await tx.city.count({
+      where: {
+        id: { in: uniqueCityIds },
+        isActive: true,
+        country: { code: "CN", isActive: true },
+      },
+    });
+    if (cityCount !== uniqueCityIds.length) {
+      throw new ReferenceDataError(
+        "One or more preferred cities are unavailable.",
+      );
+    }
+  }
+  if (input.targetUniversityIds) {
+    const uniqueUniversityIds = [...new Set(input.targetUniversityIds)];
+    if (uniqueUniversityIds.length !== input.targetUniversityIds.length) {
+      throw new ReferenceDataError(
+        "Preferred universities must not contain duplicates.",
+      );
+    }
+    const universityCount = await tx.university.count({
+      where: {
+        id: { in: uniqueUniversityIds },
+        isActive: true,
+        verified: true,
+        country: { code: "CN", isActive: true },
+      },
+    });
+    if (universityCount !== uniqueUniversityIds.length) {
+      throw new ReferenceDataError(
+        "One or more preferred universities are unavailable.",
+      );
+    }
+  }
+}
+
+async function replaceTargets(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  input: {
+    targetCityIds?: string[];
+    targetUniversityIds?: string[];
+  },
+) {
+  if (input.targetCityIds) {
+    await tx.userTargetCity.deleteMany({ where: { userId } });
+    if (input.targetCityIds.length) {
+      await tx.userTargetCity.createMany({
+        data: input.targetCityIds.map((cityId, displayOrder) => ({
+          userId,
+          cityId,
+          displayOrder,
+        })),
+      });
+    }
+  }
+  if (input.targetUniversityIds) {
+    await tx.userTargetUniversity.deleteMany({ where: { userId } });
+    if (input.targetUniversityIds.length) {
+      await tx.userTargetUniversity.createMany({
+        data: input.targetUniversityIds.map((universityId, displayOrder) => ({
+          userId,
+          universityId,
+          displayOrder,
+        })),
+      });
+    }
+  }
+}
+
+const onboardingSelect = {
+  gender: true,
+  studentJourney: true,
+  countryId: true,
+  cityId: true,
+  universityId: true,
+  degree: true,
+  studyLevel: true,
+  arrivalDate: true,
+  languages: true,
+  interests: true,
+  onboardingCompletedAt: true,
+  journeyDetail: true,
+  targetCities: {
+    orderBy: { displayOrder: "asc" as const },
+    select: { cityId: true },
+  },
+  targetUniversities: {
+    orderBy: { displayOrder: "asc" as const },
+    select: { universityId: true },
+  },
+} satisfies Prisma.UserSelect;
+
+function onboardingDto(
+  user: Prisma.UserGetPayload<{ select: typeof onboardingSelect }>,
+) {
+  return {
+    gender: user.gender,
+    studentJourney: user.studentJourney,
+    countryId: user.countryId,
+    cityId: user.cityId,
+    universityId: user.universityId,
+    degree: user.degree,
+    studyLevel: user.studyLevel,
+    arrivalDate: user.arrivalDate?.toISOString() ?? null,
+    languages: user.languages,
+    interests: user.interests,
+    applicationStage: user.journeyDetail?.applicationStage ?? null,
+    universityPreferenceMode:
+      user.journeyDetail?.universityPreferenceMode ?? null,
+    expectedIntake: user.journeyDetail?.expectedIntake?.toISOString() ?? null,
+    campusName: user.journeyDetail?.campusName ?? null,
+    graduationYear: user.journeyDetail?.graduationYear ?? null,
+    professionalArea: user.journeyDetail?.professionalArea ?? null,
+    currentCityName: user.journeyDetail?.currentCityName ?? null,
+    chinaRelationship: user.journeyDetail?.chinaRelationship ?? null,
+    currentProfessionalContext:
+      user.journeyDetail?.currentProfessionalContext ?? null,
+    arrivalPreparationContext:
+      user.journeyDetail?.arrivalPreparationContext ?? null,
+    onboardingStep: user.journeyDetail?.onboardingStep ?? 0,
+    targetCityIds: user.targetCities.map(({ cityId }) => cityId),
+    targetUniversityIds: user.targetUniversities.map(
+      ({ universityId }) => universityId,
+    ),
+    onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
   };
 }
 
@@ -84,46 +252,46 @@ export async function saveOnboardingDraft(
 ) {
   return prisma.$transaction(async (tx) => {
     await validateOnboardingReferences(input, tx);
-
-    // A city change must never leave a stale university from a different
-    // city attached. The client always resends both together when the
-    // member actually picks a new university, so a cityId-only draft here
-    // means their previous university (if any) needs to be cleared, not
-    // silently left pointing at the old city.
-    let clearUniversity = false;
-    if (input.cityId !== undefined && input.universityId === undefined) {
-      const current = await tx.user.findUnique({
-        where: { id: userId },
-        select: { university: { select: { cityId: true } } },
-      });
-      if (current?.university && current.university.cityId !== input.cityId) {
-        clearUniversity = true;
-      }
-    }
-
-    const updated = await tx.user.update({
+    await validateTargets(tx, input);
+    const current = await tx.user.findUnique({
       where: { id: userId },
-      data: draftData(input, { clearUniversity }),
       select: {
-        gender: true,
-        studentJourney: true,
-        countryId: true,
-        cityId: true,
-        universityId: true,
-        degree: true,
-        studyLevel: true,
-        arrivalDate: true,
-        languages: true,
-        interests: true,
-        onboardingCompletedAt: true,
+        university: { select: { cityId: true } },
       },
     });
-    return {
-      ...updated,
-      arrivalDate: updated.arrivalDate?.toISOString() ?? null,
-      onboardingCompletedAt:
-        updated.onboardingCompletedAt?.toISOString() ?? null,
-    };
+    if (!current) throw new Error("Authenticated user no longer exists.");
+
+    const clearUniversity = Boolean(
+      input.cityId !== undefined &&
+      input.universityId === undefined &&
+      current.university &&
+      current.university.cityId !== input.cityId,
+    );
+    const clearStudyAffiliation =
+      input.studentJourney === "PROFESSIONAL" ||
+      input.studentJourney === "PROSPECTIVE_STUDENT";
+
+    await tx.user.update({
+      where: { id: userId },
+      data: userDraftData(input, {
+        clearUniversity,
+        clearStudyAffiliation,
+      }),
+    });
+    await tx.userJourneyDetail.upsert({
+      where: { userId },
+      create: {
+        userId,
+        ...journeyDetailData(input),
+      },
+      update: journeyDetailData(input),
+    });
+    await replaceTargets(tx, userId, input);
+    const updated = await tx.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: onboardingSelect,
+    });
+    return onboardingDto(updated);
   });
 }
 
@@ -132,142 +300,47 @@ export async function completeOnboarding(
   input: OnboardingInput,
   metadata: RequestMetadata = {},
 ) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await validateOnboardingReferences(input, tx);
+    await validateTargets(tx, input);
     const previous = await tx.user.findUnique({
       where: { id: userId },
-      select: {
-        gender: true,
-        studentJourney: true,
-        countryId: true,
-        cityId: true,
-        universityId: true,
-        degree: true,
-        studyLevel: true,
-        arrivalDate: true,
-        languages: true,
-        interests: true,
-        onboardingCompletedAt: true,
-        meetDiscoveryProfile: {
-          select: {
-            userId: true,
-            discoveryCityId: true,
-            discoveryUniversityId: true,
-            completedAt: true,
-          },
-        },
-      },
+      select: onboardingSelect,
     });
     if (!previous) throw new Error("Authenticated user no longer exists.");
 
     const completedAt = previous.onboardingCompletedAt ?? new Date();
-    const updated = await tx.user.update({
+    const clearStudyAffiliation =
+      input.studentJourney === "PROFESSIONAL" ||
+      input.studentJourney === "PROSPECTIVE_STUDENT";
+
+    await tx.user.update({
       where: { id: userId },
       data: {
-        ...draftData(input),
-        ...(previous.meetDiscoveryProfile
-          ? {}
-          : {
-              nearbyDiscoveryEnabled: true,
-              meetIntents: {
-                set: [
-                  "FRIENDS",
-                  "STUDY",
-                  "LANGUAGE",
-                  "SPORTS",
-                  "CITY",
-                  "NETWORKING",
-                  "COUNTRY",
-                  "RELATIONSHIP",
-                ],
-              },
-            }),
+        ...userDraftData(input, { clearStudyAffiliation }),
         onboardingCompletedAt: completedAt,
       },
-      select: {
-        gender: true,
-        studentJourney: true,
-        countryId: true,
-        cityId: true,
-        universityId: true,
-        degree: true,
-        studyLevel: true,
-        arrivalDate: true,
-        languages: true,
-        interests: true,
-        onboardingCompletedAt: true,
-      },
     });
-
-    await tx.meetDiscoveryProfile.upsert({
+    await tx.userJourneyDetail.upsert({
       where: { userId },
       create: {
         userId,
-        gender: input.gender,
-        interestedIn: "ALL",
-        birthYear: null,
-        minimumAge: 18,
-        maximumAge: 40,
-        preferredLanguages: input.languages,
-        lookingFor: [
-          "FRIENDS",
-          "STUDY",
-          "LANGUAGE",
-          "SPORTS",
-          "CITY",
-          "NETWORKING",
-          "COUNTRY",
-          "RELATIONSHIP",
-        ],
-        discoveryCityId: input.cityId,
-        discoveryUniversityId: input.universityId,
-        distanceRange: "CITY",
-        otherCityId: null,
-        nearbyVisibility: true,
-        showAge: true,
-        showNationality: true,
-        showUniversity: true,
-        showRelationshipStatus: true,
-        showLanguages: true,
-        showInterests: true,
-        completedAt,
+        ...journeyDetailData({ ...input, onboardingStep: 5 }),
       },
-      update: {
-        gender: input.gender,
-        discoveryCityId:
-          previous.meetDiscoveryProfile?.discoveryCityId ?? input.cityId,
-        discoveryUniversityId:
-          previous.meetDiscoveryProfile?.discoveryUniversityId ??
-          input.universityId,
-        completedAt: previous.meetDiscoveryProfile?.completedAt ?? completedAt,
-      },
+      update: journeyDetailData({ ...input, onboardingStep: 5 }),
     });
+    await replaceTargets(tx, userId, input);
+    if (input.countryId) {
+      await ensurePersonalNationalCommunityWithClient(tx, {
+        userId,
+        countryId: input.countryId,
+      });
+    }
 
-    const oldValue = {
-      gender: previous.gender,
-      studentJourney: previous.studentJourney,
-      countryId: previous.countryId,
-      cityId: previous.cityId,
-      universityId: previous.universityId,
-      degree: previous.degree,
-      studyLevel: previous.studyLevel,
-      arrivalDate: previous.arrivalDate?.toISOString() ?? null,
-      languages: previous.languages,
-      interests: previous.interests,
-    };
-    const newValue = {
-      gender: updated.gender,
-      studentJourney: updated.studentJourney,
-      countryId: updated.countryId,
-      cityId: updated.cityId,
-      universityId: updated.universityId,
-      degree: updated.degree,
-      studyLevel: updated.studyLevel,
-      arrivalDate: updated.arrivalDate?.toISOString() ?? null,
-      languages: updated.languages,
-      interests: updated.interests,
-    };
-
+    const updated = await tx.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: onboardingSelect,
+    });
     await writeAuditLogWithClient(tx, {
       actorId: userId,
       action: previous.onboardingCompletedAt
@@ -275,14 +348,50 @@ export async function completeOnboarding(
         : "ONBOARDING_COMPLETED",
       entityType: "User",
       entityId: userId,
-      oldValue,
-      newValue,
+      oldValue: {
+        studentJourney: previous.studentJourney,
+        countryId: previous.countryId,
+        cityId: previous.cityId,
+        universityId: previous.universityId,
+      },
+      newValue: {
+        studentJourney: updated.studentJourney,
+        countryId: updated.countryId,
+        cityId: updated.cityId,
+        universityId: updated.universityId,
+        targetCityCount: updated.targetCities.length,
+        targetUniversityCount: updated.targetUniversities.length,
+      },
       ...metadata,
     });
-
-    return {
-      ...newValue,
-      onboardingCompletedAt: completedAt.toISOString(),
-    };
+    if (previous.studentJourney !== updated.studentJourney) {
+      await writeAuditLogWithClient(tx, {
+        actorId: userId,
+        action: "PERSONAL_JOURNEY_CHANGED",
+        entityType: "User",
+        entityId: userId,
+        oldValue: { studentJourney: previous.studentJourney },
+        newValue: { studentJourney: updated.studentJourney },
+        ...metadata,
+      });
+    }
+    if (previous.universityId !== updated.universityId) {
+      await writeAuditLogWithClient(tx, {
+        actorId: userId,
+        action: "CURRENT_UNIVERSITY_CHANGED",
+        entityType: "User",
+        entityId: userId,
+        oldValue: { universityId: previous.universityId },
+        newValue: { universityId: updated.universityId },
+        ...metadata,
+      });
+    }
+    return onboardingDto(updated);
   });
+  await captureServerProductEvent({
+    distinctId: userId,
+    event: PRODUCT_EVENTS.ONBOARDING_COMPLETED,
+    properties: { journey: result.studentJourney },
+  });
+  return result;
 }

@@ -7,6 +7,7 @@ export const PRODUCT_EVENTS = {
   LOGIN_COMPLETED: "login_completed",
   REGISTRATION_STARTED: "registration_started",
   REGISTRATION_STEP_REACHED: "registration_form_step_reached",
+  REGISTRATION_INTENT_SELECTED: "registration_intent_selected",
   REGISTRATION_VALIDATION_ERROR: "registration_validation_error",
   REGISTRATION_COMPLETED: "registration_completed",
   ONBOARDING_STARTED: "onboarding_started",
@@ -14,6 +15,10 @@ export const PRODUCT_EVENTS = {
   ONBOARDING_STEP_COMPLETED: "onboarding_step_completed",
   ONBOARDING_VALIDATION_ERROR: "onboarding_validation_error",
   ONBOARDING_COMPLETED: "onboarding_completed",
+  PERSONAL_JOURNEY_SELECTED: "personal_journey_selected",
+  ORGANIZATION_ONBOARDING_STARTED: "organization_onboarding_started",
+  ORGANIZATION_DRAFT_CREATED: "organization_draft_created",
+  ORGANIZATION_ONBOARDING_COMPLETED: "organization_onboarding_completed",
   HOME_ARRIVED_AFTER_ONBOARDING: "home_arrived_after_onboarding",
   FEATURE_TIME_SPENT: "feature_time_spent",
   COMMUNITY_OPENED: "community_opened",
@@ -200,6 +205,6 @@ export function productAreaForPath(pathname: string) {
   if (pathname === "/") return "landing";
   if (pathname === "/register") return "registration";
   if (pathname === "/login") return "login";
-  if (pathname === "/onboarding") return "onboarding";
+  if (pathname.startsWith("/onboarding")) return "onboarding";
   return "other";
 }

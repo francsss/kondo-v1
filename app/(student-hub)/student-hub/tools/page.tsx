@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ScheduleWorkspace } from "@/components/features/student-hub/ScheduleWorkspace";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
+import { studentHubAccessForJourney } from "@/lib/personal-journeys";
 
 export const metadata: Metadata = { title: "My Student Tools" };
 
@@ -15,6 +17,9 @@ export default async function StudentToolsPage({
   }>;
 }) {
   const user = await requireUser();
+  if (!studentHubAccessForJourney(user.studentJourney).academicTools) {
+    redirect("/student-hub");
+  }
   const query = await searchParams;
   const [universities, schedules, recentImports, tasks] = await Promise.all([
     prisma.university.findMany({

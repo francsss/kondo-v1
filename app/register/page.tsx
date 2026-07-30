@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  Check,
+  Eye,
+  EyeOff,
+  UserRound,
+} from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +21,7 @@ import {
   resetProductAnalytics,
 } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import { cn } from "@/lib/utils";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,6 +30,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("");
   const [gender, setGender] = useState("");
+  const [intent, setIntent] = useState<"PERSONAL" | "ORGANIZATION">("PERSONAL");
 
   useEffect(() => {
     resetProductAnalytics();
@@ -46,8 +55,10 @@ export default function RegisterPage() {
           firstName: form.get("firstName"),
           lastName: form.get("lastName"),
           email: form.get("email"),
-          gender: form.get("gender"),
-          countryCode: form.get("countryCode"),
+          intent,
+          gender: intent === "PERSONAL" ? form.get("gender") : undefined,
+          countryCode:
+            intent === "PERSONAL" ? form.get("countryCode") : undefined,
           password: form.get("password"),
           confirmPassword: form.get("confirmPassword"),
           acceptedTerms: form.get("acceptedTerms") === "on",
@@ -72,7 +83,7 @@ export default function RegisterPage() {
         role: data.user.role,
         onboarding_completed: false,
       });
-      router.replace("/onboarding");
+      router.replace(data.nextPath ?? "/onboarding");
       router.refresh();
     } catch {
       captureProductEvent(PRODUCT_EVENTS.REGISTRATION_VALIDATION_ERROR, {
@@ -124,7 +135,8 @@ export default function RegisterPage() {
               Create your account
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your profile takes less than two minutes.
+              Start with your own secure login. Organization details are added
+              after account creation.
             </p>
             <form
               action="/api/auth/register"
@@ -146,6 +158,73 @@ export default function RegisterPage() {
               }}
               onSubmit={submit}
             >
+              <fieldset className="sm:col-span-2">
+                <legend className="mb-3 text-sm font-bold text-kondo-ink dark:text-white">
+                  How would you like to start using Kondo?
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    {
+                      value: "PERSONAL" as const,
+                      title: "Personal account",
+                      description:
+                        "For students, future students, alumni and professionals.",
+                      icon: UserRound,
+                    },
+                    {
+                      value: "ORGANIZATION" as const,
+                      title: "Organization",
+                      description:
+                        "For companies, universities, associations and service providers.",
+                      icon: Building2,
+                    },
+                  ].map((option) => {
+                    const Icon = option.icon;
+                    const selected = intent === option.value;
+                    return (
+                      <button
+                        aria-pressed={selected}
+                        className={cn(
+                          "rounded-3xl border p-4 text-left outline-none transition motion-reduce:transition-none",
+                          "focus-visible:ring-4 focus-visible:ring-kondo-green/20",
+                          selected
+                            ? "border-kondo-green bg-kondo-mint text-kondo-forest shadow-sm dark:bg-emerald-400/10 dark:text-emerald-200"
+                            : "border-border bg-background hover:border-kondo-green/50 hover:bg-muted/60",
+                        )}
+                        key={option.value}
+                        onClick={() => {
+                          setIntent(option.value);
+                          captureProductEvent(
+                            PRODUCT_EVENTS.REGISTRATION_INTENT_SELECTED,
+                            { intent: option.value },
+                          );
+                        }}
+                        type="button"
+                      >
+                        <span className="flex items-start gap-3">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-card shadow-sm">
+                            <Icon className="h-5 w-5" />
+                          </span>
+                          <span>
+                            <span className="block text-sm font-black">
+                              {option.title}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                              {option.description}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {intent === "ORGANIZATION" ? (
+                  <p className="mt-3 rounded-2xl bg-muted px-4 py-3 text-xs leading-5 text-muted-foreground">
+                    You are creating your personal Kondo login. Each team member
+                    should use their own account—never share a password.
+                  </p>
+                ) : null}
+              </fieldset>
               <Field
                 label="First name"
                 name="firstName"
@@ -164,46 +243,51 @@ export default function RegisterPage() {
                   autoComplete="email"
                 />
               </div>
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
-                  Gender
-                </span>
-                <select
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-base outline-none transition focus:border-kondo-green dark:border-white/10"
-                  name="gender"
-                  onChange={(event) => setGender(event.target.value)}
-                  required
-                  value={gender}
-                >
-                  <option disabled value="">
-                    Select your gender
-                  </option>
-                  <option value="MALE">Man</option>
-                  <option value="FEMALE">Woman</option>
-                </select>
-                <span className="mt-1.5 block text-[11px] text-muted-foreground">
-                  Used privately to improve Meet compatibility. You can control
-                  discovery visibility later.
-                </span>
-              </label>
-              <div className="sm:col-span-2">
-                <input name="countryCode" type="hidden" value={countryCode} />
-                <SearchableSelect
-                  emptyMessage="No African country matches your search."
-                  label="Country of origin"
-                  onSelect={setCountryCode}
-                  options={AFRICAN_COUNTRIES.map((country) => ({
-                    id: country.code,
-                    name: `${country.emoji} ${country.name}`,
-                  }))}
-                  placeholder="Select your country"
-                  searchPlaceholder="Search African countries…"
-                  selected={countryCode}
-                />
-                <span className="mt-1.5 block text-[11px] text-muted-foreground">
-                  You will automatically join your official national community.
-                </span>
-              </div>
+              {intent === "PERSONAL" ? (
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
+                    Gender
+                  </span>
+                  <select
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-base outline-none transition focus:border-kondo-green dark:border-white/10"
+                    name="gender"
+                    onChange={(event) => setGender(event.target.value)}
+                    required
+                    value={gender}
+                  >
+                    <option disabled value="">
+                      Select your gender
+                    </option>
+                    <option value="MALE">Man</option>
+                    <option value="FEMALE">Woman</option>
+                  </select>
+                  <span className="mt-1.5 block text-[11px] text-muted-foreground">
+                    Used privately to improve Meet compatibility. You can
+                    control discovery visibility later.
+                  </span>
+                </label>
+              ) : null}
+              {intent === "PERSONAL" ? (
+                <div className="sm:col-span-2">
+                  <input name="countryCode" type="hidden" value={countryCode} />
+                  <SearchableSelect
+                    emptyMessage="No African country matches your search."
+                    label="Country of origin"
+                    onSelect={setCountryCode}
+                    options={AFRICAN_COUNTRIES.map((country) => ({
+                      id: country.code,
+                      name: `${country.emoji} ${country.name}`,
+                    }))}
+                    placeholder="Select your country"
+                    searchPlaceholder="Search African countries…"
+                    selected={countryCode}
+                  />
+                  <span className="mt-1.5 block text-[11px] text-muted-foreground">
+                    You will automatically join your official national
+                    community.
+                  </span>
+                </div>
+              ) : null}
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
                   Password
@@ -268,7 +352,10 @@ export default function RegisterPage() {
               ) : null}
               <div className="sm:col-span-2">
                 <Button
-                  disabled={loading || !countryCode || !gender}
+                  disabled={
+                    loading ||
+                    (intent === "PERSONAL" && (!countryCode || !gender))
+                  }
                   fullWidth
                   size="lg"
                   type="submit"

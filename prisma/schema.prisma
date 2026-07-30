@@ -40,6 +40,87 @@ enum StudentJourney {
   CURRENT_STUDENT
   INCOMING_STUDENT
   ALUMNI
+  PROSPECTIVE_STUDENT
+  ADMITTED_STUDENT
+  PROFESSIONAL
+}
+
+enum OnboardingIntent {
+  PERSONAL
+  ORGANIZATION
+}
+
+enum ProspectiveApplicationStage {
+  EXPLORING
+  SEARCHING_SCHOLARSHIPS
+  PREPARING_APPLICATION
+  APPLICATION_SUBMITTED
+  WAITING_FOR_DECISION
+  ADMITTED
+  PREPARING_ARRIVAL
+}
+
+enum UniversityPreferenceMode {
+  NOT_CHOSEN
+  CONSIDERING_SEVERAL
+  PREFERRED_SELECTED
+}
+
+enum OrganizationType {
+  COMPANY
+  UNIVERSITY
+  EDUCATION_AGENCY
+  HOUSING_PROVIDER
+  STUDENT_ASSOCIATION
+  EMBASSY_OR_CONSULATE
+  RECRUITMENT_ORGANIZATION
+  SERVICE_PROVIDER
+  OTHER
+}
+
+enum OrganizationLifecycleStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum OrganizationVerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  VERIFIED
+  REJECTED
+  MORE_INFORMATION_REQUIRED
+}
+
+enum OrganizationMembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum OrganizationMembershipStatus {
+  ACTIVE
+  SUSPENDED
+  LEFT
+  REMOVED
+}
+
+enum OrganizationCapabilityKey {
+  HOUSING
+  SCHOLARSHIPS
+  INTERNSHIPS_JOBS
+  PRODUCTS
+  STUDENT_SERVICES
+  EVENTS
+  UNIVERSITY_INFORMATION
+}
+
+enum OrganizationCapabilityStatus {
+  ENABLED
+  DISABLED
+  RESTRICTED
 }
 
 enum ProfileAudience {
@@ -356,6 +437,7 @@ enum MediaKind {
 
 enum MediaPurpose {
   PROFILE_AVATAR
+  ORGANIZATION_LOGO
   COMMUNITY_COVER
   POST_IMAGE
   LISTING_IMAGE
@@ -584,6 +666,12 @@ model User {
   degree                           String?
   studyLevel                       StudyLevel?
   studentJourney                   StudentJourney?
+  onboardingIntent                 OnboardingIntent?
+  journeyDetail                    UserJourneyDetail?
+  targetCities                     UserTargetCity[]
+  targetUniversities               UserTargetUniversity[]
+  organizationMemberships          OrganizationMembership[]
+  createdOrganizations             Organization[]                @relation("OrganizationCreator")
   nearbyDiscoveryEnabled           Boolean                       @default(true)
   meetIntents                      String[]                      @default([])
   studyYear                        Int?
@@ -692,6 +780,7 @@ model Country {
   scholarships         Scholarship[]
   scholarshipAgents    ScholarshipAgent[]
   meetQueuePreferences MeetQueueEntry[]   @relation("MeetCountryPreference")
+  organizations        Organization[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -745,6 +834,8 @@ model City {
   meetDiscoveryProfiles MeetDiscoveryProfile[]   @relation("MeetDiscoveryCity")
   cityHub               CityHub?
   storyLinks            StoryEntityLink[]
+  organizations         Organization[]
+  userTargetPreferences UserTargetCity[]
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
 
@@ -775,6 +866,7 @@ model University {
   scholarshipLinks      ScholarshipUniversity[]
   storyLinks            StoryEntityLink[]
   meetDiscoveryProfiles MeetDiscoveryProfile[]          @relation("MeetDiscoveryUniversity")
+  userTargetPreferences UserTargetUniversity[]
   createdAt             DateTime                        @default(now())
   updatedAt             DateTime                        @updatedAt
 
@@ -782,6 +874,110 @@ model University {
   @@index([countryId])
   @@index([cityId])
   @@index([cityId, isActive, verified, name])
+}
+
+model UserJourneyDetail {
+  userId                     String                       @id
+  user                       User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationStage           ProspectiveApplicationStage?
+  universityPreferenceMode   UniversityPreferenceMode?
+  expectedIntake             DateTime?                    @db.Date
+  campusName                 String?                      @db.VarChar(160)
+  graduationYear             Int?
+  professionalArea           String?                      @db.VarChar(160)
+  currentCityName            String?                      @db.VarChar(160)
+  chinaRelationship          String?                      @db.VarChar(500)
+  currentProfessionalContext String?                      @db.VarChar(500)
+  arrivalPreparationContext  String?                      @db.VarChar(500)
+  onboardingStep             Int                          @default(0)
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+}
+
+model UserTargetCity {
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cityId       String
+  city         City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@id([userId, cityId])
+  @@index([userId, displayOrder])
+  @@index([cityId])
+}
+
+model UserTargetUniversity {
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  displayOrder Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@id([userId, universityId])
+  @@index([userId, displayOrder])
+  @@index([universityId])
+}
+
+model Organization {
+  id                 String                         @id @default(cuid())
+  publicName         String                         @db.VarChar(160)
+  legalName          String?                        @db.VarChar(200)
+  slug               String                         @unique @db.VarChar(120)
+  type               OrganizationType
+  shortDescription   String?                        @db.VarChar(500)
+  countryId          String
+  country            Country                        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId             String?
+  city               City?                          @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  website            String?                        @db.VarChar(500)
+  professionalEmail  String?                        @db.VarChar(320)
+  professionalPhone  String?                        @db.VarChar(40)
+  logoMediaId        String?                        @unique
+  logoMedia          MediaAsset?                    @relation("OrganizationLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  lifecycleStatus    OrganizationLifecycleStatus    @default(DRAFT)
+  verificationStatus OrganizationVerificationStatus @default(NOT_SUBMITTED)
+  setupStep          Int                            @default(1)
+  setupCompletedAt   DateTime?
+  createdById        String
+  createdBy          User                           @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships        OrganizationMembership[]
+  capabilities       OrganizationCapability[]
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  @@index([createdById, lifecycleStatus, updatedAt])
+  @@index([countryId, cityId])
+  @@index([lifecycleStatus, verificationStatus])
+}
+
+model OrganizationMembership {
+  organizationId String
+  organization   Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           OrganizationMembershipRole
+  status         OrganizationMembershipStatus @default(ACTIVE)
+  joinedAt       DateTime                     @default(now())
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  @@id([organizationId, userId])
+  @@index([userId, status, updatedAt])
+  @@index([organizationId, role, status])
+}
+
+model OrganizationCapability {
+  organizationId String
+  organization   Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  key            OrganizationCapabilityKey
+  status         OrganizationCapabilityStatus @default(ENABLED)
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  @@id([organizationId, key])
+  @@index([key, status])
 }
 
 model Campus {
@@ -2207,6 +2403,7 @@ model MediaAsset {
   replaces                     MediaAsset?                   @relation("MediaReplacement", fields: [replacesId], references: [id], onDelete: SetNull)
   replacedBy                   MediaAsset[]                  @relation("MediaReplacement")
   profileAvatarFor             User?                         @relation("UserAvatar")
+  organizationLogoFor          Organization?                 @relation("OrganizationLogo")
   messageAttachment            Message?                      @relation("MessageMedia")
   communityCoverFor            Community?                    @relation("CommunityCover")
   postMedia                    PostMedia?                    @relation("PostMedia")

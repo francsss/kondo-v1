@@ -4,6 +4,11 @@ Kondo validates the production environment when a Vercel production function
 starts. A missing, placeholder, unsafe, or mismatched value fails closed.
 Secrets belong in Vercel or GitHub settings, never in Git.
 
+The Personal/Organization registration split and organization identity
+foundation introduce no environment variables or provider secrets. They reuse
+the existing database sessions, PostgreSQL/Neon, R2 media, notification,
+analytics, and security configuration documented below.
+
 ## Vercel production runtime
 
 | Variable                          | Required         | Purpose                                                                                          | Obtain it from                                                                                                                                                 |

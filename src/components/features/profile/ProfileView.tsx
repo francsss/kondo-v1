@@ -107,9 +107,10 @@ export function ProfileView({
             {profile.education ? (
               <span className="inline-flex items-center gap-1.5">
                 <BookOpenText className="h-4 w-4" />
-                {profile.education.degree ??
-                  profile.education.university?.name ??
-                  "Student"}
+                {profile.education.journeyLabel}
+                {profile.education.university?.name
+                  ? ` · ${profile.education.university.name}`
+                  : ""}
               </span>
             ) : null}
             {profile.languages?.length ? (
