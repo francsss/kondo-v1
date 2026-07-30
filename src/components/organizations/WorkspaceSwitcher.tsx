@@ -20,6 +20,8 @@ export type WorkspaceSwitcherItem = {
 export function WorkspaceSwitcher({
   user,
   workspaces,
+  presentation = "header",
+  onNavigate,
 }: {
   user: {
     firstName: string;
@@ -27,18 +29,29 @@ export function WorkspaceSwitcher({
     avatarMediaId?: string | null;
   };
   workspaces: WorkspaceSwitcherItem[];
+  presentation?: "header" | "menu";
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const current = workspaces.find((workspace) =>
     pathname.startsWith(`/organizations/${workspace.slug}`),
   );
   const currentName = current?.publicName ?? "Personal";
+  const menuPresentation = presentation === "menu";
 
   return (
-    <details className="group relative shrink-0">
+    <details
+      className={cn("group relative", menuPresentation ? "w-full" : "shrink-0")}
+      key={pathname}
+    >
       <summary
         aria-label={`Current workspace: ${currentName}. Switch workspace`}
-        className="flex h-11 max-w-[210px] cursor-pointer list-none items-center gap-2 rounded-full border border-border bg-card px-2.5 pr-3 text-left shadow-sm transition hover:border-primary/40 [&::-webkit-details-marker]:hidden"
+        className={cn(
+          "flex cursor-pointer list-none items-center gap-3 text-left transition [&::-webkit-details-marker]:hidden",
+          menuPresentation
+            ? "min-h-14 w-full rounded-2xl px-3.5 py-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            : "h-11 max-w-[210px] gap-2 rounded-full border border-border bg-card px-2.5 pr-3 shadow-sm hover:border-primary/40",
+        )}
       >
         {current ? (
           <WorkspaceMark
@@ -47,17 +60,30 @@ export function WorkspaceSwitcher({
           />
         ) : (
           <Avatar
-            className="h-7 w-7 text-[10px]"
+            className={cn(
+              "text-[10px]",
+              menuPresentation ? "h-9 w-9" : "h-7 w-7",
+            )}
             firstName={user.firstName}
             lastName={user.lastName}
             mediaId={user.avatarMediaId}
           />
         )}
         <span className="min-w-0">
-          <span className="block truncate text-xs font-black">
+          <span
+            className={cn(
+              "block truncate font-black",
+              menuPresentation ? "text-sm" : "text-xs",
+            )}
+          >
             {currentName}
           </span>
-          <span className="block truncate text-[10px] text-muted-foreground">
+          <span
+            className={cn(
+              "block truncate text-muted-foreground",
+              menuPresentation ? "mt-0.5 text-[11px]" : "text-[10px]",
+            )}
+          >
             {current
               ? `${current.role.toLowerCase()} · ${current.lifecycleStatus.toLowerCase()}`
               : "Personal Kondo"}
@@ -69,7 +95,14 @@ export function WorkspaceSwitcher({
         />
       </summary>
 
-      <div className="fixed inset-x-3 top-16 z-50 max-h-[min(70vh,560px)] overflow-y-auto rounded-3xl border border-border bg-card p-2 shadow-lift sm:absolute sm:inset-x-auto sm:right-0 sm:top-13 sm:w-80">
+      <div
+        className={cn(
+          "z-50 overflow-y-auto rounded-3xl border border-border bg-card p-2 shadow-lift",
+          menuPresentation
+            ? "relative mt-1 max-h-[min(48vh,420px)] w-full shadow-sm"
+            : "fixed inset-x-3 top-16 max-h-[min(70vh,560px)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-13 sm:w-80",
+        )}
+      >
         <p className="px-3 pb-2 pt-1 text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
           Workspaces
         </p>
@@ -78,6 +111,7 @@ export function WorkspaceSwitcher({
           href="/home"
           icon={<UserRound className="h-4 w-4" />}
           label={`${user.firstName} ${user.lastName}`}
+          onNavigate={onNavigate}
           secondary="Personal Kondo"
         />
         {workspaces.map((workspace) => (
@@ -92,6 +126,7 @@ export function WorkspaceSwitcher({
             }
             key={workspace.id}
             label={workspace.publicName}
+            onNavigate={onNavigate}
             secondary={`${workspace.role.toLowerCase()} · ${
               workspace.verificationStatus === "VERIFIED"
                 ? "verified"
@@ -104,6 +139,7 @@ export function WorkspaceSwitcher({
           href="/onboarding/organization?new=1"
           icon={<Plus className="h-4 w-4" />}
           label="Create an organization"
+          onNavigate={onNavigate}
           secondary="Start a professional workspace"
         />
       </div>
@@ -140,12 +176,14 @@ function WorkspaceLink({
   href,
   icon,
   label,
+  onNavigate,
   secondary,
 }: {
   active?: boolean;
   href: string;
   icon: React.ReactNode;
   label: string;
+  onNavigate?: () => void;
   secondary: string;
 }) {
   return (
@@ -156,6 +194,7 @@ function WorkspaceLink({
         active ? "bg-secondary" : "hover:bg-muted",
       )}
       href={href}
+      onClick={onNavigate}
     >
       {icon}
       <span className="min-w-0">

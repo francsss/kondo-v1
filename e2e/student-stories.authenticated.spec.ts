@@ -22,6 +22,14 @@ test.describe("Student Stories access and responsive navigation", () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/home");
+    await expect(
+      page.locator("header").getByLabel(/Current workspace: Personal/),
+    ).toHaveCount(0);
+    await expect(
+      page
+        .locator("header")
+        .getByRole("button", { name: /Switch to (dark|light) mode/ }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Open navigation" }).click();
     const navigation = page.getByRole("dialog", { name: "Mobile navigation" });
     const links = navigation.getByRole("link");
@@ -36,6 +44,14 @@ test.describe("Student Stories access and responsive navigation", () => {
       "/messages",
     ]);
     await expect(navigation.getByText("More from Kondo")).toBeVisible();
+    await expect(
+      navigation.getByLabel(/Current workspace: Personal/),
+    ).toBeVisible();
+    await expect(
+      navigation.getByRole("button", {
+        name: /Switch to (dark|light) mode/,
+      }),
+    ).toBeVisible();
     await expect(
       navigation.getByRole("link", { name: "Student Stories" }),
     ).toHaveAttribute("href", "/stories");

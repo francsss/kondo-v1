@@ -77,7 +77,9 @@ test.describe.serial("organization professional workspace", () => {
     ).toBeVisible();
     await expect(page.getByText("Active teammates")).toBeVisible();
     await expect(
-      page.getByLabel(new RegExp(`Current workspace: ${publicName}`)),
+      page
+        .getByRole("complementary", { name: "Desktop navigation" })
+        .getByLabel(new RegExp(`Current workspace: ${publicName}`)),
     ).toBeVisible();
 
     await page.goto(`/organizations/${slug}/profile`);

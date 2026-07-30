@@ -97,7 +97,11 @@ const secondaryNavigation: NavigationItem[] = [
 
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
-export function ThemeToggle() {
+export function ThemeToggle({
+  presentation = "icon",
+}: {
+  presentation?: "icon" | "menu";
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const [saving, setSaving] = useState(false);
   const mounted = useSyncExternalStore(
@@ -131,9 +135,51 @@ export function ThemeToggle() {
     }
   }
 
+  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  const Icon = dark ? Sun : Moon;
+
+  if (presentation === "menu") {
+    return (
+      <button
+        aria-label={label}
+        aria-pressed={dark}
+        className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+        disabled={!mounted || saving}
+        onClick={toggleTheme}
+        type="button"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-muted text-muted-foreground">
+          <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-black text-foreground">
+            Appearance
+          </span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            {mounted ? (dark ? "Dark mode" : "Light mode") : "Device theme"}
+          </span>
+        </span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "ml-auto flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors",
+            dark ? "bg-kondo-green" : "bg-border",
+          )}
+        >
+          <span
+            className={cn(
+              "h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+              dark && "translate-x-5",
+            )}
+          />
+        </span>
+      </button>
+    );
+  }
+
   return (
     <Button
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={label}
       aria-pressed={dark}
       className="rounded-full"
       disabled={!mounted || saving}
@@ -142,11 +188,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
     >
-      {dark ? (
-        <Sun aria-hidden="true" className="h-[18px] w-[18px]" />
-      ) : (
-        <Moon aria-hidden="true" className="h-[18px] w-[18px]" />
-      )}
+      <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
     </Button>
   );
 }
@@ -348,7 +390,10 @@ export function AppShell({
       <ProductAnalyticsIdentity user={user} />
       <RestoreStoryScroll />
       <KondoPet enabled={kondoPetEnabled} />
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col">
+      <aside
+        aria-label="Desktop navigation"
+        className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-y-auto border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col"
+      >
         <div className="px-2">
           <KondoLogo href="/home" />
         </div>
@@ -364,6 +409,23 @@ export function AppShell({
             />
           ))}
         </nav>
+
+        <div className="mt-6 border-t border-border pt-4">
+          <p className="px-3.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+            More from Kondo
+          </p>
+          <div className="space-y-1">
+            <WorkspaceSwitcher
+              presentation="menu"
+              user={user}
+              workspaces={workspaces}
+            />
+            {secondaryNavigation.map((item) => (
+              <NavLink key={item.href} {...item} pathname={pathname} />
+            ))}
+            <ThemeToggle presentation="menu" />
+          </div>
+        </div>
 
         <div className="mt-auto space-y-2">
           {!user.onboardingCompletedAt ? (
@@ -431,9 +493,7 @@ export function AppShell({
                 ⌘ K
               </kbd>
             </Link>
-            <WorkspaceSwitcher user={user} workspaces={workspaces} />
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              <ThemeToggle />
               <Button asChild className="relative" size="icon" variant="ghost">
                 <Link
                   aria-label={`Notifications${
@@ -529,6 +589,12 @@ export function AppShell({
               <p className="px-3.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                 More from Kondo
               </p>
+              <WorkspaceSwitcher
+                onNavigate={() => setMenuOpen(false)}
+                presentation="menu"
+                user={user}
+                workspaces={workspaces}
+              />
               {secondaryNavigation.map((item) => (
                 <NavLink
                   key={item.href}
@@ -537,6 +603,7 @@ export function AppShell({
                   onNavigate={() => setMenuOpen(false)}
                 />
               ))}
+              <ThemeToggle presentation="menu" />
             </div>
             {isAdmin ? (
               <NavLink
