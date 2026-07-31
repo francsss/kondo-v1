@@ -559,7 +559,7 @@ export function AppShell({
           id="mobile-navigation"
           role="dialog"
           className={cn(
-            "safe-bottom h-[var(--visual-viewport-height,100dvh)] w-[min(84vw,320px)] max-w-full overflow-y-auto bg-card p-5 text-card-foreground shadow-2xl transition-transform duration-300",
+            "safe-bottom flex h-[var(--visual-viewport-height,100dvh)] w-[min(84vw,320px)] max-w-full flex-col overflow-y-auto bg-card p-5 text-card-foreground shadow-2xl transition-transform duration-300",
             menuOpen ? "translate-x-0" : "-translate-x-full",
           )}
           onClick={(event) => event.stopPropagation()}
@@ -575,54 +575,55 @@ export function AppShell({
               <X aria-hidden="true" className="h-5 w-5" />
             </Button>
           </div>
-          <nav className="mt-8 space-y-1">
-            {navigation.map((item) => (
-              <NavLink
-                badgeCount={
-                  item.href === "/messages" ? messageUnreadCount : undefined
-                }
-                key={item.href}
-                {...item}
-                pathname={pathname}
-                onNavigate={() => setMenuOpen(false)}
-              />
-            ))}
-            <div className="my-3 border-t border-border pt-3">
-              <p className="px-3.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-                More from Kondo
-              </p>
+          <nav className="mt-8 flex min-h-0 flex-1 flex-col">
+            <div className="space-y-1">
               <WorkspaceSwitcher
                 onNavigate={() => setMenuOpen(false)}
                 presentation="menu"
                 user={user}
                 workspaces={workspaces}
               />
-              {secondaryNavigation.map((item) => (
+              <ThemeToggle presentation="menu" />
+            </div>
+
+            <div className="my-4 border-t border-border/70 pt-4">
+              <div className="space-y-1">
+                {secondaryNavigation.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    {...item}
+                    label={
+                      item.href === "/stories" ? "Student Story" : item.label
+                    }
+                    pathname={pathname}
+                    onNavigate={() => setMenuOpen(false)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-auto border-t border-border/70 pt-4">
+              {isAdmin ? (
                 <NavLink
-                  key={item.href}
-                  {...item}
+                  href="/admin"
+                  icon={Settings}
+                  label="Admin"
                   pathname={pathname}
                   onNavigate={() => setMenuOpen(false)}
                 />
-              ))}
-              <ThemeToggle presentation="menu" />
+              ) : null}
+              <div
+                className={cn(isAdmin && "mt-3 border-t border-border/70 pt-3")}
+              >
+                <button
+                  className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  onClick={logout}
+                  type="button"
+                >
+                  <LogOut className="h-5 w-5" /> Sign out
+                </button>
+              </div>
             </div>
-            {isAdmin ? (
-              <NavLink
-                href="/admin"
-                icon={Settings}
-                label="Admin"
-                pathname={pathname}
-                onNavigate={() => setMenuOpen(false)}
-              />
-            ) : null}
-            <button
-              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              onClick={logout}
-              type="button"
-            >
-              <LogOut className="h-5 w-5" /> Sign out
-            </button>
           </nav>
         </aside>
       </div>
