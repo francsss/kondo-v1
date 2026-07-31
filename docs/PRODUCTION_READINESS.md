@@ -383,3 +383,21 @@ After credentials are supplied, follow
 8. Verify `/api/health`, email delivery, Redis-backed rate limits, every cron
    route, production metadata, image rendering, private-media authorization,
    logs, alerts, and rollback.
+
+## Part 5 opportunities release checks
+
+Runtime checks that still require a deployed environment:
+
+- public opportunity pages and `/opportunities` search;
+- organization-page and Student Hub projections against real published data;
+- R2 delivery for public opportunity cover media;
+- private application-document upload and authorized delivery
+  (`/api/opportunities/documents/[documentId]/download`);
+- external application redirect behaviour and blocked-source suppression;
+- application notification delivery and deadline reminders;
+- cache invalidation after opportunity removal and organization suspension;
+- the mobile application flow end to end.
+
+New environment variable: `OPPORTUNITY_WORKER_SECRET`, the shared secret for
+`POST /api/internal/opportunities/expire`. The expiry sweep is also available as
+`npm run opportunities:expire`. No other configuration changes.

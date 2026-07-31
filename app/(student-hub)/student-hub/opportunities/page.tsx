@@ -1,33 +1,7 @@
-import type { Metadata } from "next";
-import { OpportunityDirectory } from "@/components/features/student-hub/OpportunityDirectory";
-import { getStudentOpportunities } from "@/lib/student-opportunities";
-import { requireUser } from "@/lib/server-auth";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Opportunities" };
-
-export default async function OpportunitiesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
-  await requireUser();
-  const [{ q = "" }, opportunities] = await Promise.all([
-    searchParams,
-    getStudentOpportunities(),
-  ]);
-  return (
-    <div className="mx-auto max-w-[1240px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-        Opportunities
-      </p>
-      <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-        Competitions, projects and connections worth pursuing.
-      </h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-        Discover published opportunities from City Hubs. Scholarships remain in
-        their dedicated verified directory.
-      </p>
-      <OpportunityDirectory items={opportunities} query={q} />
-    </div>
-  );
+// Part 5 replaced this City-Hub-derived listing with the Opportunities domain.
+// The route is kept as a redirect so existing links and bookmarks still work.
+export default function Page() {
+  redirect("/opportunities");
 }

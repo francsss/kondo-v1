@@ -4,7 +4,9 @@ import { Bookmark, Compass, Search, Sparkles } from "lucide-react";
 import { GuideCard } from "@/components/features/guides/GuideCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { OpportunityRails } from "@/components/features/opportunities/OpportunityRails";
 import { getGuideLibrary } from "@/lib/platform-queries";
+import { getStudentHubOpportunityRails } from "@/lib/opportunity-recommendations";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Student Guide" };
@@ -28,7 +30,12 @@ export default async function StudentGuidePage({
 }) {
   const user = await requireUser();
   const { category, q = "", saved } = await searchParams;
-  const guides = await getGuideLibrary(user.id);
+  const [guides, opportunityRails] = await Promise.all([
+    getGuideLibrary(user.id),
+    // Only rails with real content are returned, so no empty or placeholder
+    // recommendation section is ever rendered.
+    getStudentHubOpportunityRails(user.id),
+  ]);
   const journeyPriority =
     user.studentJourney === "INCOMING_STUDENT" ||
     user.studentJourney === "ADMITTED_STUDENT" ||
@@ -130,6 +137,7 @@ export default async function StudentGuidePage({
           </p>
         </Card>
       ) : null}
+      <OpportunityRails rails={opportunityRails} />
     </div>
   );
 }

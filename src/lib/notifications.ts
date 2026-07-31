@@ -268,6 +268,7 @@ type NotificationPreferences = {
   notificationComments: boolean;
   notificationMarketplace: boolean;
   notificationHousing: boolean;
+  notificationOpportunities: boolean;
   notificationAnnouncements: boolean;
   notificationCommunity: boolean;
   notificationMeet: boolean;
@@ -312,6 +313,7 @@ function preferenceAllows(
     return preference.notificationMarketplace;
   }
   if (type === "HOUSING") return preference.notificationHousing;
+  if (type === "OPPORTUNITY") return preference.notificationOpportunities;
   if (type === "COMMUNITY_ACTIVITY") {
     return preference.notificationCommunity;
   }
@@ -387,6 +389,7 @@ async function deliverClaimedJob(jobId: string) {
                 notificationComments: true,
                 notificationMarketplace: true,
                 notificationHousing: true,
+                notificationOpportunities: true,
                 notificationAnnouncements: true,
                 notificationCommunity: true,
                 notificationMeet: true,

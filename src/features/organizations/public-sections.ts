@@ -1,5 +1,10 @@
 import type { OrganizationCapabilityKey } from "@prisma/client";
 import { getOrganizationHousingProjection } from "@/lib/housing-projections";
+import {
+  getOrganizationJobsProjection,
+  getOrganizationProgramsProjection,
+  getOrganizationScholarshipProjection,
+} from "@/lib/opportunity-projections";
 
 export type OrganizationPublicSectionKey =
   | "overview"
@@ -57,12 +62,12 @@ export const ORGANIZATION_PUBLIC_SECTION_PROVIDERS: ReadonlyArray<OrganizationPu
     {
       key: "scholarships",
       capability: "SCHOLARSHIPS",
-      getProjection: unavailableProjection,
+      getProjection: getOrganizationScholarshipProjection,
     },
     {
       key: "jobs",
       capability: "INTERNSHIPS_JOBS",
-      getProjection: unavailableProjection,
+      getProjection: getOrganizationJobsProjection,
     },
     {
       key: "products",
@@ -77,7 +82,7 @@ export const ORGANIZATION_PUBLIC_SECTION_PROVIDERS: ReadonlyArray<OrganizationPu
     {
       key: "events",
       capability: "EVENTS",
-      getProjection: unavailableProjection,
+      getProjection: getOrganizationProgramsProjection,
     },
     {
       key: "university-information",
@@ -142,6 +147,26 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     futureProviderKey: null,
   },
 ] as const;
+
+export const ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION = {
+  key: "scholarships",
+  label: "Scholarships",
+  icon: "graduation-cap",
+  order: 36,
+  accessibilityLabel: "Scholarships published by this organization",
+  analyticsId: "scholarships",
+  futureProviderKey: "scholarships",
+} as const;
+
+export const ORGANIZATION_JOBS_PUBLIC_SECTION = {
+  key: "jobs",
+  label: "Internships & jobs",
+  icon: "briefcase",
+  order: 37,
+  accessibilityLabel: "Internships and jobs published by this organization",
+  analyticsId: "jobs",
+  futureProviderKey: "jobs",
+} as const;
 
 export const ORGANIZATION_HOUSING_PUBLIC_SECTION = {
   key: "housing",

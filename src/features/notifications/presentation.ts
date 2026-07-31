@@ -5,6 +5,7 @@ export type KondoNotificationCategory =
   | "events"
   | "marketplace"
   | "housing"
+  | "opportunities"
   | "schedule"
   | "transfers"
   | "university"
@@ -20,6 +21,7 @@ export type KondoNotificationKind =
   | "EVENT_REMINDER"
   | "MARKETPLACE_ACTIVITY"
   | "HOUSING_ACTIVITY"
+  | "OPPORTUNITY_ACTIVITY"
   | "NEW_COMMENT"
   | "REACTION"
   | "SCHEDULE_REMINDER"
@@ -117,6 +119,13 @@ const PRESENTATIONS: Record<KondoNotificationKind, NotificationPresentation> = {
     categoryLabel: "Housing",
     icon: "housing",
     actionLabel: "Open Housing",
+  },
+  OPPORTUNITY_ACTIVITY: {
+    kind: "OPPORTUNITY_ACTIVITY",
+    category: "opportunities",
+    categoryLabel: "Opportunities",
+    icon: "housing",
+    actionLabel: "Open opportunity",
   },
   NEW_COMMENT: {
     kind: "NEW_COMMENT",
@@ -251,6 +260,7 @@ const TYPE_KIND: Record<string, KondoNotificationKind> = {
   REPLY: "NEW_COMMENT",
   MARKETPLACE_UPDATE: "MARKETPLACE_ACTIVITY",
   HOUSING: "HOUSING_ACTIVITY",
+  OPPORTUNITY: "OPPORTUNITY_ACTIVITY",
   COMMUNITY_ANNOUNCEMENT: "COMMUNITY_ANNOUNCEMENT",
   COMMUNITY_ACTIVITY: "COMMUNITY_ANNOUNCEMENT",
   MEET_ACTIVITY: "FRIEND_REQUEST",
@@ -277,6 +287,7 @@ export const CATEGORY_PREFERENCE_FIELD = {
   communities: null,
   marketplace: null,
   housing: "notificationHousing",
+  opportunities: "notificationOpportunities",
   schedule: null,
   security: null,
   system: null,

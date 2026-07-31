@@ -9,6 +9,8 @@ import type {
 import {
   ORGANIZATION_HOUSING_PUBLIC_SECTION,
   ORGANIZATION_PUBLIC_SECTION_PROVIDERS,
+  ORGANIZATION_JOBS_PUBLIC_SECTION,
+  ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION,
   visibleOrganizationSections,
   type OrganizationPublicProjection,
 } from "@/features/organizations/public-sections";
@@ -187,8 +189,15 @@ export async function serializeOrganizationPublicProfile(
     contactCount: contacts.length,
     hasCity: Boolean(organization.city),
   });
-  const visibleSections = projections.housing
-    ? [...baseVisibleSections, ORGANIZATION_HOUSING_PUBLIC_SECTION].sort(
+  // A domain section appears only when its provider reported real public
+  // content, so an enabled capability alone never produces an empty section.
+  const domainSections = [
+    projections.housing ? ORGANIZATION_HOUSING_PUBLIC_SECTION : null,
+    projections.scholarships ? ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION : null,
+    projections.jobs ? ORGANIZATION_JOBS_PUBLIC_SECTION : null,
+  ].filter((section) => section !== null);
+  const visibleSections = domainSections.length
+    ? [...baseVisibleSections, ...domainSections].sort(
         (first, second) => first.order - second.order,
       )
     : baseVisibleSections;

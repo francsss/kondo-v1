@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   userFindMany: vi.fn(),
   universityFindMany: vi.fn(),
   scholarshipFindMany: vi.fn(),
+  opportunityFindMany: vi.fn(),
   queryRaw: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { findMany: mocks.userFindMany },
     university: { findMany: mocks.universityFindMany },
     scholarship: { findMany: mocks.scholarshipFindMany },
+    opportunity: { findMany: mocks.opportunityFindMany },
     $queryRaw: mocks.queryRaw,
   },
 }));
@@ -53,6 +55,7 @@ describe("search result minimization", () => {
     mocks.cityFindMany.mockResolvedValue([]);
     mocks.universityFindMany.mockResolvedValue([]);
     mocks.scholarshipFindMany.mockResolvedValue([]);
+    mocks.opportunityFindMany.mockResolvedValue([]);
     mocks.organizationFindMany.mockResolvedValue([
       {
         id: "organization-1",

@@ -30,20 +30,25 @@ test.describe("Student Stories access and responsive navigation", () => {
         .locator("header")
         .getByRole("button", { name: /Switch to (dark|light) mode/ }),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Open navigation" }).click();
-    const navigation = page.getByRole("dialog", { name: "Mobile navigation" });
-    const links = navigation.getByRole("link");
-    const hrefs = await links.evaluateAll((items) =>
-      items.map((item) => item.getAttribute("href")),
-    );
-    expect(hrefs.slice(1, 6)).toEqual([
+    // The five primary destinations live in the bottom quick-navigation bar on
+    // mobile; the drawer carries the secondary destinations and account
+    // controls. Assert each against the surface that actually owns it.
+    const quickNavigation = page.getByRole("navigation", {
+      name: "Mobile quick navigation",
+    });
+    const quickHrefs = await quickNavigation
+      .getByRole("link")
+      .evaluateAll((items) => items.map((item) => item.getAttribute("href")));
+    expect(quickHrefs).toEqual([
       "/home",
       "/communities",
       "/marketplace",
       "/student-hub",
       "/messages",
     ]);
-    await expect(navigation.getByText("More from Kondo")).toBeVisible();
+
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    const navigation = page.getByRole("dialog", { name: "Mobile navigation" });
     await expect(
       navigation.getByLabel(/Current workspace: Personal/),
     ).toBeVisible();
@@ -53,7 +58,11 @@ test.describe("Student Stories access and responsive navigation", () => {
       }),
     ).toBeVisible();
     await expect(
-      navigation.getByRole("link", { name: "Student Stories" }),
+      navigation.getByRole("link", { name: "Housing" }),
+    ).toHaveAttribute("href", "/housing");
+    // The drawer labels this destination "Student Story" (singular).
+    await expect(
+      navigation.getByRole("link", { name: "Student Story" }),
     ).toHaveAttribute("href", "/stories");
   });
 

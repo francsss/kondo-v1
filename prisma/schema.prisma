@@ -466,6 +466,7 @@ enum NotificationType {
   ACADEMIC
   RECOMMENDATION
   MODERATION_UPDATE
+  OPPORTUNITY
 }
 
 enum NotificationJobStatus {
@@ -593,6 +594,7 @@ enum ReportEvidenceKind {
   HOUSING_CONTENT_SNAPSHOT
   SCHOLARSHIP_AGENT_SNAPSHOT
   ORGANIZATION_SNAPSHOT
+  OPPORTUNITY_SNAPSHOT
 }
 
 enum PetFeedbackCategory {
@@ -634,6 +636,8 @@ enum MediaPurpose {
   STORY_VIDEO
   STORY_POSTER
   VERIFICATION_DOCUMENT
+  OPPORTUNITY_COVER_IMAGE
+  OPPORTUNITY_APPLICATION_DOCUMENT
 }
 
 enum ScheduleWeekPattern {
@@ -770,6 +774,29 @@ enum AnalyticsEventName {
   ROOMMATE_INTEREST_SENT
   ROOMMATE_INTEREST_ACCEPTED
   HOUSING_REPORT_SUBMITTED
+  OPPORTUNITIES_HOME_VIEWED
+  OPPORTUNITY_CATEGORY_OPENED
+  OPPORTUNITY_SEARCH_STARTED
+  OPPORTUNITY_FILTER_APPLIED
+  OPPORTUNITY_VIEWED
+  OPPORTUNITY_SAVED
+  OPPORTUNITY_UNSAVED
+  OPPORTUNITY_SHARED
+  OPPORTUNITY_ELIGIBILITY_VIEWED
+  OPPORTUNITY_APPLICATION_STARTED
+  OPPORTUNITY_APPLICATION_DRAFT_SAVED
+  OPPORTUNITY_APPLICATION_DOCUMENT_SELECTED
+  OPPORTUNITY_APPLICATION_SUBMITTED
+  OPPORTUNITY_APPLICATION_STATUS_VIEWED
+  OPPORTUNITY_APPLICATION_WITHDRAWN
+  OPPORTUNITY_EXTERNAL_APPLICATION_OPENED
+  ORGANIZATION_OPPORTUNITY_CREATED
+  ORGANIZATION_OPPORTUNITY_SUBMITTED
+  ORGANIZATION_OPPORTUNITY_PUBLISHED
+  ORGANIZATION_APPLICATIONS_VIEWED
+  ORGANIZATION_APPLICATION_STATUS_CHANGED
+  OPPORTUNITY_REPORT_SUBMITTED
+  STUDENT_HUB_OPPORTUNITY_OPENED
 }
 
 enum StoryStatus {
@@ -833,154 +860,162 @@ enum OfficialOrganizationType {
 }
 
 model User {
-  id                                 String                            @id @default(cuid())
-  email                              String                            @unique
-  emailVerifiedAt                    DateTime?
-  passwordHash                       String?
-  firstName                          String
-  lastName                           String
-  username                           String?                           @unique
-  avatarKey                          String?
-  avatarMediaId                      String?                           @unique
-  avatarMedia                        MediaAsset?                       @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
-  bio                                String?                           @db.VarChar(280)
-  phone                              String?
-  profileAudience                    ProfileAudience                   @default(MEMBERS)
-  locationAudience                   ProfileAudience                   @default(MEMBERS)
-  educationAudience                  ProfileAudience                   @default(MEMBERS)
-  languagesAudience                  ProfileAudience                   @default(MEMBERS)
-  communitiesAudience                ProfileAudience                   @default(MEMBERS)
-  activityAudience                   ProfileAudience                   @default(MEMBERS)
-  marketplaceAudience                ProfileAudience                   @default(MEMBERS)
-  role                               Role                              @default(MEMBER)
-  status                             UserStatus                        @default(ACTIVE)
-  storyCreatorStatus                 StoryCreatorStatus                @default(STANDARD)
-  officialProfileStatus              OfficialProfileStatus             @default(NOT_VERIFIED)
-  officialOrganizationType           OfficialOrganizationType?
-  officialOrganizationName           String?                           @db.VarChar(160)
-  officialVerifiedAt                 DateTime?
-  officialReviewDueAt                DateTime?
-  gender                             UserGender?
-  countryId                          String?
-  country                            Country?                          @relation(fields: [countryId], references: [id], onDelete: SetNull)
-  cityId                             String?
-  city                               City?                             @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  universityId                       String?
-  university                         University?                       @relation(fields: [universityId], references: [id], onDelete: SetNull)
-  degree                             String?
-  studyLevel                         StudyLevel?
-  studentJourney                     StudentJourney?
-  onboardingIntent                   OnboardingIntent?
-  journeyDetail                      UserJourneyDetail?
-  targetCities                       UserTargetCity[]
-  targetUniversities                 UserTargetUniversity[]
-  organizationMemberships            OrganizationMembership[]
-  createdOrganizations               Organization[]                    @relation("OrganizationCreator")
-  sentOrganizationInvitations        OrganizationInvitation[]          @relation("OrganizationInvitationSender")
-  removedOrganizationMemberships     OrganizationMembership[]          @relation("OrganizationMembershipRemovedBy")
-  submittedOrganizationVerifications OrganizationVerificationRequest[] @relation("OrganizationVerificationSubmitter")
-  reviewedOrganizationVerifications  OrganizationVerificationRequest[] @relation("OrganizationVerificationReviewer")
-  initiatedOrganizationTransfers     OrganizationOwnershipTransfer[]   @relation("OrganizationOwnershipTransferInitiator")
-  targetedOrganizationTransfers      OrganizationOwnershipTransfer[]   @relation("OrganizationOwnershipTransferTarget")
-  grantedOrganizationPartnerships    Organization[]                    @relation("OrganizationPartnerGranter")
-  createdOrganizationMedia           OrganizationMedia[]               @relation("OrganizationMediaCreator")
-  nearbyDiscoveryEnabled             Boolean                           @default(true)
-  meetIntents                        String[]                          @default([])
-  studyYear                          Int?
-  arrivalDate                        DateTime?
-  languages                          String[]                          @default([])
-  interests                          String[]                          @default([])
-  onboardingCompletedAt              DateTime?
-  lastActiveAt                       DateTime?
-  createdCommunities                 Community[]                       @relation("CommunityCreator")
-  ownedCommunities                   Community[]                       @relation("CommunityOwner")
-  communityMemberships               CommunityMember[]
-  communityAccessSubjects            CommunityAccessRequest[]          @relation("CommunityAccessSubject")
-  createdCommunityAccessRequests     CommunityAccessRequest[]          @relation("CommunityAccessCreator")
-  resolvedCommunityAccessRequests    CommunityAccessRequest[]          @relation("CommunityAccessResolver")
-  communityRequests                  CommunityRequest[]                @relation("CommunityRequestCreator")
-  communityRequestHelpOffers         CommunityRequestHelpOffer[]
-  posts                              Post[]
-  comments                           Comment[]
-  reactions                          Reaction[]
-  stories                            Story[]                           @relation("StoryCreator")
-  storyComments                      StoryComment[]
-  storyLikes                         StoryLike[]
-  storySaves                         StorySave[]
-  storyHides                         StoryHide[]
-  storyModerationEvents              StoryModerationEvent[]            @relation("StoryModerationActor")
-  officialVerificationRequests       OfficialVerificationRequest[]     @relation("OfficialVerificationApplicant")
-  reviewedOfficialVerifications      OfficialVerificationRequest[]     @relation("OfficialVerificationReviewer")
-  marketplaceListings                MarketplaceListing[]
-  personalHousingListings            HousingListing[]                  @relation("HousingPersonalPublisher")
-  createdHousingListings             HousingListing[]                  @relation("HousingListingCreator")
-  representedHousingListings         HousingListing[]                  @relation("HousingListingRepresentative")
-  housingListingModerations          HousingListing[]                  @relation("HousingListingModerator")
-  savedHousingListings               HousingSavedListing[]
-  housingInquiries                   HousingInquiry[]                  @relation("HousingInquiryRequester")
-  receivedHousingInquiries           HousingInquiry[]                  @relation("HousingInquiryRecipient")
-  housingRequests                    HousingRequest[]
-  roommateProfile                    RoommateProfile?
-  sentRoommateInterests              RoommateInterest[]                @relation("RoommateInterestSender")
-  receivedRoommateInterests          RoommateInterest[]                @relation("RoommateInterestRecipient")
-  communityExchangeOffers            CommunityExchangeOffer[]
-  studentSkillOffers                 StudentSkillOffer[]
-  listingFavorites                   ListingFavorite[]
-  guideProgress                      GuideProgress[]
-  createdGuides                      Guide[]                           @relation("GuideAuthor")
-  createdCityHubs                    CityHub[]                         @relation("CityHubAuthor")
-  updatedCityHubs                    CityHub[]                         @relation("CityHubEditor")
-  questions                          Question[]
-  answers                            Answer[]
-  answerVotes                        AnswerVote[]
-  studentSchedules                   StudentSchedule[]
-  scheduleImports                    ScheduleImport[]
-  academicTasks                      AcademicTask[]
-  customPeriodConfigurations         CustomPeriodConfiguration[]
-  scholarshipFavorites               ScholarshipFavorite[]
-  bookmarks                          Bookmark[]
-  notifications                      Notification[]                    @relation("NotificationRecipient")
-  pushSubscriptions                  PushSubscription[]
-  triggeredNotifications             Notification[]                    @relation("NotificationActor")
-  notificationJobs                   NotificationJob[]                 @relation("NotificationJobRecipient")
-  triggeredNotificationJobs          NotificationJob[]                 @relation("NotificationJobActor")
-  updatedNotificationTemplates       NotificationTemplate[]            @relation("NotificationTemplateUpdater")
-  createdNotificationAnnouncements   NotificationAnnouncement[]        @relation("NotificationAnnouncementCreator")
-  conversationMemberships            ConversationParticipant[]
-  sentMessages                       Message[]                         @relation("MessageSender")
-  meetQueueEntry                     MeetQueueEntry?
-  meetDiscoveryProfile               MeetDiscoveryProfile?
-  subscriptions                      UserSubscription[]
-  createdCallSessions                CallSession[]                     @relation("CallSessionCreator")
-  callParticipations                 CallParticipant[]
-  blockedUsers                       UserBlock[]                       @relation("Blocker")
-  blockedByUsers                     UserBlock[]                       @relation("BlockedUser")
-  reports                            Report[]                          @relation("ReportReporter")
-  reportedSubjects                   Report[]                          @relation("ReportSubject")
-  assignedReports                    Report[]                          @relation("ReportAssignee")
-  reportAssignments                  Report[]                          @relation("ReportAssignedBy")
-  resolvedReports                    Report[]                          @relation("ReportResolvedBy")
-  reopenedReports                    Report[]                          @relation("ReportReopenedBy")
-  reportNotes                        ReportNote[]
-  reportEvidenceCaptures             ReportEvidence[]
-  submittedPetFeedbacks              PetFeedback[]                     @relation("PetFeedbackAuthor")
-  resolvedPetFeedbacks               PetFeedback[]                     @relation("PetFeedbackResolver")
-  petFeedbackNotes                   PetFeedbackNote[]                 @relation("PetFeedbackNoteAuthor")
-  ownedMedia                         MediaAsset[]                      @relation("MediaOwner")
-  removedMedia                       MediaAsset[]                      @relation("MediaRemovedBy")
-  accountRequests                    AccountRequest[]                  @relation("AccountRequestOwner")
-  processedAccountRequests           AccountRequest[]                  @relation("AccountRequestProcessor")
-  preference                         UserPreference?
-  auditLogs                          AuditLog[]                        @relation("AuditActor")
-  analyticsEvents                    AnalyticsEvent[]
-  presence                           UserPresence?
-  accounts                           OAuthAccount[]
-  sessions                           Session[]
-  emailVerificationTokens            EmailVerificationToken[]
-  passwordResetTokens                PasswordResetToken[]
-  createdAt                          DateTime                          @default(now())
-  updatedAt                          DateTime                          @updatedAt
-  searchVector                       Unsupported("tsvector")?
+  id                                  String                                @id @default(cuid())
+  email                               String                                @unique
+  emailVerifiedAt                     DateTime?
+  passwordHash                        String?
+  firstName                           String
+  lastName                            String
+  username                            String?                               @unique
+  avatarKey                           String?
+  avatarMediaId                       String?                               @unique
+  avatarMedia                         MediaAsset?                           @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  bio                                 String?                               @db.VarChar(280)
+  phone                               String?
+  profileAudience                     ProfileAudience                       @default(MEMBERS)
+  locationAudience                    ProfileAudience                       @default(MEMBERS)
+  educationAudience                   ProfileAudience                       @default(MEMBERS)
+  languagesAudience                   ProfileAudience                       @default(MEMBERS)
+  communitiesAudience                 ProfileAudience                       @default(MEMBERS)
+  activityAudience                    ProfileAudience                       @default(MEMBERS)
+  marketplaceAudience                 ProfileAudience                       @default(MEMBERS)
+  role                                Role                                  @default(MEMBER)
+  status                              UserStatus                            @default(ACTIVE)
+  storyCreatorStatus                  StoryCreatorStatus                    @default(STANDARD)
+  officialProfileStatus               OfficialProfileStatus                 @default(NOT_VERIFIED)
+  officialOrganizationType            OfficialOrganizationType?
+  officialOrganizationName            String?                               @db.VarChar(160)
+  officialVerifiedAt                  DateTime?
+  officialReviewDueAt                 DateTime?
+  gender                              UserGender?
+  countryId                           String?
+  country                             Country?                              @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId                              String?
+  city                                City?                                 @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  universityId                        String?
+  university                          University?                           @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  degree                              String?
+  studyLevel                          StudyLevel?
+  studentJourney                      StudentJourney?
+  onboardingIntent                    OnboardingIntent?
+  journeyDetail                       UserJourneyDetail?
+  targetCities                        UserTargetCity[]
+  targetUniversities                  UserTargetUniversity[]
+  organizationMemberships             OrganizationMembership[]
+  createdOrganizations                Organization[]                        @relation("OrganizationCreator")
+  sentOrganizationInvitations         OrganizationInvitation[]              @relation("OrganizationInvitationSender")
+  removedOrganizationMemberships      OrganizationMembership[]              @relation("OrganizationMembershipRemovedBy")
+  submittedOrganizationVerifications  OrganizationVerificationRequest[]     @relation("OrganizationVerificationSubmitter")
+  reviewedOrganizationVerifications   OrganizationVerificationRequest[]     @relation("OrganizationVerificationReviewer")
+  initiatedOrganizationTransfers      OrganizationOwnershipTransfer[]       @relation("OrganizationOwnershipTransferInitiator")
+  targetedOrganizationTransfers       OrganizationOwnershipTransfer[]       @relation("OrganizationOwnershipTransferTarget")
+  grantedOrganizationPartnerships     Organization[]                        @relation("OrganizationPartnerGranter")
+  createdOrganizationMedia            OrganizationMedia[]                   @relation("OrganizationMediaCreator")
+  nearbyDiscoveryEnabled              Boolean                               @default(true)
+  meetIntents                         String[]                              @default([])
+  studyYear                           Int?
+  arrivalDate                         DateTime?
+  languages                           String[]                              @default([])
+  interests                           String[]                              @default([])
+  onboardingCompletedAt               DateTime?
+  lastActiveAt                        DateTime?
+  createdCommunities                  Community[]                           @relation("CommunityCreator")
+  ownedCommunities                    Community[]                           @relation("CommunityOwner")
+  communityMemberships                CommunityMember[]
+  communityAccessSubjects             CommunityAccessRequest[]              @relation("CommunityAccessSubject")
+  createdCommunityAccessRequests      CommunityAccessRequest[]              @relation("CommunityAccessCreator")
+  resolvedCommunityAccessRequests     CommunityAccessRequest[]              @relation("CommunityAccessResolver")
+  communityRequests                   CommunityRequest[]                    @relation("CommunityRequestCreator")
+  communityRequestHelpOffers          CommunityRequestHelpOffer[]
+  posts                               Post[]
+  comments                            Comment[]
+  reactions                           Reaction[]
+  stories                             Story[]                               @relation("StoryCreator")
+  storyComments                       StoryComment[]
+  storyLikes                          StoryLike[]
+  storySaves                          StorySave[]
+  storyHides                          StoryHide[]
+  storyModerationEvents               StoryModerationEvent[]                @relation("StoryModerationActor")
+  officialVerificationRequests        OfficialVerificationRequest[]         @relation("OfficialVerificationApplicant")
+  reviewedOfficialVerifications       OfficialVerificationRequest[]         @relation("OfficialVerificationReviewer")
+  marketplaceListings                 MarketplaceListing[]
+  personalHousingListings             HousingListing[]                      @relation("HousingPersonalPublisher")
+  createdHousingListings              HousingListing[]                      @relation("HousingListingCreator")
+  representedHousingListings          HousingListing[]                      @relation("HousingListingRepresentative")
+  housingListingModerations           HousingListing[]                      @relation("HousingListingModerator")
+  savedHousingListings                HousingSavedListing[]
+  housingInquiries                    HousingInquiry[]                      @relation("HousingInquiryRequester")
+  receivedHousingInquiries            HousingInquiry[]                      @relation("HousingInquiryRecipient")
+  housingRequests                     HousingRequest[]
+  roommateProfile                     RoommateProfile?
+  sentRoommateInterests               RoommateInterest[]                    @relation("RoommateInterestSender")
+  receivedRoommateInterests           RoommateInterest[]                    @relation("RoommateInterestRecipient")
+  communityExchangeOffers             CommunityExchangeOffer[]
+  studentSkillOffers                  StudentSkillOffer[]
+  listingFavorites                    ListingFavorite[]
+  guideProgress                       GuideProgress[]
+  createdGuides                       Guide[]                               @relation("GuideAuthor")
+  createdCityHubs                     CityHub[]                             @relation("CityHubAuthor")
+  updatedCityHubs                     CityHub[]                             @relation("CityHubEditor")
+  questions                           Question[]
+  answers                             Answer[]
+  answerVotes                         AnswerVote[]
+  studentSchedules                    StudentSchedule[]
+  scheduleImports                     ScheduleImport[]
+  academicTasks                       AcademicTask[]
+  customPeriodConfigurations          CustomPeriodConfiguration[]
+  scholarshipFavorites                ScholarshipFavorite[]
+  bookmarks                           Bookmark[]
+  notifications                       Notification[]                        @relation("NotificationRecipient")
+  pushSubscriptions                   PushSubscription[]
+  triggeredNotifications              Notification[]                        @relation("NotificationActor")
+  notificationJobs                    NotificationJob[]                     @relation("NotificationJobRecipient")
+  triggeredNotificationJobs           NotificationJob[]                     @relation("NotificationJobActor")
+  updatedNotificationTemplates        NotificationTemplate[]                @relation("NotificationTemplateUpdater")
+  createdNotificationAnnouncements    NotificationAnnouncement[]            @relation("NotificationAnnouncementCreator")
+  conversationMemberships             ConversationParticipant[]
+  sentMessages                        Message[]                             @relation("MessageSender")
+  meetQueueEntry                      MeetQueueEntry?
+  meetDiscoveryProfile                MeetDiscoveryProfile?
+  subscriptions                       UserSubscription[]
+  createdCallSessions                 CallSession[]                         @relation("CallSessionCreator")
+  callParticipations                  CallParticipant[]
+  blockedUsers                        UserBlock[]                           @relation("Blocker")
+  blockedByUsers                      UserBlock[]                           @relation("BlockedUser")
+  reports                             Report[]                              @relation("ReportReporter")
+  reportedSubjects                    Report[]                              @relation("ReportSubject")
+  assignedReports                     Report[]                              @relation("ReportAssignee")
+  reportAssignments                   Report[]                              @relation("ReportAssignedBy")
+  resolvedReports                     Report[]                              @relation("ReportResolvedBy")
+  reopenedReports                     Report[]                              @relation("ReportReopenedBy")
+  reportNotes                         ReportNote[]
+  reportEvidenceCaptures              ReportEvidence[]
+  submittedPetFeedbacks               PetFeedback[]                         @relation("PetFeedbackAuthor")
+  resolvedPetFeedbacks                PetFeedback[]                         @relation("PetFeedbackResolver")
+  petFeedbackNotes                    PetFeedbackNote[]                     @relation("PetFeedbackNoteAuthor")
+  ownedMedia                          MediaAsset[]                          @relation("MediaOwner")
+  removedMedia                        MediaAsset[]                          @relation("MediaRemovedBy")
+  accountRequests                     AccountRequest[]                      @relation("AccountRequestOwner")
+  processedAccountRequests            AccountRequest[]                      @relation("AccountRequestProcessor")
+  preference                          UserPreference?
+  createdOpportunities                Opportunity[]                         @relation("OpportunityCreatedBy")
+  blockedOpportunities                Opportunity[]                         @relation("OpportunityBlockedBy")
+  savedOpportunities                  OpportunitySaved[]
+  opportunityDocuments                UserOpportunityDocument[]
+  opportunityProfile                  UserOpportunityProfile?
+  opportunityApplications             OpportunityApplication[]              @relation("OpportunityApplicant")
+  reviewingOpportunityApplications    OpportunityApplication[]              @relation("OpportunityApplicationReviewer")
+  opportunityApplicationStatusActions OpportunityApplicationStatusHistory[] @relation("OpportunityApplicationStatusActor")
+  auditLogs                           AuditLog[]                            @relation("AuditActor")
+  analyticsEvents                     AnalyticsEvent[]
+  presence                            UserPresence?
+  accounts                            OAuthAccount[]
+  sessions                            Session[]
+  emailVerificationTokens             EmailVerificationToken[]
+  passwordResetTokens                 PasswordResetToken[]
+  createdAt                           DateTime                              @default(now())
+  updatedAt                           DateTime                              @updatedAt
+  searchVector                        Unsupported("tsvector")?
 
   @@index([countryId])
   @@index([cityId])
@@ -1008,6 +1043,7 @@ model Country {
   organizationVerificationRequests OrganizationVerificationRequest[]
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
+  opportunities                    Opportunity[]
 
   @@index([isActive, name])
 }
@@ -1038,6 +1074,7 @@ model UserPreference {
   lastDigestSentAt            DateTime?
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
+  notificationOpportunities   Boolean            @default(true)
 
   @@index([emailDigest, lastDigestSentAt])
 }
@@ -1067,6 +1104,7 @@ model City {
   userTargetPreferences UserTargetCity[]
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
+  opportunities         Opportunity[]
 
   @@unique([countryId, name])
   @@index([countryId])
@@ -1101,6 +1139,7 @@ model University {
   userTargetPreferences UserTargetUniversity[]
   createdAt             DateTime                        @default(now())
   updatedAt             DateTime                        @updatedAt
+  opportunities         Opportunity[]
 
   @@unique([cityId, name])
   @@index([countryId])
@@ -1211,6 +1250,8 @@ model Organization {
   publicMedia               OrganizationMedia[]
   housingListings           HousingListing[]
   housingInquiries          HousingInquiry[]
+  opportunities             Opportunity[]                     @relation("OrganizationOpportunities")
+  opportunityApplications   OpportunityApplication[]          @relation("OrganizationOpportunityApplications")
   auditLogs                 AuditLog[]
   createdAt                 DateTime                          @default(now())
   updatedAt                 DateTime                          @updatedAt
@@ -1711,6 +1752,7 @@ model ScholarshipAgent {
   isActive      Boolean                      @default(true)
   createdAt     DateTime                     @default(now())
   updatedAt     DateTime                     @updatedAt
+  opportunities Opportunity[]                @relation("ScholarshipAgentOpportunities")
 
   @@index([isActive, verified, availability, name])
   @@index([countryId])
@@ -3104,6 +3146,8 @@ model MediaAsset {
   storageDeletePending             Boolean                           @default(false)
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
+  opportunityMedia                 OpportunityMedia?                 @relation("OpportunityMedia")
+  userOpportunityDocument          UserOpportunityDocument?          @relation("UserOpportunityDocument")
 
   @@index([ownerId, status, createdAt])
   @@index([status, uploadExpiresAt])
@@ -3243,4 +3287,624 @@ model PasswordResetToken {
 
   @@index([userId, usedAt])
   @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Part 5 — Opportunities (scholarships, internships, jobs, research, programs)
+//
+// The Opportunity domain is the single source of truth for opportunity records.
+// It never stores a second copy of Housing, Marketplace, Community or Story
+// content, and it does not rewrite the legacy Scholarship/ScholarshipAgent
+// records: those keep their own models and are exposed through a read-only
+// compatibility adapter until a later part decides on migration.
+// ---------------------------------------------------------------------------
+
+enum OpportunityType {
+  SCHOLARSHIP
+  INTERNSHIP
+  GRADUATE_INTERNSHIP
+  PART_TIME_JOB
+  FULL_TIME_JOB
+  CAMPUS_JOB
+  RESEARCH_OPPORTUNITY
+  VOLUNTEERING
+  COMPETITION
+  EXCHANGE_PROGRAM
+  SUMMER_PROGRAM
+  OTHER_PROGRAM
+}
+
+enum OpportunityPublisherType {
+  ORGANIZATION
+  EDITORIAL
+  LEGACY_SCHOLARSHIP_AGENT
+}
+
+enum OpportunityLifecycleStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  PAUSED
+  CLOSED
+  EXPIRED
+  REJECTED
+  REMOVED
+  ARCHIVED
+}
+
+enum OpportunityApplicationMethod {
+  KONDO_APPLICATION
+  EXTERNAL_URL
+  EMAIL
+  INFORMATION_ONLY
+  NOMINATION_REQUIRED
+}
+
+enum OpportunityWorkMode {
+  ON_SITE
+  REMOTE
+  HYBRID
+  CAMPUS
+  UNSPECIFIED
+}
+
+enum OpportunityFundingType {
+  FULLY_FUNDED
+  PARTIALLY_FUNDED
+  TUITION_ONLY
+  STIPEND_ONLY
+  FEE_WAIVER
+  OTHER
+}
+
+enum OpportunityEmploymentType {
+  INTERNSHIP
+  PART_TIME
+  FULL_TIME
+  TEMPORARY
+  CONTRACT
+  CAMPUS
+  VOLUNTEER
+  RESEARCH_ASSISTANT
+  TEACHING_ASSISTANT
+}
+
+enum OpportunityExperienceLevel {
+  NO_EXPERIENCE
+  ENTRY_LEVEL
+  INTERMEDIATE
+  EXPERIENCED
+  UNSPECIFIED
+}
+
+enum OpportunitySalaryPeriod {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+  TOTAL
+}
+
+enum OpportunityBenefitType {
+  TUITION
+  ACCOMMODATION
+  STIPEND
+  SALARY
+  INSURANCE
+  TRAVEL
+  REGISTRATION_FEE
+  MEALS
+  TRANSPORT
+  VISA_SUPPORT
+  HOUSING_SUPPORT
+  OTHER
+}
+
+// Benefits are never presented as guaranteed unless the publisher confirmed
+// them. "Possible" and "not specified" stay visually and structurally distinct.
+enum OpportunityBenefitConfidence {
+  CONFIRMED
+  POSSIBLE
+  NOT_SPECIFIED
+}
+
+enum OpportunityEligibilityRuleType {
+  ACCOUNT_JOURNEY
+  STUDENT_STATUS
+  DEGREE_LEVEL
+  UNIVERSITY
+  FIELD_OF_STUDY
+  GRADUATION_YEAR
+  COUNTRY
+  NATIONALITY
+  RESIDENCE
+  AGE
+  GPA
+  LANGUAGE
+  EXPERIENCE
+  SKILL
+  AVAILABILITY
+  ENROLLMENT_STATUS
+  CUSTOM
+}
+
+enum OpportunityEligibilityOperator {
+  EQUALS
+  NOT_EQUALS
+  IN
+  NOT_IN
+  AT_LEAST
+  AT_MOST
+  BETWEEN
+  EXISTS
+  CUSTOM
+}
+
+enum OpportunityLanguageLevel {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+  FLUENT
+  NATIVE
+}
+
+enum OpportunityDocumentCategory {
+  CV
+  RESUME
+  TRANSCRIPT
+  ENROLLMENT_CERTIFICATE
+  RECOMMENDATION_LETTER
+  MOTIVATION_LETTER
+  LANGUAGE_CERTIFICATE
+  PORTFOLIO
+  RESEARCH_PROPOSAL
+  PASSPORT_COPY
+  OTHER
+}
+
+enum OpportunityQuestionType {
+  SHORT_TEXT
+  LONG_TEXT
+  SELECT
+  MULTI_SELECT
+  DATE
+  NUMBER
+  BOOLEAN
+  FILE
+  CONSENT
+}
+
+enum OpportunityApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  MORE_INFORMATION_REQUIRED
+  SHORTLISTED
+  INTERVIEW
+  OFFERED
+  ACCEPTED
+  DECLINED_BY_APPLICANT
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+  CANCELLED
+}
+
+enum OpportunityMediaKind {
+  COVER
+  GALLERY
+  PUBLIC_DOCUMENT
+}
+
+model Opportunity {
+  id                      String                     @id @default(cuid())
+  slug                    String                     @unique
+  type                    OpportunityType
+  lifecycle               OpportunityLifecycleStatus @default(DRAFT)
+  publisherType           OpportunityPublisherType
+  publisherOrganizationId String?
+  publisherOrganization   Organization?              @relation("OrganizationOpportunities", fields: [publisherOrganizationId], references: [id], onDelete: Cascade)
+  scholarshipAgentId      String?
+  scholarshipAgent        ScholarshipAgent?          @relation("ScholarshipAgentOpportunities", fields: [scholarshipAgentId], references: [id], onDelete: SetNull)
+  createdByUserId         String?
+  createdByUser           User?                      @relation("OpportunityCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  universityId            String?
+  university              University?                @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  countryId               String?
+  country                 Country?                   @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId                  String?
+  city                    City?                      @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  title            String              @db.VarChar(180)
+  shortDescription String              @db.VarChar(400)
+  description      String              @db.Text
+  workMode         OpportunityWorkMode @default(UNSPECIFIED)
+  locationLabel    String?             @db.VarChar(200)
+
+  applicationMethod      OpportunityApplicationMethod
+  externalApplicationUrl String?                      @db.VarChar(500)
+  applicationEmail       String?                      @db.VarChar(320)
+  officialSourceUrl      String?                      @db.VarChar(500)
+  // Set by moderation when an external source is judged unsafe. While present,
+  // the public apply action is suppressed even for a PUBLISHED opportunity.
+  externalUrlBlockedAt   DateTime?
+
+  applicationOpenAt    DateTime?
+  applicationDeadline  DateTime?
+  rollingApplications  Boolean   @default(false)
+  expectedDecisionDate DateTime? @db.Date
+  opportunityStartDate DateTime? @db.Date
+  opportunityEndDate   DateTime? @db.Date
+  timezone             String    @default("Asia/Shanghai") @db.VarChar(64)
+
+  // Platform moderation. Independent from lifecycle so a restore can return the
+  // opportunity to its previous publishing state.
+  publicationBlockedAt   DateTime?
+  publicationBlockedById String?
+  publicationBlockedBy   User?     @relation("OpportunityBlockedBy", fields: [publicationBlockedById], references: [id], onDelete: SetNull)
+  moderationNote         String?   @db.VarChar(2000)
+  publisherVisibleNote   String?   @db.VarChar(2000)
+
+  // Legacy/imported deduplication signature. Prevents the compatibility adapter
+  // and editorial imports from producing a second visible copy of one source.
+  legacySourceKey String? @unique @db.VarChar(300)
+
+  publishedAt  DateTime?
+  submittedAt  DateTime?
+  closedAt     DateTime?
+  expiresAt    DateTime?
+  archivedAt   DateTime?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  searchVector Unsupported("tsvector")?
+
+  scholarshipDetail    OpportunityScholarshipDetail?
+  jobDetail            OpportunityJobDetail?
+  degreeLevels         OpportunityDegreeLevel[]
+  fieldsOfStudy        OpportunityFieldOfStudy[]
+  languageRequirements OpportunityLanguageRequirement[]
+  eligibilityRules     OpportunityEligibilityRule[]
+  benefits             OpportunityBenefit[]
+  requirements         OpportunityApplicationRequirement[]
+  questions            OpportunityApplicationQuestion[]
+  media                OpportunityMedia[]
+  savedBy              OpportunitySaved[]
+  applications         OpportunityApplication[]
+
+  @@index([lifecycle, applicationDeadline])
+  @@index([lifecycle, publishedAt])
+  @@index([type, lifecycle, publishedAt])
+  @@index([publisherOrganizationId, lifecycle, publishedAt])
+  @@index([scholarshipAgentId])
+  @@index([universityId, lifecycle])
+  @@index([countryId, cityId, lifecycle])
+  @@index([createdByUserId, createdAt])
+  @@index([lifecycle, expiresAt])
+}
+
+model OpportunityScholarshipDetail {
+  opportunityId          String                 @id
+  opportunity            Opportunity            @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  fundingType            OpportunityFundingType
+  tuitionCoverage        String?                @db.VarChar(300)
+  accommodationCoverage  String?                @db.VarChar(300)
+  monthlyStipendMinor    Int?
+  stipendCurrency        String?                @db.VarChar(3)
+  insuranceCoverage      String?                @db.VarChar(300)
+  travelCoverage         String?                @db.VarChar(300)
+  applicationFeeMinor    Int?
+  applicationFeeCurrency String?                @db.VarChar(3)
+  nominationRequired     Boolean                @default(false)
+  targetPrograms         String[]               @default([])
+  intakeLabel            String?                @db.VarChar(120)
+  studyLanguage          String?                @db.VarChar(80)
+  durationLabel          String?                @db.VarChar(120)
+  renewalConditions      String?                @db.VarChar(1000)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  @@index([fundingType])
+}
+
+model OpportunityJobDetail {
+  opportunityId       String                     @id
+  opportunity         Opportunity                @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  employmentType      OpportunityEmploymentType
+  roleTitle           String?                    @db.VarChar(180)
+  department          String?                    @db.VarChar(160)
+  experienceLevel     OpportunityExperienceLevel @default(UNSPECIFIED)
+  weeklyHours         Int?
+  durationLabel       String?                    @db.VarChar(120)
+  // Absent salary is rendered as "Compensation not specified" — never as a
+  // fabricated range and never as "competitive".
+  salaryMinMinor      Int?
+  salaryMaxMinor      Int?
+  salaryCurrency      String?                    @db.VarChar(3)
+  salaryPeriod        OpportunitySalaryPeriod?
+  salaryNegotiable    Boolean                    @default(false)
+  paid                Boolean?
+  visaSupport         Boolean?
+  housingSupport      Boolean?
+  conversionPotential Boolean?
+  numberOfOpenings    Int?
+  technicalSkills     String[]                   @default([])
+  softSkills          String[]                   @default([])
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  @@index([employmentType, experienceLevel])
+}
+
+model OpportunityDegreeLevel {
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  degreeLevel   StudyLevel
+
+  @@id([opportunityId, degreeLevel])
+  @@index([degreeLevel, opportunityId])
+}
+
+model OpportunityFieldOfStudy {
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  fieldKey      String      @db.VarChar(80)
+
+  @@id([opportunityId, fieldKey])
+  @@index([fieldKey, opportunityId])
+}
+
+model OpportunityLanguageRequirement {
+  id              String                   @id @default(cuid())
+  opportunityId   String
+  opportunity     Opportunity              @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  language        String                   @db.VarChar(80)
+  level           OpportunityLanguageLevel
+  certificateType String?                  @db.VarChar(80)
+  required        Boolean                  @default(true)
+
+  @@unique([opportunityId, language])
+  @@index([language, level])
+}
+
+// Advisory, explainable eligibility. There is deliberately no opaque numeric
+// score column: every result the product shows is derived from these rows and
+// is rendered together with its reason.
+model OpportunityEligibilityRule {
+  id              String                         @id @default(cuid())
+  opportunityId   String
+  opportunity     Opportunity                    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  ruleType        OpportunityEligibilityRuleType
+  operator        OpportunityEligibilityOperator
+  structuredValue Json
+  required        Boolean                        @default(true)
+  publicLabel     String                         @db.VarChar(300)
+  sortOrder       Int                            @default(0)
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+
+  @@index([opportunityId, sortOrder])
+  @@index([ruleType])
+}
+
+model OpportunityBenefit {
+  id            String                       @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity                  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  type          OpportunityBenefitType
+  amountMinor   Int?
+  currency      String?                      @db.VarChar(3)
+  period        OpportunitySalaryPeriod?
+  description   String?                      @db.VarChar(400)
+  confidence    OpportunityBenefitConfidence @default(NOT_SPECIFIED)
+  sortOrder     Int                          @default(0)
+
+  @@index([opportunityId, sortOrder])
+  @@index([type, confidence])
+}
+
+model OpportunityApplicationRequirement {
+  id                             String                           @id @default(cuid())
+  opportunityId                  String
+  opportunity                    Opportunity                      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  documentType                   OpportunityDocumentCategory
+  required                       Boolean                          @default(true)
+  description                    String?                          @db.VarChar(400)
+  sortOrder                      Int                              @default(0)
+  OpportunityApplicationDocument OpportunityApplicationDocument[]
+
+  @@unique([opportunityId, documentType])
+  @@index([opportunityId, sortOrder])
+}
+
+model OpportunityApplicationQuestion {
+  id            String                         @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity                    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  type          OpportunityQuestionType
+  label         String                         @db.VarChar(300)
+  description   String?                        @db.VarChar(600)
+  required      Boolean                        @default(true)
+  // Validated at the service boundary against a Zod schema for the question
+  // type. Never interpreted as executable logic.
+  options       Json?
+  sortOrder     Int                            @default(0)
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
+  answers       OpportunityApplicationAnswer[]
+
+  @@index([opportunityId, sortOrder])
+}
+
+model OpportunityMedia {
+  id            String               @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity          @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  mediaId       String               @unique
+  media         MediaAsset           @relation("OpportunityMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  kind          OpportunityMediaKind
+  isCover       Boolean              @default(false)
+  altText       String?              @db.VarChar(240)
+  sortOrder     Int                  @default(0)
+  createdAt     DateTime             @default(now())
+
+  @@index([opportunityId, sortOrder])
+  @@index([opportunityId, isCover])
+}
+
+model OpportunitySaved {
+  userId           String
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId    String
+  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  // Opt-in only. Publishers never see who saved an opportunity.
+  remindBeforeDays Int?
+  lastRemindedAt   DateTime?
+  createdAt        DateTime    @default(now())
+
+  @@id([userId, opportunityId])
+  @@index([userId, createdAt])
+  @@index([opportunityId])
+}
+
+// Private, per-user document vault. Files live in the existing MediaAsset
+// pipeline with a dedicated private purpose; attaching the same document to
+// several applications reuses this row rather than copying the file.
+model UserOpportunityDocument {
+  id          String                           @id @default(cuid())
+  userId      String
+  user        User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaId     String                           @unique
+  media       MediaAsset                       @relation("UserOpportunityDocument", fields: [mediaId], references: [id], onDelete: Cascade)
+  category    OpportunityDocumentCategory
+  displayName String                           @db.VarChar(200)
+  institution String?                          @db.VarChar(200)
+  issuedOn    DateTime?                        @db.Date
+  expiresOn   DateTime?                        @db.Date
+  language    String?                          @db.VarChar(80)
+  archivedAt  DateTime?
+  createdAt   DateTime                         @default(now())
+  updatedAt   DateTime                         @updatedAt
+  attachments OpportunityApplicationDocument[]
+
+  @@index([userId, category, createdAt])
+  @@index([userId, archivedAt])
+}
+
+// Private application preferences. Never publicly exposed and never projected
+// into a candidate directory.
+model UserOpportunityProfile {
+  userId                      String                     @id
+  user                        User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredTypes              OpportunityType[]          @default([])
+  preferredCityIds            String[]                   @default([])
+  remotePreference            OpportunityWorkMode?
+  experienceLevel             OpportunityExperienceLevel @default(UNSPECIFIED)
+  availabilityFrom            DateTime?                  @db.Date
+  professionalInterests       String[]                   @default([])
+  skills                      String[]                   @default([])
+  workAuthorizationNote       String?                    @db.VarChar(500)
+  portfolioUrl                String?                    @db.VarChar(500)
+  professionalProfileUrl      String?                    @db.VarChar(500)
+  defaultCvDocumentId         String?
+  defaultTranscriptDocumentId String?
+  coverLetterTemplate         String?                    @db.Text
+  // Opt-in. Absent or false suppresses recommendation notifications entirely.
+  recommendationsEnabled      Boolean                    @default(false)
+  deadlineReminderDays        Int[]                      @default([])
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
+}
+
+model OpportunityApplication {
+  id                     String                       @id @default(cuid())
+  opportunityId          String
+  opportunity            Opportunity                  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  applicantUserId        String
+  applicantUser          User                         @relation("OpportunityApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
+  // Denormalized at submission so reviewer authorization never depends on the
+  // opportunity's current publisher, which moderation may change later.
+  organizationId         String?
+  organization           Organization?                @relation("OrganizationOpportunityApplications", fields: [organizationId], references: [id], onDelete: SetNull)
+  status                 OpportunityApplicationStatus @default(DRAFT)
+  assignedReviewerUserId String?
+  assignedReviewerUser   User?                        @relation("OpportunityApplicationReviewer", fields: [assignedReviewerUserId], references: [id], onDelete: SetNull)
+
+  // Immutable record of what the applicant actually submitted. Later profile
+  // edits never rewrite it.
+  applicantSnapshot Json?
+  consentVersion    String? @db.VarChar(40)
+
+  submittedAt            DateTime?
+  withdrawnAt            DateTime?
+  decidedAt              DateTime?
+  informationRequestedAt DateTime?
+  informationDueAt       DateTime?
+  offerResponseDueAt     DateTime?
+  applicantLastViewedAt  DateTime?
+  reviewerLastViewedAt   DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  answers       OpportunityApplicationAnswer[]
+  documents     OpportunityApplicationDocument[]
+  statusHistory OpportunityApplicationStatusHistory[]
+
+  // One active application per user and opportunity.
+  @@unique([opportunityId, applicantUserId])
+  @@index([applicantUserId, status, updatedAt])
+  @@index([organizationId, status, submittedAt])
+  @@index([opportunityId, status, submittedAt])
+  @@index([assignedReviewerUserId, status])
+}
+
+model OpportunityApplicationAnswer {
+  id               String                         @id @default(cuid())
+  applicationId    String
+  application      OpportunityApplication         @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         OpportunityApplicationQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerText       String?                        @db.Text
+  answerStructured Json?
+  createdAt        DateTime                       @default(now())
+  updatedAt        DateTime                       @updatedAt
+
+  @@unique([applicationId, questionId])
+  @@index([questionId])
+}
+
+model OpportunityApplicationDocument {
+  id                  String                             @id @default(cuid())
+  applicationId       String
+  application         OpportunityApplication             @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userDocumentId      String
+  userDocument        UserOpportunityDocument            @relation(fields: [userDocumentId], references: [id], onDelete: Cascade)
+  requirementId       String?
+  requirement         OpportunityApplicationRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  category            OpportunityDocumentCategory
+  displayNameSnapshot String                             @db.VarChar(200)
+  createdAt           DateTime                           @default(now())
+
+  @@unique([applicationId, userDocumentId])
+  @@index([applicationId, category])
+  @@index([userDocumentId])
+  @@index([requirementId])
+}
+
+model OpportunityApplicationStatusHistory {
+  id                   String                        @id @default(cuid())
+  applicationId        String
+  application          OpportunityApplication        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus           OpportunityApplicationStatus?
+  toStatus             OpportunityApplicationStatus
+  actingUserId         String?
+  actingUser           User?                         @relation("OpportunityApplicationStatusActor", fields: [actingUserId], references: [id], onDelete: SetNull)
+  // Kept in separate columns so an internal note can never be serialized into
+  // an applicant-facing DTO, notification or email by accident.
+  applicantVisibleNote String?                       @db.VarChar(2000)
+  internalNote         String?                       @db.VarChar(2000)
+  createdAt            DateTime                      @default(now())
+
+  @@index([applicationId, createdAt])
+  @@index([actingUserId, createdAt])
 }

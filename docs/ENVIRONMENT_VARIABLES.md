@@ -134,3 +134,11 @@ variable. They reuse `DATABASE_URL`/`DIRECT_URL`, the existing private media
 provider configuration, notification worker configuration, and
 `NEXT_PUBLIC_APP_URL` for canonical public URLs. Do not add a separate public
 bucket or expose R2 credentials to the browser.
+
+## OPPORTUNITY_WORKER_SECRET
+
+Shared secret for the opportunity deadline-expiry worker route
+`POST /api/internal/opportunities/expire`. Optional: when unset the route
+refuses every request and the sweep can still be run manually with
+`npm run opportunities:expire`. Mirrors `HOUSING_WORKER_SECRET` and
+`MARKETPLACE_WORKER_SECRET`.
