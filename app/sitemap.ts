@@ -1,21 +1,30 @@
 import type { MetadataRoute } from "next";
 import { getAppUrl } from "@/lib/app-url";
 import { organizationPublicVisibilityWhere } from "@/lib/organization-public-visibility";
+import { publicHousingListingWhere } from "@/lib/housing-visibility";
 import { prisma } from "@/lib/prisma";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getAppUrl();
-  const organizations = await prisma.organization.findMany({
-    where: organizationPublicVisibilityWhere,
-    select: {
-      slug: true,
-      lastPublicUpdateAt: true,
-      publishedAt: true,
-      updatedAt: true,
-    },
-    orderBy: [{ lastPublicUpdateAt: "desc" }, { id: "asc" }],
-    take: 5_000,
-  });
+  const [organizations, housing] = await Promise.all([
+    prisma.organization.findMany({
+      where: organizationPublicVisibilityWhere,
+      select: {
+        slug: true,
+        lastPublicUpdateAt: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+      orderBy: [{ lastPublicUpdateAt: "desc" }, { id: "asc" }],
+      take: 5_000,
+    }),
+    prisma.housingListing.findMany({
+      where: publicHousingListingWhere(),
+      select: { slug: true, updatedAt: true },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      take: 5_000,
+    }),
+  ]);
 
   return [
     {
@@ -38,6 +47,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         organization.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.6,
+    })),
+    ...housing.map((listing) => ({
+      url: `${baseUrl}/housing/listings/${listing.slug}`,
+      lastModified: listing.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.65,
     })),
   ];
 }

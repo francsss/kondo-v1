@@ -8,6 +8,7 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { resolvePublishedCity } from "@/lib/city-hub";
 import { listPublicOrganizationsForCity } from "@/lib/organization-public-profile";
+import { getCityHousingProjection } from "@/lib/housing-projections";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 import { getContextualStories } from "@/lib/stories";
@@ -54,11 +55,19 @@ export default async function ExploreCityPage({ params }: PageProps) {
       select: { id: true },
     }),
   ]);
-  const organizations = cityRecord
-    ? await listPublicOrganizationsForCity(cityRecord.id, 6)
-    : [];
+  const [organizations, housing] = cityRecord
+    ? await Promise.all([
+        listPublicOrganizationsForCity(cityRecord.id, 6),
+        getCityHousingProjection(cityRecord.id, 6),
+      ])
+    : [[], []];
 
   return (
-    <CityHubView city={city} organizations={organizations} stories={stories} />
+    <CityHubView
+      city={city}
+      housing={housing}
+      organizations={organizations}
+      stories={stories}
+    />
   );
 }

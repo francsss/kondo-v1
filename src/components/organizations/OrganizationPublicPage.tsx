@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Globe2,
+  House,
   Languages,
   MapPin,
   ShieldCheck,
@@ -275,6 +276,47 @@ export function OrganizationPublicPage({
                 images={organization.gallery}
                 organizationType={organization.organizationType}
               />
+            </PublicSection>
+          ) : null}
+
+          {sectionIds.has("housing") && organization.projections.housing ? (
+            <PublicSection
+              description="Current homes published and managed by this organization."
+              icon={House}
+              id="housing"
+              title="Housing"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {organization.projections.housing.featuredItems.map((item) => (
+                  <Link
+                    className="group rounded-3xl border border-border bg-muted/25 p-4 transition hover:border-foreground/20 hover:bg-muted/50"
+                    href={item.href}
+                    key={item.id}
+                  >
+                    <p className="font-black group-hover:text-kondo-green">
+                      {item.title}
+                    </p>
+                    {item.context ? (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {item.context}
+                      </p>
+                    ) : null}
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-black text-kondo-green">
+                      View home <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              {organization.projections.housing.itemCount >
+              organization.projections.housing.featuredItems.length ? (
+                <Link
+                  className="mt-5 inline-flex items-center gap-2 text-sm font-black text-kondo-green hover:underline"
+                  href={`/housing/search?organizationId=${organization.id}`}
+                >
+                  View all {organization.projections.housing.itemCount} homes
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              ) : null}
             </PublicSection>
           ) : null}
 

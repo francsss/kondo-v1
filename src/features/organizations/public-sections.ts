@@ -1,4 +1,5 @@
 import type { OrganizationCapabilityKey } from "@prisma/client";
+import { getOrganizationHousingProjection } from "@/lib/housing-projections";
 
 export type OrganizationPublicSectionKey =
   | "overview"
@@ -51,7 +52,7 @@ export const ORGANIZATION_PUBLIC_SECTION_PROVIDERS: ReadonlyArray<OrganizationPu
     {
       key: "housing",
       capability: "HOUSING",
-      getProjection: unavailableProjection,
+      getProjection: getOrganizationHousingProjection,
     },
     {
       key: "scholarships",
@@ -141,6 +142,16 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     futureProviderKey: null,
   },
 ] as const;
+
+export const ORGANIZATION_HOUSING_PUBLIC_SECTION = {
+  key: "housing",
+  label: "Housing",
+  icon: "home",
+  order: 35,
+  accessibilityLabel: "Housing published by this organization",
+  analyticsId: "housing",
+  futureProviderKey: "housing",
+} as const;
 
 export function visibleOrganizationSections(input: {
   hasOverview: boolean;

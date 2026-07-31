@@ -9,6 +9,7 @@ import type {
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { hasOrganizationPermission } from "@/lib/organization-authorization";
+import { publicHousingListingWhere } from "@/lib/housing-visibility";
 import { MediaPolicyError, validateMediaIntent } from "@/lib/media-policy";
 import {
   createMediaUploadToken,
@@ -824,6 +825,82 @@ export async function getMediaForDelivery(
       document?.request.organization.memberships[0],
       "ORGANIZATION_VIEW_PRIVATE_VERIFICATION",
     );
+  }
+  if (
+    !authorized &&
+    asset.attachmentType === "HOUSING_LISTING" &&
+    asset.attachmentId
+  ) {
+    const housingMedia = await prisma.housingListingMedia.findFirst({
+      where: { mediaId: asset.id, listingId: asset.attachmentId },
+      select: {
+        kind: true,
+        listing: {
+          select: {
+            id: true,
+            publisherType: true,
+            publisherUserId: true,
+            publisherOrganizationId: true,
+            status: true,
+            publicationBlockedAt: true,
+            expiresAt: true,
+            publisherUser: { select: { status: true } },
+            publisherOrganization: {
+              select: {
+                lifecycleStatus: true,
+                capabilities: {
+                  where: { key: "HOUSING" },
+                  select: { status: true },
+                  take: 1,
+                },
+                memberships: viewer
+                  ? {
+                      where: { userId: viewer.id },
+                      select: { role: true, status: true },
+                      take: 1,
+                    }
+                  : false,
+              },
+            },
+          },
+        },
+      },
+    });
+    const organizationMembership =
+      housingMedia?.listing.publisherOrganization &&
+      "memberships" in housingMedia.listing.publisherOrganization
+        ? housingMedia.listing.publisherOrganization.memberships[0]
+        : null;
+    const ownsPersonalListing =
+      housingMedia?.listing.publisherType === "PERSONAL" &&
+      housingMedia.listing.publisherUserId === viewer?.id;
+    const managesOrganizationListing = Boolean(
+      organizationMembership?.status === "ACTIVE" &&
+      hasOrganizationPermission(
+        organizationMembership,
+        "ORGANIZATION_EDIT_HOUSING",
+      ),
+    );
+    const canReviewProof = Boolean(
+      viewer &&
+      housingMedia?.kind === "PROOF_DOCUMENT" &&
+      hasAdminPermission(viewer.role, "HOUSING_PROOF_VIEW"),
+    );
+    publiclyAuthorized = Boolean(
+      housingMedia?.kind !== "PROOF_DOCUMENT" &&
+      (await prisma.housingListing.findFirst({
+        where: {
+          id: asset.attachmentId,
+          ...publicHousingListingWhere(),
+        },
+        select: { id: true },
+      })),
+    );
+    authorized =
+      publiclyAuthorized ||
+      Boolean(ownsPersonalListing) ||
+      managesOrganizationListing ||
+      canReviewProof;
   }
   if (!authorized) throw new MediaError("Media was not found.", 404);
   return publiclyAuthorized

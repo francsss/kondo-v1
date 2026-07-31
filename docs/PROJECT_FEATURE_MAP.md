@@ -140,6 +140,7 @@ Authentication services are mainly in:
 | `/home`              | Personalized dashboard, live activity, feed, stories, guide/local context                                |
 | `/communities/**`    | Communities and Meet                                                                                     |
 | `/marketplace/**`    | Marketplace, exchange offers, student skills                                                             |
+| `/housing/**`        | Housing discovery, map, listings, requests, roommates, saves and publisher management                    |
 | `/explore/[city]/**` | Public City Hub / Explore content                                                                        |
 | `/messages/**`       | Conversation list, new conversation, full-screen thread                                                  |
 | `/notifications`     | Notification center                                                                                      |
@@ -1617,13 +1618,34 @@ Implemented public identity:
 - typed future section providers that stay hidden without real public domain
   content.
 
-The following are intentionally not implemented in Part 3: Housing listings,
-roommate matching, bookings/payments, organization reviews or followers,
-organization inboxes, scholarship submissions, job applications, product
-checkout/orders, automatic City Hub company conversion, Community membership
-merging, and ScholarshipAgent conversion.
+Part 4 now supplies Housing listings and roommate matching through their own
+domain and projects eligible organization supply into this public page.
+Bookings/payments, organization reviews or followers, organization inboxes,
+scholarship submissions, job applications, product checkout/orders, automatic
+City Hub company conversion, Community membership merging, and
+ScholarshipAgent conversion remain intentionally unimplemented.
 
-## 19. Required validation for changes
+## 19. Housing (Part 4)
+
+Implemented:
+
+- dedicated personal/organization Housing ownership with database checks;
+- reviewable listing lifecycle, private/public location separation and
+  provider-neutral map projection;
+- bounded search, opaque pagination, saved homes, direct Kondo inquiries,
+  Housing requests and automatic expiry;
+- authenticated roommate profiles, explainable matching, bidirectional block
+  exclusion, interest acceptance and direct-conversation handoff;
+- organization workspace, public organization projection, Explore city rail,
+  notification category, analytics taxonomy, reports and Admin moderation;
+- existing Marketplace Housing data remains readable while new Housing
+  products are rejected from the generic seller workflow.
+
+Housing does not implement bookings, payment collection, escrow, contract
+generation, legal guarantees, property inspection guarantees, a shared
+organization inbox, or AI fraud detection.
+
+## 20. Required validation for changes
 
 Minimum code-quality gate:
 

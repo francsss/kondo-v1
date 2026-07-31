@@ -69,6 +69,7 @@ marketplace expiry hourly, media cleanup hourly, and digests daily.
 | `WEB_PUSH_VAPID_PRIVATE_KEY`            | Optional secret            | Private half of the same VAPID pair, used server-side to sign push payloads. Never expose it with a `NEXT_PUBLIC_` prefix.        |
 | `WEB_PUSH_SUBJECT`                      | Optional                   | Contact identity sent to push services, as `mailto:` or an https URL. Required alongside the VAPID pair.                          |
 | `MARKETPLACE_WORKER_SECRET`             | Optional secret            | Separate bearer secret for manual/external marketplace expiry calls.                                                              |
+| `HOUSING_WORKER_SECRET`                 | Optional secret            | Separate bearer secret for Housing listing and request expiry calls. Generate with `openssl rand -hex 32`.                        |
 | `MEDIA_WORKER_SECRET`                   | Optional secret            | Separate bearer secret for manual/external media cleanup calls.                                                                   |
 | `KONDO_ALLOW_DESTRUCTIVE_SEED`          | Never enable in production | Explicit local/demo database reset opt-in. Production validation rejects `true`.                                                  |
 | `KONDO_DEV_ORIGINS`                     | Development only           | Comma-separated origins allowed for Next.js development HMR.                                                                      |

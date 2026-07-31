@@ -30,6 +30,14 @@ preserves users, sessions, organizations, memberships, media, verification
 history, and all unrelated product data. No new environment variable is
 introduced.
 
+Kondo Housing additionally requires the additive
+`20260731100000_housing_domain_enums` and
+`20260731101000_housing_domain` migrations. They add the dedicated Housing,
+request, roommate, inquiry and saved-listing records, constrained publisher
+ownership, privacy-safe coordinates, indexed public search, Housing
+notifications, and no destructive data conversion. Existing Marketplace
+Housing rows remain readable but are not silently migrated.
+
 ### Resolved release findings
 
 1. **Production upload failure:** a real Home-feed upload reached the
@@ -99,16 +107,19 @@ The common pipeline is:
    authorization, then local bytes are streamed in development or a 60-second
    R2 `GET` URL is returned in production.
 
-| Surface               | Purpose            | Status                                        |
-| --------------------- | ------------------ | --------------------------------------------- |
-| Home-feed posts       | `POST_IMAGE`       | Uses the corrected shared pipeline            |
-| Community posts       | `POST_IMAGE`       | Same `PostComposer` and pipeline as Home      |
-| Community covers      | `COMMUNITY_COVER`  | Uses the corrected shared pipeline            |
-| Marketplace listings  | `LISTING_IMAGE`    | Uses the corrected shared pipeline            |
-| Profile avatars       | `PROFILE_AVATAR`   | Moved to the corrected shared pipeline        |
-| Message images        | `MESSAGE_IMAGE`    | Moved to the corrected shared pipeline        |
-| Message PDFs          | `MESSAGE_DOCUMENT` | Moved to the corrected shared pipeline        |
-| Student Hub documents | Not applicable     | No Student Hub document-upload surface exists |
+| Surface                | Purpose                  | Status                                                    |
+| ---------------------- | ------------------------ | --------------------------------------------------------- |
+| Home-feed posts        | `POST_IMAGE`             | Uses the corrected shared pipeline                        |
+| Community posts        | `POST_IMAGE`             | Same `PostComposer` and pipeline as Home                  |
+| Community covers       | `COMMUNITY_COVER`        | Uses the corrected shared pipeline                        |
+| Marketplace listings   | `LISTING_IMAGE`          | Uses the corrected shared pipeline                        |
+| Housing listing images | `HOUSING_LISTING_IMAGE`  | Public only through an eligible published Housing listing |
+| Housing floor plans    | `HOUSING_FLOOR_PLAN`     | Uses the same listing visibility boundary                 |
+| Housing proof files    | `HOUSING_PROOF_DOCUMENT` | Private publisher/Admin-review delivery only              |
+| Profile avatars        | `PROFILE_AVATAR`         | Moved to the corrected shared pipeline                    |
+| Message images         | `MESSAGE_IMAGE`          | Moved to the corrected shared pipeline                    |
+| Message PDFs           | `MESSAGE_DOCUMENT`       | Moved to the corrected shared pipeline                    |
+| Student Hub documents  | Not applicable           | No Student Hub document-upload surface exists             |
 
 `GUIDE_COVER` now uses the same validated two-phase upload pipeline. Admin guide
 create/edit forms support upload, preview, replacement, and removal through the
@@ -185,6 +196,11 @@ directly to Vercel.
 
 Vercel applies environment changes only to new deployments, so redeploy after
 the final values are set.
+
+The existing GitHub Actions production-worker workflow calls
+`/api/internal/housing/expire` hourly with `CRON_SECRET`. A separate scheduler
+may use `HOUSING_WORKER_SECRET`; both values are server-only and the endpoint
+fails closed when neither bearer secret matches.
 
 Web Push is enabled only when all three VAPID variables are configured together.
 The private key must remain server-only. Without them, the notification center

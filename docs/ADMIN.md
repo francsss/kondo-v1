@@ -61,6 +61,8 @@ revoke the target's sessions and create an `AuditLog` record.
 | `/admin/organizations/:id`              | Organization identity, team, capabilities, lifecycle, partner state, verification history, and scoped audit.     |
 | `/admin/organization-verifications`     | Private organization-verification review queue.                                                                  |
 | `/admin/organization-verifications/:id` | Least-privilege evidence review, reviewer note, user response, and reviewed status transitions.                  |
+| `/admin/housing`                        | Housing supply queue, lifecycle filters, publisher context, inquiry counts, and review/removal actions.          |
+| `/admin/housing/:id`                    | Housing listing detail with distinct public/private location facts and non-proof media review.                   |
 | `/admin/settings`                       | Safe non-secret configuration index.                                                                             |
 | `/admin/audit`                          | Filtered administrative audit history.                                                                           |
 
@@ -69,6 +71,22 @@ the public Student Hub composes the Guide library, Q&A, and validated community
 events. Events are not duplicated into a second model: editorial city events
 are City Hub entries, while member/community events use the existing validated
 `Post(type=EVENT)` lifecycle.
+
+## Housing operations
+
+Housing is independent from Marketplace. `HOUSING_VIEW` opens the queue;
+`HOUSING_LISTINGS_REVIEW` approves or requests changes;
+`HOUSING_LISTINGS_REMOVE` removes public supply; `HOUSING_MODERATE` supports
+non-final moderation; and `HOUSING_PROOF_VIEW` is required before private proof
+documents can be delivered. The permissions are assigned through the existing
+role matrix rather than inferred from the presence of the Admin navigation
+item.
+
+Housing mutations recheck lifecycle and exact permission on the server, retain
+the source record, write AuditLog, notify the publisher through the existing
+outbox, and invalidate listing, search, map, organization, city, and sitemap
+surfaces. Listing rows never expose proof documents. The central report queue
+continues to own reporter identity and case decisions.
 
 ## First Super Admin
 

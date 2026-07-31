@@ -325,6 +325,107 @@ enum ListingStatus {
   REMOVED
 }
 
+enum HousingPublisherType {
+  PERSONAL
+  ORGANIZATION
+}
+
+enum HousingListingType {
+  ENTIRE_APARTMENT
+  PRIVATE_ROOM
+  SHARED_ROOM
+  STUDENT_RESIDENCE
+  UNIVERSITY_DORMITORY
+  STUDIO
+  HOUSE
+  ROOMMATE_REPLACEMENT
+  SUBLET
+  OTHER
+}
+
+enum HousingListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  PAUSED
+  RENTED
+  EXPIRED
+  REJECTED
+  REMOVED
+  ARCHIVED
+}
+
+enum HousingLocationPrivacy {
+  APPROXIMATE_AREA
+  NEAR_UNIVERSITY
+  DISTRICT_ONLY
+  EXACT_AFTER_CONTACT
+  PUBLIC_EXACT_LOCATION
+}
+
+enum HousingFurnishing {
+  FURNISHED
+  PARTLY_FURNISHED
+  UNFURNISHED
+  UNKNOWN
+}
+
+enum HousingPolicyPreference {
+  ALLOWED
+  NOT_ALLOWED
+  CASE_BY_CASE
+  NOT_SPECIFIED
+}
+
+enum HousingListingMediaKind {
+  COVER
+  GALLERY
+  FLOOR_PLAN
+  PROOF_DOCUMENT
+}
+
+enum HousingInquiryStatus {
+  OPEN
+  RESPONDED
+  CLOSED
+}
+
+enum HousingRequestStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  MATCHED
+  EXPIRED
+  ARCHIVED
+  REMOVED
+}
+
+enum HousingRequestVisibility {
+  PUBLIC
+  MEMBERS_ONLY
+  MATCHING_ONLY
+}
+
+enum RoommateProfileStatus {
+  ACTIVE
+  INACTIVE
+  PAUSED
+}
+
+enum RoommateProfileVisibility {
+  MEMBERS_ONLY
+  PRIVATE
+}
+
+enum RoommateInterestStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+  EXPIRED
+  BLOCKED
+}
+
 enum PeerOfferStatus {
   ACTIVE
   CLOSED
@@ -358,6 +459,7 @@ enum NotificationType {
   COMMENT
   REPLY
   MARKETPLACE_UPDATE
+  HOUSING
   COMMUNITY_ANNOUNCEMENT
   COMMUNITY_ACTIVITY
   MEET_ACTIVITY
@@ -488,6 +590,7 @@ enum ReportEvidenceKind {
   PROFILE_SNAPSHOT
   COMMUNITY_CONTENT_SNAPSHOT
   MARKETPLACE_LISTING_SNAPSHOT
+  HOUSING_CONTENT_SNAPSHOT
   SCHOLARSHIP_AGENT_SNAPSHOT
   ORGANIZATION_SNAPSHOT
 }
@@ -521,6 +624,9 @@ enum MediaPurpose {
   COMMUNITY_COVER
   POST_IMAGE
   LISTING_IMAGE
+  HOUSING_LISTING_IMAGE
+  HOUSING_FLOOR_PLAN
+  HOUSING_PROOF_DOCUMENT
   GUIDE_COVER
   MESSAGE_IMAGE
   MESSAGE_DOCUMENT
@@ -646,6 +752,24 @@ enum AnalyticsEventName {
   MESSAGE_SENT
   STUDENT_HUB_VIEWED
   EXPLORE_CITY_VIEWED
+  HOUSING_HOME_VIEWED
+  HOUSING_SEARCH_STARTED
+  HOUSING_FILTER_APPLIED
+  HOUSING_MAP_OPENED
+  HOUSING_LISTING_VIEWED
+  HOUSING_LISTING_SAVED
+  HOUSING_CONTACT_OPENED
+  HOUSING_INQUIRY_SENT
+  HOUSING_LISTING_CREATED
+  HOUSING_LISTING_SUBMITTED
+  HOUSING_LISTING_PUBLISHED
+  HOUSING_REQUEST_CREATED
+  HOUSING_REQUEST_VIEWED
+  ROOMMATE_PROFILE_CREATED
+  ROOMMATE_DISCOVERY_VIEWED
+  ROOMMATE_INTEREST_SENT
+  ROOMMATE_INTEREST_ACCEPTED
+  HOUSING_REPORT_SUBMITTED
 }
 
 enum StoryStatus {
@@ -788,6 +912,17 @@ model User {
   officialVerificationRequests       OfficialVerificationRequest[]     @relation("OfficialVerificationApplicant")
   reviewedOfficialVerifications      OfficialVerificationRequest[]     @relation("OfficialVerificationReviewer")
   marketplaceListings                MarketplaceListing[]
+  personalHousingListings            HousingListing[]                  @relation("HousingPersonalPublisher")
+  createdHousingListings             HousingListing[]                  @relation("HousingListingCreator")
+  representedHousingListings         HousingListing[]                  @relation("HousingListingRepresentative")
+  housingListingModerations          HousingListing[]                  @relation("HousingListingModerator")
+  savedHousingListings               HousingSavedListing[]
+  housingInquiries                   HousingInquiry[]                  @relation("HousingInquiryRequester")
+  receivedHousingInquiries           HousingInquiry[]                  @relation("HousingInquiryRecipient")
+  housingRequests                    HousingRequest[]
+  roommateProfile                    RoommateProfile?
+  sentRoommateInterests              RoommateInterest[]                @relation("RoommateInterestSender")
+  receivedRoommateInterests          RoommateInterest[]                @relation("RoommateInterestRecipient")
   communityExchangeOffers            CommunityExchangeOffer[]
   studentSkillOffers                 StudentSkillOffer[]
   listingFavorites                   ListingFavorite[]
@@ -869,6 +1004,7 @@ model Country {
   scholarshipAgents                ScholarshipAgent[]
   meetQueuePreferences             MeetQueueEntry[]                  @relation("MeetCountryPreference")
   organizations                    Organization[]
+  housingListings                  HousingListing[]
   organizationVerificationRequests OrganizationVerificationRequest[]
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
@@ -884,6 +1020,7 @@ model UserPreference {
   notificationMessages        Boolean            @default(true)
   notificationComments        Boolean            @default(true)
   notificationMarketplace     Boolean            @default(true)
+  notificationHousing         Boolean            @default(true)
   notificationAnnouncements   Boolean            @default(true)
   notificationCommunity       Boolean            @default(true)
   notificationMeet            Boolean            @default(true)
@@ -918,6 +1055,9 @@ model City {
   universities          University[]
   communities           Community[]
   listings              MarketplaceListing[]
+  housingListings       HousingListing[]
+  housingRequests       HousingRequest[]
+  roommateProfiles      RoommateProfile[]
   exchangeOffers        CommunityExchangeOffer[]
   skillOffers           StudentSkillOffer[]
   meetDiscoveryProfiles MeetDiscoveryProfile[]   @relation("MeetDiscoveryCity")
@@ -955,6 +1095,9 @@ model University {
   scholarshipLinks      ScholarshipUniversity[]
   storyLinks            StoryEntityLink[]
   meetDiscoveryProfiles MeetDiscoveryProfile[]          @relation("MeetDiscoveryUniversity")
+  housingListings       HousingListing[]
+  housingRequests       HousingRequest[]
+  roommateProfiles      RoommateProfile[]
   userTargetPreferences UserTargetUniversity[]
   createdAt             DateTime                        @default(now())
   updatedAt             DateTime                        @updatedAt
@@ -1066,6 +1209,8 @@ model Organization {
   slugAliases               OrganizationSlugAlias[]
   contactChannels           OrganizationContactChannel[]
   publicMedia               OrganizationMedia[]
+  housingListings           HousingListing[]
+  housingInquiries          HousingInquiry[]
   auditLogs                 AuditLog[]
   createdAt                 DateTime                          @default(now())
   updatedAt                 DateTime                          @updatedAt
@@ -1855,6 +2000,270 @@ model ListingFavorite {
   @@index([userId, createdAt])
 }
 
+model HousingListing {
+  id                      String                   @id @default(cuid())
+  slug                    String                   @unique @db.VarChar(180)
+  publisherType           HousingPublisherType
+  publisherUserId         String?
+  publisherUser           User?                    @relation("HousingPersonalPublisher", fields: [publisherUserId], references: [id], onDelete: Restrict)
+  publisherOrganizationId String?
+  publisherOrganization   Organization?            @relation(fields: [publisherOrganizationId], references: [id], onDelete: Restrict)
+  createdByUserId         String
+  createdBy               User                     @relation("HousingListingCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  representativeUserId    String?
+  representativeUser      User?                    @relation("HousingListingRepresentative", fields: [representativeUserId], references: [id], onDelete: SetNull)
+  type                    HousingListingType
+  status                  HousingListingStatus     @default(DRAFT)
+  title                   String                   @db.VarChar(160)
+  shortDescription        String                   @db.VarChar(320)
+  description             String                   @db.Text
+  houseRules              String?                  @db.VarChar(2000)
+  neighborhoodContext     String?                  @db.VarChar(1200)
+  transportContext        String?                  @db.VarChar(1200)
+  universityContext       String?                  @db.VarChar(1200)
+  countryId               String
+  country                 Country                  @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cityId                  String
+  city                    City                     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  district                String?                  @db.VarChar(160)
+  universityId            String?
+  university              University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  publicLocationLabel     String                   @db.VarChar(240)
+  privateAddress          String?                  @db.VarChar(500)
+  exactLatitude           Decimal?                 @db.Decimal(10, 7)
+  exactLongitude          Decimal?                 @db.Decimal(10, 7)
+  publicLatitude          Decimal?                 @db.Decimal(10, 7)
+  publicLongitude         Decimal?                 @db.Decimal(10, 7)
+  locationPrivacy         HousingLocationPrivacy   @default(APPROXIMATE_AREA)
+  monthlyRentMinor        Int
+  currency                String                   @default("CNY") @db.Char(3)
+  depositMinor            Int?
+  utilitiesMinor          Int?
+  agencyFeeMinor          Int?
+  serviceFeeMinor         Int?
+  otherCostsDescription   String?                  @db.VarChar(800)
+  paymentPeriod           String?                  @db.VarChar(80)
+  negotiable              Boolean                  @default(false)
+  bedrooms                Int?
+  bathrooms               Float?
+  sizeSquareMeters        Float?
+  furnishing              HousingFurnishing        @default(UNKNOWN)
+  floor                   String?                  @db.VarChar(40)
+  occupancy               Int?
+  availablePlaces         Int                      @default(1)
+  availableFrom           DateTime                 @db.Date
+  leaseEnd                DateTime?                @db.Date
+  minimumStayMonths       Int?
+  maximumStayMonths       Int?
+  smokingPolicy           HousingPolicyPreference  @default(NOT_SPECIFIED)
+  petPolicy               HousingPolicyPreference  @default(NOT_SPECIFIED)
+  genderPreference        UserGender?
+  accessibilityDetails    String?                  @db.VarChar(1000)
+  contactPreference       String                   @default("KONDO_MESSAGE") @db.VarChar(40)
+  publicContactEnabled    Boolean                  @default(false)
+  accuracyConfirmedAt     DateTime?
+  publishedAt             DateTime?
+  expiresAt               DateTime?
+  pausedAt                DateTime?
+  rentedAt                DateTime?
+  rejectedAt              DateTime?
+  removedAt               DateTime?
+  archivedAt              DateTime?
+  moderatedAt             DateTime?
+  moderatedByUserId       String?
+  moderatedBy             User?                    @relation("HousingListingModerator", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
+  moderationReason        String?                  @db.VarChar(1200)
+  internalModerationNote  String?                  @db.VarChar(2000)
+  publicationBlockedAt    DateTime?
+  publicationBlockReason  String?                  @db.VarChar(1200)
+  version                 Int                      @default(1)
+  media                   HousingListingMedia[]
+  amenities               HousingListingAmenity[]
+  savedBy                 HousingSavedListing[]
+  inquiries               HousingInquiry[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  searchVector            Unsupported("tsvector")?
+
+  @@index([status, publishedAt, id])
+  @@index([cityId, status, monthlyRentMinor])
+  @@index([universityId, status, availableFrom])
+  @@index([type, status, availableFrom])
+  @@index([publisherUserId, status, updatedAt])
+  @@index([publisherOrganizationId, status, updatedAt])
+  @@index([status, expiresAt])
+  @@index([publicLatitude, publicLongitude])
+  @@index([createdByUserId, createdAt])
+  @@index([moderatedByUserId, moderatedAt])
+}
+
+model HousingListingMedia {
+  id        String                  @id @default(cuid())
+  listingId String
+  listing   HousingListing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  mediaId   String                  @unique
+  media     MediaAsset              @relation("HousingListingMedia", fields: [mediaId], references: [id], onDelete: Restrict)
+  kind      HousingListingMediaKind @default(GALLERY)
+  caption   String?                 @db.VarChar(240)
+  altText   String                  @db.VarChar(240)
+  sortOrder Int                     @default(0)
+  isCover   Boolean                 @default(false)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  @@unique([listingId, sortOrder])
+  @@index([listingId, kind, sortOrder])
+}
+
+model HousingListingAmenity {
+  listingId  String
+  listing    HousingListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  amenityKey String         @db.VarChar(80)
+  createdAt  DateTime       @default(now())
+
+  @@id([listingId, amenityKey])
+  @@index([amenityKey, listingId])
+}
+
+model HousingSavedListing {
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   HousingListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@id([userId, listingId])
+  @@index([userId, createdAt])
+  @@index([listingId])
+}
+
+model HousingInquiry {
+  id              String               @id @default(cuid())
+  listingId       String
+  listing         HousingListing       @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  requesterUserId String
+  requester       User                 @relation("HousingInquiryRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  recipientUserId String
+  recipient       User                 @relation("HousingInquiryRecipient", fields: [recipientUserId], references: [id], onDelete: Restrict)
+  organizationId  String?
+  organization    Organization?        @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  conversationId  String?
+  conversation    Conversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  status          HousingInquiryStatus @default(OPEN)
+  topic           String               @db.VarChar(80)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([listingId, createdAt])
+  @@index([requesterUserId, createdAt])
+  @@index([recipientUserId, status, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([conversationId])
+}
+
+model HousingRequest {
+  id                    String                   @id @default(cuid())
+  userId                String
+  user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                HousingRequestStatus     @default(DRAFT)
+  visibility            HousingRequestVisibility @default(MEMBERS_ONLY)
+  cityId                String
+  city                  City                     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  preferredDistrict     String?                  @db.VarChar(160)
+  universityId          String?
+  university            University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  moveInDate            DateTime                 @db.Date
+  stayDurationMonths    Int?
+  minimumBudgetMinor    Int?
+  maximumBudgetMinor    Int
+  currency              String                   @default("CNY") @db.Char(3)
+  preferredListingTypes HousingListingType[]
+  roomPreference        String?                  @db.VarChar(80)
+  roommateOpen          Boolean                  @default(false)
+  requiredAmenities     String[]                 @default([])
+  preferredCommute      String?                  @db.VarChar(240)
+  description           String                   @db.VarChar(1200)
+  contactPreference     String                   @default("KONDO_MESSAGE") @db.VarChar(40)
+  publishedAt           DateTime?
+  pausedAt              DateTime?
+  matchedAt             DateTime?
+  expiresAt             DateTime
+  archivedAt            DateTime?
+  removedAt             DateTime?
+  version               Int                      @default(1)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([status, visibility, expiresAt])
+  @@index([cityId, status, moveInDate])
+  @@index([universityId, status, moveInDate])
+  @@index([userId, status, updatedAt])
+  @@index([maximumBudgetMinor, status])
+}
+
+model RoommateProfile {
+  id                      String                    @id @default(cuid())
+  userId                  String                    @unique
+  user                    User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                  RoommateProfileStatus     @default(INACTIVE)
+  visibility              RoommateProfileVisibility @default(MEMBERS_ONLY)
+  cityId                  String
+  city                    City                      @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  universityId            String?
+  university              University?               @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  moveInDate              DateTime                  @db.Date
+  stayDurationMonths      Int?
+  budgetMinimumMinor      Int?
+  budgetMaximumMinor      Int
+  currency                String                    @default("CNY") @db.Char(3)
+  preferredHousingTypes   HousingListingType[]
+  currentHousingSituation String?                   @db.VarChar(160)
+  languages               String[]                  @default([])
+  sleepSchedule           String?                   @db.VarChar(40)
+  routine                 String?                   @db.VarChar(40)
+  cleanlinessPreference   String?                   @db.VarChar(40)
+  cookingFrequency        String?                   @db.VarChar(40)
+  smokingPreference       HousingPolicyPreference   @default(NOT_SPECIFIED)
+  petPreference           HousingPolicyPreference   @default(NOT_SPECIFIED)
+  guestPreference         String?                   @db.VarChar(40)
+  noisePreference         String?                   @db.VarChar(40)
+  genderPreference        UserGender?
+  introduction            String                    @db.VarChar(800)
+  allowInterests          Boolean                   @default(true)
+  showUniversity          Boolean                   @default(true)
+  showApproximateLocation Boolean                   @default(true)
+  activatedAt             DateTime?
+  expiresAt               DateTime?
+  version                 Int                       @default(1)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@index([status, visibility, cityId, moveInDate])
+  @@index([universityId, status, moveInDate])
+  @@index([budgetMaximumMinor, status])
+}
+
+model RoommateInterest {
+  id              String                 @id @default(cuid())
+  senderUserId    String
+  sender          User                   @relation("RoommateInterestSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipientUserId String
+  recipient       User                   @relation("RoommateInterestRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  status          RoommateInterestStatus @default(SENT)
+  message         String?                @db.VarChar(500)
+  conversationId  String?
+  conversation    Conversation?          @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  respondedAt     DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([senderUserId, status, createdAt])
+  @@index([recipientUserId, status, createdAt])
+  @@index([expiresAt, status])
+  @@index([conversationId])
+}
+
 model CommunityExchangeOffer {
   id           String          @id @default(cuid())
   ownerId      String
@@ -2343,15 +2752,17 @@ model NotificationJob {
 }
 
 model Conversation {
-  id            String                    @id @default(cuid())
-  type          ConversationType          @default(DIRECT)
-  directKey     String?                   @unique
-  participants  ConversationParticipant[]
-  messages      Message[]
-  callSessions  CallSession[]
-  lastMessageAt DateTime?
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
+  id                String                    @id @default(cuid())
+  type              ConversationType          @default(DIRECT)
+  directKey         String?                   @unique
+  participants      ConversationParticipant[]
+  messages          Message[]
+  callSessions      CallSession[]
+  housingInquiries  HousingInquiry[]
+  roommateInterests RoommateInterest[]
+  lastMessageAt     DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
 
   @@index([lastMessageAt])
 }
@@ -2675,6 +3086,7 @@ model MediaAsset {
   communityCoverFor                Community?                        @relation("CommunityCover")
   postMedia                        PostMedia?                        @relation("PostMedia")
   listingImageFor                  ListingImage?                     @relation("ListingImageMedia")
+  housingListingMedia              HousingListingMedia?              @relation("HousingListingMedia")
   guideCoverFor                    Guide?                            @relation("GuideCover")
   scheduleImportFile               ScheduleImportFile?
   storyVideoFor                    Story?                            @relation("StoryVideo")

@@ -10,6 +10,7 @@ import {
   Compass,
   GraduationCap,
   Home,
+  House,
   LogOut,
   Menu,
   MessageCircle,
@@ -92,6 +93,7 @@ const navigation: NavigationItem[] = [
 ];
 
 const secondaryNavigation: NavigationItem[] = [
+  { href: "/housing", label: "Housing", icon: House },
   { href: "/stories", label: "Student Stories", icon: Clapperboard },
 ];
 

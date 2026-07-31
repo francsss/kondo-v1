@@ -7,6 +7,7 @@ import type {
   Prisma,
 } from "@prisma/client";
 import {
+  ORGANIZATION_HOUSING_PUBLIC_SECTION,
   ORGANIZATION_PUBLIC_SECTION_PROVIDERS,
   visibleOrganizationSections,
   type OrganizationPublicProjection,
@@ -172,7 +173,7 @@ export async function serializeOrganizationPublicProfile(
     organization.id,
     organization.capabilities,
   );
-  const visibleSections = visibleOrganizationSections({
+  const baseVisibleSections = visibleOrganizationSections({
     hasOverview: Boolean(
       organization.shortDescription ||
       organization.serviceAreas.length ||
@@ -186,6 +187,11 @@ export async function serializeOrganizationPublicProfile(
     contactCount: contacts.length,
     hasCity: Boolean(organization.city),
   });
+  const visibleSections = projections.housing
+    ? [...baseVisibleSections, ORGANIZATION_HOUSING_PUBLIC_SECTION].sort(
+        (first, second) => first.order - second.order,
+      )
+    : baseVisibleSections;
   return {
     id: organization.id,
     slug: organization.slug,

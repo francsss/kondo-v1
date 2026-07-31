@@ -72,6 +72,19 @@ jobs:
           --header "Authorization: Bearer ${CRON_SECRET}"
           "${PRODUCTION_APP_URL}/api/internal/marketplace/expire"
 
+  housing:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Expire Housing listings and requests
+        run: >-
+          curl --fail-with-body --show-error --silent
+          --retry 3 --retry-all-errors
+          --request POST
+          --header "Authorization: Bearer ${CRON_SECRET}"
+          "${PRODUCTION_APP_URL}/api/internal/housing/expire"
+
   media:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '37 * * * *'
     runs-on: ubuntu-latest

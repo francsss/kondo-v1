@@ -24,9 +24,11 @@ export type PostMediaItem = {
 };
 
 export function PostMediaGallery({
+  galleryLabel = "Post gallery",
   media,
   immersive = false,
 }: {
+  galleryLabel?: string;
   media: PostMediaItem[];
   immersive?: boolean;
 }) {
@@ -171,7 +173,7 @@ export function PostMediaGallery({
               {activeMedia && activeIndex !== null ? (
                 <motion.div
                   animate={{ opacity: 1 }}
-                  aria-label="Post image gallery"
+                  aria-label={galleryLabel}
                   aria-modal="true"
                   className="fixed inset-0 z-[110] flex flex-col overflow-hidden bg-slate-950/95 text-white backdrop-blur-xl"
                   data-post-gallery
@@ -182,7 +184,7 @@ export function PostMediaGallery({
                 >
                   <div className="relative z-20 flex h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-black/15 px-3 backdrop-blur-xl sm:px-5">
                     <div className="min-w-[82px] shrink-0">
-                      <p className="text-sm font-black">Post gallery</p>
+                      <p className="text-sm font-black">{galleryLabel}</p>
                       <p
                         aria-live="polite"
                         className="text-xs font-semibold text-white/55"
@@ -340,7 +342,7 @@ export function PostMediaGallery({
                       }}
                     >
                       <MediaImage
-                        alt={activeMedia.altText ?? "Post image"}
+                        alt={activeMedia.altText ?? `${galleryLabel} image`}
                         className="max-h-full max-w-full select-none object-contain drop-shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
                         height={1600}
                         mediaId={activeMedia.id}

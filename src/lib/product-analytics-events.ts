@@ -78,6 +78,27 @@ export const PRODUCT_EVENTS = {
   MARKETPLACE_LISTING_VIEWED: "marketplace_listing_viewed",
   MARKETPLACE_LISTING_SAVED: "marketplace_listing_saved",
   MARKETPLACE_VENDOR_CONTACTED: "marketplace_vendor_contacted",
+  HOUSING_HOME_VIEWED: "housing_home_viewed",
+  HOUSING_SEARCH_STARTED: "housing_search_started",
+  HOUSING_FILTER_APPLIED: "housing_filter_applied",
+  HOUSING_MAP_OPENED: "housing_map_opened",
+  HOUSING_LISTING_VIEWED: "housing_listing_viewed",
+  HOUSING_LISTING_SAVED: "housing_listing_saved",
+  HOUSING_LISTING_SHARED: "housing_listing_shared",
+  HOUSING_CONTACT_OPENED: "housing_contact_opened",
+  HOUSING_INQUIRY_STARTED: "housing_inquiry_started",
+  HOUSING_INQUIRY_SENT: "housing_inquiry_sent",
+  HOUSING_LISTING_CREATION_STARTED: "housing_listing_creation_started",
+  HOUSING_LISTING_SUBMITTED: "housing_listing_submitted",
+  HOUSING_LISTING_PUBLISHED: "housing_listing_published",
+  HOUSING_REQUEST_CREATED: "housing_request_created",
+  HOUSING_REQUEST_VIEWED: "housing_request_viewed",
+  ROOMMATE_PROFILE_CREATED: "roommate_profile_created",
+  ROOMMATE_DISCOVERY_VIEWED: "roommate_discovery_viewed",
+  ROOMMATE_INTEREST_SENT: "roommate_interest_sent",
+  ROOMMATE_INTEREST_ACCEPTED: "roommate_interest_accepted",
+  HOUSING_RECOMMENDATION_OPENED: "housing_recommendation_opened",
+  HOUSING_REPORT_SUBMITTED: "housing_report_submitted",
   STUDENT_HUB_OPENED: "student_hub_opened",
   STUDENT_HUB_TOOL_SELECTED: "student_hub_tool_selected",
   STUDENT_HUB_FILE_IMPORT_STARTED: "student_hub_file_import_started",
@@ -203,6 +224,10 @@ const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
   [/^\/communities\/[^/]+/, "/communities/[community]"],
   [/^\/marketplace\/[^/]+\/edit/, "/marketplace/[listing]/edit"],
   [/^\/marketplace\/[^/]+/, "/marketplace/[listing]"],
+  [/^\/housing\/listings\/[^/]+/, "/housing/listings/[listing]"],
+  [/^\/housing\/roommates\/[^/]+/, "/housing/roommates/[profile]"],
+  [/^\/housing\/requests\/[^/]+/, "/housing/requests/[request]"],
+  [/^\/housing\/manage\/[^/]+/, "/housing/manage/[listing]"],
   [/^\/guides\/[^/]+/, "/guides/[guide]"],
   [/^\/help\/[^/]+/, "/help/[question]"],
   [/^\/api\/conversations\/[^/]+/, "/api/conversations/[conversation]"],
@@ -211,6 +236,11 @@ const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
   [/^\/api\/communities\/[^/]+/, "/api/communities/[community]"],
   [/^\/api\/posts\/[^/]+/, "/api/posts/[post]"],
   [/^\/api\/marketplace\/[^/]+/, "/api/marketplace/[listing]"],
+  [/^\/api\/housing\/listings\/[^/]+/, "/api/housing/listings/[listing]"],
+  [
+    /^\/api\/housing\/roommate-interests\/[^/]+/,
+    "/api/housing/roommate-interests/[interest]",
+  ],
   [/^\/api\/notifications\/[^/]+/, "/api/notifications/[notification]"],
   [/^\/api\/stories\/[^/]+/, "/api/stories/[story]"],
 ];
@@ -230,6 +260,7 @@ export function normalizeAnalyticsRoute(input: string) {
 
 export function productAreaForPath(pathname: string) {
   if (pathname.startsWith("/communities")) return "communities";
+  if (pathname.startsWith("/housing")) return "housing";
   if (pathname.startsWith("/marketplace")) return "marketplace";
   if (
     pathname.startsWith("/student-hub") ||

@@ -2,6 +2,7 @@ import { Prisma, type MediaPurpose } from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
+import { publicHousingListingWhere } from "@/lib/housing-visibility";
 import { attachMediaAsset, MediaError } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -231,8 +232,8 @@ async function persistMessage(
     body?: string;
     mediaId?: string;
     senderName: string;
-    notificationType?: "MESSAGE" | "MARKETPLACE_UPDATE";
-    templateKey?: "MESSAGE_NEW" | "MARKETPLACE_CONTACT";
+    notificationType?: "MESSAGE" | "MARKETPLACE_UPDATE" | "HOUSING";
+    templateKey?: "MESSAGE_NEW" | "MARKETPLACE_CONTACT" | "HOUSING_INQUIRY";
     notificationData?: Record<string, string>;
   },
 ) {
@@ -308,31 +309,88 @@ export async function createDirectMessage(input: {
   recipientId: string;
   body?: string;
   mediaId?: string;
-  sourceType?: "MARKETPLACE_LISTING";
+  sourceType?: "MARKETPLACE_LISTING" | "HOUSING_LISTING" | "ROOMMATE_INTEREST";
   sourceId?: string;
 }) {
   await ensureCanMessage(input.senderId, input.recipientId);
-  const [sender, listing] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: input.senderId },
-      select: { firstName: true, lastName: true },
-    }),
-    input.sourceType === "MARKETPLACE_LISTING" && input.sourceId
-      ? prisma.marketplaceListing.findFirst({
-          where: {
-            id: input.sourceId,
-            sellerId: input.recipientId,
-            status: "ACTIVE",
-            expiresAt: { gt: new Date() },
-            category: { isActive: true },
-          },
-          select: { id: true, title: true },
-        })
-      : null,
-  ]);
+  const [sender, listing, housingListing, roommateInterest] = await Promise.all(
+    [
+      prisma.user.findUnique({
+        where: { id: input.senderId },
+        select: { firstName: true, lastName: true },
+      }),
+      input.sourceType === "MARKETPLACE_LISTING" && input.sourceId
+        ? prisma.marketplaceListing.findFirst({
+            where: {
+              id: input.sourceId,
+              sellerId: input.recipientId,
+              status: "ACTIVE",
+              expiresAt: { gt: new Date() },
+              category: { isActive: true },
+            },
+            select: { id: true, title: true },
+          })
+        : null,
+      input.sourceType === "HOUSING_LISTING" && input.sourceId
+        ? prisma.housingListing.findFirst({
+            where: {
+              AND: [
+                { id: input.sourceId },
+                publicHousingListingWhere(),
+                {
+                  OR: [
+                    {
+                      publisherType: "PERSONAL",
+                      publisherUserId: input.recipientId,
+                    },
+                    {
+                      publisherType: "ORGANIZATION",
+                      publisherOrganization: {
+                        memberships: {
+                          some: {
+                            userId: input.recipientId,
+                            status: "ACTIVE",
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+            select: { id: true, title: true },
+          })
+        : null,
+      input.sourceType === "ROOMMATE_INTEREST" && input.sourceId
+        ? prisma.roommateInterest.findFirst({
+            where: {
+              id: input.sourceId,
+              status: "ACCEPTED",
+              OR: [
+                {
+                  senderUserId: input.senderId,
+                  recipientUserId: input.recipientId,
+                },
+                {
+                  senderUserId: input.recipientId,
+                  recipientUserId: input.senderId,
+                },
+              ],
+            },
+            select: { id: true },
+          })
+        : null,
+    ],
+  );
   if (!sender) throw new MessagingError("Sender not found.", 404);
   if (input.sourceType === "MARKETPLACE_LISTING" && !listing) {
     throw new MessagingError("Marketplace listing not found.", 404);
+  }
+  if (input.sourceType === "HOUSING_LISTING" && !housingListing) {
+    throw new MessagingError("Housing listing not found.", 404);
+  }
+  if (input.sourceType === "ROOMMATE_INTEREST" && !roommateInterest) {
+    throw new MessagingError("Roommate interest not found.", 404);
   }
 
   const directKey = directConversationKey(input.senderId, input.recipientId);
@@ -365,14 +423,27 @@ export async function createDirectMessage(input: {
         body: input.body,
         mediaId: input.mediaId,
         senderName: `${sender.firstName} ${sender.lastName}`,
-        notificationType: listing ? "MARKETPLACE_UPDATE" : "MESSAGE",
-        templateKey: listing ? "MARKETPLACE_CONTACT" : "MESSAGE_NEW",
+        notificationType: listing
+          ? "MARKETPLACE_UPDATE"
+          : housingListing
+            ? "HOUSING"
+            : "MESSAGE",
+        templateKey: listing
+          ? "MARKETPLACE_CONTACT"
+          : housingListing
+            ? "HOUSING_INQUIRY"
+            : "MESSAGE_NEW",
         notificationData: listing
           ? {
               actorName: `${sender.firstName} ${sender.lastName}`,
               listingTitle: listing.title,
             }
-          : undefined,
+          : housingListing
+            ? {
+                actorName: `${sender.firstName} ${sender.lastName}`,
+                listingTitle: housingListing.title,
+              }
+            : undefined,
       });
     });
     await Promise.all([

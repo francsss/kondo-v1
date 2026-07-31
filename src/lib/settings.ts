@@ -20,6 +20,7 @@ type PreferenceUpdate = {
   notificationMessages?: boolean;
   notificationComments?: boolean;
   notificationMarketplace?: boolean;
+  notificationHousing?: boolean;
   notificationAnnouncements?: boolean;
   notificationCommunity?: boolean;
   notificationMeet?: boolean;
@@ -42,6 +43,7 @@ const preferenceSelect = {
   notificationMessages: true,
   notificationComments: true,
   notificationMarketplace: true,
+  notificationHousing: true,
   notificationAnnouncements: true,
   notificationCommunity: true,
   notificationMeet: true,
@@ -65,6 +67,7 @@ const defaultPreferences = {
   notificationMessages: true,
   notificationComments: true,
   notificationMarketplace: true,
+  notificationHousing: true,
   notificationAnnouncements: true,
   notificationCommunity: true,
   notificationMeet: true,
@@ -102,6 +105,7 @@ function preferenceDto(
     notificationMessages: preference.notificationMessages,
     notificationComments: preference.notificationComments,
     notificationMarketplace: preference.notificationMarketplace,
+    notificationHousing: preference.notificationHousing,
     notificationAnnouncements: preference.notificationAnnouncements,
     notificationCommunity: preference.notificationCommunity,
     notificationMeet: preference.notificationMeet,

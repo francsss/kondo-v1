@@ -25,6 +25,7 @@
     "notifications:process": "tsx scripts/process-notifications.ts",
     "notifications:digest": "tsx scripts/send-email-digests.ts",
     "marketplace:expire": "tsx scripts/expire-listings.ts",
+    "housing:expire": "tsx scripts/expire-housing.ts",
     "community-requests:expire": "tsx scripts/expire-community-requests.ts",
     "stories:publish": "tsx scripts/publish-scheduled-stories.ts",
     "posthog:setup": "node scripts/setup-posthog-dashboards.mjs",

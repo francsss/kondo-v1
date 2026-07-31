@@ -87,7 +87,8 @@ Browser
   Admin publication moderation. Capability-backed domain content remains
   reserved for its later module.
 - Community: reviewed community CRUD, a single transferable owner, scoped Moderator/Member roles, open/request/invite access, posts, threaded comments, reactions, validated events, announcements, pinning, reports, retained evidence, and Admin CMS.
-- Marketplace: categories, listings, media metadata, favorites, location filters, and seller contact handoff. There is intentionally no payment model.
+- Marketplace: categories, non-housing listings, media metadata, favorites, location filters, and seller contact handoff. Existing legacy housing rows remain readable, but new homes are published through Housing. There is intentionally no payment model.
+- Housing: structured personal and organization supply, privacy-safe map projections, saved homes, Kondo inquiries, time-limited Housing requests, roommate profiles/interests, organization and City Hub projections, moderation, notifications and an expiry worker. Exact locations and proof documents never enter public DTOs. See `docs/HOUSING.md`.
 - Student Hub: one navigation surface that composes the existing guide library and help-center routes with checklists, tips, articles, Q&A, and upcoming student events. `/guides` and `/help` remain stable content routes. Timetable tools are shown only for admitted/current students and the retained legacy incoming value.
 - Meet discovery map: provider-neutral map rendering centered on public WGS-84 study-area anchors, stable privacy-safe approximate member positions, selectable 100 m–5 km display radii, friendly rounded distance bands, and CSS-driven presence markers. The browser map provider never receives an exact student device position.
 - Guides: categorized guides, ordered checklist steps, saved progress, persisted bookmarks, and editorial ownership.
@@ -158,10 +159,11 @@ visibility. Public reports remain ordinary `Report` records with an immutable,
 bounded organization snapshot. Admin moderation uses explicit permissions,
 AuditLog, the notification outbox, and cache revalidation.
 
-`src/features/organizations/public-sections.ts` is the future projection
-contract. Housing, scholarships, jobs, products, services, events, and
-university information keep their own persistence and visibility rules; an
-unavailable provider returns no section rather than fake content.
+`src/features/organizations/public-sections.ts` is the projection contract.
+Housing now supplies a bounded live projection from its own visibility policy;
+scholarships, jobs, products, services, events, and university information
+continue to keep their own persistence and visibility rules. An unavailable
+provider returns no section rather than fake content.
 
 City Hub company entries remain editorial snapshot content. Managed
 Organizations are operational identities and may appear only in a separate

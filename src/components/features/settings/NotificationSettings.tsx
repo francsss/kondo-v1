@@ -16,6 +16,7 @@ type Preferences = {
   notificationMessages: boolean;
   notificationComments: boolean;
   notificationMarketplace: boolean;
+  notificationHousing: boolean;
   notificationAnnouncements: boolean;
   notificationCommunity: boolean;
   notificationMeet: boolean;
@@ -89,6 +90,12 @@ const toggles: CategoryToggle[] = [
     description: "Relevant updates about your listings and contacts.",
   },
   {
+    key: "notificationHousing" as const,
+    label: "Housing",
+    description:
+      "Listing reviews, inquiries, housing requests and roommate connections.",
+  },
+  {
     key: "notificationCommunity" as const,
     label: "Communities",
     description: "Useful discussions and activity from communities you joined.",
@@ -131,6 +138,7 @@ export function NotificationSettings({
       notificationMessages: values.has("notificationMessages"),
       notificationComments: values.has("notificationComments"),
       notificationMarketplace: values.has("notificationMarketplace"),
+      notificationHousing: values.has("notificationHousing"),
       notificationAnnouncements: values.has("notificationAnnouncements"),
       notificationCommunity: values.has("notificationCommunity"),
       notificationMeet: values.has("notificationMeet"),

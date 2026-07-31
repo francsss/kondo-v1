@@ -10,6 +10,7 @@ import {
   FileSearch,
   Files,
   GraduationCap,
+  House,
   Images,
   LayoutDashboard,
   RadioTower,
@@ -42,6 +43,12 @@ const items = [
     label: "Marketplace",
     icon: ShoppingBag,
     permission: "MARKETPLACE_CMS_VIEW" as const,
+  },
+  {
+    href: "/admin/housing",
+    label: "Housing",
+    icon: House,
+    permission: "HOUSING_VIEW" as const,
   },
   {
     href: "/admin/reports",

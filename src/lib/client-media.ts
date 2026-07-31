@@ -22,6 +22,9 @@ type MediaPurpose =
   | "SCHEDULE_IMPORT"
   | "STORY_VIDEO"
   | "STORY_POSTER"
+  | "HOUSING_LISTING_IMAGE"
+  | "HOUSING_FLOOR_PLAN"
+  | "HOUSING_PROOF_DOCUMENT"
   | "VERIFICATION_DOCUMENT";
 
 export async function uploadMediaFile(

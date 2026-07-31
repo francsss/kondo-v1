@@ -347,6 +347,20 @@ textarea {
   .meet-map-marker--university .meet-map-marker__caption span {
     display: none;
   }
+
+  .meet-map-marker--housing .meet-map-marker__core {
+    min-width: 3.5rem;
+    width: auto;
+    border-radius: 999px;
+    padding-inline: 0.65rem;
+    background: #0c332d;
+    color: #d2ff70;
+    font-size: 0.68rem;
+  }
+
+  .meet-map-marker--housing .meet-map-marker__wave {
+    border-color: rgba(12, 51, 45, 0.3);
+  }
 }
 
 @keyframes meet-map-pulse {

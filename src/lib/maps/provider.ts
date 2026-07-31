@@ -5,7 +5,7 @@ export type MapCoordinate = {
   lng: number;
 };
 
-export type MapMarkerVariant = "current" | "member" | "university";
+export type MapMarkerVariant = "current" | "member" | "university" | "housing";
 
 export type MapMarkerDefinition = {
   id: string;

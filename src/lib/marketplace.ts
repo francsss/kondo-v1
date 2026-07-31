@@ -2,6 +2,7 @@ import { Prisma, type ListingStatus, type ReportReason } from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
+import { isLegacyHousingMarketplaceCategory } from "@/lib/housing-listings";
 import { attachMediaAsset, MediaError } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -211,6 +212,19 @@ export async function createMarketplaceListing(input: {
   meta?: RequestMeta;
 }) {
   await validateReferences(input.data.categoryId, input.data.cityId);
+  const selectedCategory = await prisma.marketplaceCategory.findUnique({
+    where: { id: input.data.categoryId },
+    select: { slug: true },
+  });
+  if (
+    selectedCategory &&
+    isLegacyHousingMarketplaceCategory(selectedCategory.slug)
+  ) {
+    throw new MarketplaceError(
+      "New homes belong in Kondo Housing. Existing Marketplace posts remain available.",
+      409,
+    );
+  }
   if (input.data.publish && !input.data.imageIds.length) {
     throw new MarketplaceError(
       "Published listings require at least one image.",

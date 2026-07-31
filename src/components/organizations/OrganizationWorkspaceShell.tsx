@@ -6,6 +6,7 @@ import {
   Activity,
   Building2,
   Globe2,
+  House,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -14,7 +15,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
-const workspaceNavigation = [
+const baseWorkspaceNavigation = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["profile", "Profile", Building2],
   ["public-profile", "Public profile", Globe2],
@@ -39,10 +40,24 @@ export function OrganizationWorkspaceShell({
     publicProfileStatus: string;
     verificationStatus: string;
     suspensionReason: string | null;
+    capabilities?: Array<{ key: string; status: string }>;
   };
   role: string;
 }) {
   const pathname = usePathname();
+  const canEditHousing = ["OWNER", "ADMIN", "EDITOR", "MANAGER"].includes(role);
+  const workspaceNavigation =
+    canEditHousing &&
+    organization.capabilities?.some(
+      (capability) =>
+        capability.key === "HOUSING" && capability.status === "ENABLED",
+    )
+      ? [
+          ...baseWorkspaceNavigation.slice(0, 3),
+          ["housing", "Housing", House] as const,
+          ...baseWorkspaceNavigation.slice(3),
+        ]
+      : baseWorkspaceNavigation;
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">
       <header className="overflow-hidden rounded-4xl border border-border bg-card shadow-soft">

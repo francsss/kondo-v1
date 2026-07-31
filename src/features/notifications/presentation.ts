@@ -4,6 +4,7 @@ export type KondoNotificationCategory =
   | "communities"
   | "events"
   | "marketplace"
+  | "housing"
   | "schedule"
   | "transfers"
   | "university"
@@ -18,6 +19,7 @@ export type KondoNotificationKind =
   | "NEW_EVENT"
   | "EVENT_REMINDER"
   | "MARKETPLACE_ACTIVITY"
+  | "HOUSING_ACTIVITY"
   | "NEW_COMMENT"
   | "REACTION"
   | "SCHEDULE_REMINDER"
@@ -38,6 +40,7 @@ export type NotificationIconName =
   | "community"
   | "event"
   | "marketplace"
+  | "housing"
   | "comment"
   | "reaction"
   | "schedule"
@@ -107,6 +110,13 @@ const PRESENTATIONS: Record<KondoNotificationKind, NotificationPresentation> = {
     categoryLabel: "Marketplace",
     icon: "marketplace",
     actionLabel: "View listing",
+  },
+  HOUSING_ACTIVITY: {
+    kind: "HOUSING_ACTIVITY",
+    category: "housing",
+    categoryLabel: "Housing",
+    icon: "housing",
+    actionLabel: "Open Housing",
   },
   NEW_COMMENT: {
     kind: "NEW_COMMENT",
@@ -227,6 +237,11 @@ const TEMPLATE_KIND: Record<string, KondoNotificationKind> = {
   ORGANIZATION_OWNERSHIP_TRANSFER: "SECURITY_ALERT",
   ORGANIZATION_VERIFICATION_UPDATE: "SECURITY_ALERT",
   ORGANIZATION_STATUS_UPDATE: "SECURITY_ALERT",
+  HOUSING_LISTING_STATUS: "HOUSING_ACTIVITY",
+  HOUSING_INQUIRY: "HOUSING_ACTIVITY",
+  HOUSING_REQUEST_MATCH: "HOUSING_ACTIVITY",
+  ROOMMATE_INTEREST: "HOUSING_ACTIVITY",
+  ROOMMATE_INTEREST_UPDATE: "HOUSING_ACTIVITY",
 };
 
 const TYPE_KIND: Record<string, KondoNotificationKind> = {
@@ -235,6 +250,7 @@ const TYPE_KIND: Record<string, KondoNotificationKind> = {
   COMMENT: "NEW_COMMENT",
   REPLY: "NEW_COMMENT",
   MARKETPLACE_UPDATE: "MARKETPLACE_ACTIVITY",
+  HOUSING: "HOUSING_ACTIVITY",
   COMMUNITY_ANNOUNCEMENT: "COMMUNITY_ANNOUNCEMENT",
   COMMUNITY_ACTIVITY: "COMMUNITY_ANNOUNCEMENT",
   MEET_ACTIVITY: "FRIEND_REQUEST",
@@ -260,6 +276,7 @@ export const CATEGORY_PREFERENCE_FIELD = {
   messages: null,
   communities: null,
   marketplace: null,
+  housing: "notificationHousing",
   schedule: null,
   security: null,
   system: null,

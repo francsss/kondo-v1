@@ -40,6 +40,11 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
   "ORGANIZATION_STATUS_UPDATE",
   "ORGANIZATION_PUBLIC_PROFILE_STATUS",
   "ORGANIZATION_PUBLIC_PROFILE_CORRECTION",
+  "HOUSING_LISTING_STATUS",
+  "HOUSING_INQUIRY",
+  "HOUSING_REQUEST_MATCH",
+  "ROOMMATE_INTEREST",
+  "ROOMMATE_INTEREST_UPDATE",
 ] as const;
 
 export type NotificationTemplateKey =
@@ -108,12 +113,18 @@ const allowedTemplateTokens: Record<
   ORGANIZATION_STATUS_UPDATE: ["organizationName", "outcome"],
   ORGANIZATION_PUBLIC_PROFILE_STATUS: ["organizationName", "outcome"],
   ORGANIZATION_PUBLIC_PROFILE_CORRECTION: ["organizationName", "outcome"],
+  HOUSING_LISTING_STATUS: ["listingTitle", "outcome"],
+  HOUSING_INQUIRY: ["actorName", "listingTitle"],
+  HOUSING_REQUEST_MATCH: ["cityName"],
+  ROOMMATE_INTEREST: ["actorName"],
+  ROOMMATE_INTEREST_UPDATE: ["actorName", "outcome"],
 };
 
 const safeRoutePrefixes = [
   "/messages",
   "/communities",
   "/marketplace",
+  "/housing",
   "/help",
   "/guides",
   "/profile",
@@ -256,6 +267,7 @@ type NotificationPreferences = {
   notificationMessages: boolean;
   notificationComments: boolean;
   notificationMarketplace: boolean;
+  notificationHousing: boolean;
   notificationAnnouncements: boolean;
   notificationCommunity: boolean;
   notificationMeet: boolean;
@@ -299,6 +311,7 @@ function preferenceAllows(
   if (type === "MARKETPLACE_UPDATE") {
     return preference.notificationMarketplace;
   }
+  if (type === "HOUSING") return preference.notificationHousing;
   if (type === "COMMUNITY_ACTIVITY") {
     return preference.notificationCommunity;
   }
@@ -373,6 +386,7 @@ async function deliverClaimedJob(jobId: string) {
                 notificationMessages: true,
                 notificationComments: true,
                 notificationMarketplace: true,
+                notificationHousing: true,
                 notificationAnnouncements: true,
                 notificationCommunity: true,
                 notificationMeet: true,

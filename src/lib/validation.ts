@@ -754,6 +754,7 @@ export const settingsPreferencesSchema = z.object({
   notificationMessages: z.boolean().optional(),
   notificationComments: z.boolean().optional(),
   notificationMarketplace: z.boolean().optional(),
+  notificationHousing: z.boolean().optional(),
   notificationAnnouncements: z.boolean().optional(),
   notificationCommunity: z.boolean().optional(),
   notificationMeet: z.boolean().optional(),

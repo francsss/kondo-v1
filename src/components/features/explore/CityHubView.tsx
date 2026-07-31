@@ -5,20 +5,24 @@ import {
   exploreAccentStyles,
 } from "@/components/features/explore/ExploreIcon";
 import { StoryPreviewRail } from "@/components/features/stories/StoryPreviewRail";
+import { CityHousingRail } from "@/components/features/housing/CityHousingRail";
 import { OrganizationCityRail } from "@/components/organizations/OrganizationCityRail";
 import type { ExploreCity } from "@/features/explore/types";
 import type { OrganizationPublicProfileDTO } from "@/lib/organization-public-profile";
 import type { StoryFeedItem } from "@/lib/stories";
+import type { getCityHousingProjection } from "@/lib/housing-projections";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export function CityHubView({
   city,
   stories = [],
   organizations = [],
+  housing = [],
 }: {
   city: ExploreCity;
   stories?: StoryFeedItem[];
   organizations?: OrganizationPublicProfileDTO[];
+  housing?: Awaited<ReturnType<typeof getCityHousingProjection>>;
 }) {
   const aboutSection = city.sections.find(
     (section) => section.slug === "about",
@@ -113,6 +117,8 @@ export function CityHubView({
         cityName={city.name}
         organizations={organizations}
       />
+
+      <CityHousingRail cityName={city.name} listings={housing} />
 
       <section className="mt-10" id="city-sections">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">

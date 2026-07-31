@@ -19,6 +19,14 @@ export function createConfiguredMeetMapProvider(): MapProvider {
   return new GoogleMapProvider(googleMapsApiKey());
 }
 
+// Provider-neutral aliases used by domains other than Meet. The Meet exports
+// remain stable for backwards compatibility.
+export const MAP_PROVIDER_ID = MEET_MAP_PROVIDER_ID;
+export const MAP_MISSING_CONFIGURATION_MESSAGE =
+  MEET_MAP_MISSING_CONFIGURATION_MESSAGE;
+export const isMapProviderConfigured = isMeetMapProviderConfigured;
+export const createConfiguredMapProvider = createConfiguredMeetMapProvider;
+
 export type {
   MapController,
   MapCoordinate,

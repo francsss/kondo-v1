@@ -9,7 +9,7 @@ import {
 describe("notification presentation", () => {
   it("gives every Kondo notification kind an icon, a category and an action", () => {
     const presentations = allNotificationPresentations();
-    expect(presentations).toHaveLength(20);
+    expect(presentations).toHaveLength(21);
     for (const presentation of presentations) {
       expect(presentation.icon).toBeTruthy();
       expect(presentation.categoryLabel).toBeTruthy();
@@ -81,6 +81,7 @@ describe("notification presentation", () => {
     expect(silenceable.sort()).toEqual([
       "events",
       "friends",
+      "housing",
       "transfers",
       "university",
     ]);

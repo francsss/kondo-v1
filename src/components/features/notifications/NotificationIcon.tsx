@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   GraduationCap,
   Heart,
+  House,
   Laptop,
   ListTodo,
   MessageCircle,
@@ -29,6 +30,7 @@ const icons = {
   community: UsersRound,
   event: CalendarDays,
   marketplace: ShoppingBag,
+  housing: House,
   comment: MessagesSquare,
   reaction: Heart,
   schedule: BookOpenCheck,
@@ -53,6 +55,8 @@ const categoryStyles: Record<KondoNotificationCategory, string> = {
     "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20",
   marketplace:
     "bg-orange-100 text-orange-700 ring-orange-200 dark:bg-orange-400/10 dark:text-orange-300 dark:ring-orange-400/20",
+  housing:
+    "bg-teal-100 text-teal-700 ring-teal-200 dark:bg-teal-400/10 dark:text-teal-300 dark:ring-teal-400/20",
   schedule:
     "bg-indigo-100 text-indigo-700 ring-indigo-200 dark:bg-indigo-400/10 dark:text-indigo-300 dark:ring-indigo-400/20",
   transfers:
