@@ -630,7 +630,8 @@ by implementing the same interface and switching the provider factory.
 
 Production dependency:
 
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`;
+- optional `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (the UI renders a clear
+  privacy-safe unavailable state until configured);
 - Maps JavaScript API and Geocoding API enabled;
 - Google billing active;
 - HTTP referrer restrictions including production and intended previews.

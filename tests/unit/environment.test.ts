@@ -44,6 +44,17 @@ describe("production environment validation", () => {
     ).not.toThrow();
   });
 
+  it("allows the documented map fallback when Google Maps is not configured", () => {
+    const environmentWithoutMaps = {
+      ...validProductionEnvironment,
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: undefined,
+    };
+    expect(productionEnvironmentIssues(environmentWithoutMaps)).toEqual([]);
+    expect(() =>
+      assertProductionEnvironment(environmentWithoutMaps),
+    ).not.toThrow();
+  });
+
   it("reports every missing or unsafe production value together", () => {
     expect(() =>
       assertProductionEnvironment({
