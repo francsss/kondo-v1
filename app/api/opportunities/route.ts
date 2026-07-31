@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const params = request.nextUrl.searchParams;
     const user = await getCurrentUser();
+    const deadlineParam = params.get("deadlineBefore");
+    const deadlineBefore = deadlineParam ? new Date(deadlineParam) : null;
     const results = await searchOpportunities({
       viewerUserId: user?.id ?? null,
       query: params.get("q"),
@@ -25,6 +27,10 @@ export async function GET(request: NextRequest) {
       paidOnly: params.get("paid") === "true",
       verifiedOnly: params.get("verified") === "true",
       officialPartnerOnly: params.get("partner") === "true",
+      deadlineBefore:
+        deadlineBefore && !Number.isNaN(deadlineBefore.getTime())
+          ? deadlineBefore
+          : null,
       savedByUserId: params.get("saved") === "true" ? (user?.id ?? null) : null,
       cursor: params.get("cursor"),
       limit: Number(params.get("limit")) || 12,

@@ -8,6 +8,7 @@ import {
   type OpportunityLifecycleActor,
 } from "@/lib/opportunity-lifecycle";
 import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
+import { notifyOpportunityPublisherWithClient } from "@/lib/opportunity-notifications";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { captureServerProductEvent } from "@/lib/product-analytics-server";
@@ -163,7 +164,9 @@ export async function moderateOpportunity(input: {
     select: {
       id: true,
       slug: true,
+      title: true,
       lifecycle: true,
+      publisherOrganizationId: true,
       publisherOrganization: { select: { slug: true } },
       city: { select: { slug: true } },
     },
@@ -210,9 +213,26 @@ export async function moderateOpportunity(input: {
     }
   }
 
-  await prisma.opportunity.update({
-    where: { id: opportunity.id },
-    data,
+  await prisma.$transaction(async (tx) => {
+    await tx.opportunity.update({
+      where: { id: opportunity.id },
+      data,
+    });
+    if (
+      opportunity.publisherOrganizationId &&
+      opportunity.publisherOrganization
+    ) {
+      await notifyOpportunityPublisherWithClient(tx, {
+        organizationId: opportunity.publisherOrganizationId,
+        organizationSlug: opportunity.publisherOrganization.slug,
+        opportunityId: opportunity.id,
+        opportunityTitle: opportunity.title,
+        actorId: input.adminUserId,
+        templateKey: "OPPORTUNITY_MODERATION_RESULT",
+        outcome: input.action.toLowerCase().replaceAll("_", " "),
+        dedupeKey: `opportunity-moderation:${opportunity.id}:${input.action}:${now.toISOString()}`,
+      });
+    }
   });
 
   await writeAuditLog({

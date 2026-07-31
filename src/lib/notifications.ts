@@ -45,6 +45,14 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
   "HOUSING_REQUEST_MATCH",
   "ROOMMATE_INTEREST",
   "ROOMMATE_INTEREST_UPDATE",
+  "OPPORTUNITY_PUBLISHED",
+  "OPPORTUNITY_DEADLINE_REMINDER",
+  "OPPORTUNITY_APPLICATION_SUBMITTED",
+  "OPPORTUNITY_NEW_APPLICATION",
+  "OPPORTUNITY_APPLICATION_STATUS",
+  "OPPORTUNITY_INTERVIEW_INVITATION",
+  "OPPORTUNITY_APPLICANT_RESPONSE",
+  "OPPORTUNITY_MODERATION_RESULT",
 ] as const;
 
 export type NotificationTemplateKey =
@@ -118,6 +126,14 @@ const allowedTemplateTokens: Record<
   HOUSING_REQUEST_MATCH: ["cityName"],
   ROOMMATE_INTEREST: ["actorName"],
   ROOMMATE_INTEREST_UPDATE: ["actorName", "outcome"],
+  OPPORTUNITY_PUBLISHED: ["opportunityTitle"],
+  OPPORTUNITY_DEADLINE_REMINDER: ["opportunityTitle", "days"],
+  OPPORTUNITY_APPLICATION_SUBMITTED: ["opportunityTitle"],
+  OPPORTUNITY_NEW_APPLICATION: ["opportunityTitle"],
+  OPPORTUNITY_APPLICATION_STATUS: ["opportunityTitle", "status"],
+  OPPORTUNITY_INTERVIEW_INVITATION: ["opportunityTitle"],
+  OPPORTUNITY_APPLICANT_RESPONSE: ["opportunityTitle"],
+  OPPORTUNITY_MODERATION_RESULT: ["opportunityTitle", "outcome"],
 };
 
 const safeRoutePrefixes = [
@@ -139,6 +155,7 @@ const safeRoutePrefixes = [
   "/search",
   "/organizations",
   "/organization-invitations",
+  "/opportunities",
 ] as const;
 
 export class NotificationError extends Error {

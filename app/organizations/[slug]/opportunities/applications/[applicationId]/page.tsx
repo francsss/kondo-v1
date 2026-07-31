@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { OpportunityReviewerActions } from "@/components/features/opportunities/OpportunityReviewerActions";
 import { getOrganizationApplication } from "@/lib/opportunity-application-review";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
@@ -137,6 +138,11 @@ export default async function ApplicationReviewPage({
           ))}
         </ol>
       </section>
+
+      <OpportunityReviewerActions
+        organizationId={organization.id}
+        applicationId={application.id}
+      />
     </div>
   );
 }

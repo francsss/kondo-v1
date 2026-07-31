@@ -58,7 +58,7 @@ export async function saveOpportunity(input: {
       remindBeforeDays,
     },
     // A repeat save is idempotent and never creates a duplicate row.
-    update: { remindBeforeDays },
+    update: { remindBeforeDays, lastRemindedAt: null },
   });
 
   await Promise.all([
@@ -167,7 +167,7 @@ export async function setSavedOpportunityReminder(input: {
   }
   const updated = await prisma.opportunitySaved.updateMany({
     where: { userId: input.userId, opportunityId: input.opportunityId },
-    data: { remindBeforeDays: input.remindBeforeDays },
+    data: { remindBeforeDays: input.remindBeforeDays, lastRemindedAt: null },
   });
   if (updated.count === 0) {
     throw new OpportunityError("Save this opportunity first.", 404);

@@ -1,9 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  jobDetailSchema,
-  opportunityDraftSchema,
-  scholarshipDetailSchema,
-} from "@/features/opportunities/schemas";
+import { opportunityAuthoringSchema } from "@/features/opportunities/schemas";
 import { opportunityApiFailure } from "@/lib/opportunity-api";
 import {
   createOrganizationOpportunity,
@@ -43,17 +39,12 @@ export async function POST(request: NextRequest, { params }: Context) {
     ) {
       return jsonError("Too many opportunities created today.", 429);
     }
-    const payload = (await request.json()) as Record<string, unknown>;
-    const draft = opportunityDraftSchema.parse(payload.draft);
+    const payload = opportunityAuthoringSchema.parse(await request.json());
     return Response.json(
       await createOrganizationOpportunity({
         userId: user.id,
         organizationId: (await params).id,
-        draft,
-        scholarship: payload.scholarship
-          ? scholarshipDetailSchema.parse(payload.scholarship)
-          : null,
-        job: payload.job ? jobDetailSchema.parse(payload.job) : null,
+        ...payload,
       }),
       { status: 201 },
     );

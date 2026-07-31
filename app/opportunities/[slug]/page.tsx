@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { OpportunityPublicActions } from "@/components/features/opportunities/OpportunityPublicActions";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { getPublicOpportunityBySlug } from "@/lib/opportunities";
 import {
   ELIGIBILITY_DISCLAIMER,
@@ -8,6 +10,7 @@ import {
   evaluateOpportunityEligibility,
 } from "@/lib/opportunity-eligibility";
 import { prisma } from "@/lib/prisma";
+import { isOpportunitySaved } from "@/lib/opportunity-saved";
 import { getCurrentUser } from "@/lib/server-auth";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -80,6 +83,12 @@ export default async function OpportunityPage({ params }: Props) {
   });
 
   const window = opportunity.applicationWindow;
+  const saved = user
+    ? await isOpportunitySaved({
+        userId: user.id,
+        opportunityId: opportunity.id,
+      })
+    : false;
 
   return (
     <div className="mx-auto max-w-[900px] px-4 pb-24 pt-8 sm:px-6 lg:pt-12">
@@ -90,6 +99,19 @@ export default async function OpportunityPage({ params }: Props) {
       </nav>
 
       <header className="mt-3">
+        {opportunity.coverMediaId ? (
+          <div className="mb-6 aspect-[16/7] overflow-hidden rounded-[28px] bg-kondo-green/5">
+            <MediaImage
+              mediaId={opportunity.coverMediaId}
+              alt={opportunity.coverAltText ?? ""}
+              width={1400}
+              height={620}
+              priority
+              sizes="(max-width: 900px) 100vw, 900px"
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-kondo-green/10 px-3 py-1 text-xs font-bold text-kondo-green">
             {opportunity.typeLabel}
@@ -116,6 +138,12 @@ export default async function OpportunityPage({ params }: Props) {
           )}
           {opportunity.location ? ` · ${opportunity.location}` : ""}
         </p>
+        <OpportunityPublicActions
+          opportunityId={opportunity.id}
+          title={opportunity.title}
+          signedIn={Boolean(user)}
+          initiallySaved={saved}
+        />
       </header>
 
       <section

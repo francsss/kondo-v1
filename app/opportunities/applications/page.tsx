@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OpportunityAccountNav } from "@/components/features/opportunities/OpportunityAccountNav";
 import { listApplicationsForApplicant } from "@/lib/opportunity-applications";
 import { requireUser } from "@/lib/server-auth";
 
@@ -31,6 +32,7 @@ export default async function ApplicationsPage() {
         Kondo records the status a provider set here. It does not predict a
         decision or a response time.
       </p>
+      <OpportunityAccountNav />
 
       {applications.length === 0 ? (
         <p className="mt-10 rounded-3xl border border-dashed border-black/10 p-8 text-center text-sm text-muted-foreground dark:border-white/15">

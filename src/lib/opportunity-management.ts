@@ -1,13 +1,16 @@
+import { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLog } from "@/lib/audit";
 import type {
   opportunityDraftSchema,
   jobDetailSchema,
+  opportunityAuthoringSchema,
   scholarshipDetailSchema,
 } from "@/features/opportunities/schemas";
 import { OpportunityError } from "@/lib/opportunities";
 import { revalidateOpportunity } from "@/lib/opportunity-cache";
+import { notifyOpportunityPublisherWithClient } from "@/lib/opportunity-notifications";
 import { assertOpportunityTransition } from "@/lib/opportunity-lifecycle";
 import {
   requireOpportunityPublisher,
@@ -34,6 +37,8 @@ import { captureServerProductEvent } from "@/lib/product-analytics-server";
 type DraftInput = z.infer<typeof opportunityDraftSchema>;
 type ScholarshipInput = z.infer<typeof scholarshipDetailSchema>;
 type JobInput = z.infer<typeof jobDetailSchema>;
+type AuthoringInput = z.infer<typeof opportunityAuthoringSchema>;
+type AuthoringRelations = Omit<AuthoringInput, "draft" | "scholarship" | "job">;
 
 async function uniqueSlug(title: string) {
   const base =
@@ -65,13 +70,15 @@ function assertMethodSupported(input: DraftInput) {
   }
 }
 
-export async function createOrganizationOpportunity(input: {
-  userId: string;
-  organizationId: string;
-  draft: DraftInput;
-  scholarship?: ScholarshipInput | null;
-  job?: JobInput | null;
-}) {
+export async function createOrganizationOpportunity(
+  input: {
+    userId: string;
+    organizationId: string;
+    draft: DraftInput;
+    scholarship?: ScholarshipInput | null;
+    job?: JobInput | null;
+  } & AuthoringRelations,
+) {
   assertMethodSupported(input.draft);
   if (!opportunitySupportsPublisher(input.draft.type, "ORGANIZATION")) {
     throw new OpportunityError(
@@ -127,6 +134,23 @@ export async function createOrganizationOpportunity(input: {
       fieldsOfStudy: {
         create: input.draft.fieldsOfStudy.map((fieldKey) => ({ fieldKey })),
       },
+      eligibilityRules: {
+        create: (input.eligibilityRules ?? []).map((rule) => ({
+          ...rule,
+          structuredValue: rule.structuredValue as Prisma.InputJsonValue,
+        })),
+      },
+      benefits: { create: input.benefits ?? [] },
+      requirements: { create: input.requirements ?? [] },
+      questions: {
+        create: (input.questions ?? []).map((question) => ({
+          ...question,
+          options: question.options ?? undefined,
+        })),
+      },
+      languageRequirements: {
+        create: input.languageRequirements ?? [],
+      },
       ...(definition.detail === "scholarship" && input.scholarship
         ? { scholarshipDetail: { create: input.scholarship } }
         : {}),
@@ -179,6 +203,7 @@ async function loadOwnedOpportunity(input: {
     select: {
       id: true,
       slug: true,
+      title: true,
       type: true,
       lifecycle: true,
       publisherOrganizationId: true,
@@ -191,14 +216,63 @@ async function loadOwnedOpportunity(input: {
   return opportunity;
 }
 
-export async function updateOrganizationOpportunity(input: {
-  userId: string;
-  organizationId: string;
-  opportunityId: string;
-  draft: DraftInput;
-  scholarship?: ScholarshipInput | null;
-  job?: JobInput | null;
-}) {
+async function assertOpportunityReadyToPublish(opportunityId: string) {
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: opportunityId },
+    select: {
+      type: true,
+      applicationMethod: true,
+      externalApplicationUrl: true,
+      applicationEmail: true,
+      officialSourceUrl: true,
+      scholarshipDetail: { select: { opportunityId: true } },
+      jobDetail: { select: { opportunityId: true } },
+    },
+  });
+  if (!opportunity) throw new OpportunityError("Opportunity not found.", 404);
+  const definition = opportunityTypeDefinition(opportunity.type);
+  if (definition.detail === "scholarship" && !opportunity.scholarshipDetail) {
+    throw new OpportunityError(
+      "Complete the scholarship funding details before publishing.",
+      400,
+    );
+  }
+  if (definition.detail === "job" && !opportunity.jobDetail) {
+    throw new OpportunityError(
+      "Complete the role and compensation details before publishing.",
+      400,
+    );
+  }
+  if (
+    opportunity.applicationMethod === "EXTERNAL_URL" &&
+    (!opportunity.externalApplicationUrl || !opportunity.officialSourceUrl)
+  ) {
+    throw new OpportunityError(
+      "Add both the official source and application links before publishing.",
+      400,
+    );
+  }
+  if (
+    opportunity.applicationMethod === "EMAIL" &&
+    !opportunity.applicationEmail
+  ) {
+    throw new OpportunityError(
+      "Add the professional application email before publishing.",
+      400,
+    );
+  }
+}
+
+export async function updateOrganizationOpportunity(
+  input: {
+    userId: string;
+    organizationId: string;
+    opportunityId: string;
+    draft: DraftInput;
+    scholarship?: ScholarshipInput | null;
+    job?: JobInput | null;
+  } & AuthoringRelations,
+) {
   assertMethodSupported(input.draft);
   const existing = await loadOwnedOpportunity(input);
 
@@ -224,6 +298,16 @@ export async function updateOrganizationOpportunity(input: {
 
   const definition = opportunityTypeDefinition(input.draft.type);
 
+  if (
+    existing._count.applications > 0 &&
+    (input.questions !== undefined || input.requirements !== undefined)
+  ) {
+    throw new OpportunityError(
+      "Application questions and required documents are locked after an application starts.",
+      409,
+    );
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.opportunityDegreeLevel.deleteMany({
       where: { opportunityId: existing.id },
@@ -231,6 +315,31 @@ export async function updateOrganizationOpportunity(input: {
     await tx.opportunityFieldOfStudy.deleteMany({
       where: { opportunityId: existing.id },
     });
+    if (input.eligibilityRules !== undefined) {
+      await tx.opportunityEligibilityRule.deleteMany({
+        where: { opportunityId: existing.id },
+      });
+    }
+    if (input.benefits !== undefined) {
+      await tx.opportunityBenefit.deleteMany({
+        where: { opportunityId: existing.id },
+      });
+    }
+    if (input.languageRequirements !== undefined) {
+      await tx.opportunityLanguageRequirement.deleteMany({
+        where: { opportunityId: existing.id },
+      });
+    }
+    if (input.requirements !== undefined) {
+      await tx.opportunityApplicationRequirement.deleteMany({
+        where: { opportunityId: existing.id },
+      });
+    }
+    if (input.questions !== undefined) {
+      await tx.opportunityApplicationQuestion.deleteMany({
+        where: { opportunityId: existing.id },
+      });
+    }
     await tx.opportunity.update({
       where: { id: existing.id },
       data: {
@@ -262,6 +371,40 @@ export async function updateOrganizationOpportunity(input: {
         fieldsOfStudy: {
           create: input.draft.fieldsOfStudy.map((fieldKey) => ({ fieldKey })),
         },
+        ...(input.eligibilityRules !== undefined
+          ? {
+              eligibilityRules: {
+                create: input.eligibilityRules.map((rule) => ({
+                  ...rule,
+                  structuredValue:
+                    rule.structuredValue as Prisma.InputJsonValue,
+                })),
+              },
+            }
+          : {}),
+        ...(input.benefits !== undefined
+          ? { benefits: { create: input.benefits } }
+          : {}),
+        ...(input.requirements !== undefined
+          ? { requirements: { create: input.requirements } }
+          : {}),
+        ...(input.questions !== undefined
+          ? {
+              questions: {
+                create: input.questions.map((question) => ({
+                  ...question,
+                  options: question.options ?? undefined,
+                })),
+              },
+            }
+          : {}),
+        ...(input.languageRequirements !== undefined
+          ? {
+              languageRequirements: {
+                create: input.languageRequirements,
+              },
+            }
+          : {}),
       },
     });
 
@@ -271,12 +414,18 @@ export async function updateOrganizationOpportunity(input: {
         create: { opportunityId: existing.id, ...input.scholarship },
         update: input.scholarship,
       });
+      await tx.opportunityJobDetail.deleteMany({
+        where: { opportunityId: existing.id },
+      });
     }
     if (definition.detail === "job" && input.job) {
       await tx.opportunityJobDetail.upsert({
         where: { opportunityId: existing.id },
         create: { opportunityId: existing.id, ...input.job },
         update: input.job,
+      });
+      await tx.opportunityScholarshipDetail.deleteMany({
+        where: { opportunityId: existing.id },
       });
     }
   });
@@ -304,6 +453,10 @@ export async function transitionOrganizationOpportunity(input: {
   action: "SUBMIT" | "PUBLISH" | "PAUSE" | "CLOSE" | "ARCHIVE";
 }) {
   const existing = await loadOwnedOpportunity(input);
+
+  if (input.action === "PUBLISH" || input.action === "SUBMIT") {
+    await assertOpportunityReadyToPublish(existing.id);
+  }
 
   const permission =
     input.action === "SUBMIT"
@@ -340,15 +493,28 @@ export async function transitionOrganizationOpportunity(input: {
   });
 
   const now = new Date();
-  await prisma.opportunity.update({
-    where: { id: existing.id },
-    data: {
-      lifecycle: target,
-      submittedAt: target === "PENDING_REVIEW" ? now : undefined,
-      publishedAt: target === "PUBLISHED" ? now : undefined,
-      closedAt: target === "CLOSED" ? now : undefined,
-      archivedAt: target === "ARCHIVED" ? now : undefined,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.opportunity.update({
+      where: { id: existing.id },
+      data: {
+        lifecycle: target,
+        submittedAt: target === "PENDING_REVIEW" ? now : undefined,
+        publishedAt: target === "PUBLISHED" ? now : undefined,
+        closedAt: target === "CLOSED" ? now : undefined,
+        archivedAt: target === "ARCHIVED" ? now : undefined,
+      },
+    });
+    if (target === "PUBLISHED") {
+      await notifyOpportunityPublisherWithClient(tx, {
+        organizationId: input.organizationId,
+        organizationSlug: context.organization.slug,
+        opportunityId: existing.id,
+        opportunityTitle: existing.title,
+        actorId: input.userId,
+        templateKey: "OPPORTUNITY_PUBLISHED",
+        dedupeKey: `opportunity-published:${existing.id}:${now.toISOString()}`,
+      });
+    }
   });
 
   if (target === "PENDING_REVIEW" || target === "PUBLISHED") {
@@ -428,6 +594,124 @@ export async function listOrganizationOpportunities(input: {
     publishedAt: row.publishedAt?.toISOString() ?? null,
     applicationCount: row._count.applications,
   }));
+}
+
+export async function getOrganizationOpportunityForEdit(input: {
+  userId: string;
+  organizationId: string;
+  opportunityId: string;
+}) {
+  const owned = await loadOwnedOpportunity(input);
+  await requireOpportunityPublisher({
+    userId: input.userId,
+    organizationId: input.organizationId,
+    type: owned.type,
+    permission: "ORGANIZATION_EDIT_OPPORTUNITIES",
+  });
+  const row = await prisma.opportunity.findUniqueOrThrow({
+    where: { id: owned.id },
+    select: {
+      id: true,
+      slug: true,
+      type: true,
+      lifecycle: true,
+      title: true,
+      shortDescription: true,
+      description: true,
+      countryId: true,
+      cityId: true,
+      universityId: true,
+      locationLabel: true,
+      workMode: true,
+      applicationMethod: true,
+      externalApplicationUrl: true,
+      applicationEmail: true,
+      officialSourceUrl: true,
+      applicationOpenAt: true,
+      applicationDeadline: true,
+      rollingApplications: true,
+      expectedDecisionDate: true,
+      opportunityStartDate: true,
+      opportunityEndDate: true,
+      timezone: true,
+      degreeLevels: { select: { degreeLevel: true } },
+      fieldsOfStudy: { select: { fieldKey: true } },
+      eligibilityRules: {
+        select: {
+          ruleType: true,
+          operator: true,
+          structuredValue: true,
+          required: true,
+          publicLabel: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      benefits: {
+        select: {
+          type: true,
+          amountMinor: true,
+          currency: true,
+          period: true,
+          description: true,
+          confidence: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      requirements: {
+        select: {
+          documentType: true,
+          required: true,
+          description: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      questions: {
+        select: {
+          type: true,
+          label: true,
+          description: true,
+          required: true,
+          options: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      languageRequirements: {
+        select: {
+          language: true,
+          level: true,
+          certificateType: true,
+          required: true,
+        },
+      },
+      scholarshipDetail: true,
+      jobDetail: true,
+      media: {
+        where: { isCover: true },
+        select: { mediaId: true, altText: true },
+        take: 1,
+      },
+      _count: { select: { applications: true } },
+    },
+  });
+  const { _count, ...editable } = row;
+  return {
+    ...editable,
+    applicationOpenAt: row.applicationOpenAt?.toISOString() ?? null,
+    applicationDeadline: row.applicationDeadline?.toISOString() ?? null,
+    expectedDecisionDate:
+      row.expectedDecisionDate?.toISOString().slice(0, 10) ?? null,
+    opportunityStartDate:
+      row.opportunityStartDate?.toISOString().slice(0, 10) ?? null,
+    opportunityEndDate:
+      row.opportunityEndDate?.toISOString().slice(0, 10) ?? null,
+    degreeLevels: row.degreeLevels.map(({ degreeLevel }) => degreeLevel),
+    fieldsOfStudy: row.fieldsOfStudy.map(({ fieldKey }) => fieldKey),
+    applicationCount: _count.applications,
+  };
 }
 
 export async function expireOpportunities(now = new Date()) {

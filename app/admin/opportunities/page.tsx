@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { opportunityLifecycleLabel } from "@/lib/opportunity-lifecycle";
 import { opportunityTypeDefinition } from "@/lib/opportunity-types";
 import { prisma } from "@/lib/prisma";
@@ -36,6 +37,29 @@ export default async function AdminOpportunitiesPage() {
       <p className="mt-2 text-sm text-muted-foreground">
         {opportunities.length} most recent records.
       </p>
+      <nav
+        className="mt-4 flex flex-wrap gap-2"
+        aria-label="Opportunity admin views"
+      >
+        <Link
+          href="/admin/opportunity-applications"
+          className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
+        >
+          Applications
+        </Link>
+        <Link
+          href="/admin/opportunity-reports"
+          className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
+        >
+          Reports
+        </Link>
+        <Link
+          href="/admin/scholarship-agents"
+          className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
+        >
+          Scholarship agents
+        </Link>
+      </nav>
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[860px] text-left text-sm">
           <caption className="sr-only">All opportunities</caption>
@@ -64,7 +88,14 @@ export default async function AdminOpportunitiesPage() {
                 key={opportunity.id}
                 className="border-b border-black/5 dark:border-white/5"
               >
-                <td className="py-3 pr-4 font-semibold">{opportunity.title}</td>
+                <td className="py-3 pr-4 font-semibold">
+                  <Link
+                    href={`/admin/opportunities/${opportunity.id}`}
+                    className="hover:underline"
+                  >
+                    {opportunity.title}
+                  </Link>
+                </td>
                 <td className="py-3 pr-4">
                   {opportunityTypeDefinition(opportunity.type).label}
                 </td>

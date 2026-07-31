@@ -138,7 +138,8 @@ bucket or expose R2 credentials to the browser.
 ## OPPORTUNITY_WORKER_SECRET
 
 Shared secret for the opportunity deadline-expiry worker route
-`POST /api/internal/opportunities/expire`. Optional: when unset the route
+`POST /api/internal/opportunities/expire` and the opt-in reminder worker route
+`POST /api/internal/opportunities/reminders`. Optional: when unset the routes
 refuses every request and the sweep can still be run manually with
-`npm run opportunities:expire`. Mirrors `HOUSING_WORKER_SECRET` and
+`npm run opportunities:expire` or `npm run opportunities:reminders`. Mirrors `HOUSING_WORKER_SECRET` and
 `MARKETPLACE_WORKER_SECRET`.

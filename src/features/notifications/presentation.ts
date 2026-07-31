@@ -43,6 +43,7 @@ export type NotificationIconName =
   | "event"
   | "marketplace"
   | "housing"
+  | "opportunity"
   | "comment"
   | "reaction"
   | "schedule"
@@ -124,7 +125,7 @@ const PRESENTATIONS: Record<KondoNotificationKind, NotificationPresentation> = {
     kind: "OPPORTUNITY_ACTIVITY",
     category: "opportunities",
     categoryLabel: "Opportunities",
-    icon: "housing",
+    icon: "opportunity",
     actionLabel: "Open opportunity",
   },
   NEW_COMMENT: {
@@ -251,6 +252,14 @@ const TEMPLATE_KIND: Record<string, KondoNotificationKind> = {
   HOUSING_REQUEST_MATCH: "HOUSING_ACTIVITY",
   ROOMMATE_INTEREST: "HOUSING_ACTIVITY",
   ROOMMATE_INTEREST_UPDATE: "HOUSING_ACTIVITY",
+  OPPORTUNITY_PUBLISHED: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_DEADLINE_REMINDER: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_APPLICATION_SUBMITTED: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_NEW_APPLICATION: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_APPLICATION_STATUS: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_INTERVIEW_INVITATION: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_APPLICANT_RESPONSE: "OPPORTUNITY_ACTIVITY",
+  OPPORTUNITY_MODERATION_RESULT: "OPPORTUNITY_ACTIVITY",
 };
 
 const TYPE_KIND: Record<string, KondoNotificationKind> = {

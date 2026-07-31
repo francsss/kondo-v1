@@ -25,6 +25,8 @@ type MediaPurpose =
   | "HOUSING_LISTING_IMAGE"
   | "HOUSING_FLOOR_PLAN"
   | "HOUSING_PROOF_DOCUMENT"
+  | "OPPORTUNITY_COVER_IMAGE"
+  | "OPPORTUNITY_APPLICATION_DOCUMENT"
   | "VERIFICATION_DOCUMENT";
 
 export async function uploadMediaFile(
@@ -36,7 +38,7 @@ export async function uploadMediaFile(
     onProgress?: (progress: number) => void;
     signal?: AbortSignal;
   },
-) {
+): Promise<string> {
   input.onProgress?.(2);
   const intentResponse = await fetch("/api/media/uploads", {
     method: "POST",
@@ -74,7 +76,10 @@ export async function uploadMediaFile(
       signal: input.signal,
     },
   );
-  const completed = await completeResponse.json().catch(() => null);
+  const completed = (await completeResponse.json().catch(() => null)) as {
+    media?: { id?: string };
+    error?: string;
+  } | null;
   if (!completeResponse.ok) {
     throw new Error(completed?.error ?? "Could not validate the file.");
   }

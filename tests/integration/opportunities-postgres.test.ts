@@ -15,6 +15,10 @@ import {
 } from "@/lib/opportunity-application-review";
 import { authorizeDocumentAccess } from "@/lib/opportunity-documents";
 import { listLegacyScholarshipCards } from "@/lib/opportunity-legacy-scholarships";
+import {
+  respondToOpportunityInterview,
+  scheduleOpportunityInterview,
+} from "@/lib/opportunity-interviews";
 import { moderateOpportunity } from "@/lib/opportunity-moderation";
 import { getOrganizationScholarshipProjection } from "@/lib/opportunity-projections";
 import {
@@ -627,6 +631,76 @@ postgresDescribe("opportunities (postgres)", () => {
       documentId: ids.documentId,
     });
     expect(JSON.stringify(access)).not.toContain("opportunity-doc/");
+  });
+
+  it("runs the interview invitation and applicant response lifecycle", async () => {
+    const application = await prisma.opportunityApplication.findFirstOrThrow({
+      where: {
+        applicantUserId: ids.applicantId,
+        opportunityId: ids.publishedId,
+      },
+      select: { id: true },
+    });
+
+    await expect(
+      scheduleOpportunityInterview({
+        userId: ids.editorId,
+        organizationId: ids.organizationId,
+        applicationId: application.id,
+        format: "VIDEO",
+        scheduledAt: new Date(Date.now() + 86_400_000),
+        timezone: "Asia/Shanghai",
+        meetingUrl: "https://meet.example.org/private-room",
+      }),
+    ).rejects.toThrow(/permission/i);
+
+    const interview = await scheduleOpportunityInterview({
+      userId: ids.ownerId,
+      organizationId: ids.organizationId,
+      applicationId: application.id,
+      format: "VIDEO",
+      scheduledAt: new Date(Date.now() + 86_400_000),
+      timezone: "Asia/Shanghai",
+      meetingUrl: "https://meet.example.org/private-room",
+      preparationNote: "Bring one project example.",
+    });
+    expect(interview.status).toBe("PROPOSED");
+
+    await expect(
+      respondToOpportunityInterview({
+        userId: ids.outsiderId,
+        applicationId: application.id,
+        interviewId: interview.id,
+        response: "ACCEPTED",
+      }),
+    ).rejects.toThrow(/not found/i);
+
+    const accepted = await respondToOpportunityInterview({
+      userId: ids.applicantId,
+      applicationId: application.id,
+      interviewId: interview.id,
+      response: "ACCEPTED",
+    });
+    expect(accepted.status).toBe("ACCEPTED");
+    expect(accepted.applicantRespondedAt).not.toBeNull();
+
+    const applicantView = await getApplicationForApplicant({
+      userId: ids.applicantId,
+      applicationId: application.id,
+    });
+    expect(applicantView?.interviews[0]).toMatchObject({
+      id: interview.id,
+      status: "ACCEPTED",
+      meetingUrl: "https://meet.example.org/private-room",
+    });
+    expect(
+      await prisma.notificationJob.count({
+        where: {
+          recipientId: ids.applicantId,
+          templateKey: "OPPORTUNITY_INTERVIEW_INVITATION",
+        },
+      }),
+    ).toBeGreaterThan(0);
   });
 
   it("projects real opportunities onto the organization page", async () => {

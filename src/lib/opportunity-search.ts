@@ -1,4 +1,11 @@
-import type { Prisma, StudyLevel } from "@prisma/client";
+import {
+  OpportunityApplicationMethod,
+  OpportunityEmploymentType,
+  OpportunityFundingType,
+  OpportunityWorkMode,
+  StudyLevel,
+  type Prisma,
+} from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import {
   opportunityCardSelect,
@@ -22,6 +29,14 @@ import { prisma } from "@/lib/prisma";
  */
 
 const MAX_PAGE_SIZE = 24;
+
+function validEnumValues<T extends string>(
+  values: readonly string[] | null | undefined,
+  allowed: Record<string, T>,
+) {
+  const valid = new Set(Object.values(allowed));
+  return values?.filter((value): value is T => valid.has(value as T)) ?? [];
+}
 
 export type OpportunitySearchFilters = {
   query?: string | null;
@@ -72,18 +87,24 @@ export function buildOpportunitySearchWhere(
   if (filters.countryId) and.push({ countryId: filters.countryId });
   if (filters.cityId) and.push({ cityId: filters.cityId });
   if (filters.universityId) and.push({ universityId: filters.universityId });
-  if (filters.workModes?.length) {
-    and.push({ workMode: { in: filters.workModes as never } });
+  const workModes = validEnumValues(filters.workModes, OpportunityWorkMode);
+  if (workModes.length) {
+    and.push({ workMode: { in: workModes } });
   }
-  if (filters.applicationMethods?.length) {
+  const applicationMethods = validEnumValues(
+    filters.applicationMethods,
+    OpportunityApplicationMethod,
+  );
+  if (applicationMethods.length) {
     and.push({
-      applicationMethod: { in: filters.applicationMethods as never },
+      applicationMethod: { in: applicationMethods },
     });
   }
-  if (filters.degreeLevels?.length) {
+  const degreeLevels = validEnumValues(filters.degreeLevels, StudyLevel);
+  if (degreeLevels.length) {
     and.push({
       degreeLevels: {
-        some: { degreeLevel: { in: filters.degreeLevels as StudyLevel[] } },
+        some: { degreeLevel: { in: degreeLevels } },
       },
     });
   }
@@ -99,14 +120,22 @@ export function buildOpportunitySearchWhere(
       },
     });
   }
-  if (filters.fundingTypes?.length) {
+  const fundingTypes = validEnumValues(
+    filters.fundingTypes,
+    OpportunityFundingType,
+  );
+  if (fundingTypes.length) {
     and.push({
-      scholarshipDetail: { fundingType: { in: filters.fundingTypes as never } },
+      scholarshipDetail: { fundingType: { in: fundingTypes } },
     });
   }
-  if (filters.employmentTypes?.length) {
+  const employmentTypes = validEnumValues(
+    filters.employmentTypes,
+    OpportunityEmploymentType,
+  );
+  if (employmentTypes.length) {
     and.push({
-      jobDetail: { employmentType: { in: filters.employmentTypes as never } },
+      jobDetail: { employmentType: { in: employmentTypes } },
     });
   }
   if (filters.paidOnly) and.push({ jobDetail: { paid: true } });

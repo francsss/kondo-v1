@@ -10,6 +10,7 @@ import {
   requireApplicationReviewer,
 } from "@/lib/opportunity-permissions";
 import { prisma } from "@/lib/prisma";
+import { serializeOpportunityInterview } from "@/lib/opportunity-interviews";
 
 /**
  * Organization-side application review.
@@ -157,6 +158,20 @@ export async function getOrganizationApplication(input: {
         },
         orderBy: { createdAt: "asc" },
       },
+      interviews: {
+        select: {
+          id: true,
+          format: true,
+          scheduledAt: true,
+          timezone: true,
+          locationLabel: true,
+          meetingUrl: true,
+          preparationNote: true,
+          status: true,
+          applicantRespondedAt: true,
+        },
+        orderBy: { scheduledAt: "desc" },
+      },
     },
   });
   if (!row) throw new OpportunityError("Application not found.", 404);
@@ -218,6 +233,7 @@ export async function getOrganizationApplication(input: {
         : null,
       at: entry.createdAt.toISOString(),
     })),
+    interviews: row.interviews.map(serializeOpportunityInterview),
   };
 }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OpportunityAccountNav } from "@/components/features/opportunities/OpportunityAccountNav";
 import { OpportunityCard } from "@/components/features/opportunities/OpportunityCard";
 import { listSavedOpportunities } from "@/lib/opportunity-saved";
 import { requireUser } from "@/lib/server-auth";
@@ -21,6 +22,7 @@ export default async function SavedOpportunitiesPage() {
         Only you can see this list. Publishers are never shown who saved an
         opportunity.
       </p>
+      <OpportunityAccountNav />
 
       {saved.length === 0 ? (
         <p className="mt-10 rounded-3xl border border-dashed border-black/10 p-8 text-center text-sm text-muted-foreground dark:border-white/15">

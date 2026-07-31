@@ -14,6 +14,12 @@ import {
   applicationWindowAcceptsSubmission,
   resolveApplicationWindow,
 } from "@/lib/opportunity-application-window";
+import {
+  notifyApplicationStatusWithClient,
+  notifyApplicationSubmittedWithClient,
+  notifyApplicantResponseWithClient,
+} from "@/lib/opportunity-notifications";
+import { serializeOpportunityInterview } from "@/lib/opportunity-interviews";
 import { canExposeOpportunityPublicly } from "@/lib/opportunity-visibility";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -101,6 +107,20 @@ const applicationDetailSelect = {
     },
     orderBy: { createdAt: "asc" },
   },
+  interviews: {
+    select: {
+      id: true,
+      format: true,
+      scheduledAt: true,
+      timezone: true,
+      locationLabel: true,
+      meetingUrl: true,
+      preparationNote: true,
+      status: true,
+      applicantRespondedAt: true,
+    },
+    orderBy: { scheduledAt: "desc" },
+  },
 } satisfies Prisma.OpportunityApplicationSelect;
 
 type ApplicationRow = Prisma.OpportunityApplicationGetPayload<{
@@ -138,6 +158,7 @@ export function serializeApplicationForApplicant(row: ApplicationRow) {
     answers: row.answers,
     documents: row.documents.map((document) => ({
       id: document.id,
+      userDocumentId: document.userDocumentId,
       category: document.category,
       displayName: document.displayNameSnapshot,
     })),
@@ -149,6 +170,7 @@ export function serializeApplicationForApplicant(row: ApplicationRow) {
       note: entry.applicantVisibleNote,
       at: entry.createdAt.toISOString(),
     })),
+    interviews: row.interviews.map(serializeOpportunityInterview),
   };
 }
 
@@ -175,6 +197,7 @@ export async function startApplication(input: {
     where: { id: input.opportunityId },
     select: {
       id: true,
+      title: true,
       type: true,
       lifecycle: true,
       publicationBlockedAt: true,
@@ -187,7 +210,11 @@ export async function startApplication(input: {
       rollingApplications: true,
       timezone: true,
       publisherOrganization: {
-        select: { lifecycleStatus: true, publicProfileBlockedAt: true },
+        select: {
+          slug: true,
+          lifecycleStatus: true,
+          publicProfileBlockedAt: true,
+        },
       },
       scholarshipAgent: { select: { isActive: true } },
     },
@@ -327,6 +354,7 @@ export async function saveApplicationDraft(input: {
           id: { in: [...input.documentIds] },
           userId: input.userId,
           archivedAt: null,
+          media: { status: "ACTIVE", scanStatus: "CLEAN" },
         },
         select: { id: true, category: true, displayName: true },
       });
@@ -373,6 +401,7 @@ const submissionSelect = {
   opportunity: {
     select: {
       id: true,
+      title: true,
       type: true,
       slug: true,
       lifecycle: true,
@@ -385,7 +414,11 @@ const submissionSelect = {
       rollingApplications: true,
       timezone: true,
       publisherOrganization: {
-        select: { lifecycleStatus: true, publicProfileBlockedAt: true },
+        select: {
+          slug: true,
+          lifecycleStatus: true,
+          publicProfileBlockedAt: true,
+        },
       },
       scholarshipAgent: { select: { isActive: true } },
       questions: { select: { id: true, required: true } },
@@ -551,6 +584,15 @@ export async function submitApplication(input: {
       },
     });
 
+    await notifyApplicationSubmittedWithClient(tx, {
+      applicationId: application.id,
+      opportunityId: opportunity.id,
+      opportunityTitle: opportunity.title,
+      applicantUserId: input.userId,
+      organizationId: application.organizationId,
+      organizationSlug: opportunity.publisherOrganization?.slug ?? null,
+    });
+
     return {
       updated,
       opportunityType: opportunity.type,
@@ -586,7 +628,17 @@ export async function withdrawApplication(input: {
 }) {
   const application = await prisma.opportunityApplication.findFirst({
     where: { id: input.applicationId, applicantUserId: input.userId },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      organizationId: true,
+      opportunity: {
+        select: {
+          title: true,
+          publisherOrganization: { select: { slug: true } },
+        },
+      },
+    },
   });
   if (!application) throw new OpportunityError("Application not found.", 404);
   assertApplicationTransition({
@@ -595,12 +647,12 @@ export async function withdrawApplication(input: {
     to: "WITHDRAWN",
   });
 
-  await prisma.$transaction([
-    prisma.opportunityApplication.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.opportunityApplication.update({
       where: { id: application.id },
       data: { status: "WITHDRAWN", withdrawnAt: new Date() },
-    }),
-    prisma.opportunityApplicationStatusHistory.create({
+    });
+    const history = await tx.opportunityApplicationStatusHistory.create({
       data: {
         applicationId: application.id,
         fromStatus: application.status,
@@ -608,8 +660,22 @@ export async function withdrawApplication(input: {
         actingUserId: input.userId,
         applicantVisibleNote: "You withdrew this application.",
       },
-    }),
-  ]);
+      select: { id: true },
+    });
+    if (
+      application.organizationId &&
+      application.opportunity.publisherOrganization?.slug
+    ) {
+      await notifyApplicantResponseWithClient(tx, {
+        applicationId: application.id,
+        organizationId: application.organizationId,
+        organizationSlug: application.opportunity.publisherOrganization.slug,
+        applicantUserId: input.userId,
+        opportunityTitle: application.opportunity.title,
+        responseKey: history.id,
+      });
+    }
+  });
 
   await trackEvent({
     name: "OPPORTUNITY_APPLICATION_WITHDRAWN",
@@ -626,7 +692,17 @@ export async function respondToOfferDecision(input: {
 }) {
   const application = await prisma.opportunityApplication.findFirst({
     where: { id: input.applicationId, applicantUserId: input.userId },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      organizationId: true,
+      opportunity: {
+        select: {
+          title: true,
+          publisherOrganization: { select: { slug: true } },
+        },
+      },
+    },
   });
   if (!application) throw new OpportunityError("Application not found.", 404);
   assertApplicationTransition({
@@ -635,12 +711,12 @@ export async function respondToOfferDecision(input: {
     to: input.decision,
   });
 
-  await prisma.$transaction([
-    prisma.opportunityApplication.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.opportunityApplication.update({
       where: { id: application.id },
       data: { status: input.decision, decidedAt: new Date() },
-    }),
-    prisma.opportunityApplicationStatusHistory.create({
+    });
+    const history = await tx.opportunityApplicationStatusHistory.create({
       data: {
         applicationId: application.id,
         fromStatus: application.status,
@@ -651,8 +727,22 @@ export async function respondToOfferDecision(input: {
             ? "You accepted this offer."
             : "You declined this offer.",
       },
-    }),
-  ]);
+      select: { id: true },
+    });
+    if (
+      application.organizationId &&
+      application.opportunity.publisherOrganization?.slug
+    ) {
+      await notifyApplicantResponseWithClient(tx, {
+        applicationId: application.id,
+        organizationId: application.organizationId,
+        organizationSlug: application.opportunity.publisherOrganization.slug,
+        applicantUserId: input.userId,
+        opportunityTitle: application.opportunity.title,
+        responseKey: history.id,
+      });
+    }
+  });
   await writeAuditLog({
     actorId: input.userId,
     action: `OPPORTUNITY_OFFER_${input.decision}`,
@@ -660,6 +750,69 @@ export async function respondToOfferDecision(input: {
     entityId: application.id,
   });
   return { status: input.decision };
+}
+
+export async function respondToInformationRequest(input: {
+  userId: string;
+  applicationId: string;
+}) {
+  const application = await prisma.opportunityApplication.findFirst({
+    where: { id: input.applicationId, applicantUserId: input.userId },
+    select: {
+      id: true,
+      status: true,
+      organizationId: true,
+      opportunity: {
+        select: {
+          title: true,
+          publisherOrganization: { select: { slug: true } },
+        },
+      },
+    },
+  });
+  if (!application) throw new OpportunityError("Application not found.", 404);
+  assertApplicationTransition({
+    actor: "APPLICANT",
+    from: application.status,
+    to: "UNDER_REVIEW",
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.opportunityApplication.update({
+      where: { id: application.id },
+      data: { status: "UNDER_REVIEW", informationDueAt: null },
+    });
+    const history = await tx.opportunityApplicationStatusHistory.create({
+      data: {
+        applicationId: application.id,
+        fromStatus: application.status,
+        toStatus: "UNDER_REVIEW",
+        actingUserId: input.userId,
+        applicantVisibleNote: "You sent the requested information.",
+      },
+      select: { id: true },
+    });
+    if (
+      application.organizationId &&
+      application.opportunity.publisherOrganization?.slug
+    ) {
+      await notifyApplicantResponseWithClient(tx, {
+        applicationId: application.id,
+        organizationId: application.organizationId,
+        organizationSlug: application.opportunity.publisherOrganization.slug,
+        applicantUserId: input.userId,
+        opportunityTitle: application.opportunity.title,
+        responseKey: history.id,
+      });
+    }
+  });
+  await writeAuditLog({
+    actorId: input.userId,
+    action: "OPPORTUNITY_INFORMATION_RESPONSE_SUBMITTED",
+    entityType: "OpportunityApplication",
+    entityId: application.id,
+  });
+  return { status: "UNDER_REVIEW" as const };
 }
 
 export async function listApplicationsForApplicant(userId: string) {
@@ -702,6 +855,7 @@ export async function changeApplicationStatus(input: {
       status: true,
       applicantUserId: true,
       organizationId: true,
+      opportunity: { select: { title: true } },
     },
   });
   if (!application) throw new OpportunityError("Application not found.", 404);
@@ -711,8 +865,8 @@ export async function changeApplicationStatus(input: {
     to: input.toStatus,
   });
 
-  await prisma.$transaction([
-    prisma.opportunityApplication.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.opportunityApplication.update({
       where: { id: application.id },
       data: {
         status: input.toStatus,
@@ -727,8 +881,8 @@ export async function changeApplicationStatus(input: {
             ? new Date()
             : undefined,
       },
-    }),
-    prisma.opportunityApplicationStatusHistory.create({
+    });
+    const history = await tx.opportunityApplicationStatusHistory.create({
       data: {
         applicationId: application.id,
         fromStatus: application.status,
@@ -739,8 +893,17 @@ export async function changeApplicationStatus(input: {
         applicantVisibleNote: input.applicantVisibleNote?.trim() || null,
         internalNote: input.internalNote?.trim() || null,
       },
-    }),
-  ]);
+      select: { id: true },
+    });
+    await notifyApplicationStatusWithClient(tx, {
+      applicationId: application.id,
+      applicantUserId: application.applicantUserId,
+      actorId: input.actorUserId,
+      opportunityTitle: application.opportunity.title,
+      status: input.toStatus,
+      historyId: history.id,
+    });
+  });
 
   await writeAuditLog({
     actorId: input.actorUserId,

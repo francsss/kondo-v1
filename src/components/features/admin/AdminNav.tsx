@@ -4,6 +4,7 @@ import {
   BarChart3,
   BadgeCheck,
   BookOpenText,
+  BriefcaseBusiness,
   Building2,
   Clapperboard,
   Database,
@@ -127,6 +128,12 @@ const items = [
     label: "Scholarships",
     icon: GraduationCap,
     permission: "STUDENT_HUB_CONFIG_VIEW" as const,
+  },
+  {
+    href: "/admin/opportunities",
+    label: "Opportunities",
+    icon: BriefcaseBusiness,
+    permission: "OPPORTUNITIES_VIEW" as const,
   },
   {
     href: "/admin/live",

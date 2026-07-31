@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BriefcaseBusiness } from "lucide-react";
+import { MediaImage } from "@/components/ui/MediaImage";
 import type { PublicOpportunityCard } from "@/lib/opportunities";
 
 const WINDOW_TONE: Record<string, string> = {
@@ -47,62 +49,83 @@ export function OpportunityCard({ item }: { item: PublicOpportunityCard }) {
   const state = item.applicationWindow.state;
 
   return (
-    <article className="flex h-full flex-col rounded-3xl border border-black/5 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-kondo-green/10 px-2.5 py-1 text-xs font-bold text-kondo-green">
-          {item.typeLabel}
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${WINDOW_TONE[state] ?? WINDOW_TONE.CLOSED}`}
-        >
-          {WINDOW_LABEL[state] ?? "Closed"}
-        </span>
-      </div>
-
-      <h3 className="mt-3 text-base font-black leading-snug tracking-[-0.02em]">
-        <Link href={item.href} className="hover:underline">
-          {item.title}
-        </Link>
-      </h3>
-
-      <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
-        {item.summary}
-      </p>
-
-      <dl className="mt-4 space-y-1.5 text-sm">
-        <div className="flex gap-2">
-          <dt className="sr-only">Publisher</dt>
-          <dd className="font-semibold">
-            {item.publisher.name}
-            {item.publisher.verified ? (
-              <span className="ml-1.5 text-xs font-bold text-kondo-green">
-                Verified
-              </span>
-            ) : null}
-          </dd>
+    <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5">
+      <Link
+        href={item.href}
+        className="relative block aspect-[16/8] overflow-hidden bg-kondo-green/5"
+      >
+        {item.coverMediaId ? (
+          <MediaImage
+            mediaId={item.coverMediaId}
+            alt={item.coverAltText ?? ""}
+            width={900}
+            height={450}
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          />
+        ) : (
+          <span className="grid h-full place-items-center text-kondo-green/60">
+            <BriefcaseBusiness className="h-9 w-9" />
+          </span>
+        )}
+      </Link>
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-kondo-green/10 px-2.5 py-1 text-xs font-bold text-kondo-green">
+            {item.typeLabel}
+          </span>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${WINDOW_TONE[state] ?? WINDOW_TONE.CLOSED}`}
+          >
+            {WINDOW_LABEL[state] ?? "Closed"}
+          </span>
         </div>
-        {item.location ? (
-          <div className="flex gap-2 text-muted-foreground">
-            <dt className="sr-only">Location</dt>
-            <dd>{item.location}</dd>
+
+        <h3 className="mt-3 text-base font-black leading-snug tracking-[-0.02em]">
+          <Link href={item.href} className="hover:underline">
+            {item.title}
+          </Link>
+        </h3>
+
+        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+          {item.summary}
+        </p>
+
+        <dl className="mt-4 space-y-1.5 text-sm">
+          <div className="flex gap-2">
+            <dt className="sr-only">Publisher</dt>
+            <dd className="font-semibold">
+              {item.publisher.name}
+              {item.publisher.verified ? (
+                <span className="ml-1.5 text-xs font-bold text-kondo-green">
+                  Verified
+                </span>
+              ) : null}
+            </dd>
           </div>
-        ) : null}
-        <div className="flex gap-2 text-muted-foreground">
-          <dt className="sr-only">Compensation</dt>
-          {/* Never a fabricated range: absent data is stated as absent. */}
-          <dd>{item.compensationSummary ?? "Compensation not specified"}</dd>
-        </div>
-      </dl>
+          {item.location ? (
+            <div className="flex gap-2 text-muted-foreground">
+              <dt className="sr-only">Location</dt>
+              <dd>{item.location}</dd>
+            </div>
+          ) : null}
+          <div className="flex gap-2 text-muted-foreground">
+            <dt className="sr-only">Compensation</dt>
+            {/* Never a fabricated range: absent data is stated as absent. */}
+            <dd>{item.compensationSummary ?? "Compensation not specified"}</dd>
+          </div>
+        </dl>
 
-      {deadline ? (
-        <p className="mt-4 border-t border-black/5 pt-3 text-xs font-semibold text-muted-foreground dark:border-white/10">
-          Deadline: {deadline}
-        </p>
-      ) : item.applicationWindow.rolling ? (
-        <p className="mt-4 border-t border-black/5 pt-3 text-xs font-semibold text-muted-foreground dark:border-white/10">
-          Rolling applications
-        </p>
-      ) : null}
+        {deadline ? (
+          <p className="mt-4 border-t border-black/5 pt-3 text-xs font-semibold text-muted-foreground dark:border-white/10">
+            Deadline: {deadline}
+          </p>
+        ) : item.applicationWindow.rolling ? (
+          <p className="mt-4 border-t border-black/5 pt-3 text-xs font-semibold text-muted-foreground dark:border-white/10">
+            Rolling applications
+          </p>
+        ) : null}
+      </div>
     </article>
   );
 }

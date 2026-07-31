@@ -276,6 +276,55 @@ export const applicationRequirementSchema = z.object({
   sortOrder: z.number().int().min(0).max(99).default(0),
 });
 
+export const opportunityBenefitSchema = z.object({
+  type: z.enum([
+    "TUITION",
+    "ACCOMMODATION",
+    "STIPEND",
+    "SALARY",
+    "INSURANCE",
+    "TRAVEL",
+    "REGISTRATION_FEE",
+    "MEALS",
+    "TRANSPORT",
+    "VISA_SUPPORT",
+    "HOUSING_SUPPORT",
+    "OTHER",
+  ]),
+  amountMinor: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
+  currency: z.string().trim().length(3).optional().nullable(),
+  period: z
+    .enum(["HOUR", "DAY", "WEEK", "MONTH", "YEAR", "TOTAL"])
+    .optional()
+    .nullable(),
+  description: z.string().trim().max(400).optional().nullable(),
+  confidence: z
+    .enum(["CONFIRMED", "POSSIBLE", "NOT_SPECIFIED"])
+    .default("NOT_SPECIFIED"),
+  sortOrder: z.number().int().min(0).max(99).default(0),
+});
+
+export const opportunityLanguageRequirementSchema = z.object({
+  language: z.string().trim().min(2).max(80),
+  level: z.enum(["BASIC", "INTERMEDIATE", "ADVANCED", "FLUENT", "NATIVE"]),
+  certificateType: z.string().trim().max(80).optional().nullable(),
+  required: z.boolean().default(true),
+});
+
+export const opportunityAuthoringSchema = z.object({
+  draft: opportunityDraftSchema,
+  scholarship: scholarshipDetailSchema.optional().nullable(),
+  job: jobDetailSchema.optional().nullable(),
+  eligibilityRules: z.array(eligibilityRuleSchema).max(40).optional(),
+  benefits: z.array(opportunityBenefitSchema).max(30).optional(),
+  requirements: z.array(applicationRequirementSchema).max(20).optional(),
+  questions: z.array(applicationQuestionSchema).max(30).optional(),
+  languageRequirements: z
+    .array(opportunityLanguageRequirementSchema)
+    .max(20)
+    .optional(),
+});
+
 export const saveOpportunitySchema = z.object({
   remindBeforeDays: z
     .union([z.literal(14), z.literal(7), z.literal(3), z.literal(1)])
@@ -356,4 +405,34 @@ export const opportunityProfileSchema = z.object({
     .array(z.union([z.literal(14), z.literal(7), z.literal(3), z.literal(1)]))
     .max(4)
     .optional(),
+});
+
+export const opportunityInterviewSchema = z
+  .object({
+    format: z.enum(["VIDEO", "PHONE", "IN_PERSON", "OTHER"]),
+    scheduledAt: z.coerce.date(),
+    timezone: z.string().trim().min(2).max(64),
+    locationLabel: z.string().trim().max(240).optional().nullable(),
+    meetingUrl: externalUrl.optional().nullable(),
+    preparationNote: z.string().trim().max(2000).optional().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.format === "VIDEO" && !value.meetingUrl) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["meetingUrl"],
+        message: "Add the secure interview meeting link.",
+      });
+    }
+    if (value.format === "IN_PERSON" && !value.locationLabel) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["locationLabel"],
+        message: "Add the interview location.",
+      });
+    }
+  });
+
+export const opportunityInterviewResponseSchema = z.object({
+  response: z.enum(["ACCEPTED", "DECLINED"]),
 });

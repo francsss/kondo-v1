@@ -10,6 +10,7 @@ import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { hasOrganizationPermission } from "@/lib/organization-authorization";
 import { publicHousingListingWhere } from "@/lib/housing-visibility";
+import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
 import { MediaPolicyError, validateMediaIntent } from "@/lib/media-policy";
 import {
   createMediaUploadToken,
@@ -901,6 +902,97 @@ export async function getMediaForDelivery(
       Boolean(ownsPersonalListing) ||
       managesOrganizationListing ||
       canReviewProof;
+  }
+  if (
+    !authorized &&
+    asset.attachmentType === "OPPORTUNITY_COVER" &&
+    asset.attachmentId
+  ) {
+    const cover = await prisma.opportunityMedia.findFirst({
+      where: {
+        mediaId: asset.id,
+        opportunityId: asset.attachmentId,
+        isCover: true,
+        opportunity: publicOpportunityWhere({ scope: "HISTORICAL" }),
+      },
+      select: { id: true },
+    });
+    publiclyAuthorized = Boolean(cover);
+    if (!publiclyAuthorized && viewer) {
+      const membership = await prisma.opportunityMedia.findFirst({
+        where: {
+          mediaId: asset.id,
+          opportunity: {
+            publisherOrganization: {
+              memberships: {
+                some: { userId: viewer.id, status: "ACTIVE" },
+              },
+            },
+          },
+        },
+        select: { id: true },
+      });
+      authorized = Boolean(membership);
+    } else {
+      authorized = publiclyAuthorized;
+    }
+  }
+  if (
+    !authorized &&
+    viewer &&
+    asset.purpose === "OPPORTUNITY_APPLICATION_DOCUMENT"
+  ) {
+    const document = await prisma.userOpportunityDocument.findFirst({
+      where: {
+        mediaId: asset.id,
+        attachments: {
+          some: {
+            application: {
+              status: { not: "DRAFT" },
+              organization: {
+                memberships: {
+                  some: { userId: viewer.id, status: "ACTIVE" },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: {
+        attachments: {
+          where: {
+            application: {
+              status: { not: "DRAFT" },
+              organization: {
+                memberships: {
+                  some: { userId: viewer.id, status: "ACTIVE" },
+                },
+              },
+            },
+          },
+          select: {
+            application: {
+              select: {
+                organization: {
+                  select: {
+                    memberships: {
+                      where: { userId: viewer.id, status: "ACTIVE" },
+                      select: { role: true, status: true },
+                      take: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          take: 1,
+        },
+      },
+    });
+    authorized = hasOrganizationPermission(
+      document?.attachments[0]?.application.organization?.memberships[0],
+      "ORGANIZATION_REVIEW_APPLICATIONS",
+    );
   }
   if (!authorized) throw new MediaError("Media was not found.", 404);
   return publiclyAuthorized

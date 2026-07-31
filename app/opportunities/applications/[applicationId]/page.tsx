@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { OpportunityApplicationActions } from "@/components/features/opportunities/OpportunityApplicationActions";
 import { getApplicationForApplicant } from "@/lib/opportunity-applications";
 import { requireUser } from "@/lib/server-auth";
 
@@ -63,6 +64,13 @@ export default async function ApplicationDetailPage({
           ))}
         </ol>
       </section>
+
+      <OpportunityApplicationActions
+        applicationId={application.id}
+        status={application.status}
+        opportunityHref={application.opportunity.href}
+        interviews={application.interviews}
+      />
 
       <p className="mt-8 text-xs text-muted-foreground">
         A recorded offer means the provider registered it in Kondo. It is not a

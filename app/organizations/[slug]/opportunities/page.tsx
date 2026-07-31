@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { hasOrganizationPermission } from "@/lib/organization-authorization";
 import { listOrganizationOpportunities } from "@/lib/opportunity-management";
 import { opportunityLifecycleLabel } from "@/lib/opportunity-lifecycle";
 import { prisma } from "@/lib/prisma";
@@ -20,7 +23,16 @@ export default async function OrganizationOpportunitiesPage({
   const user = await requireUser();
   const organization = await prisma.organization.findUnique({
     where: { slug: (await params).slug },
-    select: { id: true, slug: true, publicName: true },
+    select: {
+      id: true,
+      slug: true,
+      publicName: true,
+      memberships: {
+        where: { userId: user.id, status: "ACTIVE" },
+        select: { role: true, status: true },
+        take: 1,
+      },
+    },
   });
   if (!organization) notFound();
 
@@ -30,15 +42,32 @@ export default async function OrganizationOpportunitiesPage({
     userId: user.id,
     organizationId: organization.id,
   });
+  const canCreate = organization.memberships[0]
+    ? hasOrganizationPermission(
+        organization.memberships[0],
+        "ORGANIZATION_CREATE_OPPORTUNITIES",
+      )
+    : false;
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 pb-20 pt-8 sm:px-6 lg:pt-12">
       <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
         {organization.publicName}
       </p>
-      <h1 className="mt-2 text-3xl font-black tracking-[-0.04em]">
-        Opportunities
-      </h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-black tracking-[-0.04em]">
+          Opportunities
+        </h1>
+        {canCreate ? (
+          <Button asChild>
+            <Link
+              href={`/organizations/${organization.slug}/opportunities/new`}
+            >
+              <Plus className="h-4 w-4" /> Create opportunity
+            </Link>
+          </Button>
+        ) : null}
+      </div>
       <p className="mt-2 text-sm text-muted-foreground">
         Scholarships, internships, jobs and programs published by this
         organization.
@@ -81,7 +110,7 @@ export default async function OrganizationOpportunitiesPage({
                 >
                   <td className="py-3 pr-4 font-semibold">
                     <Link
-                      href={`/organizations/${organization.slug}/opportunities/${opportunity.id}/applications`}
+                      href={`/organizations/${organization.slug}/opportunities/${opportunity.id}/edit`}
                       className="hover:underline"
                     >
                       {opportunity.title}
@@ -99,7 +128,18 @@ export default async function OrganizationOpportunitiesPage({
                       : "—"}
                   </td>
                   {/* Counts only; no applicant detail in the list view. */}
-                  <td className="py-3">{opportunity.applicationCount}</td>
+                  <td className="py-3">
+                    {opportunity.applicationCount > 0 ? (
+                      <Link
+                        href={`/organizations/${organization.slug}/opportunities/${opportunity.id}/applications`}
+                        className="font-bold underline"
+                      >
+                        {opportunity.applicationCount}
+                      </Link>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

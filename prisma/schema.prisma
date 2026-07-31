@@ -1006,6 +1006,7 @@ model User {
   opportunityApplications             OpportunityApplication[]              @relation("OpportunityApplicant")
   reviewingOpportunityApplications    OpportunityApplication[]              @relation("OpportunityApplicationReviewer")
   opportunityApplicationStatusActions OpportunityApplicationStatusHistory[] @relation("OpportunityApplicationStatusActor")
+  createdOpportunityInterviews        OpportunityInterview[]                @relation("OpportunityInterviewCreator")
   auditLogs                           AuditLog[]                            @relation("AuditActor")
   analyticsEvents                     AnalyticsEvent[]
   presence                            UserPresence?
@@ -3491,6 +3492,21 @@ enum OpportunityApplicationStatus {
   CANCELLED
 }
 
+enum OpportunityInterviewFormat {
+  VIDEO
+  PHONE
+  IN_PERSON
+  OTHER
+}
+
+enum OpportunityInterviewStatus {
+  PROPOSED
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  COMPLETED
+}
+
 enum OpportunityMediaKind {
   COVER
   GALLERY
@@ -3849,6 +3865,7 @@ model OpportunityApplication {
   answers       OpportunityApplicationAnswer[]
   documents     OpportunityApplicationDocument[]
   statusHistory OpportunityApplicationStatusHistory[]
+  interviews    OpportunityInterview[]
 
   // One active application per user and opportunity.
   @@unique([opportunityId, applicantUserId])
@@ -3856,6 +3873,28 @@ model OpportunityApplication {
   @@index([organizationId, status, submittedAt])
   @@index([opportunityId, status, submittedAt])
   @@index([assignedReviewerUserId, status])
+}
+
+model OpportunityInterview {
+  id                   String                     @id @default(cuid())
+  applicationId        String
+  application          OpportunityApplication     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  format               OpportunityInterviewFormat
+  scheduledAt          DateTime
+  timezone             String                     @db.VarChar(64)
+  locationLabel        String?                    @db.VarChar(240)
+  meetingUrl           String?                    @db.VarChar(500)
+  preparationNote      String?                    @db.VarChar(2000)
+  status               OpportunityInterviewStatus @default(PROPOSED)
+  createdByUserId      String
+  createdByUser        User                       @relation("OpportunityInterviewCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  applicantRespondedAt DateTime?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  @@index([applicationId, scheduledAt])
+  @@index([createdByUserId, createdAt])
+  @@index([status, scheduledAt])
 }
 
 model OpportunityApplicationAnswer {

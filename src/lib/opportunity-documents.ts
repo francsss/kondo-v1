@@ -116,6 +116,8 @@ export async function createUserOpportunityDocument(input: {
       ownerId: input.userId,
       purpose: "OPPORTUNITY_APPLICATION_DOCUMENT",
       visibility: "PRIVATE",
+      status: "ACTIVE",
+      scanStatus: "CLEAN",
     },
     select: { id: true, status: true, scanStatus: true },
   });

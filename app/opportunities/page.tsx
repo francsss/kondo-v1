@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OpportunityCard } from "@/components/features/opportunities/OpportunityCard";
+import { OpportunityFilters } from "@/components/features/opportunities/OpportunityFilters";
 import { listLegacyScholarshipCards } from "@/lib/opportunity-legacy-scholarships";
 import { searchOpportunities } from "@/lib/opportunity-search";
+import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = {
@@ -21,20 +24,37 @@ const CATEGORIES = [
   { key: "volunteering", label: "Volunteering" },
 ];
 
+function deadlineFromDays(value: string | undefined) {
+  return ["7", "30", "90"].includes(value ?? "")
+    ? new Date(Date.now() + Number(value) * 86_400_000)
+    : null;
+}
+
 export default async function OpportunitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const [{ q = "", category = "" }, user] = await Promise.all([
-    searchParams,
-    getCurrentUser(),
-  ]);
+  const [params, user] = await Promise.all([searchParams, getCurrentUser()]);
+  const { q = "", category = "" } = params;
 
-  const [results, legacy] = await Promise.all([
+  const [results, legacy, optionRows] = await Promise.all([
     searchOpportunities({
       query: q || null,
       category: category || null,
+      countryId: params.countryId || null,
+      cityId: params.cityId || null,
+      universityId: params.universityId || null,
+      workModes: params.workMode ? [params.workMode] : null,
+      degreeLevels: params.degreeLevel ? [params.degreeLevel] : null,
+      fundingTypes: params.funding ? [params.funding] : null,
+      applicationMethods: params.applicationMethod
+        ? [params.applicationMethod]
+        : null,
+      paidOnly: params.paid === "true",
+      verifiedOnly: params.verified === "true",
+      officialPartnerOnly: params.partner === "true",
+      deadlineBefore: deadlineFromDays(params.deadlineDays),
       viewerUserId: user?.id ?? null,
       limit: 18,
     }),
@@ -43,7 +63,23 @@ export default async function OpportunitiesPage({
     category === "" || category === "scholarships"
       ? listLegacyScholarshipCards({ query: q || null, limit: 6 })
       : Promise.resolve([]),
+    prisma.opportunity.findMany({
+      where: publicOpportunityWhere(),
+      select: {
+        country: { select: { id: true, name: true } },
+        city: { select: { id: true, name: true } },
+        university: { select: { id: true, name: true } },
+      },
+      take: 500,
+    }),
   ]);
+
+  const uniqueOptions = (values: Array<{ id: string; name: string } | null>) =>
+    [
+      ...new Map(
+        values.filter(Boolean).map((item) => [item!.id, item!]),
+      ).values(),
+    ].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
@@ -85,22 +121,11 @@ export default async function OpportunitiesPage({
         </ul>
       </nav>
 
-      <form className="mt-5" role="search">
-        <label htmlFor="opportunity-search" className="sr-only">
-          Search opportunities
-        </label>
-        <input
-          id="opportunity-search"
-          name="q"
-          type="search"
-          defaultValue={q}
-          placeholder="Search scholarships, internships, jobs…"
-          className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-kondo-green dark:border-white/10 dark:bg-white/5"
-        />
-        {category ? (
-          <input type="hidden" name="category" value={category} />
-        ) : null}
-      </form>
+      <OpportunityFilters
+        countries={uniqueOptions(optionRows.map((row) => row.country))}
+        cities={uniqueOptions(optionRows.map((row) => row.city))}
+        universities={uniqueOptions(optionRows.map((row) => row.university))}
+      />
 
       {results.items.length === 0 && legacy.length === 0 ? (
         <p className="mt-10 rounded-3xl border border-dashed border-black/10 p-8 text-center text-sm text-muted-foreground dark:border-white/15">
