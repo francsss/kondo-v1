@@ -278,3 +278,38 @@ publish the organization.
 Suspension and archive continue through the existing lifecycle controls and
 override publication immediately. Verification and official partnership
 remain separate decisions.
+
+## Opportunities (Part 5)
+
+Routes:
+
+- `/admin/opportunities` — every opportunity with publisher, lifecycle,
+  moderation-block state and an application **count only**. Private application
+  content never appears in a list view.
+- `POST /api/admin/opportunities/[id]/moderate` — approve, reject, pause,
+  remove, restore, or block an unsafe external source.
+
+Permissions:
+
+| Permission                                              | MODERATOR | ADMIN  | SUPER_ADMIN |
+| ------------------------------------------------------- | --------- | ------ | ----------- |
+| `OPPORTUNITIES_VIEW`                                    | yes       | yes    | yes         |
+| `OPPORTUNITIES_REVIEW`                                  | yes       | yes    | yes         |
+| `OPPORTUNITY_REPORTS_REVIEW`                            | yes       | yes    | yes         |
+| `OPPORTUNITIES_MANAGE`                                  | no        | yes    | yes         |
+| `OPPORTUNITIES_REMOVE`                                  | no        | yes    | yes         |
+| `SCHOLARSHIP_AGENTS_VIEW` / `SCHOLARSHIP_AGENTS_MANAGE` | no        | yes    | yes         |
+| `OPPORTUNITY_PUBLISHERS_RESTRICT`                       | no        | yes    | yes         |
+| `OPPORTUNITY_APPLICATIONS_VIEW`                         | no        | **no** | yes         |
+| `OPPORTUNITY_APPLICATIONS_SUPPORT`                      | no        | **no** | yes         |
+
+Applicant private data is deliberately outside the ordinary ADMIN role.
+`OPPORTUNITY_APPLICATIONS_VIEW` and `OPPORTUNITY_APPLICATIONS_SUPPORT` are held
+only by SUPER_ADMIN, are purpose-limited to abuse investigation, technical
+support, legal compliance, account recovery and report investigation, and are
+never implied by `OPPORTUNITIES_MANAGE`.
+
+Removing an opportunity hides it from every public surface and invalidates the
+public page, search, Student Hub and organization projections. It never deletes
+submitted applications: applicants keep their history and see a safe
+unavailable state.

@@ -1646,6 +1646,78 @@ Housing does not implement bookings, payment collection, escrow, contract
 generation, legal guarantees, property inspection guarantees, a shared
 organization inbox, or AI fraud detection.
 
+## 20. Opportunities (Part 5)
+
+The Opportunities domain is the single source of truth for scholarships,
+internships, graduate internships, part-time, full-time and campus jobs,
+research opportunities, volunteering, competitions, exchange and summer
+programs. It is a dedicated domain: opportunities are never stored as
+Marketplace products, Community posts or generic organization content.
+
+Implemented:
+
+- a centralized opportunity-type registry (`src/lib/opportunity-types.ts`)
+  owning every label, category, capability requirement, supported publisher,
+  allowed application method and indexing decision;
+- three publisher kinds — organization, Kondo editorial, and legacy
+  ScholarshipAgent — with capability, permission and organization-lifecycle
+  checked independently, so enabling a capability never grants a member the
+  right to publish;
+- a centralized nine-state lifecycle with per-actor transitions
+  (`opportunity-lifecycle.ts`); publishers can never assign a moderation state
+  and a removed opportunity is restored to review, never straight to public;
+- a server-side application-window resolver with a documented seven-day
+  "closing soon" threshold, a fixed date plus timezone instead of a live
+  countdown, and no trust in the client clock;
+- typed scholarship and job detail tables rather than one weak JSON blob;
+  absent compensation renders as "Compensation not specified" and benefits
+  carry an explicit confirmed / possible / not-specified confidence;
+- advisory, explainable eligibility with no opaque score: every rule resolves to
+  MET / UNMET / UNKNOWN with a reason, missing profile data yields UNKNOWN and
+  never a rejection, and the result is computed per viewer, never cached in a
+  shared cache and never exposed to the publisher;
+- saved opportunities with opt-in deadline reminders; publishers never see
+  saver identities and no save count is exposed publicly;
+- five explicit application methods; an external redirect is always labelled as
+  leaving Kondo and never reported as a completed submission, and external URLs
+  are validated to plain http(s);
+- a private candidate document vault on the existing MediaAsset pipeline under
+  the dedicated private purpose `OPPORTUNITY_APPLICATION_DOCUMENT`, reusing one
+  row across applications instead of copying files, and never serializing a
+  storage key;
+- a Kondo application workflow whose deadline, duplicate, required-answer and
+  required-document checks are re-run inside the submission transaction, with an
+  immutable submission snapshot that later profile edits cannot rewrite, and a
+  preserved draft when a deadline passes mid-edit;
+- a thirteen-state application machine keyed by actor: an applicant cannot
+  shortlist or offer themselves, a reviewer cannot act on a draft or a withdrawn
+  application, and applicant-visible and internal notes live in separate columns;
+- organization application review scoped by `organizationId` with a permission
+  set separate from publishing — EDITOR may author and submit opportunities but
+  holds no application access — plus single-reviewer assignment;
+- Student Hub rails and public organization-page projections that query the live
+  domain behind the same visibility rule rather than copying records;
+- unified opportunity search plus global-search integration, both restricted to
+  publicly eligible records and public columns;
+- reporting through the existing Report model with a metadata-only evidence
+  snapshot, and platform moderation that hides an opportunity everywhere without
+  deleting submitted applications.
+
+ScholarshipAgent compatibility: the legacy `Scholarship`, `ScholarshipUniversity`,
+`ScholarshipFavorite` and `ScholarshipAgent` tables are untouched and remain
+authoritative for their records. The existing Student Hub scholarship directory
+keeps reading them directly and keeps its own canonical URLs. A read-only adapter
+(`opportunity-legacy-scholarships.ts`) projects them into unified discovery,
+deduplicated against `Opportunity.legacySourceKey`, so one source never appears
+twice. No legacy record is migrated, reassigned or given a synthetic
+organization. Full migration is deferred.
+
+Opportunities does not implement paid applications, application fees,
+recruitment commissions, guaranteed admission, awards or internships,
+employment contracts, payroll, employer background checks, immigration or visa
+advice, automated rejection on sensitive attributes, black-box ranking, a public
+candidate database, or organization reviews.
+
 ## 20. Required validation for changes
 
 Minimum code-quality gate:

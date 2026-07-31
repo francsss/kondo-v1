@@ -102,6 +102,17 @@ Browser
 - Engagement: paginated premium notification cards with individual/bulk read state, soft hiding, live badge counts, category preferences, safe links, templates, foreground banners, optional sound/haptics, Web Push, asynchronous producers, bookmarks, and WAU analytics. `src/features/notifications/presentation.ts` is the reusable category/icon/action registry, while `/kondo-sw.js` owns background display and safe notification-click routing.
 - City exploration: typed city and section contracts, database-backed versioned draft/published snapshots, structured Admin forms, protected draft previews, explicit revise/unpublish actions, a compatibility registry for unmanaged cities, reusable city/section routes, and editorial source links. Adding another city does not require a new page or component architecture.
 
+Part 5 adds the Opportunities domain: a dedicated set of models for
+scholarships, internships, jobs, research and programs, owned by
+`src/lib/opportunity-*.ts`. Public exposure runs through one policy module
+(`opportunity-visibility.ts`) reused by the public route, search, global search,
+Student Hub, organization projections, metadata and the sitemap. Application
+authorization is deliberately a separate set of functions in that same module,
+so public visibility can never be mistaken for permission to apply or to review.
+Private candidate documents use the existing MediaAsset pipeline under a
+dedicated private purpose and are delivered only to the applicant or to an
+authorized reviewer of an application the document is attached to.
+
 ## Scalability decisions
 
 - PostgreSQL foreign keys and compound indexes serve the MVP query shapes.

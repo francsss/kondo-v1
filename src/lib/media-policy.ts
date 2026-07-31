@@ -219,6 +219,35 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     },
     altRequired: false,
   },
+  OPPORTUNITY_COVER_IMAGE: {
+    kind: "IMAGE",
+    visibility: "PRIVATE",
+    maxBytes: 8 * 1024 * 1024,
+    mimeExtensions: imageTypes,
+    minWidth: 640,
+    minHeight: 320,
+    maxWidth: 8192,
+    maxHeight: 8192,
+    altRequired: true,
+  },
+  // Private candidate documents (CV, transcript, certificates). Deliberately
+  // narrower than the organization verification policy: PDF and the three safe
+  // raster image types only, so SVG and other active content can never enter
+  // the application pipeline. These assets are never served publicly and are
+  // only delivered to the applicant and to authorized reviewers of an
+  // application the document is actually attached to.
+  OPPORTUNITY_APPLICATION_DOCUMENT: {
+    kind: "MIXED",
+    visibility: "PRIVATE",
+    maxBytes: 10 * 1024 * 1024,
+    mimeExtensions: {
+      ...imageTypes,
+      "application/pdf": ["pdf"],
+    },
+    maxWidth: 8192,
+    maxHeight: 8192,
+    altRequired: false,
+  },
 };
 
 export class MediaPolicyError extends Error {

@@ -9,6 +9,7 @@ import {
 } from "@/lib/content-visibility";
 import { organizationTypeLabel } from "@/features/organizations/registry";
 import { organizationPublicVisibilityWhere } from "@/lib/organization-public-visibility";
+import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
 import { prisma } from "@/lib/prisma";
 import {
   safePublicUserSelect,
@@ -271,7 +272,8 @@ export async function searchKondo(
     universities,
     countries,
     cities,
-    opportunities,
+    legacyScholarships,
+    unifiedOpportunities,
   ] = await Promise.all([
     prisma.community.findMany({
       where: {
@@ -438,7 +440,46 @@ export async function searchKondo(
         status: true,
       },
     }),
+    // Unified opportunities. Only publicly eligible records are searched, and
+    // only public columns: applicant data, answers, documents, internal notes,
+    // reviewer assignments and private eligibility never take part.
+    prisma.opportunity.findMany({
+      where: {
+        ...publicOpportunityWhere(),
+        OR: [
+          { title: { contains: term, mode: "insensitive" } },
+          { shortDescription: { contains: term, mode: "insensitive" } },
+          { locationLabel: { contains: term, mode: "insensitive" } },
+          {
+            publisherOrganization: {
+              publicName: { contains: term, mode: "insensitive" },
+            },
+          },
+        ],
+      },
+      orderBy: [
+        { applicationDeadline: { sort: "asc", nulls: "last" } },
+        { publishedAt: "desc" },
+        { id: "asc" },
+      ],
+      take: previewLimit,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        legacySourceKey: true,
+        publisherOrganization: { select: { publicName: true } },
+      },
+    }),
   ]);
+
+  // Legacy scholarships already migrated into a unified Opportunity carry the
+  // matching legacySourceKey; those rows are suppressed below.
+  const claimedLegacyKeys = new Set(
+    unifiedOpportunities.flatMap((opportunity) =>
+      opportunity.legacySourceKey ? [opportunity.legacySourceKey] : [],
+    ),
+  );
 
   return {
     organizations: orderByRank(organizations, organizationRanks).map(
@@ -508,7 +549,21 @@ export async function searchKondo(
     })),
     countries,
     cities,
-    opportunities,
+    // Unified records first, then legacy scholarships that no unified record
+    // already represents, so one source never appears twice.
+    opportunities: [
+      ...unifiedOpportunities.map((opportunity) => ({
+        id: opportunity.id,
+        slug: opportunity.slug,
+        title: opportunity.title,
+        provider: opportunity.publisherOrganization?.publicName ?? "Kondo",
+        status: "OPEN",
+      })),
+      ...legacyScholarships.filter(
+        (scholarship) =>
+          !claimedLegacyKeys.has(`legacy-scholarship:${scholarship.id}`),
+      ),
+    ].slice(0, previewLimit),
   };
 }
 
