@@ -2785,22 +2785,24 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  type           MessageType  @default(TEXT)
-  body           String?      @db.Text
-  attachmentKey  String?
-  attachmentName String?
-  attachmentMime String?
-  attachmentSize Int?
-  mediaId        String?      @unique
-  media          MediaAsset?  @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
-  editedAt       DateTime?
-  createdAt      DateTime     @default(now())
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  clientMessageId String?      @db.VarChar(64)
+  type            MessageType  @default(TEXT)
+  body            String?      @db.Text
+  attachmentKey   String?
+  attachmentName  String?
+  attachmentMime  String?
+  attachmentSize  Int?
+  mediaId         String?      @unique
+  media           MediaAsset?  @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  editedAt        DateTime?
+  createdAt       DateTime     @default(now())
 
+  @@unique([senderId, clientMessageId])
   @@index([conversationId, createdAt])
   @@index([senderId, createdAt])
 }

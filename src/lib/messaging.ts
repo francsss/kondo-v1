@@ -17,6 +17,7 @@ const messageSelect = {
   id: true,
   conversationId: true,
   senderId: true,
+  clientMessageId: true,
   type: true,
   body: true,
   attachmentName: true,
@@ -36,6 +37,22 @@ const messageSelect = {
 
 type SelectedMessage = Prisma.MessageGetPayload<{
   select: typeof messageSelect;
+}>;
+
+const conversationMessageSelect = {
+  ...messageSelect,
+  sender: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      avatarMediaId: true,
+    },
+  },
+} satisfies Prisma.MessageSelect;
+
+type SelectedConversationMessage = Prisma.MessageGetPayload<{
+  select: typeof conversationMessageSelect;
 }>;
 
 export class MessagingError extends Error {
@@ -60,12 +77,16 @@ function safeMessageDto(message: SelectedMessage) {
   return {
     id: message.id,
     senderId: message.senderId,
+    clientMessageId: message.clientMessageId,
     type: message.type,
     body: message.body,
     attachment: message.media
       ? {
           id: message.media.id,
-          kind: message.media.kind,
+          kind:
+            message.type === "IMAGE"
+              ? ("IMAGE" as const)
+              : ("DOCUMENT" as const),
           name: message.attachmentName,
           mimeType: message.attachmentMime,
           sizeBytes: message.attachmentSize,
@@ -76,7 +97,10 @@ function safeMessageDto(message: SelectedMessage) {
       : message.type !== "TEXT"
         ? {
             id: null,
-            kind: message.type === "IMAGE" ? "IMAGE" : "DOCUMENT",
+            kind:
+              message.type === "IMAGE"
+                ? ("IMAGE" as const)
+                : ("DOCUMENT" as const),
             name: message.attachmentName,
             mimeType: message.attachmentMime,
             sizeBytes: message.attachmentSize,
@@ -87,6 +111,13 @@ function safeMessageDto(message: SelectedMessage) {
         : null,
     editedAt: message.editedAt,
     createdAt: message.createdAt,
+  };
+}
+
+function safeConversationMessageDto(message: SelectedConversationMessage) {
+  return {
+    ...safeMessageDto(message),
+    sender: message.sender,
   };
 }
 
@@ -223,6 +254,29 @@ function messagePreview(body: string | undefined, mediaName?: string | null) {
   );
 }
 
+async function findIdempotentMessage(
+  senderId: string,
+  clientMessageId: string | undefined,
+  conversationId?: string,
+) {
+  if (!clientMessageId) return null;
+  const message = await prisma.message.findUnique({
+    where: { senderId_clientMessageId: { senderId, clientMessageId } },
+    select: messageSelect,
+  });
+  if (
+    !message ||
+    (conversationId && message.conversationId !== conversationId)
+  ) {
+    return null;
+  }
+  return {
+    conversationId: message.conversationId,
+    message: safeMessageDto(message),
+    deduplicated: true,
+  };
+}
+
 async function persistMessage(
   tx: Prisma.TransactionClient,
   input: {
@@ -231,12 +285,34 @@ async function persistMessage(
     recipientId: string;
     body?: string;
     mediaId?: string;
+    clientMessageId?: string;
     senderName: string;
     notificationType?: "MESSAGE" | "MARKETPLACE_UPDATE" | "HOUSING";
     templateKey?: "MESSAGE_NEW" | "MARKETPLACE_CONTACT" | "HOUSING_INQUIRY";
     notificationData?: Record<string, string>;
   },
 ) {
+  if (input.clientMessageId) {
+    const existing = await tx.message.findUnique({
+      where: {
+        senderId_clientMessageId: {
+          senderId: input.senderId,
+          clientMessageId: input.clientMessageId,
+        },
+      },
+      select: messageSelect,
+    });
+    if (existing) {
+      if (existing.conversationId !== input.conversationId) {
+        throw new MessagingError("Message request is already in use.", 409);
+      }
+      return {
+        conversationId: input.conversationId,
+        message: safeMessageDto(existing),
+        deduplicated: true,
+      };
+    }
+  }
   await rejectRecentDuplicate(
     tx,
     input.conversationId,
@@ -252,6 +328,7 @@ async function persistMessage(
     data: {
       conversationId: input.conversationId,
       senderId: input.senderId,
+      clientMessageId: input.clientMessageId ?? null,
       body: input.body ?? null,
       ...(media ?? {}),
     },
@@ -301,6 +378,7 @@ async function persistMessage(
   return {
     conversationId: input.conversationId,
     message: safeMessageDto(message),
+    deduplicated: false,
   };
 }
 
@@ -309,6 +387,7 @@ export async function createDirectMessage(input: {
   recipientId: string;
   body?: string;
   mediaId?: string;
+  clientMessageId?: string;
   sourceType?: "MARKETPLACE_LISTING" | "HOUSING_LISTING" | "ROOMMATE_INTEREST";
   sourceId?: string;
 }) {
@@ -422,6 +501,7 @@ export async function createDirectMessage(input: {
         recipientId: input.recipientId,
         body: input.body,
         mediaId: input.mediaId,
+        clientMessageId: input.clientMessageId,
         senderName: `${sender.firstName} ${sender.lastName}`,
         notificationType: listing
           ? "MARKETPLACE_UPDATE"
@@ -446,39 +526,46 @@ export async function createDirectMessage(input: {
             : undefined,
       });
     });
-    await Promise.all([
-      trackEvent({
-        name: "MESSAGE_SENT",
-        userId: input.senderId,
-        properties: { messageType: result.message.type },
-      }),
-      !existingConversation
-        ? captureServerProductEvent({
-            distinctId: input.senderId,
-            event: PRODUCT_EVENTS.CONVERSATION_CREATED,
-            properties: { source_type: input.sourceType ?? "direct" },
-          })
-        : Promise.resolve(),
-      result.message.type === "IMAGE"
-        ? captureServerProductEvent({
-            distinctId: input.senderId,
-            event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
-          })
-        : Promise.resolve(),
-      listing
-        ? trackEvent({
-            name: "LISTING_CONTACTED",
-            userId: input.senderId,
-            properties: { listingId: listing.id },
-          })
-        : Promise.resolve(),
-    ]);
+    if (!result.deduplicated) {
+      await Promise.all([
+        trackEvent({
+          name: "MESSAGE_SENT",
+          userId: input.senderId,
+          properties: { messageType: result.message.type },
+        }),
+        !existingConversation
+          ? captureServerProductEvent({
+              distinctId: input.senderId,
+              event: PRODUCT_EVENTS.CONVERSATION_CREATED,
+              properties: { source_type: input.sourceType ?? "direct" },
+            })
+          : Promise.resolve(),
+        result.message.type === "IMAGE"
+          ? captureServerProductEvent({
+              distinctId: input.senderId,
+              event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
+            })
+          : Promise.resolve(),
+        listing
+          ? trackEvent({
+              name: "LISTING_CONTACTED",
+              userId: input.senderId,
+              properties: { listingId: listing.id },
+            })
+          : Promise.resolve(),
+      ]);
+    }
     return result;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
+      const existing = await findIdempotentMessage(
+        input.senderId,
+        input.clientMessageId,
+      );
+      if (existing) return existing;
       throw new MessagingError("This attachment was already sent.", 409);
     }
     throw error;
@@ -490,6 +577,7 @@ export async function replyToConversation(input: {
   senderId: string;
   body?: string;
   mediaId?: string;
+  clientMessageId?: string;
 }) {
   const membership = await prisma.conversationParticipant.findUnique({
     where: {
@@ -537,28 +625,37 @@ export async function replyToConversation(input: {
         recipientId,
         body: input.body,
         mediaId: input.mediaId,
+        clientMessageId: input.clientMessageId,
         senderName: `${sender.firstName} ${sender.lastName}`,
       }),
     );
-    await Promise.all([
-      trackEvent({
-        name: "MESSAGE_SENT",
-        userId: input.senderId,
-        properties: { messageType: result.message.type },
-      }),
-      result.message.type === "IMAGE"
-        ? captureServerProductEvent({
-            distinctId: input.senderId,
-            event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
-          })
-        : Promise.resolve(),
-    ]);
+    if (!result.deduplicated) {
+      await Promise.all([
+        trackEvent({
+          name: "MESSAGE_SENT",
+          userId: input.senderId,
+          properties: { messageType: result.message.type },
+        }),
+        result.message.type === "IMAGE"
+          ? captureServerProductEvent({
+              distinctId: input.senderId,
+              event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
+            })
+          : Promise.resolve(),
+      ]);
+    }
     return result;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
+      const existing = await findIdempotentMessage(
+        input.senderId,
+        input.clientMessageId,
+        input.conversationId,
+      );
+      if (existing) return existing;
       throw new MessagingError("This attachment was already sent.", 409);
     }
     throw error;
@@ -759,18 +856,7 @@ export async function getConversationForUser(
     prisma.message.count({ where: messageWhere }),
     prisma.message.findMany({
       where: messageWhere,
-      select: {
-        ...messageSelect,
-        sender: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatarKey: true,
-            avatarMediaId: true,
-          },
-        },
-      },
+      select: conversationMessageSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -781,10 +867,7 @@ export async function getConversationForUser(
     conversationId,
     archivedAt: membership.archivedAt,
     deletedAt: membership.deletedAt,
-    messages: messages.reverse().map((message) => ({
-      ...safeMessageDto(message),
-      sender: message.sender,
-    })),
+    messages: messages.reverse().map(safeConversationMessageDto),
     otherParticipant: membership.conversation.participants.find(
       (participant) => participant.userId !== userId,
     )?.user,
@@ -792,6 +875,92 @@ export async function getConversationForUser(
     pageSize,
     pageCount: Math.max(1, Math.ceil(total / pageSize)),
     total,
+  };
+}
+
+export async function getConversationMessagesForUser(input: {
+  conversationId: string;
+  userId: string;
+  cursor?: string;
+  direction?: "older" | "newer";
+  limit?: number;
+}) {
+  const limit = Math.min(50, Math.max(1, Math.floor(input.limit ?? 50)));
+  const membership = await prisma.conversationParticipant.findUnique({
+    where: {
+      conversationId_userId: {
+        conversationId: input.conversationId,
+        userId: input.userId,
+      },
+    },
+    select: {
+      clearedAt: true,
+      conversation: {
+        select: {
+          type: true,
+          _count: { select: { participants: true } },
+        },
+      },
+    },
+  });
+  if (
+    !membership ||
+    membership.conversation.type !== "DIRECT" ||
+    membership.conversation._count.participants !== 2
+  ) {
+    throw new MessagingError("Conversation not found.", 404);
+  }
+
+  const visibleWhere: Prisma.MessageWhereInput = {
+    conversationId: input.conversationId,
+    createdAt: membership.clearedAt ? { gt: membership.clearedAt } : undefined,
+  };
+  const cursorMessage = input.cursor
+    ? await prisma.message.findFirst({
+        where: { id: input.cursor, ...visibleWhere },
+        select: { id: true, createdAt: true },
+      })
+    : null;
+  if (input.cursor && !cursorMessage) {
+    throw new MessagingError("Message position not found.", 404);
+  }
+
+  const direction = input.direction ?? "newer";
+  const cursorWhere: Prisma.MessageWhereInput | undefined = cursorMessage
+    ? direction === "older"
+      ? {
+          OR: [
+            { createdAt: { lt: cursorMessage.createdAt } },
+            {
+              createdAt: cursorMessage.createdAt,
+              id: { lt: cursorMessage.id },
+            },
+          ],
+        }
+      : {
+          OR: [
+            { createdAt: { gt: cursorMessage.createdAt } },
+            {
+              createdAt: cursorMessage.createdAt,
+              id: { gt: cursorMessage.id },
+            },
+          ],
+        }
+    : undefined;
+  const order = direction === "older" || !cursorMessage ? "desc" : "asc";
+  const rows = await prisma.message.findMany({
+    where: { AND: [visibleWhere, ...(cursorWhere ? [cursorWhere] : [])] },
+    select: conversationMessageSelect,
+    orderBy: [{ createdAt: order }, { id: order }],
+    take: limit + 1,
+  });
+  const hasMore = rows.length > limit;
+  const window = rows.slice(0, limit);
+  if (order === "desc") window.reverse();
+
+  return {
+    messages: window.map(safeConversationMessageDto),
+    hasMore,
   };
 }
 

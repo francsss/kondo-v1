@@ -6,6 +6,7 @@ import {
   createDirectMessage,
   directConversationKey,
   getConversationForUser,
+  getConversationMessagesForUser,
   getInbox,
   getMessageSafetyOverview,
   getUnreadMessageCount,
@@ -251,6 +252,55 @@ postgresDescribe("Module 10 PostgreSQL messaging and safety", () => {
     });
     expect(search.total).toBe(1);
     expect(search.conversations[0]?.latestMessage?.body).toContain("Shanghai");
+  });
+
+  it("deduplicates retried sends and exposes stable incremental message windows", async () => {
+    const clientMessageId = randomUUID();
+    const first = await createDirectMessage({
+      senderId: fixture.sender.id,
+      recipientId: fixture.recipient.id,
+      body: "A reliable first delivery",
+      clientMessageId,
+    });
+    const retry = await createDirectMessage({
+      senderId: fixture.sender.id,
+      recipientId: fixture.recipient.id,
+      body: "A reliable first delivery",
+      clientMessageId,
+    });
+    expect(retry).toMatchObject({
+      conversationId: first.conversationId,
+      deduplicated: true,
+    });
+    expect(retry.message.id).toBe(first.message.id);
+    await expect(
+      prisma.message.count({
+        where: { senderId: fixture.sender.id, clientMessageId },
+      }),
+    ).resolves.toBe(1);
+
+    const second = await replyToConversation({
+      conversationId: first.conversationId,
+      senderId: fixture.recipient.id,
+      body: "A newer response",
+      clientMessageId: randomUUID(),
+    });
+    const newer = await getConversationMessagesForUser({
+      conversationId: first.conversationId,
+      userId: fixture.sender.id,
+      cursor: first.message.id,
+      direction: "newer",
+    });
+    expect(newer.messages.map(({ id }) => id)).toEqual([second.message.id]);
+
+    const older = await getConversationMessagesForUser({
+      conversationId: first.conversationId,
+      userId: fixture.recipient.id,
+      cursor: second.message.id,
+      direction: "older",
+      limit: 1,
+    });
+    expect(older.messages.map(({ id }) => id)).toEqual([first.message.id]);
   });
 
   it("uses explicit read positions and supports archive, clear, and safe reappearance", async () => {

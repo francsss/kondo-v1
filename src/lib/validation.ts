@@ -1110,6 +1110,7 @@ export const createDirectMessageSchema = z
     recipientId: z.string().cuid(),
     body: messageBodySchema.optional(),
     mediaId: z.string().cuid().optional(),
+    clientMessageId: z.string().uuid().optional(),
     sourceType: z.literal("MARKETPLACE_LISTING").optional(),
     sourceId: z.string().cuid().optional(),
   })
@@ -1132,6 +1133,7 @@ export const createConversationMessageSchema = z
   .object({
     body: messageBodySchema.optional(),
     mediaId: z.string().cuid().optional(),
+    clientMessageId: z.string().uuid().optional(),
   })
   .refine((data) => Boolean(data.body || data.mediaId), {
     message: "A message or attachment is required.",

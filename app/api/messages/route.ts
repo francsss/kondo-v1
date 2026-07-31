@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
       senderId: user.id,
       ...parsed.data,
     });
-    return Response.json(result, { status: existing ? 200 : 201 });
+    return Response.json(result, {
+      status: existing || result.deduplicated ? 200 : 201,
+    });
   } catch (error) {
     if (error instanceof MessagingError) {
       return jsonError(error.message, error.status);

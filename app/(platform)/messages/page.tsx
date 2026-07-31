@@ -6,8 +6,8 @@ import {
   ChevronRight,
   Inbox,
   MessageCircle,
-  Search,
 } from "lucide-react";
+import { ConversationSearch } from "@/components/features/messages/ConversationSearch";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -46,54 +46,63 @@ export default async function MessagesPage({
   });
 
   return (
-    <div className="mx-auto max-w-[980px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+    <div className="mx-auto max-w-[940px] px-3 pb-28 pt-5 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">
       <PageHeader
-        description="Private, direct conversations with people you meet across Kondo—no friend request required."
+        description="Private conversations with the people you meet across Kondo."
         eyebrow="Community conversations"
         title="Messages"
       />
 
-      <nav
-        aria-label="Conversation folders"
-        className="subnav-row mt-7 max-w-sm gap-2"
-      >
-        <Button asChild size="sm" variant={archived ? "secondary" : "primary"}>
-          <Link href={inboxHref({ query: q })}>
-            <Inbox className="h-4 w-4" /> Inbox
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant={archived ? "primary" : "secondary"}>
-          <Link href={inboxHref({ query: q, archived: true })}>
-            <Archive className="h-4 w-4" /> Archived
-          </Link>
-        </Button>
-      </nav>
+      <div className="mt-6 grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+        <nav
+          aria-label="Conversation folders"
+          className="subnav-row gap-1 rounded-2xl border border-border/70 bg-card p-1"
+        >
+          <Button
+            asChild
+            className="flex-1 sm:flex-none"
+            size="sm"
+            variant={archived ? "ghost" : "primary"}
+          >
+            <Link href={inboxHref({ query: q })} scroll={false}>
+              <Inbox className="h-4 w-4" /> Inbox
+            </Link>
+          </Button>
+          <Button
+            asChild
+            className="flex-1 sm:flex-none"
+            size="sm"
+            variant={archived ? "primary" : "ghost"}
+          >
+            <Link href={inboxHref({ query: q, archived: true })} scroll={false}>
+              <Archive className="h-4 w-4" /> Archived
+            </Link>
+          </Button>
+        </nav>
+        <ConversationSearch archived={archived} initialQuery={q} />
+      </div>
 
-      <form className="mt-4 flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input
-          aria-label="Search conversations"
-          className="w-full bg-transparent text-sm text-kondo-ink outline-none placeholder:text-muted-foreground dark:text-white"
-          defaultValue={q}
-          name="q"
-          placeholder="Search people or messages"
-        />
-        {archived ? <input name="view" type="hidden" value="archived" /> : null}
-      </form>
-
-      <section className="mt-5 space-y-3">
+      <section aria-label="Conversations" className="mt-4 space-y-2">
         {inbox.conversations.map((item) => {
           const other = item.otherParticipant;
           const latestMessage = item.latestMessage;
           if (!other || !latestMessage) return null;
           return (
             <Link
+              aria-label={`Open conversation with ${other.firstName} ${other.lastName}`}
+              className="block rounded-[1.35rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               href={`/messages/${item.conversationId}`}
               key={item.conversationId}
             >
-              <Card className="mb-3 flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-soft dark:hover:border-emerald-400/20 sm:p-5">
+              <Card
+                className={`flex items-center gap-3 rounded-[1.35rem] p-3.5 transition duration-200 hover:border-emerald-200 hover:bg-emerald-50/30 hover:shadow-soft dark:hover:border-emerald-400/20 dark:hover:bg-emerald-400/[0.04] sm:gap-4 sm:p-4 ${
+                  item.unreadCount
+                    ? "border-emerald-200/80 bg-emerald-50/25 dark:border-emerald-400/15 dark:bg-emerald-400/[0.035]"
+                    : ""
+                }`}
+              >
                 <Avatar
-                  className="h-12 w-12"
+                  className="h-12 w-12 shrink-0"
                   firstName={other.firstName}
                   lastName={other.lastName}
                   mediaId={other.avatarMediaId}
@@ -101,11 +110,11 @@ export default async function MessagesPage({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h2 className="truncate font-black text-kondo-ink dark:text-white">
+                    <h2 className="truncate text-[15px] font-black text-kondo-ink dark:text-white sm:text-base">
                       {other.firstName} {other.lastName}
                     </h2>
                     {item.unreadCount > 0 ? (
-                      <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-black text-primary-foreground">
+                      <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-black text-primary-foreground shadow-sm">
                         {item.unreadCount > 99 ? "99+" : item.unreadCount}
                       </span>
                     ) : null}
@@ -123,7 +132,7 @@ export default async function MessagesPage({
                       "Attachment"}
                   </p>
                 </div>
-                <time className="shrink-0 self-start text-xs font-semibold text-muted-foreground">
+                <time className="shrink-0 self-start pt-0.5 text-[11px] font-semibold text-muted-foreground sm:text-xs">
                   {formatRelativeDate(latestMessage.createdAt)}
                 </time>
               </Card>
@@ -133,7 +142,7 @@ export default async function MessagesPage({
       </section>
 
       {inbox.conversations.length === 0 ? (
-        <Card className="mt-5 py-14 text-center">
+        <Card className="mt-5 rounded-3xl py-14 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
             {archived ? (
               <Archive className="h-6 w-6" />
@@ -148,9 +157,10 @@ export default async function MessagesPage({
                 ? "No archived conversations"
                 : "Your conversations will appear here"}
           </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Start naturally from a member profile, community post, comment,
-            marketplace listing or Student Hub answer.
+          <p className="mx-auto mt-2 max-w-md px-5 text-sm leading-6 text-muted-foreground">
+            {q
+              ? "Try a different name or message."
+              : "Start a conversation from a member profile, post, comment, listing or Student Hub answer."}
           </p>
         </Card>
       ) : null}
