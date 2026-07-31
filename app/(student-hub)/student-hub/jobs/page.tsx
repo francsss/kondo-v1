@@ -4,19 +4,15 @@ import { StudentHubSectionHeader } from "@/components/features/student-hub/Stude
 import { requireUser } from "@/lib/server-auth";
 import { studentHubSection } from "@/lib/student-hub-sections";
 
-const section = studentHubSection("internships");
+const section = studentHubSection("jobs");
 
 export const metadata: Metadata = {
   title: section.title,
   description: section.description,
 };
 
-/**
- * Internships only — INTERNSHIP and GRADUATE_INTERNSHIP. Previously a redirect
- * into the generic opportunity directory, which dropped the student out of the
- * Student Hub and cleared the active tab they had just selected.
- */
-export default async function StudentHubInternshipsPage({
+/** PART_TIME_JOB, FULL_TIME_JOB and CAMPUS_JOB from the central domain. */
+export default async function StudentHubJobsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -24,10 +20,10 @@ export default async function StudentHubInternshipsPage({
   const [user, params] = await Promise.all([requireUser(), searchParams]);
   return (
     <div className="mx-auto max-w-[1240px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
-      <StudentHubSectionHeader sectionKey="internships" />
+      <StudentHubSectionHeader sectionKey="jobs" />
       <StudentHubOpportunitySection
         params={params}
-        sectionKey="internships"
+        sectionKey="jobs"
         viewerUserId={user.id}
       />
     </div>

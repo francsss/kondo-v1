@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { hasOrganizationPermission } from "@/lib/organization-authorization";
 import { ORGANIZATION_CAPABILITIES } from "@/lib/organization-capabilities";
+import { opportunitySetupState } from "@/lib/organization-workspace-navigation";
 import { listOrganizationActivity } from "@/lib/organization-workspaces";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { captureServerProductEvent } from "@/lib/product-analytics-server";
@@ -41,6 +43,71 @@ export default async function OrganizationDashboardPage({
       capability.status,
     ]),
   );
+
+  // Quick actions are derived from the same permissions the routes enforce, so
+  // the dashboard never offers a link that answers 403 or 404.
+  const membershipContext = {
+    role: membership.storedRole,
+    status: membership.status,
+  };
+  const setup = opportunitySetupState({
+    organization,
+    membership: membershipContext,
+    profileComplete: completeness.missing.length === 0,
+  });
+  const permitted = (
+    permission: Parameters<typeof hasOrganizationPermission>[1],
+  ) => hasOrganizationPermission(membershipContext, permission);
+
+  const quickActions: Array<{ label: string; href: string; hint?: string }> =
+    [];
+  if (setup.canCreateDraft) {
+    quickActions.push({
+      label: "Create opportunity",
+      href: `/organizations/${slug}/opportunities/new`,
+    });
+  }
+  if (permitted("ORGANIZATION_VIEW_OPPORTUNITIES")) {
+    quickActions.push({
+      label: "Manage opportunities",
+      href: `/organizations/${slug}/opportunities`,
+      hint: setup.blockedReason ?? undefined,
+    });
+  }
+  if (permitted("ORGANIZATION_VIEW_APPLICATIONS")) {
+    quickActions.push({
+      label: "Review applications",
+      href: `/organizations/${slug}/opportunities/applications`,
+    });
+  }
+  if (
+    enabled.get("HOUSING") === "ENABLED" &&
+    permitted("ORGANIZATION_CREATE_HOUSING")
+  ) {
+    quickActions.push({
+      label: "Create Housing listing",
+      href: `/housing/create?organizationId=${organization.id}`,
+    });
+  }
+  if (permitted("ORGANIZATION_EDIT_PROFILE")) {
+    quickActions.push({
+      label: "Edit public profile",
+      href: `/organizations/${slug}/public-profile`,
+    });
+  }
+  if (permitted("ORGANIZATION_MANAGE_VERIFICATION")) {
+    quickActions.push({
+      label: "Complete verification",
+      href: `/organizations/${slug}/verification`,
+    });
+  }
+  if (permitted("ORGANIZATION_INVITE_MEMBERS")) {
+    quickActions.push({
+      label: "Invite team member",
+      href: `/organizations/${slug}/team`,
+    });
+  }
+
   return (
     <div className="grid gap-6">
       <section className="grid gap-5 rounded-4xl bg-gradient-to-br from-kondo-forest via-kondo-green to-emerald-600 p-6 text-white shadow-lift sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto]">
@@ -138,22 +205,26 @@ export default async function OrganizationDashboardPage({
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-xl font-black">Next actions</h2>
+          <h2 className="text-xl font-black">Quick actions</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Only actions this membership can complete are listed.
+          </p>
           <div className="mt-4 grid gap-2">
-            {[
-              ["Edit profile", "profile"],
-              ["Manage team", "team"],
-              ["Continue verification", "verification"],
-              ["Review activity", "activity"],
-              ["Workspace settings", "settings"],
-            ].map(([label, segment]) => (
+            {quickActions.map((action) => (
               <Link
-                className="flex items-center justify-between rounded-2xl px-3 py-3 text-sm font-bold transition hover:bg-muted"
-                href={`/organizations/${slug}/${segment}`}
-                key={segment}
+                className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition hover:bg-muted"
+                href={action.href}
+                key={action.href + action.label}
               >
-                {label}
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <span className="min-w-0">
+                  {action.label}
+                  {action.hint ? (
+                    <span className="mt-0.5 block text-xs font-semibold text-muted-foreground">
+                      {action.hint}
+                    </span>
+                  ) : null}
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>
             ))}
           </div>
@@ -185,7 +256,9 @@ export default async function OrganizationDashboardPage({
                   {capability.description}
                 </p>
                 <p className="mt-4 text-xs font-semibold text-muted-foreground">
-                  Content management connects in a later module.
+                  {status === "ENABLED"
+                    ? "Enabled for this organization."
+                    : "Not enabled yet."}
                 </p>
               </Card>
             );

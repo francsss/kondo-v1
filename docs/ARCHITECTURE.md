@@ -113,6 +113,33 @@ Private candidate documents use the existing MediaAsset pipeline under a
 dedicated private purpose and are delivered only to the applicant or to an
 authorized reviewer of an application the document is attached to.
 
+### Navigation as a derived projection
+
+Navigation is data, not markup. Two registries own it and both are pure,
+server-evaluable modules:
+
+- `src/lib/organization-workspace-navigation.ts` — the organization workspace
+  entries, their setup state and the Opportunities setup checklist, all derived
+  from the same membership permissions the routes enforce. Icons are returned as
+  stable string keys so a server component can compute the navigation and hand
+  it to the client shell as serializable data.
+- `src/lib/student-hub-sections.ts` — the Student Hub information architecture
+  and the opportunity types each section projects.
+
+**Navigation visibility is not authorization.** A registry decides only what is
+_shown_. Every protected route and mutation keeps its own server-side check:
+`getOrganizationWorkspace`, `requireOpportunityPublisher` and
+`requireApplicationReviewer` re-verify membership, capability, lifecycle and
+permission, and answer 403/404 regardless of what any navigation offered. The
+registries exist so the interface cannot silently disagree with those checks —
+not so it can replace them.
+
+The organization workspace lives in the `app/organizations/[slug]/(workspace)`
+route group. Membership resolution happens once in that group's layout, so any
+page added under it inherits the organization context, the workspace shell and
+the access check. A Part 5 route that sat outside the group inherited none of
+them, which is precisely how its pages became unreachable.
+
 ## Scalability decisions
 
 - PostgreSQL foreign keys and compound indexes serve the MVP query shapes.

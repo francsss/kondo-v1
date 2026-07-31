@@ -127,7 +127,7 @@ export async function getStudentHubOpportunityRails(
         explanation: viewer.studyLevel
           ? `Recommended because it accepts ${viewer.studyLevel.toLowerCase().replace(/_/g, " ")} students.`
           : "Recommended because it is open to international students in China.",
-        href: "/opportunities/scholarships",
+        href: "/student-hub/scholarships",
         where: {
           type: { in: [...scholarshipTypes] },
           ...(viewer.studyLevel
@@ -158,7 +158,7 @@ export async function getStudentHubOpportunityRails(
         explanation: viewer.degree
           ? `Recommended because your field of study is ${viewer.degree}.`
           : "Recommended because it is open to students in China.",
-        href: "/opportunities/internships",
+        href: "/student-hub/internships",
         where: { type: { in: [...internshipTypes] } },
         now,
       }),
@@ -171,7 +171,7 @@ export async function getStudentHubOpportunityRails(
         key: "jobs-near-you",
         title: "Jobs near your city",
         explanation: "Recommended because it is in the city on your profile.",
-        href: "/opportunities/jobs",
+        href: "/student-hub/jobs",
         where: { type: { in: [...jobTypes] }, cityId: viewer.cityId },
         now,
       }),
@@ -185,7 +185,7 @@ export async function getStudentHubOpportunityRails(
         title: "From your university",
         explanation:
           "Recommended because it is published for the university on your profile.",
-        href: "/opportunities",
+        href: "/student-hub",
         where: { universityId: viewer.universityId },
         now,
       }),
@@ -197,7 +197,7 @@ export async function getStudentHubOpportunityRails(
       key: "research",
       title: "Research opportunities",
       explanation: "Open research placements and assistantships.",
-      href: "/opportunities",
+      href: "/student-hub/programs",
       where: { type: { in: [...researchTypes] } },
       now,
     }),

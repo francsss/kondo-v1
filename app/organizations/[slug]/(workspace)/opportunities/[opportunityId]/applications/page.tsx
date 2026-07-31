@@ -34,7 +34,7 @@ export default async function OrganizationApplicationsPage({
   });
 
   return (
-    <div className="mx-auto max-w-[1100px] px-4 pb-20 pt-8 sm:px-6 lg:pt-12">
+    <section>
       <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <Link
           href={`/organizations/${organization.slug}/opportunities`}
@@ -43,14 +43,18 @@ export default async function OrganizationApplicationsPage({
           Opportunities
         </Link>
       </nav>
-      <h1 className="mt-2 text-3xl font-black tracking-[-0.04em]">
+      <h1 className="mt-2 text-2xl font-black tracking-[-0.03em]">
         Applications
       </h1>
 
       {applications.length === 0 ? (
-        <p className="mt-10 rounded-3xl border border-dashed border-black/10 p-8 text-center text-sm text-muted-foreground dark:border-white/15">
-          No submitted applications yet.
-        </p>
+        <div className="mt-6 rounded-3xl border border-dashed border-border p-10 text-center">
+          <h2 className="text-lg font-black">No applications yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            Applications appear here once this opportunity accepts Kondo
+            applications and receives its first submission.
+          </p>
+        </div>
       ) : (
         <ul className="mt-6 space-y-3">
           {applications.map((application) => (
@@ -78,6 +82,6 @@ export default async function OrganizationApplicationsPage({
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

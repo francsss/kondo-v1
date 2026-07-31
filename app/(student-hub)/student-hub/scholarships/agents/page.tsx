@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import {
   BadgeCheck,
@@ -10,7 +11,6 @@ import {
   Star,
 } from "lucide-react";
 import { AgentContactActions } from "@/components/features/student-hub/AgentContactActions";
-import { ScholarshipNav } from "@/components/features/student-hub/ScholarshipNav";
 import { Card } from "@/components/ui/Card";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
@@ -98,8 +98,13 @@ export default async function ScholarshipAgentsPage({
           Compare expertise, languages, services and availability before
           contacting an adviser directly.
         </p>
+        <Link
+          className="mt-4 inline-flex items-center gap-1.5 text-sm font-black text-kondo-green hover:underline"
+          href="/student-hub/scholarships"
+        >
+          ← Back to Scholarships
+        </Link>
       </div>
-      <ScholarshipNav active="agents" />
       <Card className="mt-6">
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className="flex h-11 items-center gap-3 rounded-2xl border border-border px-4 md:col-span-2">

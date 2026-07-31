@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BriefcaseBusiness } from "lucide-react";
+import { ClampedTitle, ExpandableText } from "@/components/ui/ClampedText";
 import { MediaImage } from "@/components/ui/MediaImage";
 import type { PublicOpportunityCard } from "@/lib/opportunities";
 
@@ -83,13 +84,15 @@ export function OpportunityCard({ item }: { item: PublicOpportunityCard }) {
 
         <h3 className="mt-3 text-base font-black leading-snug tracking-[-0.02em]">
           <Link href={item.href} className="hover:underline">
-            {item.title}
+            <ClampedTitle>{item.title}</ClampedTitle>
           </Link>
         </h3>
 
-        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
-          {item.summary}
-        </p>
+        <ExpandableText
+          className="mt-1.5 text-sm leading-6 text-muted-foreground"
+          lines={4}
+          text={item.summary}
+        />
 
         <dl className="mt-4 space-y-1.5 text-sm">
           <div className="flex gap-2">

@@ -31,7 +31,7 @@ export default async function ApplicationReviewPage({
   });
 
   return (
-    <div className="mx-auto max-w-[800px] px-4 pb-20 pt-8 sm:px-6 lg:pt-12">
+    <div className="mx-auto max-w-[800px]">
       <h1 className="text-2xl font-black tracking-[-0.03em]">
         {application.applicant.name ?? "Applicant"}
       </h1>

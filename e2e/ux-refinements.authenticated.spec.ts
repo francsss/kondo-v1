@@ -92,65 +92,58 @@ test.describe("premium UX refinements", () => {
         .getByText("New", { exact: true }),
     ).toHaveCount(0);
 
+    // One responsive Student Hub navigation now serves every breakpoint,
+    // instead of a duplicated desktop and mobile pair.
     await page.goto("/student-hub");
-    const mobileStudentNavigation = page.getByRole("navigation", {
-      name: "Student Hub mobile",
-    });
-    const expectedStudentHubLabels = [
-      "Guides",
-      "Scholarships",
-      "Internships",
-      "Opportunities",
-    ];
-    if (
-      (await mobileStudentNavigation
-        .getByRole("link", { name: "Tools" })
-        .count()) > 0
-    ) {
-      expectedStudentHubLabels.push("Tools");
-    }
-    for (const label of expectedStudentHubLabels) {
-      await expect(
-        mobileStudentNavigation.getByRole("link", { name: label }),
-      ).toBeVisible();
-    }
-    expect(
-      await mobileStudentNavigation.evaluate(
-        (element) =>
-          new Set(
-            Array.from(element.children).map(
-              (child) => child.getBoundingClientRect().top,
-            ),
-          ).size,
-      ),
-    ).toBe(1);
-    expect(
-      await mobileStudentNavigation.evaluate(
-        (element) => element.scrollWidth >= element.clientWidth,
-      ),
-    ).toBe(true);
-
-    await page.setViewportSize({ width: 768, height: 900 });
-    const tabletStudentNavigation = page.getByRole("navigation", {
+    const studentNavigation = page.getByRole("navigation", {
       name: "Student Hub",
       exact: true,
     });
-    await expect(tabletStudentNavigation).toBeVisible();
-    expect(
-      await tabletStudentNavigation.evaluate(
-        (element) =>
-          new Set(
-            Array.from(element.children).map(
-              (child) => child.getBoundingClientRect().top,
-            ),
-          ).size,
-      ),
-    ).toBe(1);
-    expect(
-      await tabletStudentNavigation.evaluate(
-        (element) => element.scrollWidth <= element.clientWidth + 1,
-      ),
-    ).toBe(true);
+    await expect(studentNavigation).toBeVisible();
+
+    const expectedStudentHubLabels = [
+      "Overview",
+      "Scholarships",
+      "Internships",
+      "Jobs",
+      "Programs & Research",
+      "Applications",
+    ];
+    for (const label of expectedStudentHubLabels) {
+      await expect(
+        studentNavigation.getByRole("link", { name: label }),
+      ).toBeVisible();
+    }
+    // The generic Opportunities entry duplicated every other one and is gone.
+    await expect(
+      studentNavigation.getByRole("link", {
+        name: "Opportunities",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+
+    for (const width of [390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      // Always exactly one row: the tabs scroll, they never wrap.
+      expect(
+        await studentNavigation.evaluate(
+          (element) =>
+            new Set(
+              Array.from(element.children).map(
+                (child) => child.getBoundingClientRect().top,
+              ),
+            ).size,
+        ),
+        `Student Hub tabs must stay on one row at ${width}px`,
+      ).toBe(1);
+      // And the row's overflow never becomes the page's overflow.
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+        `the page must not scroll sideways at ${width}px`,
+      ).toBe(true);
+    }
   });
 
   test("uses searchable smart selectors for exchange offers", async ({

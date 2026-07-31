@@ -5,20 +5,29 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  Activity,
   Bell,
+  Building2,
   Clapperboard,
+  ClipboardList,
   Compass,
+  Globe2,
   GraduationCap,
   Home,
   House,
+  LayoutDashboard,
   LogOut,
   Menu,
   MessageCircle,
   Moon,
+  MoreHorizontal,
   Search,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Sun,
+  Target,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -39,6 +48,11 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { canAccessAdmin } from "@/lib/authorization";
 import { usesImmersiveAppShell } from "@/lib/app-shell";
+import {
+  activeWorkspaceNavigationKey,
+  type WorkspaceNavigationIconKey,
+  type WorkspaceNavigationItem,
+} from "@/lib/organization-workspace-navigation";
 import {
   MESSAGE_COUNT_EVENT,
   NOTIFICATION_COUNT_EVENT,
@@ -96,6 +110,31 @@ const secondaryNavigation: NavigationItem[] = [
   { href: "/housing", label: "Housing", icon: House },
   { href: "/stories", label: "Student Stories", icon: Clapperboard },
 ];
+
+/**
+ * When an organization workspace is active the mobile bar must stop presenting
+ * personal student modules as though the member were still browsing Kondo for
+ * themselves. The same navigation architecture is reused — only the
+ * configuration changes with the active workspace.
+ */
+export type OrganizationWorkspaceContext = {
+  slug: string;
+  publicName: string;
+  navigation: WorkspaceNavigationItem[];
+};
+
+const WORKSPACE_MOBILE_ICONS: Record<WorkspaceNavigationIconKey, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  profile: Building2,
+  "public-profile": Globe2,
+  housing: House,
+  opportunities: Target,
+  applications: ClipboardList,
+  team: Users,
+  verification: ShieldCheck,
+  activity: Activity,
+  settings: Settings,
+};
 
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
@@ -268,10 +307,12 @@ export function AppShell({
   children,
   user,
   workspaces = [],
+  organizationWorkspace = null,
 }: {
   children: React.ReactNode;
   user: ShellUser;
   workspaces?: WorkspaceSwitcherItem[];
+  organizationWorkspace?: OrganizationWorkspaceContext | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -284,6 +325,16 @@ export function AppShell({
     user.messageUnreadCount ?? 0,
   );
   const isAdmin = canAccessAdmin(user.role);
+  const workspaceNavigation = organizationWorkspace?.navigation ?? [];
+  const workspacePrimary = workspaceNavigation.filter(
+    (item) => item.primaryOnMobile,
+  );
+  const workspaceSecondary = workspaceNavigation.filter(
+    (item) => !item.primaryOnMobile,
+  );
+  const activeWorkspaceKey = organizationWorkspace
+    ? activeWorkspaceNavigationKey(workspaceNavigation, pathname)
+    : null;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -586,6 +637,33 @@ export function AppShell({
               <ThemeToggle presentation="menu" />
             </div>
 
+            {organizationWorkspace ? (
+              <div className="my-5 border-t border-border/40 pt-5">
+                <p className="px-3.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+                  {organizationWorkspace.publicName}
+                </p>
+                <div className="space-y-1">
+                  {workspaceSecondary.map((item) => (
+                    <NavLink
+                      href={item.href}
+                      icon={WORKSPACE_MOBILE_ICONS[item.icon]}
+                      key={item.key}
+                      label={item.label}
+                      onNavigate={() => setMenuOpen(false)}
+                      pathname={pathname}
+                    />
+                  ))}
+                  <NavLink
+                    href="/home"
+                    icon={UserRound}
+                    label="Return to Personal"
+                    onNavigate={() => setMenuOpen(false)}
+                    pathname={pathname}
+                  />
+                </div>
+              </div>
+            ) : null}
+
             <div className="my-5 border-t border-border/40 pt-5">
               <div className="space-y-1">
                 {secondaryNavigation.map((item) => (
@@ -624,41 +702,80 @@ export function AppShell({
         </aside>
       </div>
 
-      <nav
-        aria-label="Mobile quick navigation"
-        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
-      >
-        {navigation.map(({ href, icon: Icon, label, aliases }) => {
-          const active =
-            pathname === href ||
-            pathname.startsWith(`${href}/`) ||
-            aliases?.some(
-              (alias) => pathname === alias || pathname.startsWith(`${alias}/`),
+      {organizationWorkspace ? (
+        <nav
+          aria-label={`${organizationWorkspace.publicName} workspace navigation`}
+          className="fixed inset-x-3 bottom-3 z-40 grid auto-cols-fr grid-flow-col rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
+        >
+          {workspacePrimary.map((item) => {
+            const Icon = WORKSPACE_MOBILE_ICONS[item.icon];
+            const active = item.key === activeWorkspaceKey;
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold",
+                  active
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-muted-foreground",
+                )}
+                href={item.href}
+                key={item.key}
+              >
+                <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
+                <span className="max-w-full truncate px-1">{item.label}</span>
+              </Link>
             );
-          return (
-            <Link
-              aria-current={active ? "page" : undefined}
-              aria-label={label}
-              className={cn(
-                "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold",
-                active
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground",
-              )}
-              href={href}
-              key={href}
-            >
-              <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
-              <span className="max-w-full truncate px-1">{label}</span>
-              {href === "/messages" && messageUnreadCount ? (
-                <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-warning px-1 text-[8px] font-black text-warning-foreground">
-                  {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
+          })}
+          <button
+            aria-controls="mobile-navigation"
+            aria-expanded={menuOpen}
+            className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold text-muted-foreground"
+            onClick={() => setMenuOpen(true)}
+            type="button"
+          >
+            <MoreHorizontal aria-hidden="true" className="h-[18px] w-[18px]" />
+            <span className="max-w-full truncate px-1">More</span>
+          </button>
+        </nav>
+      ) : (
+        <nav
+          aria-label="Mobile quick navigation"
+          className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
+        >
+          {navigation.map(({ href, icon: Icon, label, aliases }) => {
+            const active =
+              pathname === href ||
+              pathname.startsWith(`${href}/`) ||
+              aliases?.some(
+                (alias) =>
+                  pathname === alias || pathname.startsWith(`${alias}/`),
+              );
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                aria-label={label}
+                className={cn(
+                  "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold",
+                  active
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-muted-foreground",
+                )}
+                href={href}
+                key={href}
+              >
+                <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
+                <span className="max-w-full truncate px-1">{label}</span>
+                {href === "/messages" && messageUnreadCount ? (
+                  <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-warning px-1 text-[8px] font-black text-warning-foreground">
+                    {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }

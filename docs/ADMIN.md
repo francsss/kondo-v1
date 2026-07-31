@@ -313,3 +313,38 @@ Removing an opportunity hides it from every public surface and invalidates the
 public page, search, Student Hub and organization projections. It never deletes
 submitted applications: applicants keep their history and see a safe
 unavailable state.
+
+### Supporting an organization that cannot publish
+
+Publishers now self-diagnose. The organization workspace shows a setup checklist
+at `/organizations/[slug]/opportunities` naming the exact missing requirement,
+so most "we cannot publish" reports are resolved by the organization itself.
+When one reaches support, check in this order — these are independent and none
+implies another:
+
+1. **Capability** — `SCHOLARSHIPS` or `INTERNSHIPS_JOBS` must be `ENABLED` on
+   the organization. This is the most common cause. The member fixes it under
+   the workspace Settings; enabling it grants no publishing right by itself.
+2. **Member permission** — `ORGANIZATION_CREATE_OPPORTUNITIES` to author,
+   `ORGANIZATION_PUBLISH_OPPORTUNITIES` to publish. EDITOR may author and
+   submit but never publish, and holds **no** application access at all: an
+   EDITOR reporting that they cannot see applicants is behaving correctly.
+3. **Organization lifecycle** — a suspended organization is blocked from
+   publishing immediately, including for already-drafted opportunities.
+4. **Public profile / verification** — neither is required to create or publish
+   an opportunity, and neither should be requested as a workaround.
+
+Drafts are deliberately allowed while the professional profile is still
+incomplete, so incomplete setup is never a reason a publisher cannot start work.
+
+Admin never edits an organization's opportunity content to work around a
+permission problem; the fix belongs to the organization's own owner or admin.
+
+### ScholarshipAgent operations are unchanged
+
+`/admin/scholarship-agents` and `/admin/scholarships` continue to manage the
+legacy tables exactly as before. The public Student Hub no longer shows
+Scholarship agents as a separate tab beside scholarships — students see one
+unified Scholarships experience — but the records, their admin tooling and
+`/student-hub/scholarships/agents` are untouched and still reachable. No legacy
+record was migrated, reassigned or converted into an Organization.

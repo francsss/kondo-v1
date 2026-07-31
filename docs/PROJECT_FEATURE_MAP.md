@@ -160,13 +160,43 @@ Kondo Pet where eligible.
 ### 3.3 Student Hub
 
 The Student Hub has a separate authenticated shell so the main Kondo navbar is
-not duplicated. Its current top navigation is:
+not duplicated. Its top navigation is declared once in
+`src/lib/student-hub-sections.ts` and rendered from that registry:
 
-- Guides — `/student-hub`
+- Overview — `/student-hub`
 - Scholarships — `/student-hub/scholarships`
 - Internships — `/student-hub/internships`
-- Opportunities — `/student-hub/opportunities`
-- Tools — `/student-hub/tools`
+- Jobs — `/student-hub/jobs`
+- Programs & Research — `/student-hub/programs`
+- Applications — `/student-hub/applications`
+- Tools — `/student-hub/tools` (journey-gated)
+
+The generic **Opportunities** entry was removed. It opened the same central
+Opportunity domain that every other entry already projects, so the hub
+presented two competing navigations for one feature. `/student-hub/opportunities`
+still resolves for existing links and bookmarks; it is simply no longer a
+navigation entry.
+
+Each listing section is a **filtered projection** of the central Opportunity
+domain — there is no separate scholarship, internship or job storage:
+
+| Section             | Opportunity types                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Scholarships        | `SCHOLARSHIP`                                                                                                |
+| Internships         | `INTERNSHIP`, `GRADUATE_INTERNSHIP`                                                                          |
+| Jobs                | `PART_TIME_JOB`, `FULL_TIME_JOB`, `CAMPUS_JOB`                                                               |
+| Programs & Research | `RESEARCH_OPPORTUNITY`, `VOLUNTEERING`, `COMPETITION`, `EXCHANGE_PROGRAM`, `SUMMER_PROGRAM`, `OTHER_PROGRAM` |
+
+A section spans several `OPPORTUNITY_CATEGORIES` (Programs & Research covers
+research, programs and volunteering), which is why the hub keeps its own
+registry rather than reusing the category list. `unmappedOpportunityTypes()`
+fails a unit test if a new type is added without a section, so a publisher can
+never create a record no student can browse to.
+
+Selecting a section keeps the student inside the Student Hub: the page title,
+metadata, active tab, filters and empty state are all specific to that section.
+Internships and the category routes are no longer redirects into a generic
+directory.
 
 Additional routes:
 
@@ -178,12 +208,13 @@ Additional routes:
 
 Tools remain available to admitted/current students and the retained legacy
 incoming-student value. Prospective students, alumni, and professionals keep
-the Guide, Scholarships, Internships, and Opportunities surfaces without an
-irrelevant timetable-tool entry.
+every discovery section without an irrelevant timetable-tool entry.
 
 Shell implementation:
 
+- `src/lib/student-hub-sections.ts` — section registry and type mapping
 - `src/components/features/student-hub/StudentHubShell.tsx`
+- `src/components/features/student-hub/StudentHubOpportunitySection.tsx`
 - `app/(student-hub)/student-hub/layout.tsx`
 
 ### 3.4 Administrator back office
@@ -1717,6 +1748,140 @@ recruitment commissions, guaranteed admission, awards or internships,
 employment contracts, payroll, employer background checks, immigration or visa
 advice, automated rejection on sensitive attributes, black-box ranking, a public
 candidate database, or organization reviews.
+
+## 21. Personal and organization workspaces, and route access
+
+Part 5 shipped the Opportunities architecture but not its entry points. This
+section records the integration pass that made every user-facing route
+reachable. No model, service, permission, route or Opportunities implementation
+was duplicated to do it.
+
+### 21.1 Two contexts, one account
+
+Kondo authenticates humans only; organizations never sign in. The same User acts
+in two contexts, and the interface must make the active one obvious:
+
+- **Personal workspace** — discover, save, apply, track applications, Student
+  Hub, Communities, Marketplace, Housing, Messages.
+- **Organization workspace** — manage the organization, publish Housing and
+  Opportunities, review applications, manage the public profile, team,
+  verification, activity and settings.
+
+Switching workspace never signs the User out. `WorkspaceSwitcher` resolves the
+active workspace from the pathname and offers Personal, each membership, and
+organization creation. Inside an organization the mobile bar switches to
+organization navigation and the drawer exposes **Return to Personal**.
+
+### 21.2 Why organization Opportunities was invisible
+
+Two independent causes, both fixed:
+
+1. `OrganizationWorkspaceShell` built its navigation from a hard-coded array
+   that had no Opportunities entry. Navigation is now derived from
+   `src/lib/organization-workspace-navigation.ts`, which reads the same
+   membership permissions the server routes enforce.
+2. `app/organizations/[slug]/opportunities/**` sat _outside_ the `(workspace)`
+   route group, so those pages inherited neither the workspace shell nor the
+   app shell. They were moved into `(workspace)/opportunities/**`.
+
+A third, smaller orphan: the personal account cluster
+(`/opportunities/saved|documents|profile|preferences|applications`) was linked
+only by `OpportunityAccountNav`, which rendered _only on those same pages_ — a
+closed loop with no way in. That nav is now also rendered from the Student Hub
+Applications section.
+
+### 21.3 Organization workspace navigation
+
+Order — Dashboard, Profile, Public profile, Housing, **Opportunities**,
+**Applications**, Team, Verification, Activity, Settings. Opportunities sits
+immediately after Housing; Applications is a top-level entry because a reviewer
+must not have to know an opportunity id to find their queue.
+
+Inside Opportunities: All opportunities, Drafts, Published, Closed,
+Applications, and a primary **Create opportunity** action pointing at the
+existing `/organizations/[slug]/opportunities/new`.
+
+### 21.4 Capability, permission and setup gating
+
+These stay separate concepts and none implies another:
+
+| Concept                | Source                                                                 |
+| ---------------------- | ---------------------------------------------------------------------- |
+| Capability             | `SCHOLARSHIPS` or `INTERNSHIPS_JOBS` enabled on the organization       |
+| Permission             | `ORGANIZATION_*_OPPORTUNITIES` / `*_APPLICATIONS` from the role matrix |
+| Organization lifecycle | `organizationAllowsPublishing()` — a suspension blocks publication     |
+| Public profile         | published independently of any opportunity                             |
+| Moderation             | platform-side, independent of all of the above                         |
+
+Behaviour by state:
+
+- **Configured and authorized** — Opportunities enabled.
+- **Missing capability** — Opportunities stays **visible** in a `setup` state
+  and opens a checklist naming the exact missing requirement, with a direct
+  link to configure activity areas. It is never silently hidden: an absent entry
+  cannot be fixed by the person responsible for fixing it.
+- **Incomplete profile** — drafts are still allowed; blocking them would only
+  prevent the work that completes setup. Publication is gated separately.
+- **Unauthorized member** — the entry is omitted for a member who could not
+  open it anyway, and the route stays server-protected regardless.
+- **Suspended organization** — publication blocked, restriction explained.
+
+Verification is _not_ required to display the Opportunities entry.
+
+### 21.5 Route-access matrix
+
+Every user-facing Part 5 route and the visible path that reaches it. "Was
+orphaned" means it previously required typing the URL.
+
+| Route                                                                             | For       | Visible entry point                                  | Requires                                         | Was orphaned |
+| --------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | ------------------------------------------------ | ------------ |
+| `/organizations/[slug]/opportunities`                                             | Publisher | Workspace navigation → Opportunities                 | `ORGANIZATION_VIEW_OPPORTUNITIES`                | Yes          |
+| `/organizations/[slug]/opportunities/new`                                         | Publisher | Create opportunity (hero, section, dashboard action) | `ORGANIZATION_CREATE_OPPORTUNITIES` + capability | Yes          |
+| `/organizations/[slug]/opportunities/[id]/edit`                                   | Publisher | Edit action on the opportunity row                   | `ORGANIZATION_EDIT_OPPORTUNITIES`                | Yes          |
+| `/organizations/[slug]/opportunities/[id]/applications`                           | Reviewer  | Applications count on the opportunity row            | `ORGANIZATION_VIEW_APPLICATIONS`                 | Yes          |
+| `/organizations/[slug]/opportunities/applications`                                | Reviewer  | Workspace navigation → Applications                  | `ORGANIZATION_VIEW_APPLICATIONS`                 | New route    |
+| `/organizations/[slug]/opportunities/applications/[id]`                           | Reviewer  | Row in either applications list                      | `ORGANIZATION_REVIEW_APPLICATIONS`               | Yes          |
+| `/student-hub/scholarships`                                                       | Student   | Student Hub → Scholarships                           | Signed in                                        | No           |
+| `/student-hub/internships`                                                        | Student   | Student Hub → Internships                            | Signed in                                        | No           |
+| `/student-hub/jobs`                                                               | Student   | Student Hub → Jobs                                   | Signed in                                        | New route    |
+| `/student-hub/programs`                                                           | Student   | Student Hub → Programs & Research                    | Signed in                                        | New route    |
+| `/student-hub/applications`                                                       | Student   | Student Hub → Applications                           | Signed in                                        | New route    |
+| `/opportunities`                                                                  | Student   | Applications → Browse all                            | Public                                           | Yes          |
+| `/opportunities/[slug]`                                                           | Student   | Any opportunity card                                 | Public                                           | No           |
+| `/opportunities/[slug]/apply`                                                     | Student   | Apply action on the detail page                      | Signed in                                        | No           |
+| `/opportunities/applications`, `/saved`, `/documents`, `/profile`, `/preferences` | Student   | Student Hub → Applications → account nav             | Signed in                                        | Yes          |
+
+### 21.6 Unified Scholarships and ScholarshipAgent compatibility
+
+The public **Opportunities / Scholarship agents** tab split is removed. Students
+see one Scholarships experience combining unified `Opportunity` records and
+legacy `Scholarship` rows in one grid, each card stating _Published by
+[publisher]_. Deduplication remains the adapter's job through
+`Opportunity.legacySourceKey`.
+
+Legacy architecture is untouched: no ScholarshipAgent model, record, Admin tool
+or source relationship was deleted, no organization was synthesised from a
+legacy record, and nothing was reassigned by name. `/student-hub/scholarships/agents`
+still works and is reachable as _support_ from the Scholarships page — as an
+adviser directory, not a competing catalogue of scholarships. Full destructive
+legacy migration remains deferred to Part 8.
+
+No example or invented scholarship was created or seeded. When a structured
+filter is applied, legacy rows are excluded rather than silently ignoring the
+filter, so a filtered list never contains records the filter could not test.
+
+### 21.7 Shared presentation utilities
+
+- `src/components/ui/HorizontalTabs.tsx` — scrollable tab row plus a directional
+  panel transition. These are links, so the accessible pattern is a labelled
+  `nav` with `aria-current`, not tablist/tab roles. The active tab is scrolled
+  into view on the inline axis only, motion is removed under
+  `prefers-reduced-motion`, and the row's overflow never becomes the page's.
+- `src/components/ui/ClampedText.tsx` — `ClampedTitle` (two lines, no expander)
+  and `ExpandableText` (four lines with in-place See more / See less). The
+  control appears only after the client measures real truncation, so the server
+  and client markup agree. The complete text is always in the DOM: nothing is
+  ever shortened at the API or database level for layout reasons.
 
 ## 20. Required validation for changes
 

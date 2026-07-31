@@ -4,7 +4,7 @@ import { StudentHubSectionHeader } from "@/components/features/student-hub/Stude
 import { requireUser } from "@/lib/server-auth";
 import { studentHubSection } from "@/lib/student-hub-sections";
 
-const section = studentHubSection("internships");
+const section = studentHubSection("programs");
 
 export const metadata: Metadata = {
   title: section.title,
@@ -12,11 +12,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Internships only — INTERNSHIP and GRADUATE_INTERNSHIP. Previously a redirect
- * into the generic opportunity directory, which dropped the student out of the
- * Student Hub and cleared the active tab they had just selected.
+ * Research placements, exchanges, summer programmes, competitions and
+ * volunteering. This section spans three opportunity categories, which is why
+ * the Student Hub keeps its own section registry rather than reusing them.
  */
-export default async function StudentHubInternshipsPage({
+export default async function StudentHubProgramsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -24,10 +24,10 @@ export default async function StudentHubInternshipsPage({
   const [user, params] = await Promise.all([requireUser(), searchParams]);
   return (
     <div className="mx-auto max-w-[1240px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
-      <StudentHubSectionHeader sectionKey="internships" />
+      <StudentHubSectionHeader sectionKey="programs" />
       <StudentHubOpportunitySection
         params={params}
-        sectionKey="internships"
+        sectionKey="programs"
         viewerUserId={user.id}
       />
     </div>

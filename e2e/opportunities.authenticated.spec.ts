@@ -65,11 +65,18 @@ test.describe("opportunities discovery", () => {
   test("legacy Student Hub opportunity routes still resolve", async ({
     page,
   }) => {
+    // The generic hub entry is gone from the navigation but its URL still
+    // resolves for existing links and bookmarks.
     await page.goto("/student-hub/opportunities");
     await expect(page).toHaveURL(/\/opportunities$/);
 
+    // Internships is no longer a redirect into the generic directory: it is a
+    // section that keeps the student inside the Student Hub.
     await page.goto("/student-hub/internships");
-    await expect(page).toHaveURL(/category=internships/);
+    await expect(page).toHaveURL(/\/student-hub\/internships$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Internships",
+    );
   });
 });
 

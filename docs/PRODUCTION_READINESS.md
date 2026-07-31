@@ -401,3 +401,43 @@ Runtime checks that still require a deployed environment:
 New environment variable: `OPPORTUNITY_WORKER_SECRET`, the shared secret for
 `POST /api/internal/opportunities/expire`. The expiry sweep is also available as
 `npm run opportunities:expire`. No other configuration changes.
+
+## Part 5 UX integration release checks
+
+This pass added no model, migration, environment variable, provider or worker.
+It is a routing, navigation and presentation change, so the release risk is
+concentrated in links and in cached pages rather than in data.
+
+Before release:
+
+- confirm the organization workspace navigation shows **Opportunities** and
+  **Applications** for an active owner on a real deployed organization, on
+  desktop and on mobile;
+- confirm an organization with neither `SCHOLARSHIPS` nor `INTERNSHIPS_JOBS`
+  enabled still sees Opportunities in a setup state, and that the checklist's
+  configuration link resolves;
+- confirm the Student Hub shows Overview, Scholarships, Internships, Jobs,
+  Programs & Research and Applications, and that each section keeps its own
+  title and active tab after a refresh and after browser back;
+- confirm the unified Scholarships page returns both unified and legacy records
+  with no duplicate, against real production data;
+- confirm `/student-hub/opportunities`, `/opportunities/scholarships`,
+  `/opportunities/internships`, `/opportunities/jobs` and
+  `/opportunities/programs` still resolve for existing links, bookmarks and any
+  external references;
+- confirm no organization page presents personal student navigation, and that
+  Return to Personal restores it.
+
+Routes moved from `app/organizations/[slug]/opportunities/**` into the
+`(workspace)` route group. The public URLs are unchanged, but any CDN or
+edge cache holding the old render should be invalidated with the deploy.
+
+Known limitation carried into production: the unified Scholarships page applies
+structured filters (country, university, degree level, funding, deadline) to
+unified records only, and excludes legacy rows while such a filter is active,
+because the legacy table cannot answer them. Unfiltered and free-text searches
+return both. This is visible to students as a shorter result list while a filter
+is applied, and is resolved by the Part 8 legacy migration.
+
+Not started and not to be described as delivered: Part 6 Discover, products and
+services.

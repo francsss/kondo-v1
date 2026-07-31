@@ -10,7 +10,9 @@ export default defineConfig({
     fileParallelism: false,
     globals: true,
     environment: "node",
-    include: ["tests/**/*.test.ts"],
+    // `.tsx` is allowed so component tests can render with JSX instead of
+    // `createElement` calls that pass children as a prop.
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     testTimeout: 20_000,
   },
   resolve: {
