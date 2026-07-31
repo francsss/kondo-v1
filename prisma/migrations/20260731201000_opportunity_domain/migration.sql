@@ -18,65 +18,173 @@
 -- 20260717000000_search_full_text.
 
 -- CreateEnum
-CREATE TYPE "OpportunityType" AS ENUM ('SCHOLARSHIP', 'INTERNSHIP', 'GRADUATE_INTERNSHIP', 'PART_TIME_JOB', 'FULL_TIME_JOB', 'CAMPUS_JOB', 'RESEARCH_OPPORTUNITY', 'VOLUNTEERING', 'COMPETITION', 'EXCHANGE_PROGRAM', 'SUMMER_PROGRAM', 'OTHER_PROGRAM');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityType" AS ENUM ('SCHOLARSHIP', 'INTERNSHIP', 'GRADUATE_INTERNSHIP', 'PART_TIME_JOB', 'FULL_TIME_JOB', 'CAMPUS_JOB', 'RESEARCH_OPPORTUNITY', 'VOLUNTEERING', 'COMPETITION', 'EXCHANGE_PROGRAM', 'SUMMER_PROGRAM', 'OTHER_PROGRAM');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityPublisherType" AS ENUM ('ORGANIZATION', 'EDITORIAL', 'LEGACY_SCHOLARSHIP_AGENT');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityPublisherType" AS ENUM ('ORGANIZATION', 'EDITORIAL', 'LEGACY_SCHOLARSHIP_AGENT');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityLifecycleStatus" AS ENUM ('DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'PAUSED', 'CLOSED', 'EXPIRED', 'REJECTED', 'REMOVED', 'ARCHIVED');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityLifecycleStatus" AS ENUM ('DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'PAUSED', 'CLOSED', 'EXPIRED', 'REJECTED', 'REMOVED', 'ARCHIVED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityApplicationMethod" AS ENUM ('KONDO_APPLICATION', 'EXTERNAL_URL', 'EMAIL', 'INFORMATION_ONLY', 'NOMINATION_REQUIRED');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityApplicationMethod" AS ENUM ('KONDO_APPLICATION', 'EXTERNAL_URL', 'EMAIL', 'INFORMATION_ONLY', 'NOMINATION_REQUIRED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityWorkMode" AS ENUM ('ON_SITE', 'REMOTE', 'HYBRID', 'CAMPUS', 'UNSPECIFIED');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityWorkMode" AS ENUM ('ON_SITE', 'REMOTE', 'HYBRID', 'CAMPUS', 'UNSPECIFIED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityFundingType" AS ENUM ('FULLY_FUNDED', 'PARTIALLY_FUNDED', 'TUITION_ONLY', 'STIPEND_ONLY', 'FEE_WAIVER', 'OTHER');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityFundingType" AS ENUM ('FULLY_FUNDED', 'PARTIALLY_FUNDED', 'TUITION_ONLY', 'STIPEND_ONLY', 'FEE_WAIVER', 'OTHER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityEmploymentType" AS ENUM ('INTERNSHIP', 'PART_TIME', 'FULL_TIME', 'TEMPORARY', 'CONTRACT', 'CAMPUS', 'VOLUNTEER', 'RESEARCH_ASSISTANT', 'TEACHING_ASSISTANT');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityEmploymentType" AS ENUM ('INTERNSHIP', 'PART_TIME', 'FULL_TIME', 'TEMPORARY', 'CONTRACT', 'CAMPUS', 'VOLUNTEER', 'RESEARCH_ASSISTANT', 'TEACHING_ASSISTANT');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityExperienceLevel" AS ENUM ('NO_EXPERIENCE', 'ENTRY_LEVEL', 'INTERMEDIATE', 'EXPERIENCED', 'UNSPECIFIED');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityExperienceLevel" AS ENUM ('NO_EXPERIENCE', 'ENTRY_LEVEL', 'INTERMEDIATE', 'EXPERIENCED', 'UNSPECIFIED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunitySalaryPeriod" AS ENUM ('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR', 'TOTAL');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunitySalaryPeriod" AS ENUM ('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR', 'TOTAL');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityBenefitType" AS ENUM ('TUITION', 'ACCOMMODATION', 'STIPEND', 'SALARY', 'INSURANCE', 'TRAVEL', 'REGISTRATION_FEE', 'MEALS', 'TRANSPORT', 'VISA_SUPPORT', 'HOUSING_SUPPORT', 'OTHER');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityBenefitType" AS ENUM ('TUITION', 'ACCOMMODATION', 'STIPEND', 'SALARY', 'INSURANCE', 'TRAVEL', 'REGISTRATION_FEE', 'MEALS', 'TRANSPORT', 'VISA_SUPPORT', 'HOUSING_SUPPORT', 'OTHER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityBenefitConfidence" AS ENUM ('CONFIRMED', 'POSSIBLE', 'NOT_SPECIFIED');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityBenefitConfidence" AS ENUM ('CONFIRMED', 'POSSIBLE', 'NOT_SPECIFIED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityEligibilityRuleType" AS ENUM ('ACCOUNT_JOURNEY', 'STUDENT_STATUS', 'DEGREE_LEVEL', 'UNIVERSITY', 'FIELD_OF_STUDY', 'GRADUATION_YEAR', 'COUNTRY', 'NATIONALITY', 'RESIDENCE', 'AGE', 'GPA', 'LANGUAGE', 'EXPERIENCE', 'SKILL', 'AVAILABILITY', 'ENROLLMENT_STATUS', 'CUSTOM');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityEligibilityRuleType" AS ENUM ('ACCOUNT_JOURNEY', 'STUDENT_STATUS', 'DEGREE_LEVEL', 'UNIVERSITY', 'FIELD_OF_STUDY', 'GRADUATION_YEAR', 'COUNTRY', 'NATIONALITY', 'RESIDENCE', 'AGE', 'GPA', 'LANGUAGE', 'EXPERIENCE', 'SKILL', 'AVAILABILITY', 'ENROLLMENT_STATUS', 'CUSTOM');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityEligibilityOperator" AS ENUM ('EQUALS', 'NOT_EQUALS', 'IN', 'NOT_IN', 'AT_LEAST', 'AT_MOST', 'BETWEEN', 'EXISTS', 'CUSTOM');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityEligibilityOperator" AS ENUM ('EQUALS', 'NOT_EQUALS', 'IN', 'NOT_IN', 'AT_LEAST', 'AT_MOST', 'BETWEEN', 'EXISTS', 'CUSTOM');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityLanguageLevel" AS ENUM ('BASIC', 'INTERMEDIATE', 'ADVANCED', 'FLUENT', 'NATIVE');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityLanguageLevel" AS ENUM ('BASIC', 'INTERMEDIATE', 'ADVANCED', 'FLUENT', 'NATIVE');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityDocumentCategory" AS ENUM ('CV', 'RESUME', 'TRANSCRIPT', 'ENROLLMENT_CERTIFICATE', 'RECOMMENDATION_LETTER', 'MOTIVATION_LETTER', 'LANGUAGE_CERTIFICATE', 'PORTFOLIO', 'RESEARCH_PROPOSAL', 'PASSPORT_COPY', 'OTHER');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityDocumentCategory" AS ENUM ('CV', 'RESUME', 'TRANSCRIPT', 'ENROLLMENT_CERTIFICATE', 'RECOMMENDATION_LETTER', 'MOTIVATION_LETTER', 'LANGUAGE_CERTIFICATE', 'PORTFOLIO', 'RESEARCH_PROPOSAL', 'PASSPORT_COPY', 'OTHER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityQuestionType" AS ENUM ('SHORT_TEXT', 'LONG_TEXT', 'SELECT', 'MULTI_SELECT', 'DATE', 'NUMBER', 'BOOLEAN', 'FILE', 'CONSENT');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityQuestionType" AS ENUM ('SHORT_TEXT', 'LONG_TEXT', 'SELECT', 'MULTI_SELECT', 'DATE', 'NUMBER', 'BOOLEAN', 'FILE', 'CONSENT');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityApplicationStatus" AS ENUM ('DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'ACCEPTED', 'DECLINED_BY_APPLICANT', 'REJECTED', 'WITHDRAWN', 'EXPIRED', 'CANCELLED');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityApplicationStatus" AS ENUM ('DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'ACCEPTED', 'DECLINED_BY_APPLICANT', 'REJECTED', 'WITHDRAWN', 'EXPIRED', 'CANCELLED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "OpportunityMediaKind" AS ENUM ('COVER', 'GALLERY', 'PUBLIC_DOCUMENT');
+DO $$
+BEGIN
+  CREATE TYPE "OpportunityMediaKind" AS ENUM ('COVER', 'GALLERY', 'PUBLIC_DOCUMENT');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 
 -- AlterTable
-ALTER TABLE "UserPreference" ADD COLUMN     "notificationOpportunities" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserPreference" ADD COLUMN IF NOT EXISTS "notificationOpportunities" BOOLEAN NOT NULL DEFAULT true;
 
 -- CreateTable
-CREATE TABLE "Opportunity" (
+CREATE TABLE IF NOT EXISTS "Opportunity" (
     "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "type" "OpportunityType" NOT NULL,
@@ -122,7 +230,7 @@ CREATE TABLE "Opportunity" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityScholarshipDetail" (
+CREATE TABLE IF NOT EXISTS "OpportunityScholarshipDetail" (
     "opportunityId" TEXT NOT NULL,
     "fundingType" "OpportunityFundingType" NOT NULL,
     "tuitionCoverage" VARCHAR(300),
@@ -146,7 +254,7 @@ CREATE TABLE "OpportunityScholarshipDetail" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityJobDetail" (
+CREATE TABLE IF NOT EXISTS "OpportunityJobDetail" (
     "opportunityId" TEXT NOT NULL,
     "employmentType" "OpportunityEmploymentType" NOT NULL,
     "roleTitle" VARCHAR(180),
@@ -173,7 +281,7 @@ CREATE TABLE "OpportunityJobDetail" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityDegreeLevel" (
+CREATE TABLE IF NOT EXISTS "OpportunityDegreeLevel" (
     "opportunityId" TEXT NOT NULL,
     "degreeLevel" "StudyLevel" NOT NULL,
 
@@ -181,7 +289,7 @@ CREATE TABLE "OpportunityDegreeLevel" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityFieldOfStudy" (
+CREATE TABLE IF NOT EXISTS "OpportunityFieldOfStudy" (
     "opportunityId" TEXT NOT NULL,
     "fieldKey" VARCHAR(80) NOT NULL,
 
@@ -189,7 +297,7 @@ CREATE TABLE "OpportunityFieldOfStudy" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityLanguageRequirement" (
+CREATE TABLE IF NOT EXISTS "OpportunityLanguageRequirement" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "language" VARCHAR(80) NOT NULL,
@@ -201,7 +309,7 @@ CREATE TABLE "OpportunityLanguageRequirement" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityEligibilityRule" (
+CREATE TABLE IF NOT EXISTS "OpportunityEligibilityRule" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "ruleType" "OpportunityEligibilityRuleType" NOT NULL,
@@ -217,7 +325,7 @@ CREATE TABLE "OpportunityEligibilityRule" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityBenefit" (
+CREATE TABLE IF NOT EXISTS "OpportunityBenefit" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "type" "OpportunityBenefitType" NOT NULL,
@@ -232,7 +340,7 @@ CREATE TABLE "OpportunityBenefit" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityApplicationRequirement" (
+CREATE TABLE IF NOT EXISTS "OpportunityApplicationRequirement" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "documentType" "OpportunityDocumentCategory" NOT NULL,
@@ -244,7 +352,7 @@ CREATE TABLE "OpportunityApplicationRequirement" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityApplicationQuestion" (
+CREATE TABLE IF NOT EXISTS "OpportunityApplicationQuestion" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "type" "OpportunityQuestionType" NOT NULL,
@@ -260,7 +368,7 @@ CREATE TABLE "OpportunityApplicationQuestion" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityMedia" (
+CREATE TABLE IF NOT EXISTS "OpportunityMedia" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "mediaId" TEXT NOT NULL,
@@ -274,7 +382,7 @@ CREATE TABLE "OpportunityMedia" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunitySaved" (
+CREATE TABLE IF NOT EXISTS "OpportunitySaved" (
     "userId" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "remindBeforeDays" INTEGER,
@@ -285,7 +393,7 @@ CREATE TABLE "OpportunitySaved" (
 );
 
 -- CreateTable
-CREATE TABLE "UserOpportunityDocument" (
+CREATE TABLE IF NOT EXISTS "UserOpportunityDocument" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "mediaId" TEXT NOT NULL,
@@ -303,7 +411,7 @@ CREATE TABLE "UserOpportunityDocument" (
 );
 
 -- CreateTable
-CREATE TABLE "UserOpportunityProfile" (
+CREATE TABLE IF NOT EXISTS "UserOpportunityProfile" (
     "userId" TEXT NOT NULL,
     "preferredTypes" "OpportunityType"[] DEFAULT ARRAY[]::"OpportunityType"[],
     "preferredCityIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
@@ -327,7 +435,7 @@ CREATE TABLE "UserOpportunityProfile" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityApplication" (
+CREATE TABLE IF NOT EXISTS "OpportunityApplication" (
     "id" TEXT NOT NULL,
     "opportunityId" TEXT NOT NULL,
     "applicantUserId" TEXT NOT NULL,
@@ -351,7 +459,7 @@ CREATE TABLE "OpportunityApplication" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityApplicationAnswer" (
+CREATE TABLE IF NOT EXISTS "OpportunityApplicationAnswer" (
     "id" TEXT NOT NULL,
     "applicationId" TEXT NOT NULL,
     "questionId" TEXT NOT NULL,
@@ -364,7 +472,7 @@ CREATE TABLE "OpportunityApplicationAnswer" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityApplicationDocument" (
+CREATE TABLE IF NOT EXISTS "OpportunityApplicationDocument" (
     "id" TEXT NOT NULL,
     "applicationId" TEXT NOT NULL,
     "userDocumentId" TEXT NOT NULL,
@@ -377,7 +485,7 @@ CREATE TABLE "OpportunityApplicationDocument" (
 );
 
 -- CreateTable
-CREATE TABLE "OpportunityApplicationStatusHistory" (
+CREATE TABLE IF NOT EXISTS "OpportunityApplicationStatusHistory" (
     "id" TEXT NOT NULL,
     "applicationId" TEXT NOT NULL,
     "fromStatus" "OpportunityApplicationStatus",
@@ -391,261 +499,456 @@ CREATE TABLE "OpportunityApplicationStatusHistory" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Opportunity_slug_key" ON "Opportunity"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "Opportunity_slug_key" ON "Opportunity"("slug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Opportunity_legacySourceKey_key" ON "Opportunity"("legacySourceKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "Opportunity_legacySourceKey_key" ON "Opportunity"("legacySourceKey");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_lifecycle_applicationDeadline_idx" ON "Opportunity"("lifecycle", "applicationDeadline");
+CREATE INDEX IF NOT EXISTS "Opportunity_lifecycle_applicationDeadline_idx" ON "Opportunity"("lifecycle", "applicationDeadline");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_lifecycle_publishedAt_idx" ON "Opportunity"("lifecycle", "publishedAt");
+CREATE INDEX IF NOT EXISTS "Opportunity_lifecycle_publishedAt_idx" ON "Opportunity"("lifecycle", "publishedAt");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_type_lifecycle_publishedAt_idx" ON "Opportunity"("type", "lifecycle", "publishedAt");
+CREATE INDEX IF NOT EXISTS "Opportunity_type_lifecycle_publishedAt_idx" ON "Opportunity"("type", "lifecycle", "publishedAt");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_publisherOrganizationId_lifecycle_publishedAt_idx" ON "Opportunity"("publisherOrganizationId", "lifecycle", "publishedAt");
+CREATE INDEX IF NOT EXISTS "Opportunity_publisherOrganizationId_lifecycle_publishedAt_idx" ON "Opportunity"("publisherOrganizationId", "lifecycle", "publishedAt");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_scholarshipAgentId_idx" ON "Opportunity"("scholarshipAgentId");
+CREATE INDEX IF NOT EXISTS "Opportunity_scholarshipAgentId_idx" ON "Opportunity"("scholarshipAgentId");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_universityId_lifecycle_idx" ON "Opportunity"("universityId", "lifecycle");
+CREATE INDEX IF NOT EXISTS "Opportunity_universityId_lifecycle_idx" ON "Opportunity"("universityId", "lifecycle");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_countryId_cityId_lifecycle_idx" ON "Opportunity"("countryId", "cityId", "lifecycle");
+CREATE INDEX IF NOT EXISTS "Opportunity_countryId_cityId_lifecycle_idx" ON "Opportunity"("countryId", "cityId", "lifecycle");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_createdByUserId_createdAt_idx" ON "Opportunity"("createdByUserId", "createdAt");
+CREATE INDEX IF NOT EXISTS "Opportunity_createdByUserId_createdAt_idx" ON "Opportunity"("createdByUserId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "Opportunity_lifecycle_expiresAt_idx" ON "Opportunity"("lifecycle", "expiresAt");
+CREATE INDEX IF NOT EXISTS "Opportunity_lifecycle_expiresAt_idx" ON "Opportunity"("lifecycle", "expiresAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunityScholarshipDetail_fundingType_idx" ON "OpportunityScholarshipDetail"("fundingType");
+CREATE INDEX IF NOT EXISTS "OpportunityScholarshipDetail_fundingType_idx" ON "OpportunityScholarshipDetail"("fundingType");
 
 -- CreateIndex
-CREATE INDEX "OpportunityJobDetail_employmentType_experienceLevel_idx" ON "OpportunityJobDetail"("employmentType", "experienceLevel");
+CREATE INDEX IF NOT EXISTS "OpportunityJobDetail_employmentType_experienceLevel_idx" ON "OpportunityJobDetail"("employmentType", "experienceLevel");
 
 -- CreateIndex
-CREATE INDEX "OpportunityDegreeLevel_degreeLevel_opportunityId_idx" ON "OpportunityDegreeLevel"("degreeLevel", "opportunityId");
+CREATE INDEX IF NOT EXISTS "OpportunityDegreeLevel_degreeLevel_opportunityId_idx" ON "OpportunityDegreeLevel"("degreeLevel", "opportunityId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityFieldOfStudy_fieldKey_opportunityId_idx" ON "OpportunityFieldOfStudy"("fieldKey", "opportunityId");
+CREATE INDEX IF NOT EXISTS "OpportunityFieldOfStudy_fieldKey_opportunityId_idx" ON "OpportunityFieldOfStudy"("fieldKey", "opportunityId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityLanguageRequirement_language_level_idx" ON "OpportunityLanguageRequirement"("language", "level");
+CREATE INDEX IF NOT EXISTS "OpportunityLanguageRequirement_language_level_idx" ON "OpportunityLanguageRequirement"("language", "level");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OpportunityLanguageRequirement_opportunityId_language_key" ON "OpportunityLanguageRequirement"("opportunityId", "language");
+CREATE UNIQUE INDEX IF NOT EXISTS "OpportunityLanguageRequirement_opportunityId_language_key" ON "OpportunityLanguageRequirement"("opportunityId", "language");
 
 -- CreateIndex
-CREATE INDEX "OpportunityEligibilityRule_opportunityId_sortOrder_idx" ON "OpportunityEligibilityRule"("opportunityId", "sortOrder");
+CREATE INDEX IF NOT EXISTS "OpportunityEligibilityRule_opportunityId_sortOrder_idx" ON "OpportunityEligibilityRule"("opportunityId", "sortOrder");
 
 -- CreateIndex
-CREATE INDEX "OpportunityEligibilityRule_ruleType_idx" ON "OpportunityEligibilityRule"("ruleType");
+CREATE INDEX IF NOT EXISTS "OpportunityEligibilityRule_ruleType_idx" ON "OpportunityEligibilityRule"("ruleType");
 
 -- CreateIndex
-CREATE INDEX "OpportunityBenefit_opportunityId_sortOrder_idx" ON "OpportunityBenefit"("opportunityId", "sortOrder");
+CREATE INDEX IF NOT EXISTS "OpportunityBenefit_opportunityId_sortOrder_idx" ON "OpportunityBenefit"("opportunityId", "sortOrder");
 
 -- CreateIndex
-CREATE INDEX "OpportunityBenefit_type_confidence_idx" ON "OpportunityBenefit"("type", "confidence");
+CREATE INDEX IF NOT EXISTS "OpportunityBenefit_type_confidence_idx" ON "OpportunityBenefit"("type", "confidence");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationRequirement_opportunityId_sortOrder_idx" ON "OpportunityApplicationRequirement"("opportunityId", "sortOrder");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationRequirement_opportunityId_sortOrder_idx" ON "OpportunityApplicationRequirement"("opportunityId", "sortOrder");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OpportunityApplicationRequirement_opportunityId_documentTyp_key" ON "OpportunityApplicationRequirement"("opportunityId", "documentType");
+CREATE UNIQUE INDEX IF NOT EXISTS "OpportunityApplicationRequirement_opportunityId_documentTyp_key" ON "OpportunityApplicationRequirement"("opportunityId", "documentType");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationQuestion_opportunityId_sortOrder_idx" ON "OpportunityApplicationQuestion"("opportunityId", "sortOrder");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationQuestion_opportunityId_sortOrder_idx" ON "OpportunityApplicationQuestion"("opportunityId", "sortOrder");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OpportunityMedia_mediaId_key" ON "OpportunityMedia"("mediaId");
+CREATE UNIQUE INDEX IF NOT EXISTS "OpportunityMedia_mediaId_key" ON "OpportunityMedia"("mediaId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityMedia_opportunityId_sortOrder_idx" ON "OpportunityMedia"("opportunityId", "sortOrder");
+CREATE INDEX IF NOT EXISTS "OpportunityMedia_opportunityId_sortOrder_idx" ON "OpportunityMedia"("opportunityId", "sortOrder");
 
 -- CreateIndex
-CREATE INDEX "OpportunityMedia_opportunityId_isCover_idx" ON "OpportunityMedia"("opportunityId", "isCover");
+CREATE INDEX IF NOT EXISTS "OpportunityMedia_opportunityId_isCover_idx" ON "OpportunityMedia"("opportunityId", "isCover");
 
 -- CreateIndex
-CREATE INDEX "OpportunitySaved_userId_createdAt_idx" ON "OpportunitySaved"("userId", "createdAt");
+CREATE INDEX IF NOT EXISTS "OpportunitySaved_userId_createdAt_idx" ON "OpportunitySaved"("userId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunitySaved_opportunityId_idx" ON "OpportunitySaved"("opportunityId");
+CREATE INDEX IF NOT EXISTS "OpportunitySaved_opportunityId_idx" ON "OpportunitySaved"("opportunityId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserOpportunityDocument_mediaId_key" ON "UserOpportunityDocument"("mediaId");
+CREATE UNIQUE INDEX IF NOT EXISTS "UserOpportunityDocument_mediaId_key" ON "UserOpportunityDocument"("mediaId");
 
 -- CreateIndex
-CREATE INDEX "UserOpportunityDocument_userId_category_createdAt_idx" ON "UserOpportunityDocument"("userId", "category", "createdAt");
+CREATE INDEX IF NOT EXISTS "UserOpportunityDocument_userId_category_createdAt_idx" ON "UserOpportunityDocument"("userId", "category", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "UserOpportunityDocument_userId_archivedAt_idx" ON "UserOpportunityDocument"("userId", "archivedAt");
+CREATE INDEX IF NOT EXISTS "UserOpportunityDocument_userId_archivedAt_idx" ON "UserOpportunityDocument"("userId", "archivedAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplication_applicantUserId_status_updatedAt_idx" ON "OpportunityApplication"("applicantUserId", "status", "updatedAt");
+CREATE INDEX IF NOT EXISTS "OpportunityApplication_applicantUserId_status_updatedAt_idx" ON "OpportunityApplication"("applicantUserId", "status", "updatedAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplication_organizationId_status_submittedAt_idx" ON "OpportunityApplication"("organizationId", "status", "submittedAt");
+CREATE INDEX IF NOT EXISTS "OpportunityApplication_organizationId_status_submittedAt_idx" ON "OpportunityApplication"("organizationId", "status", "submittedAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplication_opportunityId_status_submittedAt_idx" ON "OpportunityApplication"("opportunityId", "status", "submittedAt");
+CREATE INDEX IF NOT EXISTS "OpportunityApplication_opportunityId_status_submittedAt_idx" ON "OpportunityApplication"("opportunityId", "status", "submittedAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplication_assignedReviewerUserId_status_idx" ON "OpportunityApplication"("assignedReviewerUserId", "status");
+CREATE INDEX IF NOT EXISTS "OpportunityApplication_assignedReviewerUserId_status_idx" ON "OpportunityApplication"("assignedReviewerUserId", "status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OpportunityApplication_opportunityId_applicantUserId_key" ON "OpportunityApplication"("opportunityId", "applicantUserId");
+CREATE UNIQUE INDEX IF NOT EXISTS "OpportunityApplication_opportunityId_applicantUserId_key" ON "OpportunityApplication"("opportunityId", "applicantUserId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationAnswer_questionId_idx" ON "OpportunityApplicationAnswer"("questionId");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationAnswer_questionId_idx" ON "OpportunityApplicationAnswer"("questionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OpportunityApplicationAnswer_applicationId_questionId_key" ON "OpportunityApplicationAnswer"("applicationId", "questionId");
+CREATE UNIQUE INDEX IF NOT EXISTS "OpportunityApplicationAnswer_applicationId_questionId_key" ON "OpportunityApplicationAnswer"("applicationId", "questionId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationDocument_applicationId_category_idx" ON "OpportunityApplicationDocument"("applicationId", "category");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationDocument_applicationId_category_idx" ON "OpportunityApplicationDocument"("applicationId", "category");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationDocument_userDocumentId_idx" ON "OpportunityApplicationDocument"("userDocumentId");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationDocument_userDocumentId_idx" ON "OpportunityApplicationDocument"("userDocumentId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationDocument_requirementId_idx" ON "OpportunityApplicationDocument"("requirementId");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationDocument_requirementId_idx" ON "OpportunityApplicationDocument"("requirementId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OpportunityApplicationDocument_applicationId_userDocumentId_key" ON "OpportunityApplicationDocument"("applicationId", "userDocumentId");
+CREATE UNIQUE INDEX IF NOT EXISTS "OpportunityApplicationDocument_applicationId_userDocumentId_key" ON "OpportunityApplicationDocument"("applicationId", "userDocumentId");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationStatusHistory_applicationId_createdAt_idx" ON "OpportunityApplicationStatusHistory"("applicationId", "createdAt");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationStatusHistory_applicationId_createdAt_idx" ON "OpportunityApplicationStatusHistory"("applicationId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "OpportunityApplicationStatusHistory_actingUserId_createdAt_idx" ON "OpportunityApplicationStatusHistory"("actingUserId", "createdAt");
+CREATE INDEX IF NOT EXISTS "OpportunityApplicationStatusHistory_actingUserId_createdAt_idx" ON "OpportunityApplicationStatusHistory"("actingUserId", "createdAt");
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_publisherOrganizationId_fkey" FOREIGN KEY ("publisherOrganizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_publisherOrganizationId_fkey" FOREIGN KEY ("publisherOrganizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_scholarshipAgentId_fkey" FOREIGN KEY ("scholarshipAgentId") REFERENCES "ScholarshipAgent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_scholarshipAgentId_fkey" FOREIGN KEY ("scholarshipAgentId") REFERENCES "ScholarshipAgent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_universityId_fkey" FOREIGN KEY ("universityId") REFERENCES "University"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_universityId_fkey" FOREIGN KEY ("universityId") REFERENCES "University"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_publicationBlockedById_fkey" FOREIGN KEY ("publicationBlockedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "Opportunity" ADD CONSTRAINT "Opportunity_publicationBlockedById_fkey" FOREIGN KEY ("publicationBlockedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityScholarshipDetail" ADD CONSTRAINT "OpportunityScholarshipDetail_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityScholarshipDetail" ADD CONSTRAINT "OpportunityScholarshipDetail_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityJobDetail" ADD CONSTRAINT "OpportunityJobDetail_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityJobDetail" ADD CONSTRAINT "OpportunityJobDetail_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityDegreeLevel" ADD CONSTRAINT "OpportunityDegreeLevel_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityDegreeLevel" ADD CONSTRAINT "OpportunityDegreeLevel_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityFieldOfStudy" ADD CONSTRAINT "OpportunityFieldOfStudy_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityFieldOfStudy" ADD CONSTRAINT "OpportunityFieldOfStudy_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityLanguageRequirement" ADD CONSTRAINT "OpportunityLanguageRequirement_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityLanguageRequirement" ADD CONSTRAINT "OpportunityLanguageRequirement_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityEligibilityRule" ADD CONSTRAINT "OpportunityEligibilityRule_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityEligibilityRule" ADD CONSTRAINT "OpportunityEligibilityRule_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityBenefit" ADD CONSTRAINT "OpportunityBenefit_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityBenefit" ADD CONSTRAINT "OpportunityBenefit_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationRequirement" ADD CONSTRAINT "OpportunityApplicationRequirement_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationRequirement" ADD CONSTRAINT "OpportunityApplicationRequirement_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationQuestion" ADD CONSTRAINT "OpportunityApplicationQuestion_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationQuestion" ADD CONSTRAINT "OpportunityApplicationQuestion_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityMedia" ADD CONSTRAINT "OpportunityMedia_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityMedia" ADD CONSTRAINT "OpportunityMedia_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityMedia" ADD CONSTRAINT "OpportunityMedia_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "MediaAsset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityMedia" ADD CONSTRAINT "OpportunityMedia_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "MediaAsset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunitySaved" ADD CONSTRAINT "OpportunitySaved_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunitySaved" ADD CONSTRAINT "OpportunitySaved_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunitySaved" ADD CONSTRAINT "OpportunitySaved_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunitySaved" ADD CONSTRAINT "OpportunitySaved_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "UserOpportunityDocument" ADD CONSTRAINT "UserOpportunityDocument_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "UserOpportunityDocument" ADD CONSTRAINT "UserOpportunityDocument_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "UserOpportunityDocument" ADD CONSTRAINT "UserOpportunityDocument_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "MediaAsset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "UserOpportunityDocument" ADD CONSTRAINT "UserOpportunityDocument_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "MediaAsset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "UserOpportunityProfile" ADD CONSTRAINT "UserOpportunityProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "UserOpportunityProfile" ADD CONSTRAINT "UserOpportunityProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_applicantUserId_fkey" FOREIGN KEY ("applicantUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_applicantUserId_fkey" FOREIGN KEY ("applicantUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_assignedReviewerUserId_fkey" FOREIGN KEY ("assignedReviewerUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplication" ADD CONSTRAINT "OpportunityApplication_assignedReviewerUserId_fkey" FOREIGN KEY ("assignedReviewerUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationAnswer" ADD CONSTRAINT "OpportunityApplicationAnswer_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "OpportunityApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationAnswer" ADD CONSTRAINT "OpportunityApplicationAnswer_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "OpportunityApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationAnswer" ADD CONSTRAINT "OpportunityApplicationAnswer_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "OpportunityApplicationQuestion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationAnswer" ADD CONSTRAINT "OpportunityApplicationAnswer_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "OpportunityApplicationQuestion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationDocument" ADD CONSTRAINT "OpportunityApplicationDocument_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "OpportunityApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationDocument" ADD CONSTRAINT "OpportunityApplicationDocument_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "OpportunityApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationDocument" ADD CONSTRAINT "OpportunityApplicationDocument_userDocumentId_fkey" FOREIGN KEY ("userDocumentId") REFERENCES "UserOpportunityDocument"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationDocument" ADD CONSTRAINT "OpportunityApplicationDocument_userDocumentId_fkey" FOREIGN KEY ("userDocumentId") REFERENCES "UserOpportunityDocument"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationDocument" ADD CONSTRAINT "OpportunityApplicationDocument_requirementId_fkey" FOREIGN KEY ("requirementId") REFERENCES "OpportunityApplicationRequirement"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationDocument" ADD CONSTRAINT "OpportunityApplicationDocument_requirementId_fkey" FOREIGN KEY ("requirementId") REFERENCES "OpportunityApplicationRequirement"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationStatusHistory" ADD CONSTRAINT "OpportunityApplicationStatusHistory_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "OpportunityApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationStatusHistory" ADD CONSTRAINT "OpportunityApplicationStatusHistory_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "OpportunityApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "OpportunityApplicationStatusHistory" ADD CONSTRAINT "OpportunityApplicationStatusHistory_actingUserId_fkey" FOREIGN KEY ("actingUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- RenameIndex
-ALTER INDEX "MeetDiscoveryProfile_discoveryCityId_discoveryUniversityId_near" RENAME TO "MeetDiscoveryProfile_discoveryCityId_discoveryUniversityId__idx";
-
--- RenameIndex
-ALTER INDEX "StoryEntityLink_storyId_type_cityId_universityId_communityId_ex" RENAME TO "StoryEntityLink_storyId_type_cityId_universityId_communityI_key";
-
--- RenameIndex
-ALTER INDEX "UniversityPeriodConfiguration_universityId_campusId_isActive_id" RENAME TO "UniversityPeriodConfiguration_universityId_campusId_isActiv_idx";
+DO $$
+BEGIN
+  ALTER TABLE "OpportunityApplicationStatusHistory" ADD CONSTRAINT "OpportunityApplicationStatusHistory_actingUserId_fkey" FOREIGN KEY ("actingUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;
 
 
 -- Full-text search vector for unified opportunity search. Mirrors the existing
 -- generated-column convention so the column can never drift from its source
 -- columns, and is excluded from Prisma's managed DDL.
 ALTER TABLE "Opportunity"
-ADD COLUMN "searchVector" tsvector
+ADD COLUMN IF NOT EXISTS "searchVector" tsvector
 GENERATED ALWAYS AS (
   setweight(to_tsvector('simple', coalesce("title", '')), 'A') ||
   setweight(to_tsvector('simple', coalesce("shortDescription", '')), 'B') ||
   setweight(to_tsvector('simple', coalesce("locationLabel", '')), 'C')
 ) STORED;
 
-CREATE INDEX "Opportunity_searchVector_idx" ON "Opportunity" USING GIN ("searchVector");
+CREATE INDEX IF NOT EXISTS "Opportunity_searchVector_idx" ON "Opportunity" USING GIN ("searchVector");
