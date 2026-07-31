@@ -559,7 +559,7 @@ export function AppShell({
           id="mobile-navigation"
           role="dialog"
           className={cn(
-            "safe-bottom flex h-[var(--visual-viewport-height,100dvh)] w-[min(84vw,320px)] max-w-full flex-col overflow-y-auto bg-card p-5 text-card-foreground shadow-2xl transition-transform duration-300",
+            "safe-bottom relative isolate flex h-[var(--visual-viewport-height,100dvh)] w-[min(84vw,320px)] max-w-full flex-col overflow-y-auto bg-white p-5 text-card-foreground shadow-[14px_0_48px_rgba(15,74,55,0.14)] transition-transform duration-300 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-[3px] after:bg-gradient-to-b after:from-transparent after:via-kondo-green/15 after:to-transparent after:blur-[1px] dark:bg-card dark:shadow-[14px_0_48px_rgba(0,0,0,0.45)] dark:after:via-kondo-lime/10",
             menuOpen ? "translate-x-0" : "-translate-x-full",
           )}
           onClick={(event) => event.stopPropagation()}
@@ -586,7 +586,7 @@ export function AppShell({
               <ThemeToggle presentation="menu" />
             </div>
 
-            <div className="my-4 border-t border-border/70 pt-4">
+            <div className="my-5 border-t border-border/40 pt-5">
               <div className="space-y-1">
                 {secondaryNavigation.map((item) => (
                   <NavLink
@@ -602,7 +602,7 @@ export function AppShell({
               </div>
             </div>
 
-            <div className="mt-auto border-t border-border/70 pt-4">
+            <div className="mt-auto space-y-1 border-t border-border/40 pt-5">
               {isAdmin ? (
                 <NavLink
                   href="/admin"
@@ -612,17 +612,13 @@ export function AppShell({
                   onNavigate={() => setMenuOpen(false)}
                 />
               ) : null}
-              <div
-                className={cn(isAdmin && "mt-3 border-t border-border/70 pt-3")}
+              <button
+                className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                onClick={logout}
+                type="button"
               >
-                <button
-                  className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  onClick={logout}
-                  type="button"
-                >
-                  <LogOut className="h-5 w-5" /> Sign out
-                </button>
-              </div>
+                <LogOut className="h-5 w-5" /> Sign out
+              </button>
             </div>
           </nav>
         </aside>
