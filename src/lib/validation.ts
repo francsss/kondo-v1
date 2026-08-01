@@ -1,3 +1,4 @@
+import { MediaPurpose } from "@prisma/client";
 import { z } from "zod";
 import { ORGANIZATION_TYPE_KEYS } from "@/features/organizations/registry";
 import { isAfricanCountryCode } from "@/lib/african-countries";
@@ -582,23 +583,10 @@ export const referenceUniversityUpdateSchema =
 
 export const mediaUploadIntentSchema = z
   .object({
-    purpose: z.enum([
-      "PROFILE_AVATAR",
-      "ORGANIZATION_LOGO",
-      "ORGANIZATION_COVER",
-      "ORGANIZATION_GALLERY_IMAGE",
-      "ORGANIZATION_VERIFICATION_DOCUMENT",
-      "COMMUNITY_COVER",
-      "POST_IMAGE",
-      "LISTING_IMAGE",
-      "GUIDE_COVER",
-      "MESSAGE_IMAGE",
-      "MESSAGE_DOCUMENT",
-      "SCHEDULE_IMPORT",
-      "STORY_VIDEO",
-      "STORY_POSTER",
-      "VERIFICATION_DOCUMENT",
-    ]),
+    // Keep upload authorization aligned with the Prisma enum. A duplicated
+    // literal list previously rejected newer Housing, Opportunities, and
+    // organization catalog purposes before their media policies could run.
+    purpose: z.nativeEnum(MediaPurpose),
     fileName: z.string().trim().min(1).max(255),
     mimeType: z.string().trim().min(3).max(120),
     sizeBytes: z

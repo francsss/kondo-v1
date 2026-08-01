@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
+import sharp from "sharp";
 
 const disposable =
   process.env.DATABASE_URL?.includes("kondo_module3_test") ?? false;
@@ -15,6 +16,7 @@ const serviceTitle = `Airport welcome service ${token}`;
 let organizationId = "";
 let citySlug = "";
 let communitySlug = "";
+const uploadedMediaIds: string[] = [];
 
 test.describe.serial("Part 6 Discover and professional catalog", () => {
   test.skip(!disposable, "Requires the disposable PostgreSQL test database.");
@@ -104,6 +106,11 @@ test.describe.serial("Part 6 Discover and professional catalog", () => {
   });
 
   test.afterAll(async () => {
+    if (uploadedMediaIds.length > 0) {
+      await prisma.mediaAsset.deleteMany({
+        where: { id: { in: uploadedMediaIds } },
+      });
+    }
     if (organizationId) {
       await prisma.organization.deleteMany({ where: { id: organizationId } });
     }
@@ -155,6 +162,66 @@ test.describe.serial("Part 6 Discover and professional catalog", () => {
     ).toBeVisible();
     await expect(page.getByText("No custody")).toBeVisible();
     await expect(page.getByRole("button", { name: /pay now/i })).toHaveCount(0);
+  });
+
+  test("authorizes and validates a service cover upload", async ({ page }) => {
+    await page.goto(`/organizations/${organizationSlug}/catalog`);
+    const origin = new URL(page.url()).origin;
+    const image = await sharp({
+      create: {
+        width: 640,
+        height: 480,
+        channels: 3,
+        background: "#18794e",
+      },
+    })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const intentResponse = await page.request.post("/api/media/uploads", {
+      headers: { Origin: origin },
+      data: {
+        purpose: "ORGANIZATION_SERVICE_IMAGE",
+        fileName: "service-cover.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: image.byteLength,
+        altText: "Organization service cover",
+      },
+    });
+    expect(intentResponse.status()).toBe(201);
+    const intent = (await intentResponse.json()) as {
+      media: { id: string };
+      upload: {
+        url: string;
+        method: "PUT";
+        headers: Record<string, string>;
+      };
+    };
+    uploadedMediaIds.push(intent.media.id);
+
+    const uploadResponse = await page.request.put(intent.upload.url, {
+      data: image,
+      headers: {
+        ...intent.upload.headers,
+        "Content-Length": String(image.byteLength),
+        Origin: origin,
+      },
+    });
+    expect(uploadResponse.ok()).toBe(true);
+
+    const completeResponse = await page.request.post(
+      `/api/media/uploads/${intent.media.id}/complete`,
+      { headers: { Origin: origin } },
+    );
+    expect(completeResponse.ok()).toBe(true);
+    await expect
+      .poll(() =>
+        prisma.mediaAsset.findUnique({
+          where: { id: intent.media.id },
+          select: { status: true, purpose: true },
+        }),
+      )
+      .toEqual({ status: "ACTIVE", purpose: "ORGANIZATION_SERVICE_IMAGE" });
   });
 
   test("opens community horizontal sections as page-like deep links", async ({

@@ -1,3 +1,4 @@
+import { MediaPurpose } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   accountRequestAdminSchema,
@@ -435,6 +436,21 @@ describe("input validation", () => {
     expect(
       mediaAdminRemoveSchema.safeParse({ reason: "Too short" }).success,
     ).toBe(false);
+  });
+
+  it("accepts every media purpose exposed by the Prisma schema", () => {
+    for (const purpose of Object.values(MediaPurpose)) {
+      expect(
+        mediaUploadIntentSchema.safeParse({
+          purpose,
+          fileName: "upload.jpg",
+          mimeType: "image/jpeg",
+          sizeBytes: 120_000,
+          altText: "Uploaded media",
+        }).success,
+        `Expected ${purpose} to be accepted by upload authorization`,
+      ).toBe(true);
+    }
   });
 
   it("validates profile visibility and reviewed account requests", () => {
