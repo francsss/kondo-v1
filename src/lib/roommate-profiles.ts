@@ -5,6 +5,13 @@ import {
   roommateProfileInputSchema,
 } from "@/features/housing/schemas";
 import { revalidateHousing } from "@/lib/housing-cache";
+import {
+  budgetsOverlap,
+  describeRoommateExclusions,
+  type EligibilityFailure,
+  roommateCompatibility,
+  roommateEligibility,
+} from "@/lib/roommate-compatibility";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { captureServerProductEvent } from "@/lib/product-analytics-server";
@@ -74,66 +81,18 @@ type ProfileRecord = Prisma.RoommateProfileGetPayload<{
   select: typeof profileSelect;
 }>;
 
-function overlap(first: string[], second: string[]) {
-  const set = new Set(first.map((value) => value.toLowerCase()));
-  return second.filter((value) => set.has(value.toLowerCase()));
-}
-
+/**
+ * Existing public helper, kept for its callers and tests. It now delegates to
+ * the centralized rule so there is exactly one definition of budget overlap.
+ */
 export function roommateBudgetsOverlap(
   first: { minimum: number | null; maximum: number },
   second: { minimum: number | null; maximum: number },
 ) {
-  return (
-    first.maximum >= (second.minimum ?? 0) &&
-    second.maximum >= (first.minimum ?? 0)
+  return budgetsOverlap(
+    { budgetMinimumMinor: first.minimum, budgetMaximumMinor: first.maximum },
+    { budgetMinimumMinor: second.minimum, budgetMaximumMinor: second.maximum },
   );
-}
-
-function compatibilityReasons(
-  viewer: ProfileRecord | null,
-  candidate: ProfileRecord,
-) {
-  if (!viewer) return [`Looking in ${candidate.city.name}`];
-  const reasons: string[] = [];
-  if (viewer.city.id === candidate.city.id) reasons.push("Same city");
-  if (
-    viewer.university?.id &&
-    viewer.university.id === candidate.university?.id
-  ) {
-    reasons.push("Same university");
-  }
-  const sharedLanguages = overlap(viewer.languages, candidate.languages);
-  if (sharedLanguages.length)
-    reasons.push(`Shared language: ${sharedLanguages[0]}`);
-  if (
-    viewer.currency === candidate.currency &&
-    roommateBudgetsOverlap(
-      {
-        minimum: viewer.budgetMinimumMinor,
-        maximum: viewer.budgetMaximumMinor,
-      },
-      {
-        minimum: candidate.budgetMinimumMinor,
-        maximum: candidate.budgetMaximumMinor,
-      },
-    )
-  ) {
-    reasons.push("Overlapping budget");
-  }
-  const days =
-    Math.abs(viewer.moveInDate.getTime() - candidate.moveInDate.getTime()) /
-    86_400_000;
-  if (days <= 30) reasons.push("Similar move-in timing");
-  if (
-    viewer.cleanlinessPreference &&
-    viewer.cleanlinessPreference === candidate.cleanlinessPreference
-  ) {
-    reasons.push("Similar cleanliness preference");
-  }
-  if (viewer.smokingPreference === candidate.smokingPreference) {
-    reasons.push("Compatible smoking preference");
-  }
-  return reasons.slice(0, 4);
 }
 
 export function serializeRoommateProfile(
@@ -142,6 +101,15 @@ export function serializeRoommateProfile(
   viewerProfile: ProfileRecord | null,
 ) {
   const owner = profile.userId === viewerId;
+  const compatibility = owner
+    ? {
+        score: 0,
+        matched: [],
+        excluded: [],
+        notComparable: [],
+        explanation: "This is your profile.",
+      }
+    : roommateCompatibility(viewerProfile, profile);
   return {
     id: profile.id,
     userId: profile.userId,
@@ -181,7 +149,9 @@ export function serializeRoommateProfile(
             }
           : null,
     },
-    matchReasons: owner ? [] : compatibilityReasons(viewerProfile, profile),
+    compatibility,
+    // Retained for existing callers and tests that read the short reason list.
+    matchReasons: compatibility.matched.slice(0, 4).map((entry) => entry.label),
     owner,
     visibility: owner ? profile.visibility : undefined,
     version: owner ? profile.version : undefined,
@@ -334,8 +304,10 @@ async function viewerProfile(userId: string) {
 export async function discoverRoommateProfiles(input: {
   viewerId: string;
   query: Parameters<typeof roommateDiscoverySchema.parse>[0];
+  now?: Date;
 }) {
   const query = roommateDiscoverySchema.parse(input.query);
+  const now = input.now ?? new Date();
   const current = await viewerProfile(input.viewerId);
   const blocks = await prisma.userBlock.findMany({
     where: {
@@ -346,12 +318,31 @@ export async function discoverRoommateProfiles(input: {
   const blockedIds = blocks.map((block) =>
     block.blockerId === input.viewerId ? block.blockedId : block.blockerId,
   );
+
+  // Coarse, index-friendly filtering only. Every viewer-relative rule is
+  // decided by the centralized service below so the query and the explanation
+  // can never disagree about what a match is.
   const where: Prisma.RoommateProfileWhereInput = {
     userId: { notIn: [input.viewerId, ...blockedIds] },
     status: "ACTIVE",
     visibility: "MEMBERS_ONLY",
     allowInterests: true,
-    OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    AND: [
+      { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+      // A NULL minimum means "no lower bound". Comparing it directly excluded
+      // every profile created through the roommate form, which only collects a
+      // maximum — the cause of searches returning nothing once a budget was set.
+      ...(query.maximumBudgetMinor
+        ? [
+            {
+              OR: [
+                { budgetMinimumMinor: null },
+                { budgetMinimumMinor: { lte: query.maximumBudgetMinor } },
+              ],
+            },
+          ]
+        : []),
+    ],
     user: { status: "ACTIVE" },
     ...(query.cityId ? { cityId: query.cityId } : {}),
     ...(query.universityId ? { universityId: query.universityId } : {}),
@@ -363,9 +354,6 @@ export async function discoverRoommateProfiles(input: {
           },
         }
       : {}),
-    ...(query.maximumBudgetMinor
-      ? { budgetMinimumMinor: { lte: query.maximumBudgetMinor } }
-      : {}),
     ...(query.languages.length
       ? { languages: { hasSome: query.languages } }
       : {}),
@@ -374,19 +362,51 @@ export async function discoverRoommateProfiles(input: {
       : {}),
     ...(query.petPreference ? { petPreference: query.petPreference } : {}),
   };
+
+  // One extra row tells us whether another page exists without a second query.
   const rows = await prisma.roommateProfile.findMany({
     where,
     select: profileSelect,
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    take: query.limit,
+    take: query.limit + 1,
+    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
   });
-  return rows
+  const hasMore = rows.length > query.limit;
+  const page = hasMore ? rows.slice(0, query.limit) : rows;
+
+  const exclusions: EligibilityFailure[] = [];
+  const eligible: ProfileRecord[] = [];
+  for (const row of page) {
+    const failure = roommateEligibility({
+      viewer: current,
+      candidate: row,
+      blocked: false, // Blocked members are already excluded by the query.
+      now,
+    });
+    if (failure) exclusions.push(failure);
+    else eligible.push(row);
+  }
+
+  const items = eligible
     .map((row) => serializeRoommateProfile(row, input.viewerId, current))
     .sort(
       (first, second) =>
-        second.matchReasons.length - first.matchReasons.length ||
+        second.compatibility.score - first.compatibility.score ||
+        second.compatibility.matched.length -
+          first.compatibility.matched.length ||
         first.id.localeCompare(second.id),
     );
+
+  return {
+    items,
+    nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+    hasMore,
+    hasProfile: Boolean(current),
+    /** Truthful, aggregate-only reason the list may be empty. */
+    emptyExplanation: items.length
+      ? null
+      : describeRoommateExclusions(exclusions),
+  };
 }
 
 export async function getRoommateProfile(input: {

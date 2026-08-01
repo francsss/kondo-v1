@@ -63,6 +63,7 @@ export default async function RoommatesPage({
       ? discoverRoommateProfiles({
           viewerId: user.id,
           query: {
+            cursor: params.cursor || undefined,
             cityId: params.cityId || undefined,
             moveInFrom: params.moveInFrom || undefined,
             moveInTo: params.moveInTo || undefined,
@@ -78,7 +79,7 @@ export default async function RoommatesPage({
             limit: 24,
           },
         })
-      : [],
+      : null,
     tab === "interests" ? listRoommateInterests(user.id) : [],
   ]);
   return (
@@ -249,9 +250,9 @@ export default async function RoommatesPage({
               </p>
             </Card>
           )
-        ) : profiles.length ? (
+        ) : profiles?.items.length ? (
           <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {profiles.map((profile) => (
+            {profiles.items.map((profile) => (
               <Card className="flex flex-col" key={profile.id}>
                 <div className="flex items-center gap-3">
                   <Avatar
@@ -288,11 +289,14 @@ export default async function RoommatesPage({
                     </p>
                   ) : null}
                 </div>
-                {profile.matchReasons.length ? (
+                {profile.compatibility.matched.length ? (
                   <div className="mt-4 rounded-2xl bg-kondo-green/8 p-3">
-                    <p className="flex items-center gap-2 text-xs font-black text-kondo-green">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      {profile.matchReasons.join(" · ")}
+                    <p
+                      className="flex items-start gap-2 text-xs font-black leading-5 text-kondo-green"
+                      data-testid="roommate-compatibility"
+                    >
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {profile.compatibility.explanation}
                     </p>
                   </div>
                 ) : null}
@@ -305,9 +309,16 @@ export default async function RoommatesPage({
         ) : (
           <Card className="mt-7 py-14 text-center">
             <h2 className="font-display text-xl font-black">No matches yet</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Create an active profile so Kondo can start finding compatible
-              people.
+            {/* Truthful: says what was filtered out rather than implying the
+                member has done something wrong. */}
+            <p
+              className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground"
+              data-testid="roommate-empty-explanation"
+            >
+              {profiles?.hasProfile === false
+                ? "Create an active roommate profile so Kondo can compare city, timing, budget and living preferences."
+                : (profiles?.emptyExplanation ??
+                  "Create an active profile so Kondo can start finding compatible people.")}
             </p>
           </Card>
         )}

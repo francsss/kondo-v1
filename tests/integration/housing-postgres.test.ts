@@ -287,8 +287,10 @@ postgresDescribe("Housing public privacy and visibility", () => {
       viewerId: ids.viewerId,
       query: { languages: [], limit: 20 },
     });
-    expect(visible.map(({ userId }) => userId)).toContain(ids.userId);
-    expect(visible.map(({ userId }) => userId)).not.toContain(ids.viewerId);
+    expect(visible.items.map(({ userId }) => userId)).toContain(ids.userId);
+    expect(visible.items.map(({ userId }) => userId)).not.toContain(
+      ids.viewerId,
+    );
     await prisma.userBlock.create({
       data: { blockerId: ids.userId, blockedId: ids.viewerId },
     });
@@ -296,6 +298,6 @@ postgresDescribe("Housing public privacy and visibility", () => {
       viewerId: ids.viewerId,
       query: { languages: [], limit: 20 },
     });
-    expect(hidden.map(({ userId }) => userId)).not.toContain(ids.userId);
+    expect(hidden.items.map(({ userId }) => userId)).not.toContain(ids.userId);
   });
 });

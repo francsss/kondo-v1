@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardList, Pencil, Plus } from "lucide-react";
+import { OpportunityLifecycleActions } from "@/components/features/opportunities/OpportunityLifecycleActions";
 import { OpportunitySetupPanel } from "@/components/features/opportunities/OpportunitySetupPanel";
 import {
   isOpportunityWorkspaceView,
@@ -15,6 +16,10 @@ import { opportunitySetupState } from "@/lib/organization-workspace-navigation";
 import { getOrganizationWorkspace } from "@/lib/organization-workspaces";
 import { opportunityLifecycleLabel } from "@/lib/opportunity-lifecycle";
 import { listOrganizationOpportunities } from "@/lib/opportunity-management";
+import {
+  opportunityLifecycleGuidance,
+  opportunityWorkspaceActions,
+} from "@/lib/opportunity-workspace-actions";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = {
@@ -58,6 +63,9 @@ export default async function OrganizationOpportunitiesPage({
     membership,
     "ORGANIZATION_VIEW_APPLICATIONS",
   );
+  const enabledCapabilities = organization.capabilities
+    .filter((capability) => capability.status === "ENABLED")
+    .map((capability) => capability.key);
 
   // Workspace access is re-checked inside the service, which throws for a
   // removed member regardless of what the navigation offered.
@@ -145,6 +153,27 @@ export default async function OrganizationOpportunitiesPage({
                       ).toLocaleDateString("en-GB")}`
                     : ""}
                 </p>
+                {/* States who owns the next step, so a record waiting on
+                    moderation never looks like a failed publish. */}
+                {opportunityLifecycleGuidance(opportunity.lifecycle) ? (
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {opportunityLifecycleGuidance(opportunity.lifecycle)}
+                  </p>
+                ) : null}
+                <div className="mt-3">
+                  <OpportunityLifecycleActions
+                    actions={opportunityWorkspaceActions({
+                      lifecycle: opportunity.lifecycle,
+                      type: opportunity.type,
+                      membership,
+                      organizationLifecycleStatus: organization.lifecycleStatus,
+                      enabledCapabilities,
+                      suspensionReason: organization.suspensionReason,
+                    })}
+                    opportunityId={opportunity.id}
+                    organizationId={organization.id}
+                  />
+                </div>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {canViewApplications ? (
