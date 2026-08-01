@@ -5,6 +5,7 @@ export const DISCOVER_RESOURCE_TYPES = [
   "products",
   "services",
   "marketplace",
+  "skills",
   "communities",
   "universities",
   "cities",

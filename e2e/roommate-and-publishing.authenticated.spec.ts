@@ -248,9 +248,10 @@ test.describe.serial("roommate matching and opportunity publishing", () => {
     );
     await publish.click();
     expect((await transition).status()).toBe(200);
-    await expect(page.getByText("Live and visible to students")).toBeVisible({
-      timeout: 20_000,
-    });
+    // Assert the outcome, not the RSC refresh latency: `router.refresh()` can
+    // take several seconds on this page when the full suite runs in parallel.
+    await page.reload();
+    await expect(page.getByText("Live and visible to students")).toBeVisible();
 
     // Public projection, from the one central Opportunity domain.
     await page.goto(`/opportunities/${draftOpportunitySlug}`);
@@ -277,9 +278,8 @@ test.describe.serial("roommate matching and opportunity publishing", () => {
     );
     await pause.click();
     expect((await transition).status()).toBe(200);
-    await expect(page.getByText(/Hidden from students/i)).toBeVisible({
-      timeout: 20_000,
-    });
+    await page.reload();
+    await expect(page.getByText(/Hidden from students/i)).toBeVisible();
 
     const response = await page.goto(`/opportunities/${draftOpportunitySlug}`);
     expect(response?.status()).toBe(404);

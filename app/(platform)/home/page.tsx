@@ -16,6 +16,8 @@ import { getHomeActivityStream } from "@/lib/home-activity";
 import { requireUser } from "@/lib/server-auth";
 import { getStoryFeed } from "@/lib/stories";
 import { getNavigatorActions } from "@/lib/navigator";
+import { LocalRecommendationsRail } from "@/components/features/home/LocalRecommendationsRail";
+import { recommendLocalResources } from "@/lib/local-recommendations";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -38,11 +40,14 @@ export default async function HomePage() {
     activities,
     stories,
     navigator,
+    nearYou,
   ] = await Promise.all([
     getHomeData(user.id),
     getHomeActivityStream(user),
     getStoryFeed(user, { limit: 6 }),
     getNavigatorActions(user.id),
+    // Personalized to this member only, and never cached across members.
+    recommendLocalResources({ userId: user.id, limit: 6 }),
   ]);
   const guidePriority =
     user.studentJourney === "INCOMING_STUDENT" ||
@@ -91,6 +96,8 @@ export default async function HomePage() {
         initialActions={navigator.actions}
         initialJourney={navigator.journey}
       />
+
+      <LocalRecommendationsRail items={nearYou.items} />
 
       {firstGuide ? (
         <Card className="noise relative mt-7 overflow-hidden border-emerald-100 bg-gradient-to-r from-kondo-navy via-kondo-forest to-[#237d61] p-0 text-white shadow-lift dark:border-emerald-400/10">

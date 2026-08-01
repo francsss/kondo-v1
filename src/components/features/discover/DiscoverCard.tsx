@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Sparkles,
   Users,
+  Wrench,
 } from "lucide-react";
 import type { DiscoverItem } from "@/features/discover/types";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -21,6 +22,7 @@ const icons = {
   products: Package,
   services: Sparkles,
   marketplace: ShoppingBag,
+  skills: Wrench,
   communities: Users,
   universities: GraduationCap,
   cities: MapPin,

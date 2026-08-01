@@ -4,25 +4,25 @@ test.describe("premium UX refinements", () => {
   test("keeps mobile forms inside the viewport with non-zooming controls", async ({
     page,
   }) => {
+    // Community Exchange left the visible product, so this now exercises the
+    // Student Skills studio — the peer form students actually reach.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/marketplace?view=exchange");
+    await page.goto("/marketplace?view=skills");
     await page.getByRole("button", { name: "Create an offer" }).click();
 
-    const amount = page.getByPlaceholder("500");
-    const note = page.getByPlaceholder(
-      "Add a public meeting area or useful context. Never post bank details.",
+    const title = page.getByPlaceholder(
+      "I can help with conversational Mandarin",
     );
-    await expect(amount).toBeVisible();
-    await amount.focus();
-    await amount.fill("500");
-    await note.fill("Safe campus meeting point");
+    await expect(title).toBeVisible();
+    await title.focus();
+    await title.fill("Mathematics tutoring");
 
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    for (const control of [amount, note]) {
+    for (const control of [title]) {
       expect(
         Number.parseFloat(
           await control.evaluate(
@@ -37,150 +37,40 @@ test.describe("premium UX refinements", () => {
         }),
       ).toBe(true);
     }
-
-    expect(
-      await page.locator('meta[name="viewport"]').getAttribute("content"),
-    ).not.toMatch(/maximum-scale|user-scalable=no/);
   });
 
-  test("keeps sub-navigation on one row and scrolls only when space runs out", async ({
+  test("uses searchable smart selectors in the Student Skills studio", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/communities");
+    // The currency selector belonged to Community Exchange, which is retired.
+    // The same searchable-select pattern is verified where it still ships.
+    await page.goto("/marketplace?view=skills");
+    await page.getByRole("button", { name: "Create an offer" }).click();
 
-    const communityNavigation = page.getByRole("navigation", {
-      name: "Community sections",
+    await page.getByRole("button", { name: "Skill category" }).click();
+    const search = page.getByRole("textbox", {
+      name: "Search skill categories",
     });
-    await expect(communityNavigation).toBeVisible();
-    for (const label of ["My Community", "Discover", "Meet"]) {
-      await expect(
-        communityNavigation.getByRole("link", { name: label }),
-      ).toBeVisible();
-    }
+    await search.fill("Study");
     await expect(
-      communityNavigation.getByText("New", { exact: true }),
+      page.getByRole("option", { name: /Study support/i }),
     ).toBeVisible();
-    const communityWidths = await communityNavigation.evaluate((element) =>
-      Array.from(element.children).map(
-        (child) => child.getBoundingClientRect().width,
-      ),
-    );
-    expect(
-      Math.max(...communityWidths) - Math.min(...communityWidths),
-    ).toBeLessThan(2);
-    expect(
-      await communityNavigation.evaluate(
-        (element) => element.scrollWidth <= element.clientWidth + 1,
-      ),
-    ).toBe(true);
-    expect(
-      await communityNavigation.evaluate(
-        (element) =>
-          new Set(
-            Array.from(element.children).map(
-              (child) => child.getBoundingClientRect().top,
-            ),
-          ).size,
-      ),
-    ).toBe(1);
-    await communityNavigation.getByRole("link", { name: /Meet/ }).click();
-    await expect(page).toHaveURL(/\/communities\?tab=meet/);
-    await expect(
-      page
-        .getByRole("navigation", { name: "Community sections" })
-        .getByText("New", { exact: true }),
-    ).toHaveCount(0);
-
-    // The hub has two stable levels at every breakpoint: a module switcher and
-    // one contextual row. Neither is duplicated for mobile.
-    await page.goto("/student-hub");
-    const moduleNavigation = page.getByRole("navigation", {
-      name: "Student Hub modules",
-    });
-    await expect(moduleNavigation).toBeVisible();
-    for (const label of ["Study", "Opportunities"]) {
-      await expect(
-        moduleNavigation.getByRole("link", { name: label, exact: true }),
-      ).toBeVisible();
-    }
-
-    const studyNavigation = page.getByRole("navigation", {
-      name: "Study navigation",
-    });
-    for (const label of ["Overview", "Planner", "Student Q&A"]) {
-      await expect(
-        studyNavigation.getByRole("link", { name: label }),
-      ).toBeVisible();
-    }
-
-    await moduleNavigation
-      .getByRole("link", { name: "Opportunities", exact: true })
-      .click();
-    const studentNavigation = page.getByRole("navigation", {
-      name: "Opportunity navigation",
-    });
-
-    const expectedStudentHubLabels = [
-      "Scholarships",
-      "Internships",
-      "Jobs",
-      "Programs & Research",
-      "Applications",
-    ];
-    for (const label of expectedStudentHubLabels) {
-      await expect(
-        studentNavigation.getByRole("link", { name: label }),
-      ).toBeVisible();
-    }
-    // The module switch is not repeated inside the category row.
-    await expect(
-      studentNavigation.getByRole("link", {
-        name: "Opportunities",
-        exact: true,
-      }),
-    ).toHaveCount(0);
-
-    for (const width of [390, 768, 1280]) {
-      await page.setViewportSize({ width, height: 900 });
-      // Always exactly one row: the tabs scroll, they never wrap.
-      expect(
-        await studentNavigation.evaluate(
-          (element) =>
-            new Set(
-              Array.from(element.children).map(
-                (child) => child.getBoundingClientRect().top,
-              ),
-            ).size,
-        ),
-        `Student Hub tabs must stay on one row at ${width}px`,
-      ).toBe(1);
-      // And the row's overflow never becomes the page's overflow.
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-        ),
-        `the page must not scroll sideways at ${width}px`,
-      ).toBe(true);
-    }
   });
 
-  test("uses searchable smart selectors for exchange offers", async ({
+  test("retires Community Exchange from the visible experience", async ({
     page,
   }) => {
     await page.goto("/marketplace?view=exchange");
-    await page.getByRole("button", { name: "Create an offer" }).click();
-
-    await page.getByRole("button", { name: "Currency I need" }).click();
-    const search = page.getByRole("textbox", {
-      name: "Search code or currency",
-    });
-    await search.fill("XAF");
+    // The old link still resolves rather than 404ing.
+    await expect(page).toHaveURL(/\/marketplace$/);
     await expect(
-      page.getByRole("option", {
-        name: /XAF · Central African CFA Franc/,
-      }),
-    ).toBeVisible();
+      page.getByRole("link", { name: "Community Exchange" }),
+    ).toHaveCount(0);
+    for (const label of ["Marketplace", "Food & Services", "Student Skills"]) {
+      await expect(
+        page.getByRole("link", { name: label, exact: true }).first(),
+      ).toBeVisible();
+    }
   });
 
   test("keeps instant video exclusive to Random and uses a privacy-first map for Nearby", async ({

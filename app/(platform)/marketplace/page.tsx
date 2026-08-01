@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
   Plus,
-  Repeat2,
   ShieldCheck,
   Sparkles,
+  UtensilsCrossed,
 } from "lucide-react";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
 import { MarketplaceFilterBar } from "@/components/features/marketplace/MarketplaceFilterBar";
@@ -16,36 +17,33 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { TabPanelTransition } from "@/components/ui/HorizontalTabs";
+import { FoodAndServicesBoard } from "@/components/features/marketplace/FoodAndServicesBoard";
+import {
+  isRetiredMarketplaceView,
+  MARKETPLACE_SECTIONS,
+  type MarketplaceSectionKey,
+  marketplaceSectionIndex,
+  resolveMarketplaceSection,
+} from "@/features/marketplace/sections";
+import { listPublicCatalog } from "@/lib/organization-catalog";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Marketplace" };
 
-function MarketplaceNavigation({
-  active,
-}: {
-  active: "marketplace" | "exchange" | "skills";
-}) {
-  const tabs = [
-    {
-      value: "marketplace",
-      label: "Marketplace",
-      href: "/marketplace",
-      icon: LayoutDashboard,
-    },
-    {
-      value: "exchange",
-      label: "Community Exchange",
-      href: "/marketplace?view=exchange",
-      icon: Repeat2,
-    },
-    {
-      value: "skills",
-      label: "Student Skills",
-      href: "/marketplace?view=skills",
-      icon: Sparkles,
-    },
-  ] as const;
+const SECTION_ICONS: Record<MarketplaceSectionKey, typeof LayoutDashboard> = {
+  marketplace: LayoutDashboard,
+  "food-services": UtensilsCrossed,
+  skills: Sparkles,
+};
+
+function MarketplaceNavigation({ active }: { active: MarketplaceSectionKey }) {
+  const tabs = MARKETPLACE_SECTIONS.map((section) => ({
+    value: section.key,
+    label: section.label,
+    href: section.href,
+    icon: SECTION_ICONS[section.key],
+  }));
   return (
     <nav
       aria-label="Marketplace sections"
@@ -91,83 +89,78 @@ export default async function MarketplacePage({
 }) {
   const params = await searchParams;
   const user = await requireUser();
-  const view =
-    params.view === "exchange" || params.view === "skills"
-      ? params.view
-      : "marketplace";
-  if (view !== "marketplace") {
-    const [cities, exchangeOffers, skillOffers] = await Promise.all([
+  // Community Exchange left the visible product experience. Its records and
+  // services are untouched; the old link resolves to the Marketplace root
+  // instead of showing a section that no longer exists.
+  if (isRetiredMarketplaceView(params.view)) redirect("/marketplace");
+  const view = resolveMarketplaceSection(params.view);
+
+  if (view === "food-services") {
+    const [products, services] = await Promise.all([
+      listPublicCatalog({
+        kind: "product",
+        query: params.q,
+        cityId: params.cityId,
+        limit: 30,
+      }),
+      listPublicCatalog({
+        kind: "service",
+        query: params.q,
+        cityId: params.cityId,
+        limit: 30,
+      }),
+    ]);
+    return (
+      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+        <MarketplaceNavigation active={view} />
+        <TabPanelTransition index={marketplaceSectionIndex(view)}>
+          <FoodAndServicesBoard products={products} services={services} />
+        </TabPanelTransition>
+      </div>
+    );
+  }
+
+  if (view === "skills") {
+    const [cities, skillOffers] = await Promise.all([
       prisma.city.findMany({
         where: { isActive: true, country: { code: "CN" } },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
-      view === "exchange"
-        ? prisma.communityExchangeOffer.findMany({
-            where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
+      prisma.studentSkillOffer.findMany({
+        where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          description: true,
+          availability: true,
+          createdAt: true,
+          city: { select: { name: true } },
+          owner: {
             select: {
               id: true,
-              haveCurrency: true,
-              needCurrency: true,
-              haveAmount: true,
-              needAmount: true,
-              note: true,
-              createdAt: true,
-              city: { select: { name: true } },
-              owner: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  university: { select: { name: true, shortName: true } },
-                },
-              },
+              firstName: true,
+              lastName: true,
+              university: { select: { name: true, shortName: true } },
             },
-            orderBy: { createdAt: "desc" },
-            take: 60,
-          })
-        : Promise.resolve([]),
-      view === "skills"
-        ? prisma.studentSkillOffer.findMany({
-            where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
-            select: {
-              id: true,
-              title: true,
-              category: true,
-              description: true,
-              availability: true,
-              createdAt: true,
-              city: { select: { name: true } },
-              owner: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  university: { select: { name: true, shortName: true } },
-                },
-              },
-            },
-            orderBy: { createdAt: "desc" },
-            take: 60,
-          })
-        : Promise.resolve([]),
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 60,
+      }),
     ]);
     return (
       <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
         <MarketplaceNavigation active={view} />
-        <TabPanelTransition index={view === "exchange" ? 1 : 2}>
+        <TabPanelTransition index={marketplaceSectionIndex(view)}>
           <PeerMarketplaceBoard
             cities={cities}
             currentUserId={user.id}
-            exchangeOffers={exchangeOffers.map((offer) => ({
-              ...offer,
-              createdAt: offer.createdAt.toISOString(),
-            }))}
             skillOffers={skillOffers.map((offer) => ({
               ...offer,
               createdAt: offer.createdAt.toISOString(),
             }))}
-            type={view}
           />
         </TabPanelTransition>
       </div>

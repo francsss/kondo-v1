@@ -364,6 +364,71 @@ const marketplace: DiscoverProvider = {
   },
 };
 
+/**
+ * Student Skills, read from `StudentSkillOffer`. Discover aggregates the source
+ * domain directly — no record is copied into a Discover table, and a student
+ * skill is never presented as an organization service.
+ */
+const studentSkills: DiscoverProvider = {
+  key: "skills",
+  label: "Student Skills",
+  description: "Skills and small services offered directly by students.",
+  cacheTags: ["marketplace:public"],
+  analyticsSource: "student-skill",
+  async search(context, filters) {
+    const rows = await prisma.studentSkillOffer.findMany({
+      where: {
+        status: "ACTIVE",
+        expiresAt: { gt: new Date() },
+        owner: { status: "ACTIVE" },
+        cityId: filters.cityId,
+        ...(filters.query
+          ? {
+              OR: [
+                { title: { contains: filters.query, mode: "insensitive" } },
+                { category: { contains: filters.query, mode: "insensitive" } },
+                {
+                  description: { contains: filters.query, mode: "insensitive" },
+                },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        description: true,
+        availability: true,
+        cityId: true,
+        city: { select: { name: true } },
+        // First name only: a public skill card never exposes a full identity.
+        owner: { select: { firstName: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: take(filters),
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      type: "skills" as const,
+      title: row.title,
+      description: row.description,
+      href: "/marketplace?view=skills",
+      eyebrow: "Student skill",
+      location: row.city?.name ?? null,
+      imageUrl: null,
+      metadata: [row.category, row.owner.firstName].filter(
+        (value): value is string => Boolean(value),
+      ),
+      recommendationReason: nearReason(context, row.cityId),
+      analytics: {
+        resourceType: "skills" as const,
+        sourceDomain: "student-skill",
+      },
+    }));
+  },
+};
+
 const communities: DiscoverProvider = {
   key: "communities",
   label: "Communities",
@@ -630,6 +695,7 @@ export const DISCOVER_PROVIDERS = [
   catalogProvider("product"),
   catalogProvider("service"),
   marketplace,
+  studentSkills,
   communities,
   universities,
   cities,

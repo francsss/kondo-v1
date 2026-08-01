@@ -74,17 +74,23 @@ function offerDate(value: string) {
   }).format(new Date(value));
 }
 
+/**
+ * Community Exchange left the visible product experience, so this board now
+ * renders Student Skills only. The exchange branch and its API remain in place
+ * and untouched: `CommunityExchangeOffer` records are preserved, and no
+ * destructive migration was performed to retire the section.
+ */
 export function PeerMarketplaceBoard({
-  type,
+  type = "skills",
   cities,
   currentUserId,
-  exchangeOffers,
+  exchangeOffers = [],
   skillOffers,
 }: {
-  type: "exchange" | "skills";
+  type?: "exchange" | "skills";
   cities: City[];
   currentUserId: string;
-  exchangeOffers: ExchangeOffer[];
+  exchangeOffers?: ExchangeOffer[];
   skillOffers: SkillOffer[];
 }) {
   const router = useRouter();
