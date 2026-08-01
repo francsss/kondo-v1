@@ -248,6 +248,28 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     maxHeight: 8192,
     altRequired: false,
   },
+  ORGANIZATION_PRODUCT_IMAGE: {
+    kind: "IMAGE",
+    visibility: "PRIVATE",
+    maxBytes: 8 * 1024 * 1024,
+    mimeExtensions: imageTypes,
+    minWidth: 320,
+    minHeight: 240,
+    maxWidth: 8192,
+    maxHeight: 8192,
+    altRequired: true,
+  },
+  ORGANIZATION_SERVICE_IMAGE: {
+    kind: "IMAGE",
+    visibility: "PRIVATE",
+    maxBytes: 8 * 1024 * 1024,
+    mimeExtensions: imageTypes,
+    minWidth: 320,
+    minHeight: 240,
+    maxWidth: 8192,
+    maxHeight: 8192,
+    altRequired: true,
+  },
 };
 
 export class MediaPolicyError extends Error {

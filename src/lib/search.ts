@@ -10,6 +10,7 @@ import {
 import { organizationTypeLabel } from "@/features/organizations/registry";
 import { organizationPublicVisibilityWhere } from "@/lib/organization-public-visibility";
 import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
+import { listPublicCatalog } from "@/lib/organization-catalog";
 import { prisma } from "@/lib/prisma";
 import {
   safePublicUserSelect,
@@ -232,6 +233,8 @@ export async function searchKondo(
       countries: [],
       cities: [],
       opportunities: [],
+      products: [],
+      services: [],
     };
   }
 
@@ -274,6 +277,8 @@ export async function searchKondo(
     cities,
     legacyScholarships,
     unifiedOpportunities,
+    products,
+    services,
   ] = await Promise.all([
     prisma.community.findMany({
       where: {
@@ -471,6 +476,8 @@ export async function searchKondo(
         publisherOrganization: { select: { publicName: true } },
       },
     }),
+    listPublicCatalog({ kind: "product", query: term, limit: previewLimit }),
+    listPublicCatalog({ kind: "service", query: term, limit: previewLimit }),
   ]);
 
   // Legacy scholarships already migrated into a unified Opportunity carry the
@@ -564,6 +571,22 @@ export async function searchKondo(
           !claimedLegacyKeys.has(`legacy-scholarship:${scholarship.id}`),
       ),
     ].slice(0, previewLimit),
+    products: products.map((product) => ({
+      id: product.id,
+      slug: product.slug,
+      title: product.title,
+      organizationName: product.organization.name,
+      priceLabel: product.priceLabel,
+      cityName: product.city?.name ?? null,
+    })),
+    services: services.map((service) => ({
+      id: service.id,
+      slug: service.slug,
+      title: service.title,
+      organizationName: service.organization.name,
+      priceLabel: service.priceLabel,
+      cityName: service.city?.name ?? null,
+    })),
   };
 }
 

@@ -31,6 +31,8 @@ export type WorkspaceNavigationIconKey =
   | "housing"
   | "opportunities"
   | "applications"
+  | "catalog"
+  | "inquiries"
   | "team"
   | "verification"
   | "activity"
@@ -179,6 +181,33 @@ export function organizationWorkspaceNavigation(input: {
       icon: "applications",
       state: "enabled",
       primaryOnMobile: true,
+    });
+  }
+
+  if (permitted(membership, "ORGANIZATION_VIEW_CATALOG")) {
+    const hasCatalogCapability =
+      enabled.includes("PRODUCTS") || enabled.includes("STUDENT_SERVICES");
+    push({
+      key: "catalog",
+      segment: "catalog",
+      label: "Products & services",
+      icon: "catalog",
+      state: hasCatalogCapability ? "enabled" : "setup",
+      setupReason: hasCatalogCapability
+        ? undefined
+        : "Enable Products or Student services to publish a catalog.",
+      primaryOnMobile: true,
+    });
+  }
+
+  if (permitted(membership, "ORGANIZATION_VIEW_CATALOG_INQUIRIES")) {
+    push({
+      key: "inquiries",
+      segment: "catalog/inquiries",
+      label: "Catalog inquiries",
+      icon: "inquiries",
+      state: "enabled",
+      primaryOnMobile: false,
     });
   }
 

@@ -3,6 +3,10 @@ import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { publicHousingListingWhere } from "@/lib/housing-visibility";
+import {
+  publicOrganizationProductWhere,
+  publicOrganizationServiceWhere,
+} from "@/lib/organization-catalog-visibility";
 import { attachMediaAsset, MediaError } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -388,79 +392,119 @@ export async function createDirectMessage(input: {
   body?: string;
   mediaId?: string;
   clientMessageId?: string;
-  sourceType?: "MARKETPLACE_LISTING" | "HOUSING_LISTING" | "ROOMMATE_INTEREST";
+  sourceType?:
+    | "MARKETPLACE_LISTING"
+    | "HOUSING_LISTING"
+    | "ROOMMATE_INTEREST"
+    | "ORGANIZATION_PRODUCT"
+    | "ORGANIZATION_SERVICE";
   sourceId?: string;
 }) {
   await ensureCanMessage(input.senderId, input.recipientId);
-  const [sender, listing, housingListing, roommateInterest] = await Promise.all(
-    [
-      prisma.user.findUnique({
-        where: { id: input.senderId },
-        select: { firstName: true, lastName: true },
-      }),
-      input.sourceType === "MARKETPLACE_LISTING" && input.sourceId
-        ? prisma.marketplaceListing.findFirst({
-            where: {
-              id: input.sourceId,
-              sellerId: input.recipientId,
-              status: "ACTIVE",
-              expiresAt: { gt: new Date() },
-              category: { isActive: true },
-            },
-            select: { id: true, title: true },
-          })
-        : null,
-      input.sourceType === "HOUSING_LISTING" && input.sourceId
-        ? prisma.housingListing.findFirst({
-            where: {
-              AND: [
-                { id: input.sourceId },
-                publicHousingListingWhere(),
-                {
-                  OR: [
-                    {
-                      publisherType: "PERSONAL",
-                      publisherUserId: input.recipientId,
-                    },
-                    {
-                      publisherType: "ORGANIZATION",
-                      publisherOrganization: {
-                        memberships: {
-                          some: {
-                            userId: input.recipientId,
-                            status: "ACTIVE",
-                          },
+  const [
+    sender,
+    listing,
+    housingListing,
+    roommateInterest,
+    organizationProduct,
+    organizationService,
+  ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: input.senderId },
+      select: { firstName: true, lastName: true },
+    }),
+    input.sourceType === "MARKETPLACE_LISTING" && input.sourceId
+      ? prisma.marketplaceListing.findFirst({
+          where: {
+            id: input.sourceId,
+            sellerId: input.recipientId,
+            status: "ACTIVE",
+            expiresAt: { gt: new Date() },
+            category: { isActive: true },
+          },
+          select: { id: true, title: true },
+        })
+      : null,
+    input.sourceType === "HOUSING_LISTING" && input.sourceId
+      ? prisma.housingListing.findFirst({
+          where: {
+            AND: [
+              { id: input.sourceId },
+              publicHousingListingWhere(),
+              {
+                OR: [
+                  {
+                    publisherType: "PERSONAL",
+                    publisherUserId: input.recipientId,
+                  },
+                  {
+                    publisherType: "ORGANIZATION",
+                    publisherOrganization: {
+                      memberships: {
+                        some: {
+                          userId: input.recipientId,
+                          status: "ACTIVE",
                         },
                       },
                     },
-                  ],
-                },
-              ],
+                  },
+                ],
+              },
+            ],
+          },
+          select: { id: true, title: true },
+        })
+      : null,
+    input.sourceType === "ROOMMATE_INTEREST" && input.sourceId
+      ? prisma.roommateInterest.findFirst({
+          where: {
+            id: input.sourceId,
+            status: "ACCEPTED",
+            OR: [
+              {
+                senderUserId: input.senderId,
+                recipientUserId: input.recipientId,
+              },
+              {
+                senderUserId: input.recipientId,
+                recipientUserId: input.senderId,
+              },
+            ],
+          },
+          select: { id: true },
+        })
+      : null,
+    input.sourceType === "ORGANIZATION_PRODUCT" && input.sourceId
+      ? prisma.organizationProduct.findFirst({
+          where: {
+            id: input.sourceId,
+            ...publicOrganizationProductWhere,
+            organization: {
+              ...publicOrganizationProductWhere.organization,
+              memberships: {
+                some: { userId: input.recipientId, status: "ACTIVE" },
+              },
             },
-            select: { id: true, title: true },
-          })
-        : null,
-      input.sourceType === "ROOMMATE_INTEREST" && input.sourceId
-        ? prisma.roommateInterest.findFirst({
-            where: {
-              id: input.sourceId,
-              status: "ACCEPTED",
-              OR: [
-                {
-                  senderUserId: input.senderId,
-                  recipientUserId: input.recipientId,
-                },
-                {
-                  senderUserId: input.recipientId,
-                  recipientUserId: input.senderId,
-                },
-              ],
+          },
+          select: { id: true, title: true },
+        })
+      : null,
+    input.sourceType === "ORGANIZATION_SERVICE" && input.sourceId
+      ? prisma.organizationService.findFirst({
+          where: {
+            id: input.sourceId,
+            ...publicOrganizationServiceWhere,
+            organization: {
+              ...publicOrganizationServiceWhere.organization,
+              memberships: {
+                some: { userId: input.recipientId, status: "ACTIVE" },
+              },
             },
-            select: { id: true },
-          })
-        : null,
-    ],
-  );
+          },
+          select: { id: true, title: true },
+        })
+      : null,
+  ]);
   if (!sender) throw new MessagingError("Sender not found.", 404);
   if (input.sourceType === "MARKETPLACE_LISTING" && !listing) {
     throw new MessagingError("Marketplace listing not found.", 404);
@@ -470,6 +514,12 @@ export async function createDirectMessage(input: {
   }
   if (input.sourceType === "ROOMMATE_INTEREST" && !roommateInterest) {
     throw new MessagingError("Roommate interest not found.", 404);
+  }
+  if (input.sourceType === "ORGANIZATION_PRODUCT" && !organizationProduct) {
+    throw new MessagingError("Organization product not found.", 404);
+  }
+  if (input.sourceType === "ORGANIZATION_SERVICE" && !organizationService) {
+    throw new MessagingError("Organization service not found.", 404);
   }
 
   const directKey = directConversationKey(input.senderId, input.recipientId);

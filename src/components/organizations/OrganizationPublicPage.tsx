@@ -8,6 +8,8 @@ import {
   House,
   Languages,
   MapPin,
+  Package,
+  ConciergeBell,
   ShieldCheck,
   Sparkles,
   Users,
@@ -17,6 +19,7 @@ import { OrganizationGallery } from "@/components/organizations/OrganizationGall
 import { OrganizationPublicActions } from "@/components/organizations/OrganizationPublicActions";
 import { OrganizationPublicAnalytics } from "@/components/organizations/OrganizationPublicAnalytics";
 import { OrganizationSectionNavigation } from "@/components/organizations/OrganizationSectionNavigation";
+import { TabPanelTransition } from "@/components/ui/HorizontalTabs";
 import { ORGANIZATION_CAPABILITIES } from "@/lib/organization-capabilities";
 import type { OrganizationPublicProfileDTO } from "@/lib/organization-public-profile";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -41,9 +44,11 @@ function formatDate(value: string | null) {
 export function OrganizationPublicPage({
   organization,
   preview = false,
+  activeSection,
 }: {
   organization: OrganizationPublicProfileDTO;
   preview?: boolean;
+  activeSection?: string;
 }) {
   const Root = preview ? "div" : "main";
   const capabilityMetadata = organization.publicCapabilities.flatMap((key) => {
@@ -52,8 +57,21 @@ export function OrganizationPublicPage({
     );
     return capability ? [capability] : [];
   });
+  const resolvedActiveSection =
+    organization.visibleSections.find(({ key }) => key === activeSection)
+      ?.key ??
+    organization.visibleSections[0]?.key ??
+    "overview";
   const sectionIds = new Set(
-    organization.visibleSections.map(({ key }) => key),
+    preview
+      ? organization.visibleSections.map(({ key }) => key)
+      : [resolvedActiveSection],
+  );
+  const activeSectionIndex = Math.max(
+    0,
+    organization.visibleSections.findIndex(
+      ({ key }) => key === resolvedActiveSection,
+    ),
   );
   const location = [
     organization.city?.name,
@@ -157,6 +175,7 @@ export function OrganizationPublicPage({
 
       {organization.visibleSections.length ? (
         <OrganizationSectionNavigation
+          activeSection={resolvedActiveSection}
           sections={organization.visibleSections.map((section) => ({
             key: section.key,
             label: section.label,
@@ -166,7 +185,10 @@ export function OrganizationPublicPage({
       ) : null}
 
       <div className="mx-auto grid max-w-[1240px] gap-6 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
-        <div className="min-w-0 space-y-6">
+        <TabPanelTransition
+          className="min-w-0 space-y-6"
+          index={activeSectionIndex}
+        >
           {sectionIds.has("overview") ? (
             <PublicSection
               description="A quick, public overview shared by the organization."
@@ -320,6 +342,35 @@ export function OrganizationPublicPage({
             </PublicSection>
           ) : null}
 
+          {sectionIds.has("products") && organization.projections.products ? (
+            <PublicSection
+              description="Real products published by this professional organization."
+              icon={Package}
+              id="products"
+              title="Products"
+            >
+              <OrganizationProjectionCards
+                actionLabel="View product"
+                projection={organization.projections.products}
+              />
+            </PublicSection>
+          ) : null}
+
+          {sectionIds.has("student-services") &&
+          organization.projections["student-services"] ? (
+            <PublicSection
+              description="Practical services published by this professional organization."
+              icon={ConciergeBell}
+              id="student-services"
+              title="Student services"
+            >
+              <OrganizationProjectionCards
+                actionLabel="View service"
+                projection={organization.projections["student-services"]}
+              />
+            </PublicSection>
+          ) : null}
+
           {sectionIds.has("contact") ? (
             <PublicSection
               description="Only channels explicitly made public are shown."
@@ -385,7 +436,7 @@ export function OrganizationPublicPage({
               </Link>
             </PublicSection>
           ) : null}
-        </div>
+        </TabPanelTransition>
 
         <aside className="space-y-4 lg:sticky lg:top-36 lg:self-start">
           <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
@@ -433,6 +484,51 @@ export function OrganizationPublicPage({
         </aside>
       </div>
     </Root>
+  );
+}
+
+function OrganizationProjectionCards({
+  projection,
+  actionLabel,
+}: {
+  projection: OrganizationPublicProfileDTO["projections"][string];
+  actionLabel: string;
+}) {
+  if (!projection) return null;
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {projection.featuredItems.map((item) => (
+          <Link
+            className="group rounded-3xl border border-border bg-muted/25 p-4 transition hover:border-foreground/20 hover:bg-muted/50"
+            href={item.href}
+            key={item.id}
+          >
+            <p className="line-clamp-2 font-black group-hover:text-kondo-green">
+              {item.title}
+            </p>
+            {item.context ? (
+              <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                {item.context}
+              </p>
+            ) : null}
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-black text-kondo-green">
+              {actionLabel} <ArrowRight className="h-4 w-4" />
+            </span>
+          </Link>
+        ))}
+      </div>
+      {projection.sectionRoute &&
+      projection.itemCount > projection.featuredItems.length ? (
+        <Link
+          className="mt-5 inline-flex items-center gap-2 text-sm font-black text-kondo-green hover:underline"
+          href={projection.sectionRoute}
+        >
+          View all {projection.itemCount}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      ) : null}
+    </>
   );
 }
 

@@ -8,6 +8,7 @@ import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
 import {
   HorizontalTabs,
+  TabPanelTransition,
   type HorizontalTab,
 } from "@/components/ui/HorizontalTabs";
 import { studentHubAccessForJourney } from "@/lib/personal-journeys";
@@ -83,6 +84,10 @@ export function StudentHubShell({
   const access = studentHubAccessForJourney(user.studentJourney);
   const tabs = studentHubTabs(access.academicTools);
   const activeKey = activeStudentHubTab(pathname, tabs);
+  const activeIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.key === activeKey),
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -106,7 +111,9 @@ export function StudentHubShell({
           />
         </div>
       </header>
-      <main>{children}</main>
+      <main>
+        <TabPanelTransition index={activeIndex}>{children}</TabPanelTransition>
+      </main>
       <KondoPet enabled={kondoPetEnabled} />
     </div>
   );

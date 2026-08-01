@@ -26,6 +26,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { MediaImage } from "@/components/ui/MediaImage";
+import { TabPanelTransition } from "@/components/ui/HorizontalTabs";
 import { cn } from "@/lib/utils";
 
 type CommunityIdentity = {
@@ -253,7 +254,7 @@ export function CommunityExperience({
   community: CommunityIdentity;
   canModerate: boolean;
   primaryActions: React.ReactNode;
-  activeSection?: "feed" | "requests";
+  activeSection?: "feed" | "requests" | "about" | "members" | "guidelines";
   urgentRequestCount?: number;
   spotlightRequest?: { id: string } | null;
   children: React.ReactNode;
@@ -350,26 +351,30 @@ export function CommunityExperience({
           >
             <Link
               className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              href={`/communities/${community.slug}#feed`}
+              href={`/communities/${community.slug}`}
+              scroll={false}
             >
               Feed
             </Link>
             <Link
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              href={`/communities/${community.slug}?tab=requests#requests`}
+              href={`/communities/${community.slug}?tab=requests`}
+              scroll={false}
             >
               Requests
               <UrgentRequestBadge compact count={urgentRequestCount} />
             </Link>
             <Link
               className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              href={`/communities/${community.slug}#about`}
+              href={`/communities/${community.slug}?tab=about`}
+              scroll={false}
             >
               About
             </Link>
             <Link
               className="rounded-full px-3 py-2 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              href={`/communities/${community.slug}#members`}
+              href={`/communities/${community.slug}?tab=members`}
+              scroll={false}
             >
               Members
             </Link>
@@ -551,7 +556,8 @@ export function CommunityExperience({
                   ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
                   : "font-bold text-muted-foreground hover:text-foreground",
               )}
-              href={`/communities/${community.slug}#feed`}
+              href={`/communities/${community.slug}`}
+              scroll={false}
             >
               Feed
             </Link>
@@ -563,26 +569,48 @@ export function CommunityExperience({
                   ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
                   : "font-bold text-muted-foreground hover:text-foreground",
               )}
-              href={`/communities/${community.slug}?tab=requests#requests`}
+              href={`/communities/${community.slug}?tab=requests`}
+              scroll={false}
             >
               Requests
               <UrgentRequestBadge count={urgentRequestCount} />
             </Link>
             <Link
-              className="inline-flex h-14 shrink-0 items-center px-3 text-sm font-bold text-muted-foreground transition hover:text-foreground"
-              href={`/communities/${community.slug}#about`}
+              aria-current={activeSection === "about" ? "page" : undefined}
+              className={cn(
+                "relative inline-flex h-14 shrink-0 items-center px-3 text-sm transition",
+                activeSection === "about"
+                  ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+                  : "font-bold text-muted-foreground hover:text-foreground",
+              )}
+              href={`/communities/${community.slug}?tab=about`}
+              scroll={false}
             >
               About
             </Link>
             <Link
-              className="inline-flex h-14 shrink-0 items-center px-3 text-sm font-bold text-muted-foreground transition hover:text-foreground"
-              href={`/communities/${community.slug}#members`}
+              aria-current={activeSection === "members" ? "page" : undefined}
+              className={cn(
+                "relative inline-flex h-14 shrink-0 items-center px-3 text-sm transition",
+                activeSection === "members"
+                  ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+                  : "font-bold text-muted-foreground hover:text-foreground",
+              )}
+              href={`/communities/${community.slug}?tab=members`}
+              scroll={false}
             >
               Members
             </Link>
             <Link
-              className="inline-flex h-14 shrink-0 items-center px-3 text-sm font-bold text-muted-foreground transition hover:text-foreground"
-              href="/guidelines"
+              aria-current={activeSection === "guidelines" ? "page" : undefined}
+              className={cn(
+                "relative inline-flex h-14 shrink-0 items-center px-3 text-sm transition",
+                activeSection === "guidelines"
+                  ? "font-black text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+                  : "font-bold text-muted-foreground hover:text-foreground",
+              )}
+              href={`/communities/${community.slug}?tab=guidelines`}
+              scroll={false}
             >
               Guidelines
             </Link>
@@ -594,7 +622,13 @@ export function CommunityExperience({
         </nav>
       </header>
 
-      {children}
+      <TabPanelTransition
+        index={["feed", "requests", "about", "members", "guidelines"].indexOf(
+          activeSection,
+        )}
+      >
+        {children}
+      </TabPanelTransition>
     </div>
   );
 }

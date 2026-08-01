@@ -9,7 +9,9 @@ import {
   Globe2,
   MapPin,
   MessageSquareText,
+  Package,
   Search,
+  ConciergeBell,
   ShoppingBag,
   Users,
 } from "lucide-react";
@@ -245,7 +247,7 @@ export default async function SearchPage({
             {results.cities.map((item) => (
               <ResultCard
                 detail={item.province ?? "Explore city guide"}
-                href={`/explore/${item.slug}`}
+                href={`/discover/cities/${item.slug}`}
                 icon={<MapPin />}
                 key={item.id}
                 label="City"
@@ -259,6 +261,26 @@ export default async function SearchPage({
                 icon={<Award />}
                 key={item.id}
                 label="Opportunity"
+                title={item.title}
+              />
+            ))}
+            {results.products.map((item) => (
+              <ResultCard
+                detail={`${item.priceLabel} · ${item.organizationName}${item.cityName ? ` · ${item.cityName}` : ""}`}
+                href={`/products/${item.slug}`}
+                icon={<Package />}
+                key={item.id}
+                label="Organization product"
+                title={item.title}
+              />
+            ))}
+            {results.services.map((item) => (
+              <ResultCard
+                detail={`${item.priceLabel} · ${item.organizationName}${item.cityName ? ` · ${item.cityName}` : ""}`}
+                href={`/services/${item.slug}`}
+                icon={<ConciergeBell />}
+                key={item.id}
+                label="Organization service"
                 title={item.title}
               />
             ))}

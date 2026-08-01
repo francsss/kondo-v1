@@ -16,16 +16,16 @@ import { cn } from "@/lib/utils";
 
 const menuItems = [
   {
-    href: "/explore/jiaxing",
-    label: "Explore Jiaxing",
-    description: "Companies, city life, and opportunity",
+    href: "/discover",
+    label: "Discover",
+    description: "Organizations, cities, services and more",
     icon: MapPinned,
     featured: true,
   },
   {
-    href: "/explore/jiaxing/events",
-    label: "City Events",
-    description: "Fairs, competitions, and culture",
+    href: "/discover/essentials",
+    label: "Kondo Essentials",
+    description: "Useful resources for your journey",
     icon: Megaphone,
     featured: false,
   },
@@ -84,17 +84,19 @@ export function ExploreMenu() {
         aria-label="Open Explore menu"
         className={cn(
           "rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground sm:w-auto sm:px-3",
-          (open || pathname.startsWith("/explore")) &&
+          (open ||
+            pathname.startsWith("/discover") ||
+            pathname.startsWith("/explore")) &&
             "bg-primary text-primary-foreground",
         )}
         onClick={() => setOpen((value) => !value)}
         size="icon"
-        title="Explore Jiaxing and city services"
+        title="Discover Kondo resources"
         type="button"
         variant="ghost"
       >
         <EllipsisVertical aria-hidden="true" className="h-5 w-5" />
-        <span className="hidden sm:inline">Explore</span>
+        <span className="hidden sm:inline">Discover</span>
       </Button>
 
       {open ? (

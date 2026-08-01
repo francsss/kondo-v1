@@ -5,6 +5,7 @@ import {
   getOrganizationProgramsProjection,
   getOrganizationScholarshipProjection,
 } from "@/lib/opportunity-projections";
+import { getOrganizationCatalogProjection } from "@/lib/organization-catalog";
 
 export type OrganizationPublicSectionKey =
   | "overview"
@@ -72,12 +73,14 @@ export const ORGANIZATION_PUBLIC_SECTION_PROVIDERS: ReadonlyArray<OrganizationPu
     {
       key: "products",
       capability: "PRODUCTS",
-      getProjection: unavailableProjection,
+      getProjection: (organizationId) =>
+        getOrganizationCatalogProjection("product", organizationId),
     },
     {
       key: "student-services",
       capability: "STUDENT_SERVICES",
-      getProjection: unavailableProjection,
+      getProjection: (organizationId) =>
+        getOrganizationCatalogProjection("service", organizationId),
     },
     {
       key: "events",
@@ -176,6 +179,26 @@ export const ORGANIZATION_HOUSING_PUBLIC_SECTION = {
   accessibilityLabel: "Housing published by this organization",
   analyticsId: "housing",
   futureProviderKey: "housing",
+} as const;
+
+export const ORGANIZATION_PRODUCTS_PUBLIC_SECTION = {
+  key: "products",
+  label: "Products",
+  icon: "package",
+  order: 38,
+  accessibilityLabel: "Products published by this organization",
+  analyticsId: "products",
+  futureProviderKey: "products",
+} as const;
+
+export const ORGANIZATION_SERVICES_PUBLIC_SECTION = {
+  key: "student-services",
+  label: "Services",
+  icon: "users",
+  order: 39,
+  accessibilityLabel: "Student services published by this organization",
+  analyticsId: "student_services",
+  futureProviderKey: "student-services",
 } as const;
 
 export function visibleOrganizationSections(input: {

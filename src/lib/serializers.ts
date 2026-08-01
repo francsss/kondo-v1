@@ -168,4 +168,20 @@ export type SearchResultsDto = {
     provider: string;
     status: string;
   }>;
+  products: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    organizationName: string;
+    priceLabel: string;
+    cityName: string | null;
+  }>;
+  services: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    organizationName: string;
+    priceLabel: string;
+    cityName: string | null;
+  }>;
 };

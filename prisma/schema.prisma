@@ -199,6 +199,57 @@ enum OrganizationMediaKind {
   GALLERY
 }
 
+enum OrganizationProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  OUT_OF_STOCK
+  PAUSED
+  REJECTED
+  REMOVED
+  ARCHIVED
+}
+
+enum OrganizationServiceStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  PAUSED
+  UNAVAILABLE
+  REJECTED
+  REMOVED
+  ARCHIVED
+}
+
+enum OrganizationCatalogPriceType {
+  FREE
+  FIXED
+  STARTING_AT
+  CONTACT
+}
+
+enum OrganizationCatalogContactMethod {
+  KONDO_MESSAGE
+  PUBLIC_CONTACT
+  EXTERNAL_URL
+}
+
+enum OrganizationCatalogInquiryStatus {
+  OPEN
+  RESPONDED
+  CLOSED
+}
+
+enum OrganizationProductMediaKind {
+  COVER
+  GALLERY
+}
+
+enum OrganizationServiceMediaKind {
+  COVER
+  GALLERY
+}
+
 enum ProfileAudience {
   PUBLIC
   MEMBERS
@@ -638,6 +689,8 @@ enum MediaPurpose {
   VERIFICATION_DOCUMENT
   OPPORTUNITY_COVER_IMAGE
   OPPORTUNITY_APPLICATION_DOCUMENT
+  ORGANIZATION_PRODUCT_IMAGE
+  ORGANIZATION_SERVICE_IMAGE
 }
 
 enum ScheduleWeekPattern {
@@ -911,6 +964,14 @@ model User {
   targetedOrganizationTransfers       OrganizationOwnershipTransfer[]       @relation("OrganizationOwnershipTransferTarget")
   grantedOrganizationPartnerships     Organization[]                        @relation("OrganizationPartnerGranter")
   createdOrganizationMedia            OrganizationMedia[]                   @relation("OrganizationMediaCreator")
+  createdOrganizationProducts         OrganizationProduct[]                 @relation("OrganizationProductCreator")
+  createdOrganizationServices         OrganizationService[]                 @relation("OrganizationServiceCreator")
+  savedOrganizationProducts           OrganizationProductSaved[]
+  savedOrganizationServices           OrganizationServiceSaved[]
+  requestedProductInquiries           OrganizationProductInquiry[]          @relation("OrganizationProductInquiryRequester")
+  receivedProductInquiries            OrganizationProductInquiry[]          @relation("OrganizationProductInquiryRecipient")
+  requestedServiceInquiries           OrganizationServiceInquiry[]          @relation("OrganizationServiceInquiryRequester")
+  receivedServiceInquiries            OrganizationServiceInquiry[]          @relation("OrganizationServiceInquiryRecipient")
   nearbyDiscoveryEnabled              Boolean                               @default(true)
   meetIntents                         String[]                              @default([])
   studyYear                           Int?
@@ -1106,6 +1167,8 @@ model City {
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
   opportunities         Opportunity[]
+  organizationProducts  OrganizationProduct[]
+  organizationServices  OrganizationService[]
 
   @@unique([countryId, name])
   @@index([countryId])
@@ -1253,6 +1316,10 @@ model Organization {
   housingInquiries          HousingInquiry[]
   opportunities             Opportunity[]                     @relation("OrganizationOpportunities")
   opportunityApplications   OpportunityApplication[]          @relation("OrganizationOpportunityApplications")
+  products                  OrganizationProduct[]
+  services                  OrganizationService[]
+  productInquiries          OrganizationProductInquiry[]
+  serviceInquiries          OrganizationServiceInquiry[]
   auditLogs                 AuditLog[]
   createdAt                 DateTime                          @default(now())
   updatedAt                 DateTime                          @updatedAt
@@ -1302,6 +1369,197 @@ model OrganizationMedia {
 
   @@index([organizationId, visibility, sortOrder], map: "OrganizationMedia_org_visibility_sort_idx")
   @@index([createdById, createdAt], map: "OrganizationMedia_createdById_createdAt_idx")
+}
+
+model OrganizationProduct {
+  id                   String                           @id @default(cuid())
+  slug                 String                           @unique @db.VarChar(180)
+  organizationId       String
+  organization         Organization                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUserId      String
+  createdBy            User                             @relation("OrganizationProductCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  cityId               String?
+  city                 City?                            @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  title                String                           @db.VarChar(180)
+  shortDescription     String                           @db.VarChar(400)
+  description          String                           @db.Text
+  category             String                           @db.VarChar(100)
+  status               OrganizationProductStatus        @default(DRAFT)
+  priceType            OrganizationCatalogPriceType     @default(CONTACT)
+  priceMinor           Int?
+  currency             String                           @default("CNY") @db.Char(3)
+  availabilityLabel    String?                          @db.VarChar(180)
+  locationLabel        String?                          @db.VarChar(200)
+  contactMethod        OrganizationCatalogContactMethod @default(KONDO_MESSAGE)
+  externalUrl          String?                          @db.VarChar(500)
+  publicationBlockedAt DateTime?
+  externalUrlBlockedAt DateTime?
+  moderationNote       String?                          @db.VarChar(2000)
+  submittedAt          DateTime?
+  publishedAt          DateTime?
+  outOfStockAt         DateTime?
+  pausedAt             DateTime?
+  rejectedAt           DateTime?
+  removedAt            DateTime?
+  archivedAt           DateTime?
+  version              Int                              @default(1)
+  media                OrganizationProductMedia[]
+  savedBy              OrganizationProductSaved[]
+  inquiries            OrganizationProductInquiry[]
+  createdAt            DateTime                         @default(now())
+  updatedAt            DateTime                         @updatedAt
+  searchVector         Unsupported("tsvector")?
+
+  @@index([organizationId, status, updatedAt])
+  @@index([cityId, status, publishedAt])
+  @@index([status, publishedAt, id])
+  @@index([category, status])
+}
+
+model OrganizationService {
+  id                   String                           @id @default(cuid())
+  slug                 String                           @unique @db.VarChar(180)
+  organizationId       String
+  organization         Organization                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUserId      String
+  createdBy            User                             @relation("OrganizationServiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  cityId               String?
+  city                 City?                            @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  title                String                           @db.VarChar(180)
+  shortDescription     String                           @db.VarChar(400)
+  description          String                           @db.Text
+  category             String                           @db.VarChar(100)
+  status               OrganizationServiceStatus        @default(DRAFT)
+  priceType            OrganizationCatalogPriceType     @default(CONTACT)
+  priceMinor           Int?
+  currency             String                           @default("CNY") @db.Char(3)
+  availabilityLabel    String?                          @db.VarChar(180)
+  deliveryMode         String?                          @db.VarChar(160)
+  locationLabel        String?                          @db.VarChar(200)
+  contactMethod        OrganizationCatalogContactMethod @default(KONDO_MESSAGE)
+  externalUrl          String?                          @db.VarChar(500)
+  publicationBlockedAt DateTime?
+  externalUrlBlockedAt DateTime?
+  moderationNote       String?                          @db.VarChar(2000)
+  submittedAt          DateTime?
+  publishedAt          DateTime?
+  pausedAt             DateTime?
+  unavailableAt        DateTime?
+  rejectedAt           DateTime?
+  removedAt            DateTime?
+  archivedAt           DateTime?
+  version              Int                              @default(1)
+  media                OrganizationServiceMedia[]
+  savedBy              OrganizationServiceSaved[]
+  inquiries            OrganizationServiceInquiry[]
+  createdAt            DateTime                         @default(now())
+  updatedAt            DateTime                         @updatedAt
+  searchVector         Unsupported("tsvector")?
+
+  @@index([organizationId, status, updatedAt])
+  @@index([cityId, status, publishedAt])
+  @@index([status, publishedAt, id])
+  @@index([category, status])
+}
+
+model OrganizationProductMedia {
+  id        String                       @id @default(cuid())
+  productId String
+  product   OrganizationProduct          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaId   String                       @unique
+  media     MediaAsset                   @relation("OrganizationProductMedia", fields: [mediaId], references: [id], onDelete: Restrict)
+  kind      OrganizationProductMediaKind @default(GALLERY)
+  altText   String                       @db.VarChar(240)
+  sortOrder Int                          @default(0)
+  createdAt DateTime                     @default(now())
+
+  @@unique([productId, sortOrder])
+  @@index([productId, kind, sortOrder])
+}
+
+model OrganizationServiceMedia {
+  id        String                       @id @default(cuid())
+  serviceId String
+  service   OrganizationService          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  mediaId   String                       @unique
+  media     MediaAsset                   @relation("OrganizationServiceMedia", fields: [mediaId], references: [id], onDelete: Restrict)
+  kind      OrganizationServiceMediaKind @default(GALLERY)
+  altText   String                       @db.VarChar(240)
+  sortOrder Int                          @default(0)
+  createdAt DateTime                     @default(now())
+
+  @@unique([serviceId, sortOrder])
+  @@index([serviceId, kind, sortOrder])
+}
+
+model OrganizationProductSaved {
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   OrganizationProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime            @default(now())
+
+  @@id([userId, productId])
+  @@index([userId, createdAt])
+  @@index([productId])
+}
+
+model OrganizationServiceSaved {
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   OrganizationService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime            @default(now())
+
+  @@id([userId, serviceId])
+  @@index([userId, createdAt])
+  @@index([serviceId])
+}
+
+model OrganizationProductInquiry {
+  id              String                           @id @default(cuid())
+  productId       String
+  product         OrganizationProduct              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  organizationId  String
+  organization    Organization                     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requesterUserId String
+  requester       User                             @relation("OrganizationProductInquiryRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  recipientUserId String
+  recipient       User                             @relation("OrganizationProductInquiryRecipient", fields: [recipientUserId], references: [id], onDelete: Restrict)
+  conversationId  String?
+  conversation    Conversation?                    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  status          OrganizationCatalogInquiryStatus @default(OPEN)
+  topic           String                           @db.VarChar(120)
+  createdAt       DateTime                         @default(now())
+  updatedAt       DateTime                         @updatedAt
+
+  @@unique([productId, requesterUserId])
+  @@index([organizationId, status, createdAt])
+  @@index([recipientUserId, status, createdAt])
+  @@index([conversationId])
+}
+
+model OrganizationServiceInquiry {
+  id              String                           @id @default(cuid())
+  serviceId       String
+  service         OrganizationService              @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  organizationId  String
+  organization    Organization                     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requesterUserId String
+  requester       User                             @relation("OrganizationServiceInquiryRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  recipientUserId String
+  recipient       User                             @relation("OrganizationServiceInquiryRecipient", fields: [recipientUserId], references: [id], onDelete: Restrict)
+  conversationId  String?
+  conversation    Conversation?                    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  status          OrganizationCatalogInquiryStatus @default(OPEN)
+  topic           String                           @db.VarChar(120)
+  createdAt       DateTime                         @default(now())
+  updatedAt       DateTime                         @updatedAt
+
+  @@unique([serviceId, requesterUserId])
+  @@index([organizationId, status, createdAt])
+  @@index([recipientUserId, status, createdAt])
+  @@index([conversationId])
 }
 
 model OrganizationMembership {
@@ -2795,17 +3053,19 @@ model NotificationJob {
 }
 
 model Conversation {
-  id                String                    @id @default(cuid())
-  type              ConversationType          @default(DIRECT)
-  directKey         String?                   @unique
+  id                String                       @id @default(cuid())
+  type              ConversationType             @default(DIRECT)
+  directKey         String?                      @unique
   participants      ConversationParticipant[]
   messages          Message[]
   callSessions      CallSession[]
   housingInquiries  HousingInquiry[]
   roommateInterests RoommateInterest[]
+  productInquiries  OrganizationProductInquiry[]
+  serviceInquiries  OrganizationServiceInquiry[]
   lastMessageAt     DateTime?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
 
   @@index([lastMessageAt])
 }
@@ -3149,6 +3409,8 @@ model MediaAsset {
   updatedAt                        DateTime                          @updatedAt
   opportunityMedia                 OpportunityMedia?                 @relation("OpportunityMedia")
   userOpportunityDocument          UserOpportunityDocument?          @relation("UserOpportunityDocument")
+  organizationProductMedia         OrganizationProductMedia?         @relation("OrganizationProductMedia")
+  organizationServiceMedia         OrganizationServiceMedia?         @relation("OrganizationServiceMedia")
 
   @@index([ownerId, status, createdAt])
   @@index([status, uploadExpiresAt])

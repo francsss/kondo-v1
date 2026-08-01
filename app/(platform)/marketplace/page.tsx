@@ -15,6 +15,7 @@ import { PeerMarketplaceBoard } from "@/components/features/marketplace/PeerMark
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { TabPanelTransition } from "@/components/ui/HorizontalTabs";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 
@@ -62,6 +63,7 @@ function MarketplaceNavigation({
             }
             href={tab.href}
             key={tab.value}
+            scroll={false}
           >
             <Icon className="hidden h-4 w-4 sm:block" />
             <span>{tab.label}</span>
@@ -153,19 +155,21 @@ export default async function MarketplacePage({
     return (
       <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
         <MarketplaceNavigation active={view} />
-        <PeerMarketplaceBoard
-          cities={cities}
-          currentUserId={user.id}
-          exchangeOffers={exchangeOffers.map((offer) => ({
-            ...offer,
-            createdAt: offer.createdAt.toISOString(),
-          }))}
-          skillOffers={skillOffers.map((offer) => ({
-            ...offer,
-            createdAt: offer.createdAt.toISOString(),
-          }))}
-          type={view}
-        />
+        <TabPanelTransition index={view === "exchange" ? 1 : 2}>
+          <PeerMarketplaceBoard
+            cities={cities}
+            currentUserId={user.id}
+            exchangeOffers={exchangeOffers.map((offer) => ({
+              ...offer,
+              createdAt: offer.createdAt.toISOString(),
+            }))}
+            skillOffers={skillOffers.map((offer) => ({
+              ...offer,
+              createdAt: offer.createdAt.toISOString(),
+            }))}
+            type={view}
+          />
+        </TabPanelTransition>
       </div>
     );
   }
@@ -260,109 +264,111 @@ export default async function MarketplacePage({
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <MarketplaceNavigation active="marketplace" />
-      <PageHeader
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="secondary">
-              <Link href="/marketplace/selling">
-                <LayoutDashboard className="h-4 w-4" /> Seller dashboard
+      <TabPanelTransition index={0}>
+        <PageHeader
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="secondary">
+                <Link href="/marketplace/selling">
+                  <LayoutDashboard className="h-4 w-4" /> Seller dashboard
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/marketplace/new">
+                  <Plus className="h-4 w-4" /> Sell an item
+                </Link>
+              </Button>
+            </div>
+          }
+          description="Buy from students nearby, sell what you no longer need, and keep good things in the community. No in-app payments."
+          eyebrow="Student to student"
+          title="Marketplace"
+        />
+
+        <MarketplaceFilterBar
+          cities={cities}
+          values={{
+            q: params.q,
+            city: params.city,
+            min: params.min,
+            max: params.max,
+            sort: params.sort,
+            category: params.category,
+          }}
+        />
+
+        <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+          <Link
+            className={
+              !params.category
+                ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
+                : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 dark:border-white/10 dark:bg-white/5"
+            }
+            href={href({ ...hrefInput, category: undefined })}
+          >
+            <span className="text-2xl">✨</span>
+            <span className="mt-2 text-xs font-black">All</span>
+          </Link>
+          {categories.map((category) => (
+            <Link
+              className={
+                params.category === category.slug
+                  ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
+                  : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"
+              }
+              href={href({ ...hrefInput, category: category.slug })}
+              key={category.id}
+            >
+              <span className="text-2xl">{category.icon}</span>
+              <span className="mt-2 text-xs font-black">{category.name}</span>
+              <span className="mt-0.5 text-[10px] text-muted-foreground">
+                {category._count.listings}
+              </span>
+            </Link>
+          ))}
+        </section>
+
+        <div className="mt-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-kondo-ink dark:text-white">
+              Available nearby
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {total} active listings
+            </p>
+          </div>
+          <div className="hidden items-center gap-1.5 text-xs font-bold text-kondo-green sm:flex">
+            <ShieldCheck className="h-4 w-4" /> No deposits or in-app payments
+          </div>
+        </div>
+        <section className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {listings.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} />
+          ))}
+        </section>
+        {!listings.length ? (
+          <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
+            No active listings match these filters.
+          </Card>
+        ) : null}
+        <div className="mt-7 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Page {page} of {pageCount} · {total} listings
+          </p>
+          <div className="flex gap-2">
+            <Button asChild size="sm" variant="secondary">
+              <Link href={href(hrefInput, Math.max(1, page - 1))}>
+                <ChevronLeft className="h-4 w-4" /> Previous
               </Link>
             </Button>
-            <Button asChild>
-              <Link href="/marketplace/new">
-                <Plus className="h-4 w-4" /> Sell an item
+            <Button asChild size="sm" variant="secondary">
+              <Link href={href(hrefInput, Math.min(pageCount, page + 1))}>
+                Next <ChevronRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
-        }
-        description="Buy from students nearby, sell what you no longer need, and keep good things in the community. No in-app payments."
-        eyebrow="Student to student"
-        title="Marketplace"
-      />
-
-      <MarketplaceFilterBar
-        cities={cities}
-        values={{
-          q: params.q,
-          city: params.city,
-          min: params.min,
-          max: params.max,
-          sort: params.sort,
-          category: params.category,
-        }}
-      />
-
-      <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-        <Link
-          className={
-            !params.category
-              ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
-              : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 dark:border-white/10 dark:bg-white/5"
-          }
-          href={href({ ...hrefInput, category: undefined })}
-        >
-          <span className="text-2xl">✨</span>
-          <span className="mt-2 text-xs font-black">All</span>
-        </Link>
-        {categories.map((category) => (
-          <Link
-            className={
-              params.category === category.slug
-                ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"
-            }
-            href={href({ ...hrefInput, category: category.slug })}
-            key={category.id}
-          >
-            <span className="text-2xl">{category.icon}</span>
-            <span className="mt-2 text-xs font-black">{category.name}</span>
-            <span className="mt-0.5 text-[10px] text-muted-foreground">
-              {category._count.listings}
-            </span>
-          </Link>
-        ))}
-      </section>
-
-      <div className="mt-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-black text-kondo-ink dark:text-white">
-            Available nearby
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {total} active listings
-          </p>
         </div>
-        <div className="hidden items-center gap-1.5 text-xs font-bold text-kondo-green sm:flex">
-          <ShieldCheck className="h-4 w-4" /> No deposits or in-app payments
-        </div>
-      </div>
-      <section className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
-      </section>
-      {!listings.length ? (
-        <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
-          No active listings match these filters.
-        </Card>
-      ) : null}
-      <div className="mt-7 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Page {page} of {pageCount} · {total} listings
-        </p>
-        <div className="flex gap-2">
-          <Button asChild size="sm" variant="secondary">
-            <Link href={href(hrefInput, Math.max(1, page - 1))}>
-              <ChevronLeft className="h-4 w-4" /> Previous
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="secondary">
-            <Link href={href(hrefInput, Math.min(pageCount, page + 1))}>
-              Next <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+      </TabPanelTransition>
     </div>
   );
 }

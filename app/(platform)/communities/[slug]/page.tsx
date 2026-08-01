@@ -90,7 +90,11 @@ export default async function CommunityPage({
   const user = await requireUser();
   const { slug } = await params;
   const query = await searchParams;
-  const activeSection = query.tab === "requests" ? "requests" : "feed";
+  const activeSection = ["requests", "about", "members", "guidelines"].includes(
+    query.tab ?? "",
+  )
+    ? (query.tab as "requests" | "about" | "members" | "guidelines")
+    : "feed";
   const page = Math.max(1, Number(query.page ?? 1) || 1);
   const pageSize = 12;
   const community = await prisma.community.findFirst({
@@ -469,7 +473,7 @@ export default async function CommunityPage({
             </aside>
           </div>
         </main>
-      ) : (
+      ) : activeSection === "requests" ? (
         <CommunityRequestsPanel
           canCreate={joined && community.status === "ACTIVE"}
           communityId={community.id}
@@ -478,6 +482,87 @@ export default async function CommunityPage({
           isMember={joined}
           myRequests={requestOverview.myRequests}
         />
+      ) : activeSection === "about" ? (
+        <main className="mx-auto max-w-4xl px-4 pb-20 pt-8 sm:px-6">
+          <Card className="rounded-[2rem] p-6 sm:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+              About this community
+            </p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight">
+              A space built on trust
+            </h2>
+            <p className="mt-5 whitespace-pre-wrap text-base leading-8 text-muted-foreground">
+              {community.description}
+            </p>
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-3xl bg-muted/60 p-5">
+                <p className="text-2xl font-black">
+                  {community._count.members.toLocaleString()}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Members</p>
+              </div>
+              <div className="rounded-3xl bg-muted/60 p-5">
+                <p className="text-2xl font-black">
+                  {community._count.posts.toLocaleString()}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Posts</p>
+              </div>
+            </div>
+          </Card>
+        </main>
+      ) : activeSection === "members" ? (
+        <main className="mx-auto max-w-4xl px-4 pb-20 pt-8 sm:px-6">
+          <Card className="rounded-[2rem] p-6 sm:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+              Members
+            </p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight">
+              New around here
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {community._count.members.toLocaleString()} members in this
+              community
+            </p>
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              {community.members.map((member) => (
+                <div
+                  className="flex items-center gap-3 rounded-3xl border border-border p-4"
+                  key={member.id}
+                >
+                  <Avatar
+                    className="h-11 w-11"
+                    firstName={member.user.firstName}
+                    lastName={member.user.lastName}
+                    mediaId={member.user.avatarMediaId}
+                    seed={member.user.id}
+                  />
+                  <p className="min-w-0 truncate font-bold">
+                    {member.user.firstName} {member.user.lastName}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </main>
+      ) : (
+        <main className="mx-auto max-w-4xl px-4 pb-20 pt-8 sm:px-6">
+          <Card className="rounded-[2rem] p-6 sm:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+              Community care
+            </p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight">
+              Share generously. Protect each other.
+            </h2>
+            <p className="mt-4 text-base leading-8 text-muted-foreground">
+              Keep advice grounded in lived experience, protect personal
+              information, and report anything unsafe or misleading privately to
+              Kondo.
+            </p>
+            <Button asChild className="mt-6">
+              <Link href="/guidelines">Read the full Kondo guidelines</Link>
+            </Button>
+          </Card>
+        </main>
       )}
       {safeSelectedPost ? (
         <CommunityPostFocus

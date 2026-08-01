@@ -26,6 +26,7 @@ export function OpportunityAccountNav() {
           <li key={href}>
             <Link
               href={href}
+              scroll={false}
               className="inline-flex min-h-9 items-center rounded-full border border-black/10 px-3.5 py-2 text-xs font-bold transition hover:border-kondo-green/40 hover:bg-kondo-green/5 dark:border-white/10"
             >
               {label}

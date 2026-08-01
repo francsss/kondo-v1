@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -79,6 +79,7 @@ export function HorizontalTabs({
             data-tab-key={tab.key}
             href={tab.href}
             key={tab.key}
+            scroll={false}
           >
             {active ? (
               <motion.span
@@ -118,6 +119,7 @@ export function TabPanelTransition({
   className?: string;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const reducedMotion = useReducedMotion();
   // Adjusting state during render is the supported way to derive a value from
   // a prop change; a ref read during render would be a stale-value hazard.
@@ -141,7 +143,7 @@ export function TabPanelTransition({
         className={className}
         exit={{ opacity: 0 }}
         initial={{ opacity: 0, x: direction * 12 }}
-        key={pathname}
+        key={`${pathname}?${searchParams.toString()}`}
         transition={{ duration: 0.18, ease: "easeOut" }}
       >
         {children}

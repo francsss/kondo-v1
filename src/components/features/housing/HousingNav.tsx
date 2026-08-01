@@ -37,6 +37,7 @@ export function HousingNav({ active }: { active: string }) {
             )}
             href={item.href}
             key={item.href}
+            scroll={false}
           >
             <Icon aria-hidden className="h-4 w-4" />
             {item.label}

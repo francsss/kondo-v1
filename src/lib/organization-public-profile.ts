@@ -11,6 +11,8 @@ import {
   ORGANIZATION_PUBLIC_SECTION_PROVIDERS,
   ORGANIZATION_JOBS_PUBLIC_SECTION,
   ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION,
+  ORGANIZATION_PRODUCTS_PUBLIC_SECTION,
+  ORGANIZATION_SERVICES_PUBLIC_SECTION,
   visibleOrganizationSections,
   type OrganizationPublicProjection,
 } from "@/features/organizations/public-sections";
@@ -195,6 +197,10 @@ export async function serializeOrganizationPublicProfile(
     projections.housing ? ORGANIZATION_HOUSING_PUBLIC_SECTION : null,
     projections.scholarships ? ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION : null,
     projections.jobs ? ORGANIZATION_JOBS_PUBLIC_SECTION : null,
+    projections.products ? ORGANIZATION_PRODUCTS_PUBLIC_SECTION : null,
+    projections["student-services"]
+      ? ORGANIZATION_SERVICES_PUBLIC_SECTION
+      : null,
   ].filter((section) => section !== null);
   const visibleSections = domainSections.length
     ? [...baseVisibleSections, ...domainSections].sort(
@@ -246,7 +252,7 @@ export async function serializeOrganizationPublicProfile(
     relatedCity: organization.city
       ? {
           name: organization.city.name,
-          href: `/explore/${organization.city.slug}`,
+          href: `/discover/cities/${organization.city.slug}`,
         }
       : null,
   };

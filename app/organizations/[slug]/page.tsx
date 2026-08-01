@@ -52,21 +52,31 @@ export async function generateMetadata({
 
 export default async function OrganizationPublicProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ section?: string }>;
 }) {
   const result = await getOrganizationPublicProfile((await params).slug);
   if (!result) notFound();
   if (result.redirectSlug) {
     permanentRedirect(`/organizations/${result.redirectSlug}`);
   }
+  const requestedSection = (await searchParams).section;
+  const activeSection =
+    result.profile.visibleSections.find(
+      (section) => section.key === requestedSection,
+    )?.key ?? result.profile.visibleSections[0]?.key;
   return (
     <>
       <OrganizationPublicChrome
         backHref="/organizations"
         backLabel="All organizations"
       />
-      <OrganizationPublicPage organization={result.profile} />
+      <OrganizationPublicPage
+        activeSection={activeSection}
+        organization={result.profile}
+      />
     </>
   );
 }
