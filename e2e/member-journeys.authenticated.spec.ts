@@ -93,9 +93,9 @@ test.describe("authenticated member journeys", () => {
     await expect(page).toHaveURL(/\/home/);
     for (const label of [
       "Home",
-      "Communities",
-      "Marketplace",
       "Student Hub",
+      "Discover",
+      "Communities",
       "Messages",
     ]) {
       await expect(

@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   Bell,
+  Bookmark,
   Building2,
   Clapperboard,
   ClipboardList,
@@ -26,6 +27,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
   Sun,
   Target,
   UserRound,
@@ -96,20 +98,22 @@ type NavigationItem = {
 
 const navigation: NavigationItem[] = [
   { href: "/home", label: "Home", icon: Home },
-  { href: "/communities", label: "Communities", icon: Users },
-  { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
   {
     href: "/student-hub",
     label: "Student Hub",
     icon: GraduationCap,
     aliases: ["/guides", "/help"],
   },
+  { href: "/discover", label: "Discover", icon: Compass },
+  { href: "/communities", label: "Communities", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
 
 const secondaryNavigation: NavigationItem[] = [
   { href: "/housing", label: "Housing", icon: House },
   { href: "/stories", label: "Student Stories", icon: Clapperboard },
+  { href: "/saved", label: "Saved", icon: Bookmark },
+  { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
 ];
 
 /**
@@ -132,6 +136,8 @@ const WORKSPACE_MOBILE_ICONS: Record<WorkspaceNavigationIconKey, LucideIcon> = {
   opportunities: Target,
   applications: ClipboardList,
   catalog: Package,
+  products: Package,
+  services: Sparkles,
   inquiries: MessageCircle,
   team: Users,
   verification: ShieldCheck,
@@ -454,31 +460,47 @@ export function AppShell({
           <KondoLogo href="/home" />
         </div>
         <nav aria-label="Primary navigation" className="mt-10 space-y-1">
-          {navigation.map((item) => (
-            <NavLink
-              badgeCount={
-                item.href === "/messages" ? messageUnreadCount : undefined
-              }
-              key={item.href}
-              {...item}
-              pathname={pathname}
-            />
-          ))}
+          {organizationWorkspace
+            ? workspaceNavigation.map((item) => (
+                <NavLink
+                  href={item.href}
+                  icon={WORKSPACE_MOBILE_ICONS[item.icon]}
+                  key={item.key}
+                  label={item.label}
+                  pathname={pathname}
+                />
+              ))
+            : navigation.map((item) => (
+                <NavLink
+                  badgeCount={
+                    item.href === "/messages" ? messageUnreadCount : undefined
+                  }
+                  key={item.href}
+                  {...item}
+                  pathname={pathname}
+                />
+              ))}
         </nav>
 
         <div className="mt-6 border-t border-border pt-4">
-          <p className="px-3.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-            More from Kondo
-          </p>
           <div className="space-y-1">
             <WorkspaceSwitcher
               presentation="menu"
               user={user}
               workspaces={workspaces}
             />
-            {secondaryNavigation.map((item) => (
-              <NavLink key={item.href} {...item} pathname={pathname} />
-            ))}
+            {organizationWorkspace ? (
+              <NavLink
+                href="/home"
+                icon={UserRound}
+                label="Return to Personal"
+                pathname={pathname}
+              />
+            ) : (
+              secondaryNavigation.map((item) => (
+                <NavLink key={item.href} {...item} pathname={pathname} />
+              ))
+            )}
             <ThemeToggle presentation="menu" />
           </div>
         </div>
@@ -667,21 +689,23 @@ export function AppShell({
               </div>
             ) : null}
 
-            <div className="my-5 border-t border-border/40 pt-5">
-              <div className="space-y-1">
-                {secondaryNavigation.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    {...item}
-                    label={
-                      item.href === "/stories" ? "Student Story" : item.label
-                    }
-                    pathname={pathname}
-                    onNavigate={() => setMenuOpen(false)}
-                  />
-                ))}
+            {!organizationWorkspace ? (
+              <div className="my-5 border-t border-border/40 pt-5">
+                <div className="space-y-1">
+                  {secondaryNavigation.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      {...item}
+                      label={
+                        item.href === "/stories" ? "Student Story" : item.label
+                      }
+                      pathname={pathname}
+                      onNavigate={() => setMenuOpen(false)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="mt-auto space-y-1 border-t border-border/40 pt-5">
               {isAdmin ? (

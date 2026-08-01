@@ -439,5 +439,12 @@ because the legacy table cannot answer them. Unfiltered and free-text searches
 return both. This is visible to students as a shorter result list while a filter
 is applied, and is resolved by the Part 8 legacy migration.
 
-Not started and not to be described as delivered: Part 6 Discover, products and
-services.
+Part 6 Discover, products and services is implemented; see
+`PART6_DISCOVER_CATALOG.md`. Part 7 adds the additive
+`20260801150000_part7_journey_navigator` migration. Before production, verify
+that its backfill preserves existing onboarding profiles, then smoke-test the
+three-group onboarding, a confirmed Home Journey change, Navigator
+complete/dismiss/defer, `/saved` visibility rechecks, notification category
+filters, personal mobile navigation and the four-action organization mobile
+bar. No new environment variable or provider is required. Part 8 is not part of
+this release.

@@ -14,10 +14,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
-  NEW_PERSONAL_JOURNEYS,
-  PERSONAL_JOURNEY_PRESENTATION,
-  type NewPersonalJourney,
-} from "@/lib/personal-journeys";
+  JOURNEY_GROUP_PRESENTATION,
+  JOURNEY_GROUPS,
+  JOURNEY_STAGES_BY_GROUP,
+  inferJourney,
+  journeyStageLabel,
+  legacyJourneyFor,
+} from "@/lib/journey";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
@@ -27,7 +30,15 @@ type CityOption = Option & { countryId: string };
 type UniversityOption = Option & { cityId: string; countryId: string };
 type StudyLevel =
   "LANGUAGE" | "BACHELORS" | "MASTERS" | "DOCTORATE" | "EXCHANGE" | "OTHER";
-type StudentJourney = NewPersonalJourney | "INCOMING_STUDENT";
+type StudentJourney =
+  | "PROSPECTIVE_STUDENT"
+  | "ADMITTED_STUDENT"
+  | "CURRENT_STUDENT"
+  | "ALUMNI"
+  | "PROFESSIONAL"
+  | "INCOMING_STUDENT";
+type JourneyGroup = (typeof JOURNEY_GROUPS)[number];
+type JourneyStage = (typeof JOURNEY_STAGES_BY_GROUP)[JourneyGroup][number];
 
 type InitialValues = {
   gender: "MALE" | "FEMALE" | null;
@@ -41,6 +52,8 @@ type InitialValues = {
   languages: string[];
   interests: string[];
   applicationStage: string | null;
+  journeyGroup: JourneyGroup | null;
+  journeyStage: JourneyStage | null;
   universityPreferenceMode: string | null;
   targetCityIds: string[];
   targetUniversityIds: string[];
@@ -67,6 +80,8 @@ type OnboardingForm = {
   languages: string[];
   interests: string[];
   applicationStage: string;
+  journeyGroup: JourneyGroup | "";
+  journeyStage: JourneyStage | "";
   universityPreferenceMode: string;
   targetCityIds: string[];
   targetUniversityIds: string[];
@@ -167,11 +182,21 @@ export function OnboardingFlow({
     initialValues.studentJourney === "INCOMING_STUDENT"
       ? "INCOMING_STUDENT"
       : initialValues.studentJourney &&
-          NEW_PERSONAL_JOURNEYS.includes(
-            initialValues.studentJourney as NewPersonalJourney,
-          )
+          [
+            "PROSPECTIVE_STUDENT",
+            "ADMITTED_STUDENT",
+            "CURRENT_STUDENT",
+            "ALUMNI",
+            "PROFESSIONAL",
+          ].includes(initialValues.studentJourney)
         ? initialValues.studentJourney
         : "";
+  const initialCanonicalJourney = inferJourney({
+    group: initialValues.journeyGroup,
+    stage: initialValues.journeyStage,
+    legacyJourney: initialValues.studentJourney,
+    applicationStage: initialValues.applicationStage as never,
+  });
   const [form, setForm] = useState<OnboardingForm>({
     gender: initialValues.gender ?? "",
     studentJourney: initialJourney as StudentJourney | "",
@@ -186,6 +211,8 @@ export function OnboardingFlow({
       : ["English"],
     interests: initialValues.interests,
     applicationStage: initialValues.applicationStage ?? "EXPLORING",
+    journeyGroup: initialCanonicalJourney.group,
+    journeyStage: initialCanonicalJourney.stage,
     universityPreferenceMode:
       initialValues.universityPreferenceMode ?? "NOT_CHOSEN",
     targetCityIds: initialValues.targetCityIds,
@@ -245,6 +272,8 @@ export function OnboardingFlow({
         form.studentJourney === "PROSPECTIVE_STUDENT"
           ? form.applicationStage
           : undefined,
+      journeyGroup: form.journeyGroup || undefined,
+      journeyStage: form.journeyStage || undefined,
       universityPreferenceMode:
         form.studentJourney === "PROSPECTIVE_STUDENT"
           ? form.universityPreferenceMode
@@ -325,7 +354,12 @@ export function OnboardingFlow({
 
   const canContinue =
     step === 0
-      ? Boolean(form.gender && form.studentJourney)
+      ? Boolean(
+          form.gender &&
+          form.studentJourney &&
+          form.journeyGroup &&
+          form.journeyStage,
+        )
       : step === 1
         ? Boolean(form.countryId)
         : step === 2
@@ -485,9 +519,9 @@ function JourneyStep({
         </div>
       </fieldset>
       <div className="grid gap-3">
-        {NEW_PERSONAL_JOURNEYS.map((journey) => {
-          const item = PERSONAL_JOURNEY_PRESENTATION[journey];
-          const selected = form.studentJourney === journey;
+        {JOURNEY_GROUPS.map((group) => {
+          const item = JOURNEY_GROUP_PRESENTATION[group];
+          const selected = form.journeyGroup === group;
           return (
             <button
               aria-pressed={selected}
@@ -497,14 +531,17 @@ function JourneyStep({
                   ? "border-kondo-green bg-kondo-mint text-kondo-forest shadow-sm dark:bg-emerald-400/10 dark:text-emerald-200"
                   : "border-border bg-background hover:border-kondo-green/50 hover:bg-muted/60",
               )}
-              key={journey}
+              key={group}
               onClick={() => {
+                const stage = JOURNEY_STAGES_BY_GROUP[group][0];
                 setForm((current) => ({
                   ...current,
-                  studentJourney: journey,
+                  journeyGroup: group,
+                  journeyStage: stage,
+                  studentJourney: legacyJourneyFor(group, stage),
                 }));
                 captureProductEvent(PRODUCT_EVENTS.PERSONAL_JOURNEY_SELECTED, {
-                  journey,
+                  journey: group,
                 });
               }}
               type="button"
@@ -522,6 +559,44 @@ function JourneyStep({
             </button>
           );
         })}
+        {form.journeyGroup ? (
+          <fieldset className="mt-3 rounded-3xl border border-border bg-muted/30 p-4">
+            <legend className="px-2 text-sm font-black text-kondo-ink dark:text-white">
+              Where are you now?
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {JOURNEY_STAGES_BY_GROUP[form.journeyGroup].map((stage) => (
+                <button
+                  aria-pressed={form.journeyStage === stage}
+                  className={cn(
+                    "rounded-full border px-3 py-2 text-xs font-bold transition motion-reduce:transition-none",
+                    form.journeyStage === stage
+                      ? "border-kondo-green bg-kondo-green text-white"
+                      : "border-border bg-card text-muted-foreground hover:border-kondo-green/50 hover:text-foreground",
+                  )}
+                  key={stage}
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      journeyStage: stage,
+                      studentJourney: legacyJourneyFor(
+                        current.journeyGroup as JourneyGroup,
+                        stage,
+                      ),
+                      applicationStage:
+                        current.journeyGroup === "PREPARING_FOR_CHINA"
+                          ? stage
+                          : current.applicationStage,
+                    }))
+                  }
+                  type="button"
+                >
+                  {journeyStageLabel(stage)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
         {form.studentJourney === "INCOMING_STUDENT" ? (
           <p className="rounded-2xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">
             Your legacy “Incoming student” status is preserved. Choose

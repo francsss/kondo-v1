@@ -37,6 +37,8 @@ export default async function PersonalOnboardingPage() {
             languages: user.languages,
             interests: user.interests,
             applicationStage: user.journeyDetail?.applicationStage ?? null,
+            journeyGroup: user.journeyDetail?.journeyGroup ?? null,
+            journeyStage: user.journeyDetail?.journeyStage ?? null,
             universityPreferenceMode:
               user.journeyDetail?.universityPreferenceMode ?? null,
             targetCityIds: user.targetCities.map(({ cityId }) => cityId),

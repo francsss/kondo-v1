@@ -333,7 +333,7 @@ test.describe.serial("opportunity route discoverability", () => {
     });
     await expect(personalBar).toBeVisible();
     await expect(
-      personalBar.getByRole("link", { name: "Marketplace" }),
+      personalBar.getByRole("link", { name: "Discover" }),
     ).toBeVisible();
 
     await page.goto(`/organizations/${readySlug}/dashboard`);

@@ -811,24 +811,26 @@ export async function listSavedCatalog(userId: string) {
   const [products, services] = await Promise.all([
     prisma.organizationProductSaved.findMany({
       where: { userId, product: publicOrganizationProductWhere },
-      select: { product: { select: productPublicSelect } },
+      select: { createdAt: true, product: { select: productPublicSelect } },
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
     prisma.organizationServiceSaved.findMany({
       where: { userId, service: publicOrganizationServiceWhere },
-      select: { service: { select: servicePublicSelect } },
+      select: { createdAt: true, service: { select: servicePublicSelect } },
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
   ]);
   return {
-    products: products.map(({ product }) =>
-      serializeCatalogRecord("product", product),
-    ),
-    services: services.map(({ service }) =>
-      serializeCatalogRecord("service", service),
-    ),
+    products: products.map(({ product, createdAt }) => ({
+      ...serializeCatalogRecord("product", product),
+      savedAt: createdAt.toISOString(),
+    })),
+    services: services.map(({ service, createdAt }) => ({
+      ...serializeCatalogRecord("service", service),
+      savedAt: createdAt.toISOString(),
+    })),
   };
 }
 

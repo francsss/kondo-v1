@@ -348,3 +348,12 @@ Scholarship agents as a separate tab beside scholarships — students see one
 unified Scholarships experience — but the records, their admin tooling and
 `/student-hub/scholarships/agents` are untouched and still reachable. No legacy
 record was migrated, reassigned or converted into an Organization.
+
+### Part 7 Journey and Navigator support
+
+Journey changes are user-confirmed and audited as `KONDO_JOURNEY_UPDATED`.
+Administrators do not assign, infer or silently advance a user's stage.
+Navigator state is private product preference data and is not exposed as an
+admin directory. Support should verify the destination domain has real visible
+content and that the user still has route access; it must not inspect messages,
+application answers or private documents to explain a recommendation.

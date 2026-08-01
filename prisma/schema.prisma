@@ -60,6 +60,39 @@ enum ProspectiveApplicationStage {
   PREPARING_ARRIVAL
 }
 
+// Part 7 keeps the broad journey and the precise stage independent. Legacy
+// StudentJourney values remain in place while older screens migrate.
+enum KondoJourneyGroup {
+  PREPARING_FOR_CHINA
+  STUDYING_AND_LIVING_IN_CHINA
+  CAREER_ALUMNI_AND_ENTREPRENEURSHIP
+}
+
+enum KondoJourneyStage {
+  EXPLORING
+  PREPARING_APPLICATION
+  APPLICATION_SUBMITTED
+  WAITING_FOR_DECISION
+  ADMITTED
+  PREPARING_ARRIVAL
+  NEW_ARRIVAL
+  CURRENT_STUDENT
+  INTERNSHIP_PREPARATION
+  FINAL_YEAR
+  GRADUATING
+  JOB_SEEKING
+  EMPLOYED
+  ALUMNI
+  PROFESSIONAL
+  ENTREPRENEUR
+}
+
+enum NavigatorActionState {
+  COMPLETED
+  DISMISSED
+  DEFERRED
+}
+
 enum UniversityPreferenceMode {
   NOT_CHOSEN
   CONSIDERING_SEVERAL
@@ -952,6 +985,7 @@ model User {
   studentJourney                      StudentJourney?
   onboardingIntent                    OnboardingIntent?
   journeyDetail                       UserJourneyDetail?
+  navigatorActionStates               UserNavigatorActionState[]
   targetCities                        UserTargetCity[]
   targetUniversities                  UserTargetUniversity[]
   organizationMemberships             OrganizationMembership[]
@@ -1215,6 +1249,9 @@ model UserJourneyDetail {
   userId                     String                       @id
   user                       User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   applicationStage           ProspectiveApplicationStage?
+  journeyGroup               KondoJourneyGroup?
+  journeyStage               KondoJourneyStage?
+  journeyUpdatedAt           DateTime?
   universityPreferenceMode   UniversityPreferenceMode?
   expectedIntake             DateTime?                    @db.Date
   campusName                 String?                      @db.VarChar(160)
@@ -1227,6 +1264,19 @@ model UserJourneyDetail {
   onboardingStep             Int                          @default(0)
   createdAt                  DateTime                     @default(now())
   updatedAt                  DateTime                     @updatedAt
+}
+
+model UserNavigatorActionState {
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionKey     String               @db.VarChar(100)
+  state         NavigatorActionState
+  deferredUntil DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@id([userId, actionKey])
+  @@index([userId, state, deferredUntil])
 }
 
 model UserTargetCity {

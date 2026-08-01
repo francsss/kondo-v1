@@ -218,3 +218,17 @@ Full reconciliation is deferred to later parts.
 - Audit values are recursively redacted for secret-bearing keys. Within preserved evidence snapshots, Moderator views hide stable participant/message identifiers and usernames; Admin can see operational identity and attachment metadata; only Super Admin can see stable evidence identifiers and request security metadata.
 - Analytics events use a constrained enum and optional JSON properties to prevent an uncontrolled event taxonomy.
 - Production deployment must connect application errors, Web Vitals, database health, and audit alerts to an observability provider.
+
+## Journey and Navigator boundary
+
+Part 7 adds a canonical `journeyGroup + journeyStage` pair without removing the
+historical `StudentJourney` compatibility projection. `src/lib/journey.ts` is
+the only mapping/compatibility policy. `src/lib/journey-service.ts` owns
+confirmed transitions and audit writes. No behavior automatically advances a
+stage.
+
+Navigator is a deterministic projection. Its rule registry is pure and
+unit-testable; `src/lib/navigator.ts` supplies bounded, non-sensitive facts from
+source domains and applies private per-user completion/dismissal/deferral.
+Unified Saved follows the same projection rule: source domains own data and
+visibility, while `/saved` owns presentation only.

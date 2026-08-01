@@ -152,6 +152,28 @@ describe("organization workspace navigation", () => {
       expect(item.href.startsWith("/student-hub")).toBe(false);
     }
   });
+
+  it("keeps exactly four organization actions in the mobile primary bar", () => {
+    const items = organizationWorkspaceNavigation({
+      organization: organization({
+        capabilities: [
+          { key: "HOUSING", status: "ENABLED" },
+          { key: "SCHOLARSHIPS", status: "ENABLED" },
+          { key: "PRODUCTS", status: "ENABLED" },
+          { key: "STUDENT_SERVICES", status: "ENABLED" },
+        ],
+      }),
+      membership: owner,
+    });
+    expect(
+      items
+        .filter(({ primaryOnMobile }) => primaryOnMobile)
+        .map(({ key }) => key),
+    ).toEqual(["dashboard", "housing", "opportunities", "applications"]);
+    expect(keys(items)).toEqual(
+      expect.arrayContaining(["products", "services"]),
+    );
+  });
 });
 
 describe("active workspace navigation state", () => {

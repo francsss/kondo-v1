@@ -56,9 +56,9 @@ test.describe("authenticated critical journeys", () => {
     expect(Math.abs(hoverEnd - hoverStart)).toBeLessThan(2);
     for (const [href, label] of [
       ["/home", "Home"],
-      ["/communities", "Communities"],
-      ["/marketplace", "Marketplace"],
       ["/student-hub", "Student Hub"],
+      ["/discover", "Discover"],
+      ["/communities", "Communities"],
       ["/messages", "Messages"],
     ] as const) {
       // Not `exact: true`: Messages/Notifications links can carry an

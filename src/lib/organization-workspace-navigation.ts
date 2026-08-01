@@ -32,6 +32,8 @@ export type WorkspaceNavigationIconKey =
   | "opportunities"
   | "applications"
   | "catalog"
+  | "products"
+  | "services"
   | "inquiries"
   | "team"
   | "verification"
@@ -185,18 +187,27 @@ export function organizationWorkspaceNavigation(input: {
   }
 
   if (permitted(membership, "ORGANIZATION_VIEW_CATALOG")) {
-    const hasCatalogCapability =
-      enabled.includes("PRODUCTS") || enabled.includes("STUDENT_SERVICES");
     push({
-      key: "catalog",
-      segment: "catalog",
-      label: "Products & services",
-      icon: "catalog",
-      state: hasCatalogCapability ? "enabled" : "setup",
-      setupReason: hasCatalogCapability
+      key: "products",
+      segment: "catalog/products",
+      label: "Products",
+      icon: "products",
+      state: enabled.includes("PRODUCTS") ? "enabled" : "setup",
+      setupReason: enabled.includes("PRODUCTS")
         ? undefined
-        : "Enable Products or Student services to publish a catalog.",
-      primaryOnMobile: true,
+        : "Enable Products to publish products.",
+      primaryOnMobile: false,
+    });
+    push({
+      key: "services",
+      segment: "catalog/services",
+      label: "Services",
+      icon: "services",
+      state: enabled.includes("STUDENT_SERVICES") ? "enabled" : "setup",
+      setupReason: enabled.includes("STUDENT_SERVICES")
+        ? undefined
+        : "Enable Student services to publish services.",
+      primaryOnMobile: false,
     });
   }
 

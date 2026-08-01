@@ -1883,7 +1883,17 @@ filter, so a filtered list never contains records the filter could not test.
   and client markup agree. The complete text is always in the DOM: nothing is
   ever shortened at the API or database level for layout reasons.
 
-## 20. Required validation for changes
+## 20. Part 7 — personal context and navigation
+
+Journey, Navigator, personalized Home, unified Saved, categorized
+notifications and the final personal/organization navigation contract are
+documented in [`PART7_JOURNEY_NAVIGATOR.md`](./PART7_JOURNEY_NAVIGATOR.md).
+The implementation reuses Student Hub, Discover, Housing, Opportunities,
+organization catalog and their existing visibility rules; it creates no second
+content source. The canonical Journey is stored separately from the historical
+compatibility enum and is changed only after explicit user confirmation.
+
+## 21. Required validation for changes
 
 Minimum code-quality gate:
 
@@ -1926,7 +1936,7 @@ Provider-dependent smoke tests must use the deployed environment:
 - City Hub independent entry save and public publication;
 - Story upload/playback/moderation/scheduled publish.
 
-## 20. Copyable instruction block for future AI work
+## 22. Copyable instruction block for future AI work
 
 Use the following at the beginning of future implementation prompts:
 

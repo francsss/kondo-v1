@@ -40,6 +40,8 @@ const NAVIGATION_ICONS: Record<WorkspaceNavigationIconKey, LucideIcon> = {
   opportunities: Target,
   applications: ClipboardList,
   catalog: Package,
+  products: Package,
+  services: Sparkles,
   inquiries: MessageCircle,
   team: Users,
   verification: ShieldCheck,

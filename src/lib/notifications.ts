@@ -156,7 +156,80 @@ const safeRoutePrefixes = [
   "/organizations",
   "/organization-invitations",
   "/opportunities",
+  "/discover",
+  "/saved",
+  "/products",
+  "/services",
+  "/payments",
 ] as const;
+
+export const NOTIFICATION_CENTER_CATEGORIES = [
+  "all",
+  "applications",
+  "opportunities",
+  "housing",
+  "organizations",
+  "products-services",
+  "messages",
+  "payments-invoices",
+  "system",
+] as const;
+export type NotificationCenterCategory =
+  (typeof NOTIFICATION_CENTER_CATEGORIES)[number];
+
+function centerCategoryWhere(
+  category: NotificationCenterCategory,
+): Prisma.NotificationWhereInput {
+  if (category === "all") return {};
+  if (category === "applications")
+    return {
+      templateKey: {
+        in: [
+          "OPPORTUNITY_APPLICATION_SUBMITTED",
+          "OPPORTUNITY_NEW_APPLICATION",
+          "OPPORTUNITY_APPLICATION_STATUS",
+          "OPPORTUNITY_INTERVIEW_INVITATION",
+          "OPPORTUNITY_APPLICANT_RESPONSE",
+        ],
+      },
+    };
+  if (category === "opportunities")
+    return {
+      templateKey: {
+        in: [
+          "OPPORTUNITY_PUBLISHED",
+          "OPPORTUNITY_DEADLINE_REMINDER",
+          "OPPORTUNITY_MODERATION_RESULT",
+          "SCHOLARSHIP_MATCH",
+        ],
+      },
+    };
+  if (category === "housing") return { type: "HOUSING" };
+  if (category === "organizations")
+    return { templateKey: { startsWith: "ORGANIZATION_" } };
+  if (category === "products-services")
+    return {
+      OR: [
+        { href: { startsWith: "/products" } },
+        { href: { startsWith: "/services" } },
+        { href: { contains: "/catalog/" } },
+      ],
+    };
+  if (category === "messages") return { type: "MESSAGE" };
+  if (category === "payments-invoices")
+    return {
+      OR: [
+        { href: { startsWith: "/payments" } },
+        { title: { contains: "payment", mode: "insensitive" } },
+        { title: { contains: "invoice", mode: "insensitive" } },
+      ],
+    };
+  return {
+    type: {
+      in: ["ACCOUNT", "MODERATION_UPDATE", "ACADEMIC", "RECOMMENDATION"],
+    },
+  };
+}
 
 export class NotificationError extends Error {
   constructor(
@@ -652,13 +725,18 @@ function notificationDto(notification: {
 
 export async function listNotifications(
   userId: string,
-  filters: { page?: number; pageSize?: number } = {},
+  filters: {
+    page?: number;
+    pageSize?: number;
+    category?: NotificationCenterCategory;
+  } = {},
 ) {
   const page = clampPage(filters.page);
   const pageSize = clampPageSize(filters.pageSize);
   const where: Prisma.NotificationWhereInput = {
     recipientId: userId,
     hiddenAt: null,
+    ...centerCategoryWhere(filters.category ?? "all"),
   };
   const [total, unreadCount, notifications] = await Promise.all([
     prisma.notification.count({ where }),

@@ -12,7 +12,11 @@ import { NotificationItem } from "@/components/features/notifications/Notificati
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { listNotifications } from "@/lib/notifications";
+import {
+  listNotifications,
+  NOTIFICATION_CENTER_CATEGORIES,
+  type NotificationCenterCategory,
+} from "@/lib/notifications";
 import { formatRelativeDate } from "@/lib/presentation";
 import { requireUser } from "@/lib/server-auth";
 
@@ -26,9 +30,18 @@ export default async function NotificationsPage({
   const user = await requireUser();
   const params = await searchParams;
   const rawPage = Array.isArray(params.page) ? params.page[0] : params.page;
+  const rawCategory = Array.isArray(params.category)
+    ? params.category[0]
+    : params.category;
+  const category = NOTIFICATION_CENTER_CATEGORIES.includes(
+    rawCategory as NotificationCenterCategory,
+  )
+    ? (rawCategory as NotificationCenterCategory)
+    : "all";
   const result = await listNotifications(user.id, {
     page: Number(rawPage ?? 1),
     pageSize: 20,
+    category,
   });
   return (
     <div className="mx-auto max-w-[920px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
@@ -52,6 +65,29 @@ export default async function NotificationsPage({
         count={result.notifications.length}
         unreadCount={result.unreadCount}
       />
+      <nav
+        aria-label="Notification categories"
+        className="-mx-1 mt-6 flex gap-2 overflow-x-auto px-1 pb-2"
+      >
+        {NOTIFICATION_CENTER_CATEGORIES.map((value) => (
+          <Link
+            aria-current={category === value ? "page" : undefined}
+            className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-black transition ${category === value ? "border-kondo-green bg-kondo-green text-white" : "border-border bg-card text-muted-foreground hover:border-kondo-green/40"}`}
+            href={`/notifications?category=${value}`}
+            key={value}
+            scroll={false}
+          >
+            {value === "all"
+              ? "All"
+              : value
+                  .split("-")
+                  .map(
+                    (part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`,
+                  )
+                  .join(" & ")}
+          </Link>
+        ))}
+      </nav>
       <div className="mt-8">
         {result.notifications.length ? (
           <div className="space-y-3">
@@ -91,7 +127,9 @@ export default async function NotificationsPage({
               variant="secondary"
             >
               {result.page > 1 ? (
-                <Link href={`/notifications?page=${result.page - 1}`}>
+                <Link
+                  href={`/notifications?category=${category}&page=${result.page - 1}`}
+                >
                   <ChevronLeft className="h-4 w-4" /> Previous
                 </Link>
               ) : (
@@ -107,7 +145,9 @@ export default async function NotificationsPage({
               variant="secondary"
             >
               {result.page < result.pageCount ? (
-                <Link href={`/notifications?page=${result.page + 1}`}>
+                <Link
+                  href={`/notifications?category=${category}&page=${result.page + 1}`}
+                >
                   Next <ChevronRight className="h-4 w-4" />
                 </Link>
               ) : (

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ORGANIZATION_TYPE_KEYS } from "@/features/organizations/registry";
 import { isAfricanCountryCode } from "@/lib/african-countries";
 import { SUPPORTED_CURRENCY_CODES } from "@/lib/currencies";
+import { isJourneyStageInGroup } from "@/lib/journey";
 import { STUDENT_SKILL_CATEGORIES } from "@/lib/peer-marketplace";
 import { ORGANIZATION_CAPABILITY_KEYS } from "@/lib/organization-capabilities";
 import {
@@ -150,6 +151,33 @@ const personalOnboardingShape = {
       "PREPARING_ARRIVAL",
     ])
     .optional(),
+  journeyGroup: z
+    .enum([
+      "PREPARING_FOR_CHINA",
+      "STUDYING_AND_LIVING_IN_CHINA",
+      "CAREER_ALUMNI_AND_ENTREPRENEURSHIP",
+    ])
+    .optional(),
+  journeyStage: z
+    .enum([
+      "EXPLORING",
+      "PREPARING_APPLICATION",
+      "APPLICATION_SUBMITTED",
+      "WAITING_FOR_DECISION",
+      "ADMITTED",
+      "PREPARING_ARRIVAL",
+      "NEW_ARRIVAL",
+      "CURRENT_STUDENT",
+      "INTERNSHIP_PREPARATION",
+      "FINAL_YEAR",
+      "GRADUATING",
+      "JOB_SEEKING",
+      "EMPLOYED",
+      "ALUMNI",
+      "PROFESSIONAL",
+      "ENTREPRENEUR",
+    ])
+    .optional(),
   universityPreferenceMode: z
     .enum(["NOT_CHOSEN", "CONSIDERING_SEVERAL", "PREFERRED_SELECTED"])
     .optional(),
@@ -168,6 +196,22 @@ const personalOnboardingShape = {
 export const onboardingSchema = z
   .object(personalOnboardingShape)
   .superRefine((data, context) => {
+    if (Boolean(data.journeyGroup) !== Boolean(data.journeyStage)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose both your journey and current stage.",
+        path: ["journeyGroup"],
+      });
+    }
+    if (data.journeyGroup && data.journeyStage) {
+      if (!isJourneyStageInGroup(data.journeyGroup, data.journeyStage)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Choose a stage that belongs to this journey.",
+          path: ["journeyStage"],
+        });
+      }
+    }
     if (!data.countryId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -267,6 +311,8 @@ export const onboardingDraftSchema = z.object({
   languages: z.array(z.string().trim().min(2).max(40)).min(1).max(8).optional(),
   interests: z.array(onboardingInterests).max(7).optional(),
   applicationStage: personalOnboardingShape.applicationStage,
+  journeyGroup: personalOnboardingShape.journeyGroup,
+  journeyStage: personalOnboardingShape.journeyStage,
   universityPreferenceMode: personalOnboardingShape.universityPreferenceMode,
   targetCityIds: z.array(z.string().cuid()).max(8).optional(),
   targetUniversityIds: z.array(z.string().cuid()).max(12).optional(),

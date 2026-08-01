@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIntro";
+import { JourneyNavigator } from "@/components/features/navigator/JourneyNavigator";
 import { PostComposer } from "@/components/features/community/PostComposer";
 import { FeedPost } from "@/components/features/community/FeedPost";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
@@ -14,6 +15,7 @@ import { getHomeData } from "@/lib/platform-queries";
 import { getHomeActivityStream } from "@/lib/home-activity";
 import { requireUser } from "@/lib/server-auth";
 import { getStoryFeed } from "@/lib/stories";
+import { getNavigatorActions } from "@/lib/navigator";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -35,10 +37,12 @@ export default async function HomePage() {
     { posts, communities, listings, guides, upcomingEvents },
     activities,
     stories,
+    navigator,
   ] = await Promise.all([
     getHomeData(user.id),
     getHomeActivityStream(user),
     getStoryFeed(user, { limit: 6 }),
+    getNavigatorActions(user.id),
   ]);
   const guidePriority =
     user.studentJourney === "INCOMING_STUDENT" ||
@@ -83,6 +87,11 @@ export default async function HomePage() {
         generatedAt={new Date().toISOString()}
       />
 
+      <JourneyNavigator
+        initialActions={navigator.actions}
+        initialJourney={navigator.journey}
+      />
+
       {firstGuide ? (
         <Card className="noise relative mt-7 overflow-hidden border-emerald-100 bg-gradient-to-r from-kondo-navy via-kondo-forest to-[#237d61] p-0 text-white shadow-lift dark:border-emerald-400/10">
           <div className="relative z-10 flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-7">
@@ -99,7 +108,7 @@ export default async function HomePage() {
               </h2>
               <p className="mt-1 text-sm text-white/65">
                 {completedSteps} of {firstGuide.steps.length} steps complete ·
-                Keep your arrival moving smoothly.
+                Keep your next steps moving.
               </p>
               <div className="mt-4 h-1.5 max-w-xl overflow-hidden rounded-full bg-white/15">
                 <div
@@ -209,7 +218,7 @@ export default async function HomePage() {
                     aria-hidden="true"
                     className="h-4 w-4 text-kondo-green"
                   />{" "}
-                  {user.city?.name ?? "Beijing"}
+                  {user.city?.name ?? "Location not set"}
                 </h2>
               </div>
               <span className="text-3xl" aria-label="China">

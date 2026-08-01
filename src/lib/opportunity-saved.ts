@@ -127,6 +127,7 @@ export async function listSavedOpportunities(input: {
   return rows.map((row) => {
     const available = visibleIds.has(row.opportunity.id);
     return {
+      opportunityId: row.opportunity.id,
       savedAt: row.createdAt.toISOString(),
       remindBeforeDays: row.remindBeforeDays,
       available,

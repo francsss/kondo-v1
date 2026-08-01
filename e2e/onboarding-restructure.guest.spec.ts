@@ -132,7 +132,7 @@ test.describe.serial("restructured personal onboarding", () => {
       select: { id: true },
     });
 
-    await page.getByRole("button", { name: /Prospective student/ }).click();
+    await page.getByRole("button", { name: /Preparing for China/ }).click();
     await continueOnboarding(page);
     await continueOnboarding(page);
     await expect(
@@ -153,6 +153,7 @@ test.describe.serial("restructured personal onboarding", () => {
           cityId: true,
           universityId: true,
           onboardingCompletedAt: true,
+          journeyDetail: { select: { journeyGroup: true, journeyStage: true } },
         },
       }),
     ).resolves.toEqual({
@@ -161,6 +162,10 @@ test.describe.serial("restructured personal onboarding", () => {
       cityId: null,
       universityId: null,
       onboardingCompletedAt: expect.any(Date),
+      journeyDetail: {
+        journeyGroup: "PREPARING_FOR_CHINA",
+        journeyStage: "EXPLORING",
+      },
     });
   });
 
@@ -171,7 +176,9 @@ test.describe.serial("restructured personal onboarding", () => {
       email: currentEmail,
       firstName: "Current",
     });
-    await page.getByRole("button", { name: /Current student/ }).click();
+    await page
+      .getByRole("button", { name: /Studying and living in China/ })
+      .click();
     await continueOnboarding(page);
     await continueOnboarding(page);
     await page.getByRole("button", { name: "Study city" }).click();
@@ -201,6 +208,7 @@ test.describe.serial("restructured personal onboarding", () => {
           cityId: true,
           universityId: true,
           onboardingCompletedAt: true,
+          journeyDetail: { select: { journeyGroup: true, journeyStage: true } },
         },
       }),
     ).resolves.toEqual({
@@ -208,6 +216,10 @@ test.describe.serial("restructured personal onboarding", () => {
       cityId,
       universityId,
       onboardingCompletedAt: expect.any(Date),
+      journeyDetail: {
+        journeyGroup: "STUDYING_AND_LIVING_IN_CHINA",
+        journeyStage: "NEW_ARRIVAL",
+      },
     });
   });
 

@@ -5,6 +5,8 @@ import type {
   StudyLevel,
   UniversityPreferenceMode,
   UserGender,
+  KondoJourneyGroup,
+  KondoJourneyStage,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +30,8 @@ type PersonalOnboardingFields = {
   languages?: string[];
   interests?: string[];
   applicationStage?: ProspectiveApplicationStage;
+  journeyGroup?: KondoJourneyGroup;
+  journeyStage?: KondoJourneyStage;
   universityPreferenceMode?: UniversityPreferenceMode;
   targetCityIds?: string[];
   targetUniversityIds?: string[];
@@ -89,6 +93,12 @@ function userDraftData(
 
 function journeyDetailData(input: PersonalOnboardingFields) {
   return {
+    journeyGroup: input.journeyGroup,
+    journeyStage: input.journeyStage,
+    journeyUpdatedAt:
+      input.journeyGroup !== undefined || input.journeyStage !== undefined
+        ? new Date()
+        : undefined,
     applicationStage: input.applicationStage,
     universityPreferenceMode: input.universityPreferenceMode,
     expectedIntake: input.expectedIntake,
@@ -225,6 +235,8 @@ function onboardingDto(
     languages: user.languages,
     interests: user.interests,
     applicationStage: user.journeyDetail?.applicationStage ?? null,
+    journeyGroup: user.journeyDetail?.journeyGroup ?? null,
+    journeyStage: user.journeyDetail?.journeyStage ?? null,
     universityPreferenceMode:
       user.journeyDetail?.universityPreferenceMode ?? null,
     expectedIntake: user.journeyDetail?.expectedIntake?.toISOString() ?? null,
