@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { activeStudentHubTab } from "@/components/features/student-hub/StudentHubShell";
+import {
+  activeStudentHubTab,
+  studentHubModuleForPath,
+  studentHubTabsForModule,
+} from "@/components/features/student-hub/StudentHubShell";
+import { studentHubAccessForJourney } from "@/lib/personal-journeys";
 import { STUDENT_HUB_SECTIONS } from "@/lib/student-hub-sections";
 
 const tabs = STUDENT_HUB_SECTIONS.map((section) => ({
@@ -51,5 +56,50 @@ describe("Student Hub active tab", () => {
 
   it("marks no tab active on an unrelated route", () => {
     expect(activeStudentHubTab("/home", tabs)).toBeNull();
+  });
+});
+
+describe("Student Hub module navigation", () => {
+  it("groups study work separately from opportunity discovery", () => {
+    expect(studentHubModuleForPath("/student-hub")).toBe("study");
+    expect(studentHubModuleForPath("/student-hub/tools")).toBe("study");
+    expect(studentHubModuleForPath("/student-hub/help/visa-renewal")).toBe(
+      "study",
+    );
+    expect(studentHubModuleForPath("/student-hub/scholarships")).toBe(
+      "opportunities",
+    );
+    expect(studentHubModuleForPath("/student-hub/applications")).toBe(
+      "opportunities",
+    );
+  });
+
+  it("shows Planner only for journeys with academic-tool access", () => {
+    expect(
+      studentHubTabsForModule("study", true).map((tab) => tab.key),
+    ).toEqual(["overview", "tools", "help"]);
+    expect(
+      studentHubTabsForModule("study", false).map((tab) => tab.key),
+    ).toEqual(["overview", "help"]);
+  });
+
+  it("keeps the planner for legacy students with a university affiliation", () => {
+    expect(studentHubAccessForJourney(null, true).academicTools).toBe(true);
+    expect(studentHubAccessForJourney(null, false).academicTools).toBe(false);
+    expect(studentHubAccessForJourney("ALUMNI", true).academicTools).toBe(
+      false,
+    );
+  });
+
+  it("keeps all opportunity destinations in one contextual row", () => {
+    expect(
+      studentHubTabsForModule("opportunities", true).map((tab) => tab.key),
+    ).toEqual([
+      "scholarships",
+      "internships",
+      "jobs",
+      "programs",
+      "applications",
+    ]);
   });
 });

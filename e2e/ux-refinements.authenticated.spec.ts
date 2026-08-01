@@ -92,17 +92,36 @@ test.describe("premium UX refinements", () => {
         .getByText("New", { exact: true }),
     ).toHaveCount(0);
 
-    // One responsive Student Hub navigation now serves every breakpoint,
-    // instead of a duplicated desktop and mobile pair.
+    // The hub has two stable levels at every breakpoint: a module switcher and
+    // one contextual row. Neither is duplicated for mobile.
     await page.goto("/student-hub");
-    const studentNavigation = page.getByRole("navigation", {
-      name: "Student Hub",
-      exact: true,
+    const moduleNavigation = page.getByRole("navigation", {
+      name: "Student Hub modules",
     });
-    await expect(studentNavigation).toBeVisible();
+    await expect(moduleNavigation).toBeVisible();
+    for (const label of ["Study", "Opportunities"]) {
+      await expect(
+        moduleNavigation.getByRole("link", { name: label, exact: true }),
+      ).toBeVisible();
+    }
+
+    const studyNavigation = page.getByRole("navigation", {
+      name: "Study navigation",
+    });
+    for (const label of ["Overview", "Planner", "Student Q&A"]) {
+      await expect(
+        studyNavigation.getByRole("link", { name: label }),
+      ).toBeVisible();
+    }
+
+    await moduleNavigation
+      .getByRole("link", { name: "Opportunities", exact: true })
+      .click();
+    const studentNavigation = page.getByRole("navigation", {
+      name: "Opportunity navigation",
+    });
 
     const expectedStudentHubLabels = [
-      "Overview",
       "Scholarships",
       "Internships",
       "Jobs",
@@ -114,7 +133,7 @@ test.describe("premium UX refinements", () => {
         studentNavigation.getByRole("link", { name: label }),
       ).toBeVisible();
     }
-    // The generic Opportunities entry duplicated every other one and is gone.
+    // The module switch is not repeated inside the category row.
     await expect(
       studentNavigation.getByRole("link", {
         name: "Opportunities",

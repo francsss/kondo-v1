@@ -245,14 +245,24 @@ test.describe.serial("opportunity route discoverability", () => {
   });
 
   // Journey 4 — Student Hub navigation
-  test("presents the Student Hub categories without a generic Opportunities tab", async ({
+  test("presents opportunity categories inside the dedicated Student Hub module", async ({
     page,
   }) => {
     await page.goto("/student-hub");
-    const hubNav = page.getByRole("navigation", { name: "Student Hub" });
+    const moduleNav = page.getByRole("navigation", {
+      name: "Student Hub modules",
+    });
+    await expect(
+      moduleNav.getByRole("link", { name: "Study", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await moduleNav
+      .getByRole("link", { name: "Opportunities", exact: true })
+      .click();
+    const hubNav = page.getByRole("navigation", {
+      name: "Opportunity navigation",
+    });
 
     for (const label of [
-      "Overview",
       "Scholarships",
       "Internships",
       "Jobs",
@@ -262,7 +272,7 @@ test.describe.serial("opportunity route discoverability", () => {
       await expect(hubNav.getByRole("link", { name: label })).toBeVisible();
     }
     await expect(
-      hubNav.getByRole("link", { name: "Opportunities", exact: true }),
+      hubNav.getByRole("link", { name: "Overview", exact: true }),
     ).toHaveCount(0);
 
     await hubNav.getByRole("link", { name: "Jobs" }).click();
@@ -283,7 +293,9 @@ test.describe.serial("opportunity route discoverability", () => {
       "Scholarships",
     );
 
-    const hubNav = page.getByRole("navigation", { name: "Student Hub" });
+    const hubNav = page.getByRole("navigation", {
+      name: "Opportunity navigation",
+    });
     await expect(
       hubNav.getByRole("link", { name: "Scholarships" }),
     ).toHaveAttribute("aria-current", "page");
@@ -317,7 +329,7 @@ test.describe.serial("opportunity route discoverability", () => {
     await expect(page).toHaveURL(/\/student-hub\/internships$/);
     await expect(
       page
-        .getByRole("navigation", { name: "Student Hub" })
+        .getByRole("navigation", { name: "Opportunity navigation" })
         .getByRole("link", { name: "Internships" }),
     ).toHaveAttribute("aria-current", "page");
   });
@@ -419,7 +431,9 @@ test.describe.serial("opportunity route discoverability", () => {
       ),
     ).toBe(true);
 
-    const hubNav = page.getByRole("navigation", { name: "Student Hub" });
+    const hubNav = page.getByRole("navigation", {
+      name: "Opportunity navigation",
+    });
     await hubNav.getByRole("link", { name: "Applications" }).click();
     await expect(page).toHaveURL(/\/student-hub\/applications$/);
     // The selected tab is brought into view rather than left off-screen.
@@ -441,7 +455,9 @@ test.describe.serial("opportunity route discoverability", () => {
   }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/student-hub/jobs");
-    const hubNav = page.getByRole("navigation", { name: "Student Hub" });
+    const hubNav = page.getByRole("navigation", {
+      name: "Opportunity navigation",
+    });
     await hubNav.getByRole("link", { name: "Programs & Research" }).click();
     await expect(page).toHaveURL(/\/student-hub\/programs$/);
     // Content stays vertically readable and correct with motion removed.

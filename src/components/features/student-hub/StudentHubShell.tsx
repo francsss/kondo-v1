@@ -16,27 +16,69 @@ import { STUDENT_HUB_SECTIONS } from "@/lib/student-hub-sections";
 
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
-const TOOLS_TAB: HorizontalTab = {
-  key: "tools",
-  href: "/student-hub/tools",
-  label: "Tools",
-};
+const STUDENT_HUB_MODULES: readonly HorizontalTab[] = [
+  {
+    key: "study",
+    href: "/student-hub",
+    label: "Study",
+  },
+  {
+    key: "opportunities",
+    href: "/student-hub/scholarships",
+    label: "Opportunities",
+  },
+];
+
+const STUDY_TABS: readonly HorizontalTab[] = [
+  {
+    key: "overview",
+    href: "/student-hub",
+    label: "Overview",
+  },
+  {
+    key: "tools",
+    href: "/student-hub/tools",
+    label: "Planner",
+  },
+  {
+    key: "help",
+    href: "/student-hub/help",
+    label: "Student Q&A",
+  },
+];
 
 /**
  * Student Hub navigation.
  *
- * The generic "Opportunities" entry was removed: it opened the same central
- * domain every other entry already projects, so the hub presented two competing
- * navigations for one feature. Each remaining entry is a category a student
- * actually searches for.
+ * The first level contains only the two mental models a student needs: doing
+ * their studies and finding opportunities. The second level exposes the real
+ * destinations inside the active module. Routes and source domains stay
+ * unchanged; this is an information-architecture layer, not duplicated data.
  */
-function studentHubTabs(showAcademicTools: boolean): HorizontalTab[] {
-  const tabs: HorizontalTab[] = STUDENT_HUB_SECTIONS.map((section) => ({
+export function studentHubModuleForPath(pathname: string) {
+  return STUDENT_HUB_SECTIONS.some(
+    (section) =>
+      section.key !== "overview" &&
+      (pathname === section.href || pathname.startsWith(`${section.href}/`)),
+  )
+    ? "opportunities"
+    : "study";
+}
+
+export function studentHubTabsForModule(
+  module: "study" | "opportunities",
+  showAcademicTools: boolean,
+): HorizontalTab[] {
+  if (module === "study") {
+    return STUDY_TABS.filter((tab) => tab.key !== "tools" || showAcademicTools);
+  }
+  return STUDENT_HUB_SECTIONS.filter(
+    (section) => section.key !== "overview",
+  ).map((section) => ({
     key: section.key,
     href: section.href,
     label: section.label,
   }));
-  return showAcademicTools ? [...tabs, TOOLS_TAB] : tabs;
 }
 
 /**
@@ -81,8 +123,12 @@ export function StudentHubShell({
   user: StudentHubUser;
 }) {
   const pathname = usePathname();
-  const access = studentHubAccessForJourney(user.studentJourney);
-  const tabs = studentHubTabs(access.academicTools);
+  const access = studentHubAccessForJourney(
+    user.studentJourney,
+    Boolean(user.university),
+  );
+  const activeModule = studentHubModuleForPath(pathname);
+  const tabs = studentHubTabsForModule(activeModule, access.academicTools);
   const activeKey = activeStudentHubTab(pathname, tabs);
   const activeIndex = Math.max(
     0,
@@ -105,10 +151,21 @@ export function StudentHubShell({
             <span className="sm:hidden">Kondo</span>
           </Link>
           <HorizontalTabs
-            activeKey={activeKey}
-            ariaLabel="Student Hub"
-            tabs={tabs}
+            activeKey={activeModule}
+            ariaLabel="Student Hub modules"
+            className="sm:justify-center"
+            tabs={STUDENT_HUB_MODULES}
           />
+        </div>
+        <div className="border-t border-border/70 bg-muted/20">
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+            <HorizontalTabs
+              activeKey={activeKey}
+              ariaLabel={`${activeModule === "study" ? "Study" : "Opportunity"} navigation`}
+              className="py-1 sm:justify-center"
+              tabs={tabs}
+            />
+          </div>
         </div>
       </header>
       <main>

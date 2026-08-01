@@ -53,11 +53,17 @@ export function personalJourneyLabel(
 
 export function studentHubAccessForJourney(
   journey: StudentJourney | string | null | undefined,
+  hasStudyAffiliation = false,
 ) {
   const fullAcademicTools =
     journey === "CURRENT_STUDENT" ||
     journey === "ADMITTED_STUDENT" ||
-    journey === "INCOMING_STUDENT";
+    journey === "INCOMING_STUDENT" ||
+    // Members who completed onboarding before journeys were introduced can
+    // still have a real university affiliation. Preserve their existing
+    // academic workspace without treating unrelated journey types as current
+    // students.
+    (!journey && hasStudyAffiliation);
   return {
     guides: true,
     scholarships: true,

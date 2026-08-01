@@ -69,6 +69,7 @@ export default defineConfig({
           // without external R2 credentials. Storage ignores this escape
           // hatch on Vercel and production environment validation rejects it.
           KONDO_E2E: "true",
+          STORAGE_DRIVER: "local",
         },
       },
 });

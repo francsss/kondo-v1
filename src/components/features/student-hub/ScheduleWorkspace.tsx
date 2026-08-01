@@ -342,6 +342,15 @@ export function ScheduleWorkspace({
   const upcomingEvents = pendingTasks.filter((task) => task.kind === "EVENT");
   const weekDates = useMemo(() => academicWeekDates(weekAnchor), [weekAnchor]);
 
+  function changeSection(nextSection: "today" | "schedule" | "tasks") {
+    setSection(nextSection);
+    const params = new URLSearchParams({ view: nextSection });
+    if (selectedSchedule) params.set("schedule", selectedSchedule);
+    router.replace(`/student-hub/tools?${params.toString()}`, {
+      scroll: false,
+    });
+  }
+
   useEffect(() => {
     const startedAt = performance.now();
     return () => {
@@ -845,7 +854,7 @@ export function ScheduleWorkspace({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-            Student Hub · Academic OS
+            Student Hub · Study planner
           </p>
           <h1 className="mt-1.5 text-3xl font-black tracking-[-0.045em] sm:text-4xl">
             Your academic day, organized.
@@ -881,7 +890,7 @@ export function ScheduleWorkspace({
                 : "text-muted-foreground hover:text-foreground"
             }`}
             key={value}
-            onClick={() => setSection(value)}
+            onClick={() => changeSection(value)}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -981,7 +990,7 @@ export function ScheduleWorkspace({
                       </h3>
                     </div>
                     <Button
-                      onClick={() => setSection("schedule")}
+                      onClick={() => changeSection("schedule")}
                       size="sm"
                       variant="ghost"
                     >
@@ -1008,21 +1017,21 @@ export function ScheduleWorkspace({
                   items={pendingTasks.filter(
                     (task) => !["EXAM", "EVENT"].includes(task.kind),
                   )}
-                  onOpen={() => setSection("tasks")}
+                  onOpen={() => changeSection("tasks")}
                   title="Pending tasks"
                 />
                 <TodayCollection
                   empty="No upcoming exams."
                   icon={GraduationCap}
                   items={upcomingExams}
-                  onOpen={() => setSection("tasks")}
+                  onOpen={() => changeSection("tasks")}
                   title="Upcoming exams"
                 />
                 <TodayCollection
                   empty="No upcoming events."
                   icon={CalendarDays}
                   items={upcomingEvents}
-                  onOpen={() => setSection("tasks")}
+                  onOpen={() => changeSection("tasks")}
                   title="Upcoming events"
                 />
               </aside>

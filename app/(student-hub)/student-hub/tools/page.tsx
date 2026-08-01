@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 import { studentHubAccessForJourney } from "@/lib/personal-journeys";
 
-export const metadata: Metadata = { title: "My Student Tools" };
+export const metadata: Metadata = { title: "Study planner — Student Hub" };
 
 export default async function StudentToolsPage({
   searchParams,
@@ -17,7 +17,10 @@ export default async function StudentToolsPage({
   }>;
 }) {
   const user = await requireUser();
-  if (!studentHubAccessForJourney(user.studentJourney).academicTools) {
+  if (
+    !studentHubAccessForJourney(user.studentJourney, Boolean(user.universityId))
+      .academicTools
+  ) {
     redirect("/student-hub");
   }
   const query = await searchParams;
