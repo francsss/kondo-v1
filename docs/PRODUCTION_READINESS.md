@@ -448,3 +448,36 @@ complete/dismiss/defer, `/saved` visibility rechecks, notification category
 filters, personal mobile navigation and the four-action organization mobile
 bar. No new environment variable or provider is required. Part 8 is not part of
 this release.
+
+## Part 8 final release gate
+
+Run the following from a clean, Git-aligned checkout:
+
+```bash
+npm ci
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npx prisma generate
+npx prisma migrate status
+npm run release:audit -- --summary
+npm run legacy:audit
+```
+
+`release:audit` must report zero issues. `legacy:audit` is read-only, must report
+`writesPerformed: 0`, and must not find duplicate legacy source keys. Use the
+isolated `kondo_module3_test` database for integration verification; a green run
+with skipped database tests is not equivalent.
+
+After push, confirm the Vercel deployment is Ready for the exact Git commit,
+review migration/build logs, then check the canonical `/` and `/api/health`.
+Run the Playwright production journeys and verify mobile, desktop, light, dark,
+keyboard and reduced-motion behavior.
+
+The release classification and provider conditions are in
+[`PART8_RELEASE_AUDIT.md`](./PART8_RELEASE_AUDIT.md). Payments/university billing
+remain provider-disabled as documented in
+[`PAYMENTS_AND_BILLING.md`](./PAYMENTS_AND_BILLING.md); this state must not be
+presented as operational.

@@ -232,3 +232,26 @@ unit-testable; `src/lib/navigator.ts` supplies bounded, non-sensitive facts from
 source domains and applies private per-user completion/dismissal/deferral.
 Unified Saved follows the same projection rule: source domains own data and
 visibility, while `/saved` owns presentation only.
+
+## Final release boundaries (Part 8)
+
+The authoritative final map is
+[`PART8_RELEASE_AUDIT.md`](./PART8_RELEASE_AUDIT.md). Route access is derived
+from the App Router source by `scripts/release-audit.mjs` and summarized in
+[`ROUTE_ACCESS_MATRIX.md`](./ROUTE_ACCESS_MATRIX.md).
+
+Sensitive support access is purpose-specific: candidate application metadata,
+reporter identity, exact Housing location, full moderation evidence, security
+metadata and private media are separate permissions. Queue/list DTOs omit the
+sensitive payload; authorized detail access is audited where identity or exact
+location is revealed.
+
+Public cache invalidation follows source ownership. Organization, Housing,
+Opportunity and catalog mutations invalidate Search, Discover and the affected
+Dynamic City Hub in addition to their canonical details. Personalized data is
+force-dynamic/private and never placed in a shared public cache.
+
+The payment boundary is adapter-only and provider-disabled. Its Invoice,
+Beneficiary, Quote, PaymentIntent, ProviderTransaction, PaymentStatus,
+SettlementStatus and Receipt contracts remain distinct, but no persistence or
+functional Pay Now flow is enabled before provider/compliance review.

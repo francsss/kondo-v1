@@ -5,11 +5,13 @@ import type {
   Prisma,
 } from "@prisma/client";
 import type { CatalogResourceInput } from "@/features/catalog/schemas";
-import { writeAuditLog } from "@/lib/audit";
+import { writeAuditLog, writeAuditLogWithClient } from "@/lib/audit";
 import { createDirectMessage } from "@/lib/messaging";
+import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { revalidateCatalogResource } from "@/lib/organization-catalog-cache";
 import {
   CatalogLifecycleError,
+  catalogModerationTransitionTarget,
   catalogTransitionTarget,
 } from "@/lib/organization-catalog-lifecycle";
 import {
@@ -311,6 +313,8 @@ async function ownedCatalogRecord(input: {
     slug: true,
     title: true,
     status: true,
+    externalUrl: true,
+    externalUrlBlockedAt: true,
     version: true,
     organizationId: true,
     organization: { select: { slug: true } },
@@ -1032,6 +1036,13 @@ export async function moderateCatalogResource(input: {
   action: "REMOVE" | "RESTORE_FOR_REVIEW" | "BLOCK_EXTERNAL_URL";
   note?: string | null;
 }) {
+  const note = input.note?.trim().slice(0, 2000) ?? "";
+  if (note.length < 10) {
+    throw new OrganizationCatalogError(
+      "Add an internal moderation note with at least 10 characters.",
+      400,
+    );
+  }
   const existing = await ownedCatalogRecord({
     kind: input.kind,
     organizationId:
@@ -1051,13 +1062,40 @@ export async function moderateCatalogResource(input: {
     resourceId: input.resourceId,
   });
   const now = new Date();
+  if (input.action === "BLOCK_EXTERNAL_URL") {
+    if (!existing.externalUrl) {
+      throw new OrganizationCatalogError(
+        "This catalog item has no external URL to block.",
+        409,
+      );
+    }
+    if (existing.externalUrlBlockedAt) {
+      throw new OrganizationCatalogError(
+        "This external URL is already blocked.",
+        409,
+      );
+    }
+  } else {
+    try {
+      catalogModerationTransitionTarget({
+        kind: input.kind,
+        from: existing.status,
+        action: input.action,
+      });
+    } catch (error) {
+      if (error instanceof CatalogLifecycleError) {
+        throw new OrganizationCatalogError(error.message, error.status);
+      }
+      throw error;
+    }
+  }
   const data =
     input.action === "REMOVE"
       ? {
           status: "REMOVED" as const,
           publicationBlockedAt: now,
           removedAt: now,
-          moderationNote: input.note?.trim().slice(0, 2000) || null,
+          moderationNote: note,
           version: { increment: 1 },
         }
       : input.action === "RESTORE_FOR_REVIEW"
@@ -1065,34 +1103,65 @@ export async function moderateCatalogResource(input: {
             status: "PENDING_REVIEW" as const,
             publicationBlockedAt: null,
             removedAt: null,
-            moderationNote: input.note?.trim().slice(0, 2000) || null,
+            moderationNote: note,
             version: { increment: 1 },
           }
         : {
             externalUrlBlockedAt: now,
-            moderationNote: input.note?.trim().slice(0, 2000) || null,
+            moderationNote: note,
             version: { increment: 1 },
           };
-  if (input.kind === "product") {
-    await prisma.organizationProduct.update({
-      where: { id: input.resourceId },
-      data,
+  await prisma.$transaction(async (tx) => {
+    if (input.kind === "product") {
+      await tx.organizationProduct.update({
+        where: { id: input.resourceId },
+        data,
+      });
+    } else {
+      await tx.organizationService.update({
+        where: { id: input.resourceId },
+        data,
+      });
+    }
+    const organization = await tx.organization.findUnique({
+      where: { id: existing.organizationId },
+      select: {
+        publicName: true,
+        memberships: {
+          where: { status: "ACTIVE", role: { in: ["OWNER", "ADMIN"] } },
+          select: { userId: true },
+        },
+      },
     });
-  } else {
-    await prisma.organizationService.update({
-      where: { id: input.resourceId },
-      data,
+    for (const membership of organization?.memberships ?? []) {
+      await enqueueNotificationJobWithClient(tx, {
+        recipientId: membership.userId,
+        actorId: input.adminUserId,
+        type: "MODERATION_UPDATE",
+        templateKey: "ORGANIZATION_STATUS_UPDATE",
+        data: {
+          organizationName: organization?.publicName ?? "Your organization",
+          outcome: `${input.kind} moderation: ${input.action.toLowerCase().replaceAll("_", " ")}.`,
+        },
+        href: `/organizations/${existing.organization.slug}/catalog/${input.kind === "product" ? "products" : "services"}/${input.resourceId}`,
+        dedupeKey: `catalog-moderation:${input.kind}:${input.resourceId}:${input.action}:${now.toISOString()}:${membership.userId}`,
+      });
+    }
+    await writeAuditLogWithClient(tx, {
+      actorId: input.adminUserId,
+      organizationId: existing.organizationId,
+      action: `ORGANIZATION_${input.kind.toUpperCase()}_MODERATION_${input.action}`,
+      entityType:
+        input.kind === "product"
+          ? "OrganizationProduct"
+          : "OrganizationService",
+      entityId: input.resourceId,
+      oldValue: {
+        status: existing.status,
+        externalUrlBlocked: Boolean(existing.externalUrlBlockedAt),
+      },
+      newValue: { action: input.action },
     });
-  }
-  await writeAuditLog({
-    actorId: input.adminUserId,
-    organizationId: existing.organizationId,
-    action: `ORGANIZATION_${input.kind.toUpperCase()}_MODERATION_${input.action}`,
-    entityType:
-      input.kind === "product" ? "OrganizationProduct" : "OrganizationService",
-    entityId: input.resourceId,
-    oldValue: { status: existing.status },
-    newValue: { action: input.action },
   });
   revalidateCatalogResource({
     kind: input.kind,

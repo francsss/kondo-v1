@@ -1965,3 +1965,30 @@ Use the following at the beginning of future implementation prompts:
 > report the exact files changed, database/API/provider effects, migrations,
 > environment changes, tests run, runtime tests still required, and any
 > remaining limitations. Do not claim success based only on compilation.
+
+## 23. Part 8 final release architecture
+
+Part 8 does not introduce a second product architecture. It verifies and closes
+the integration of Parts 1–7. The live, executable route inventory and access
+policy are documented in
+[`ROUTE_ACCESS_MATRIX.md`](./ROUTE_ACCESS_MATRIX.md); the complete release audit
+is [`PART8_RELEASE_AUDIT.md`](./PART8_RELEASE_AUDIT.md).
+
+Final cross-domain rules:
+
+- Organization capability never grants member permission.
+- Opportunity is the source for new opportunity publishing; legacy Scholarship
+  and ScholarshipAgent records remain read-only compatible sources.
+- Discover, Dynamic City Hub and Essentials project source records without
+  copying them.
+- Marketplace remains peer-to-peer and cannot inherit Organization trust.
+- personalized Home, Journey, Navigator, applications, messages,
+  notifications, Saved and organization workspaces are private, dynamic data.
+- exact Housing locations and reporter identity require separate Admin
+  permissions and generate audited access events.
+- payments and university billing remain provider-disabled, with no fake rate,
+  currency, provider, status or checkout.
+
+The read-only legacy reconciliation is `npm run legacy:audit`; the route,
+permission, entry-point and analytics-boundary audit is
+`npm run release:audit -- --summary`.

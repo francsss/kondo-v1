@@ -357,3 +357,29 @@ Navigator state is private product preference data and is not exposed as an
 admin directory. Support should verify the destination domain has real visible
 content and that the user still has route access; it must not inspect messages,
 application answers or private documents to explain a recommendation.
+
+## Part 8 sensitive-support permissions
+
+The following permissions are intentionally independent:
+
+| Permission                      | Purpose                                                                         | Default roles      |
+| ------------------------------- | ------------------------------------------------------------------------------- | ------------------ |
+| `REPORT_VIEW_REPORTER_IDENTITY` | Reveal reporter identity inside one assigned/accessible case; reveal is audited | Admin, Super Admin |
+| `HOUSING_PRIVATE_LOCATION_VIEW` | Query exact private address for a Housing moderation detail; access is audited  | Admin, Super Admin |
+| `OPPORTUNITY_APPLICATIONS_VIEW` | View bounded applicant metadata, never answers/documents/reviewer notes         | Admin, Super Admin |
+| `ORGANIZATION_CATALOG_VIEW`     | Open the professional product/service moderation list                           | Admin, Super Admin |
+| `ORGANIZATION_CATALOG_MODERATE` | Remove, restore to review, or block an unsafe catalog URL                       | Admin, Super Admin |
+
+Moderators keep redacted case evidence and never receive these permissions by
+entering the Admin shell. Reporter identity is absent from report queues for
+every role and appears only on a permitted case detail. Housing list/detail
+queries no longer select unused publisher email, and exact location is queried
+only after the dedicated permission check.
+
+`/admin/catalog` is the canonical professional product/service moderation
+entry. `/admin/opportunity-reports` is a compatibility entry that redirects to
+the shared filtered Reports queue so assignment, notes, evidence, reporter
+privacy and AuditLog have one implementation.
+
+The full page/API matrix is
+[`ROUTE_ACCESS_MATRIX.md`](./ROUTE_ACCESS_MATRIX.md).

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { applicationStatusLabel } from "@/lib/opportunity-application-status";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPermission } from "@/lib/server-auth";
@@ -16,26 +17,40 @@ function snapshotName(value: unknown) {
   return typeof name === "string" ? name : "Applicant";
 }
 
-export default async function AdminOpportunityApplicationsPage() {
-  await requireAdminPermission("OPPORTUNITIES_VIEW");
-  const items = await prisma.opportunityApplication.findMany({
-    where: { status: { not: "DRAFT" } },
-    select: {
-      id: true,
-      status: true,
-      submittedAt: true,
-      applicantSnapshot: true,
-      opportunity: {
-        select: {
-          title: true,
-          publisherOrganization: { select: { publicName: true } },
+export default async function AdminOpportunityApplicationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  await requireAdminPermission("OPPORTUNITY_APPLICATIONS_VIEW");
+  const requestedPage = Number((await searchParams).page ?? 1);
+  const page = Number.isFinite(requestedPage)
+    ? Math.max(1, Math.floor(requestedPage))
+    : 1;
+  const pageSize = 50;
+  const where = { status: { not: "DRAFT" as const } };
+  const [total, items] = await prisma.$transaction([
+    prisma.opportunityApplication.count({ where }),
+    prisma.opportunityApplication.findMany({
+      where,
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        applicantSnapshot: true,
+        opportunity: {
+          select: {
+            title: true,
+            publisherOrganization: { select: { publicName: true } },
+          },
         },
       },
-      _count: { select: { documents: true } },
-    },
-    orderBy: { submittedAt: "desc" },
-    take: 200,
-  });
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-8">
       <h1 className="text-2xl font-black">Opportunity applications</h1>
@@ -78,6 +93,29 @@ export default async function AdminOpportunityApplicationsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-6 flex items-center justify-between text-sm">
+        <p className="text-muted-foreground">
+          Page {page} of {pageCount} · {total} submitted applications
+        </p>
+        <div className="flex gap-2">
+          {page > 1 ? (
+            <Link
+              className="rounded-full border border-border px-4 py-2 font-bold"
+              href={`/admin/opportunity-applications?page=${page - 1}`}
+            >
+              Previous
+            </Link>
+          ) : null}
+          {page < pageCount ? (
+            <Link
+              className="rounded-full border border-border px-4 py-2 font-bold"
+              href={`/admin/opportunity-applications?page=${page + 1}`}
+            >
+              Next
+            </Link>
+          ) : null}
+        </div>
       </div>
     </div>
   );

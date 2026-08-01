@@ -62,22 +62,23 @@ marketplace expiry hourly, media cleanup hourly, and digests daily.
 
 ## Optional runtime variables
 
-| Variable                                | Required                   | Purpose                                                                                                                                       |
-| --------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NOTIFICATION_WORKER_SECRET`            | Optional secret            | Separate bearer secret for manual/external notification and digest calls. Generate with `openssl rand -hex 32`.                               |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`       | Optional public            | Enables Google Maps and public study-area geocoding for Meet and Housing. Without it, Kondo renders the documented privacy-safe map fallback. |
-| `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` | Optional public            | VAPID public key offered to the browser when a member enables push on a device. Generate with `npx web-push generate-vapid-keys`.             |
-| `WEB_PUSH_VAPID_PRIVATE_KEY`            | Optional secret            | Private half of the same VAPID pair, used server-side to sign push payloads. Never expose it with a `NEXT_PUBLIC_` prefix.                    |
-| `WEB_PUSH_SUBJECT`                      | Optional                   | Contact identity sent to push services, as `mailto:` or an https URL. Required alongside the VAPID pair.                                      |
-| `MARKETPLACE_WORKER_SECRET`             | Optional secret            | Separate bearer secret for manual/external marketplace expiry calls.                                                                          |
-| `HOUSING_WORKER_SECRET`                 | Optional secret            | Separate bearer secret for Housing listing and request expiry calls. Generate with `openssl rand -hex 32`.                                    |
-| `MEDIA_WORKER_SECRET`                   | Optional secret            | Separate bearer secret for manual/external media cleanup calls.                                                                               |
-| `KONDO_ALLOW_DESTRUCTIVE_SEED`          | Never enable in production | Explicit local/demo database reset opt-in. Production validation rejects `true`.                                                              |
-| `KONDO_DEV_ORIGINS`                     | Development only           | Comma-separated origins allowed for Next.js development HMR.                                                                                  |
-| `STORAGE_LOCAL_ROOT`                    | Development/test only      | Local media root; defaults to `.data/media`.                                                                                                  |
-| `SCHEDULE_AI_PROVIDER`                  | Optional                   | Timetable provider adapter; currently `deepseek` (default).                                                                                   |
-| `SCHEDULE_AI_MODEL`                     | Legacy/ignored             | Timetable extraction uses `deepseek-v4-flash` for predictable low-latency JSON. Remove older `deepseek-v4-pro` overrides.                     |
-| `SCHEDULE_AI_TIMEOUT_MS`                | Optional                   | Provider timeout in milliseconds, clamped from 20,000 to 120,000; default 75,000.                                                             |
+| Variable                                | Required                   | Purpose                                                                                                                                        |
+| --------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NOTIFICATION_WORKER_SECRET`            | Optional secret            | Separate bearer secret for manual/external notification and digest calls. Generate with `openssl rand -hex 32`.                                |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`       | Optional public            | Enables Google Maps and public study-area geocoding for Meet and Housing. Without it, Kondo renders the documented privacy-safe map fallback.  |
+| `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` | Optional public            | VAPID public key offered to the browser when a member enables push on a device. Generate with `npx web-push generate-vapid-keys`.              |
+| `WEB_PUSH_VAPID_PRIVATE_KEY`            | Optional secret            | Private half of the same VAPID pair, used server-side to sign push payloads. Never expose it with a `NEXT_PUBLIC_` prefix.                     |
+| `WEB_PUSH_SUBJECT`                      | Optional                   | Contact identity sent to push services, as `mailto:` or an https URL. Required alongside the VAPID pair.                                       |
+| `MARKETPLACE_WORKER_SECRET`             | Optional secret            | Separate bearer secret for manual/external marketplace expiry calls.                                                                           |
+| `HOUSING_WORKER_SECRET`                 | Optional secret            | Separate bearer secret for Housing listing and request expiry calls. Generate with `openssl rand -hex 32`.                                     |
+| `MEDIA_WORKER_SECRET`                   | Optional secret            | Separate bearer secret for manual/external media cleanup calls.                                                                                |
+| `KONDO_ALLOW_DESTRUCTIVE_SEED`          | Never enable in production | Explicit local/demo database reset opt-in. Production validation rejects `true`.                                                               |
+| `KONDO_E2E`                             | Playwright only            | Test-only switch for local media uploads against Playwright's production-built server. Production validation rejects it and Vercel ignores it. |
+| `KONDO_DEV_ORIGINS`                     | Development only           | Comma-separated origins allowed for Next.js development HMR.                                                                                   |
+| `STORAGE_LOCAL_ROOT`                    | Development/test only      | Local media root; defaults to `.data/media`.                                                                                                   |
+| `SCHEDULE_AI_PROVIDER`                  | Optional                   | Timetable provider adapter; currently `deepseek` (default).                                                                                    |
+| `SCHEDULE_AI_MODEL`                     | Legacy/ignored             | Timetable extraction uses `deepseek-v4-flash` for predictable low-latency JSON. Remove older `deepseek-v4-pro` overrides.                      |
+| `SCHEDULE_AI_TIMEOUT_MS`                | Optional                   | Provider timeout in milliseconds, clamped from 20,000 to 120,000; default 75,000.                                                              |
 
 Route-specific worker secrets are alternatives for manual callers. The
 scheduled workflow needs only `CRON_SECRET`. There is no Cloudflare Worker in
@@ -143,3 +144,24 @@ Shared secret for the opportunity deadline-expiry worker route
 refuses every request and the sweep can still be run manually with
 `npm run opportunities:expire` or `npm run opportunities:reminders`. Mirrors `HOUSING_WORKER_SECRET` and
 `MARKETPLACE_WORKER_SECRET`.
+
+## Part 8 provider-disabled payment state
+
+There is deliberately no payment-provider environment variable in the current
+release. Adding a token or URL ad hoc must not enable payments. A future provider
+requires a reviewed adapter, additive migration, webhook verification,
+reconciliation and an update to this document. Until then
+`paymentCapability.enabled` remains false and supported currencies/use cases
+remain empty.
+
+Operational audit commands:
+
+- `npm run release:audit -- --summary` requires no credentials and validates
+  route/access/analytics structure.
+- `npm run legacy:audit` requires `DATABASE_URL`/`DIRECT_URL`, performs only
+  read queries and prints no User PII.
+- integration tests require a URL whose database name includes
+  `kondo_module3_test`; otherwise database suites intentionally skip.
+
+See [`PAYMENTS_AND_BILLING.md`](./PAYMENTS_AND_BILLING.md) and
+[`PART8_RELEASE_AUDIT.md`](./PART8_RELEASE_AUDIT.md).

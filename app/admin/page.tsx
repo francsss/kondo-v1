@@ -73,7 +73,13 @@ export default async function AdminPage() {
       take: 5,
     }),
     prisma.report.findMany({
-      include: { reporter: true, assignee: true },
+      select: {
+        id: true,
+        status: true,
+        reason: true,
+        targetType: true,
+        createdAt: true,
+      },
       where: { status: { in: ["OPEN", "REVIEWING"] } },
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -263,10 +269,7 @@ export default async function AdminPage() {
                     {report.reason} · {report.targetType}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Reported by{" "}
-                    {report.reporter
-                      ? `${report.reporter.firstName} ${report.reporter.lastName}`
-                      : "a deleted member"}
+                    Reporter identity protected
                   </p>
                 </div>
               ))

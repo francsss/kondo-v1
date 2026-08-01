@@ -15,9 +15,7 @@ export async function POST(
   try {
     if (!hasTrustedOrigin(request))
       return jsonError("Invalid request origin.", 403);
-    const auth = await authorizeAdminApi(
-      "ORGANIZATION_PUBLIC_PROFILES_MODERATE",
-    );
+    const auth = await authorizeAdminApi("ORGANIZATION_CATALOG_MODERATE");
     if (!auth.authorized) return auth.error;
     const { kind, id } = await params;
     if (kind !== "products" && kind !== "services") {

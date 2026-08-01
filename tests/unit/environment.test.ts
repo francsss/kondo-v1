@@ -63,6 +63,7 @@ describe("production environment validation", () => {
         STORAGE_DRIVER: "local",
         EMAIL_PROVIDER: "console",
         KONDO_ALLOW_DESTRUCTIVE_SEED: "true",
+        KONDO_E2E: "true",
       }),
     ).toThrow(ProductionEnvironmentError);
     const issues = productionEnvironmentIssues({
@@ -71,6 +72,7 @@ describe("production environment validation", () => {
       STORAGE_DRIVER: "local",
       EMAIL_PROVIDER: "console",
       KONDO_ALLOW_DESTRUCTIVE_SEED: "true",
+      KONDO_E2E: "true",
     });
     expect(issues).toEqual(
       expect.arrayContaining([
@@ -79,6 +81,7 @@ describe("production environment validation", () => {
         'STORAGE_DRIVER must be "s3" in production.',
         'EMAIL_PROVIDER must be "resend" in production.',
         "KONDO_ALLOW_DESTRUCTIVE_SEED must not be enabled.",
+        "KONDO_E2E must not be enabled.",
       ]),
     );
   });

@@ -57,7 +57,13 @@ function configuredDriver() {
   if (driver !== "local" && driver !== "s3") {
     throw new Error("STORAGE_DRIVER must be local or s3.");
   }
-  if (process.env.NODE_ENV === "production" && driver === "local") {
+  const localE2eStorage =
+    process.env.KONDO_E2E === "true" && !process.env.VERCEL;
+  if (
+    process.env.NODE_ENV === "production" &&
+    driver === "local" &&
+    !localE2eStorage
+  ) {
     throw new Error("Local media storage is not allowed in production.");
   }
   return driver;

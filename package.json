@@ -31,7 +31,9 @@
     "community-requests:expire": "tsx scripts/expire-community-requests.ts",
     "stories:publish": "tsx scripts/publish-scheduled-stories.ts",
     "posthog:setup": "node scripts/setup-posthog-dashboards.mjs",
-    "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts"
+    "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts",
+    "release:audit": "node scripts/release-audit.mjs",
+    "legacy:audit": "tsx scripts/audit-legacy-compatibility.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1088.0",

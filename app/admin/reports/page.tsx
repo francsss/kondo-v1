@@ -142,8 +142,8 @@ export default async function AdminReportsPage({
                     Case {report.id}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Reporter: {report.reporter?.fullName ?? "Deleted member"} ·
-                    Assignee: {report.assignee?.fullName ?? "Unassigned"} ·{" "}
+                    Reporter: Protected · Assignee:{" "}
+                    {report.assignee?.fullName ?? "Unassigned"} ·{" "}
                     {report.noteCount} notes · {report.evidenceCount} evidence
                   </p>
                 </div>

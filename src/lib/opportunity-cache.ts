@@ -35,6 +35,12 @@ export function revalidateOpportunity(input: {
   revalidateOpportunityPath("/opportunities/programs");
   revalidateOpportunityPath("/opportunities/saved");
   revalidateOpportunityPath("/student-hub");
+  revalidateOpportunityPath("/student-hub/scholarships");
+  revalidateOpportunityPath("/student-hub/internships");
+  revalidateOpportunityPath("/student-hub/jobs");
+  revalidateOpportunityPath("/student-hub/programs");
+  revalidateOpportunityPath("/student-hub/applications");
+  revalidateOpportunityPath("/discover");
   revalidateOpportunityPath("/search");
   revalidateOpportunityPath("/sitemap.xml");
   if (input.slug) {
@@ -46,5 +52,8 @@ export function revalidateOpportunity(input: {
       `/organizations/${input.organizationSlug}/opportunities`,
     );
   }
-  if (input.citySlug) revalidateOpportunityPath(`/explore/${input.citySlug}`);
+  if (input.citySlug) {
+    revalidateOpportunityPath(`/explore/${input.citySlug}`);
+    revalidateOpportunityPath(`/discover/cities/${input.citySlug}`);
+  }
 }

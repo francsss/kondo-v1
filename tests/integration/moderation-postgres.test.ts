@@ -280,6 +280,9 @@ postgresDescribe("Module 3 PostgreSQL moderation workflow", () => {
     expect(firstPage.total).toBe(7);
     expect(firstPage.pageCount).toBe(2);
     expect(firstPage.reports).toHaveLength(5);
+    expect(firstPage.reports.every((report) => report.reporter === null)).toBe(
+      true,
+    );
     expect(JSON.stringify(firstPage)).not.toContain("@module3.test");
     expect(JSON.stringify(firstPage)).not.toContain("passwordHash");
 
@@ -319,6 +322,7 @@ postgresDescribe("Module 3 PostgreSQL moderation workflow", () => {
       fixture.moderatorA,
       created.reportId,
     );
+    expect(moderatorView?.reporter).toBeNull();
     expect(moderatorView?.permissions.evidenceLevel).toBe("redacted");
     expect(moderatorView?.evidence[0]?.conversationId).toBeNull();
     expect(moderatorView?.evidence[0]?.participants[0]?.id).toBeNull();
@@ -334,6 +338,7 @@ postgresDescribe("Module 3 PostgreSQL moderation workflow", () => {
     );
 
     const adminView = await getReportDetail(fixture.admin, created.reportId);
+    expect(adminView?.reporter?.id).toBe(fixture.reporter.id);
     expect(adminView?.permissions.evidenceLevel).toBe("full");
     expect(adminView?.evidence[0]?.conversationId).toBeNull();
     expect(adminView?.evidence[0]?.participants[0]?.name).not.toMatch(
@@ -357,6 +362,16 @@ postgresDescribe("Module 3 PostgreSQL moderation workflow", () => {
     expect(superView?.evidence[0]?.participants[0]?.id).toBeTruthy();
     expect(superView?.auditLogs[0]?.ipAddress).toBe("203.0.113.42");
     expect(adminView?.auditLogs[0]?.ipAddress).toBeNull();
+    expect(
+      await prisma.auditLog.count({
+        where: {
+          actorId: fixture.admin.id,
+          entityType: "Report",
+          entityId: created.reportId,
+          action: "REPORT_REPORTER_IDENTITY_VIEWED",
+        },
+      }),
+    ).toBe(1);
 
     await expect(listAuditLogs(fixture.moderatorA)).rejects.toBeInstanceOf(
       ModerationError,
@@ -369,8 +384,11 @@ postgresDescribe("Module 3 PostgreSQL moderation workflow", () => {
       entityType: "Report",
       query: created.reportId,
     });
-    expect(adminAudit.logs[0]?.ipAddress).toBeNull();
-    expect(superAudit.logs[0]?.ipAddress).toBe("203.0.113.42");
+    expect(adminAudit.logs.every((log) => log.ipAddress === null)).toBe(true);
+    expect(
+      superAudit.logs.find((log) => log.ipAddress === "203.0.113.42")
+        ?.ipAddress,
+    ).toBe("203.0.113.42");
   });
 
   it("runs the complete report-to-resolution lifecycle with an audit for every mutation", async () => {

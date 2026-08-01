@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HousingAdminActions } from "@/components/features/admin/HousingAdminActions";
 import { Card } from "@/components/ui/Card";
+import { hasAdminPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPermission } from "@/lib/server-auth";
 
@@ -9,7 +10,7 @@ export default async function AdminHousingPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await requireAdminPermission("HOUSING_VIEW");
+  const admin = await requireAdminPermission("HOUSING_VIEW");
   const params = await searchParams;
   const status =
     params.status &&
@@ -53,7 +54,7 @@ export default async function AdminHousingPage({
         createdAt: true,
         city: { select: { name: true } },
         publisherUser: {
-          select: { firstName: true, lastName: true, email: true },
+          select: { firstName: true, lastName: true },
         },
         publisherOrganization: { select: { publicName: true } },
         _count: { select: { media: true, inquiries: true } },
@@ -117,6 +118,14 @@ export default async function AdminHousingPage({
               </p>
             </div>
             <HousingAdminActions
+              canRemove={hasAdminPermission(
+                admin.role,
+                "HOUSING_LISTINGS_REMOVE",
+              )}
+              canReview={hasAdminPermission(
+                admin.role,
+                "HOUSING_LISTINGS_REVIEW",
+              )}
               listingId={listing.id}
               status={listing.status}
             />

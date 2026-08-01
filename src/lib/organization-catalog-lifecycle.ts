@@ -72,6 +72,27 @@ export class CatalogLifecycleError extends Error {
   }
 }
 
+export function catalogModerationTransitionTarget(input: {
+  kind: "product" | "service";
+  from: OrganizationProductStatus | OrganizationServiceStatus;
+  action: "REMOVE" | "RESTORE_FOR_REVIEW";
+}) {
+  if (input.action === "RESTORE_FOR_REVIEW") {
+    if (input.from !== "REMOVED") {
+      throw new CatalogLifecycleError(
+        `Only a removed ${input.kind} can be restored for review.`,
+      );
+    }
+    return "PENDING_REVIEW" as const;
+  }
+  if (input.from === "REMOVED" || input.from === "ARCHIVED") {
+    throw new CatalogLifecycleError(
+      `A ${input.kind} in ${input.from} cannot be removed again.`,
+    );
+  }
+  return "REMOVED" as const;
+}
+
 export function catalogTransitionTarget(
   input:
     | {

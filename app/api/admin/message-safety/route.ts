@@ -1,12 +1,12 @@
+import { authorizeAdminApi } from "@/lib/admin-auth";
 import { getMessageSafetyOverview, MessagingError } from "@/lib/messaging";
 import { internalApiError, jsonError } from "@/lib/request";
-import { getCurrentUser } from "@/lib/server-auth";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return jsonError("Authentication required.", 401);
+  const auth = await authorizeAdminApi("MESSAGE_SAFETY_VIEW");
+  if (!auth.authorized) return auth.error;
   try {
-    return Response.json(await getMessageSafetyOverview(user), {
+    return Response.json(await getMessageSafetyOverview(auth.user), {
       headers: {
         "Cache-Control": "private, no-store, max-age=0",
         Vary: "Cookie",

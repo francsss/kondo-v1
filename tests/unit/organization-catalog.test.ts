@@ -3,6 +3,7 @@ import { DISCOVER_PROVIDERS } from "@/features/discover/registry";
 import { hasOrganizationPermission } from "@/lib/organization-authorization";
 import {
   CatalogLifecycleError,
+  catalogModerationTransitionTarget,
   catalogTransitionTarget,
 } from "@/lib/organization-catalog-lifecycle";
 import {
@@ -49,6 +50,37 @@ describe("organization catalog lifecycle", () => {
         action: "RESUME",
       }),
     ).toThrow(/cannot move/i);
+  });
+
+  it("validates platform removal and requires restored items to return to review", () => {
+    expect(
+      catalogModerationTransitionTarget({
+        kind: "product",
+        from: "PUBLISHED",
+        action: "REMOVE",
+      }),
+    ).toBe("REMOVED");
+    expect(
+      catalogModerationTransitionTarget({
+        kind: "service",
+        from: "REMOVED",
+        action: "RESTORE_FOR_REVIEW",
+      }),
+    ).toBe("PENDING_REVIEW");
+    expect(() =>
+      catalogModerationTransitionTarget({
+        kind: "product",
+        from: "PUBLISHED",
+        action: "RESTORE_FOR_REVIEW",
+      }),
+    ).toThrow(/only a removed product/i);
+    expect(() =>
+      catalogModerationTransitionTarget({
+        kind: "service",
+        from: "ARCHIVED",
+        action: "REMOVE",
+      }),
+    ).toThrow(/cannot be removed again/i);
   });
 });
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { opportunityLifecycleLabel } from "@/lib/opportunity-lifecycle";
 import { opportunityTypeDefinition } from "@/lib/opportunity-types";
+import { hasAdminPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPermission } from "@/lib/server-auth";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminOpportunitiesPage() {
-  await requireAdminPermission("OPPORTUNITIES_VIEW");
+  const admin = await requireAdminPermission("OPPORTUNITIES_VIEW");
   const opportunities = await prisma.opportunity.findMany({
     select: {
       id: true,
@@ -41,24 +42,30 @@ export default async function AdminOpportunitiesPage() {
         className="mt-4 flex flex-wrap gap-2"
         aria-label="Opportunity admin views"
       >
-        <Link
-          href="/admin/opportunity-applications"
-          className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
-        >
-          Applications
-        </Link>
-        <Link
-          href="/admin/opportunity-reports"
-          className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
-        >
-          Reports
-        </Link>
-        <Link
-          href="/admin/scholarship-agents"
-          className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
-        >
-          Scholarship agents
-        </Link>
+        {hasAdminPermission(admin.role, "OPPORTUNITY_APPLICATIONS_VIEW") ? (
+          <Link
+            href="/admin/opportunity-applications"
+            className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
+          >
+            Applications
+          </Link>
+        ) : null}
+        {hasAdminPermission(admin.role, "OPPORTUNITY_REPORTS_REVIEW") ? (
+          <Link
+            href="/admin/opportunity-reports"
+            className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
+          >
+            Reports
+          </Link>
+        ) : null}
+        {hasAdminPermission(admin.role, "SCHOLARSHIP_AGENTS_VIEW") ? (
+          <Link
+            href="/admin/scholarship-agents"
+            className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold dark:border-white/10"
+          >
+            Scholarship agents
+          </Link>
+        ) : null}
       </nav>
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[860px] text-left text-sm">

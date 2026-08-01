@@ -8,6 +8,8 @@ export function revalidateOrganizationPublicSurfaces(input: {
 }) {
   try {
     revalidatePath("/organizations");
+    revalidatePath("/discover");
+    revalidatePath("/discover/essentials");
     revalidatePath(`/organizations/${input.slug}`);
     revalidatePath(`/api/organizations/public/${input.slug}`);
     revalidatePath("/search");
@@ -18,9 +20,11 @@ export function revalidateOrganizationPublicSurfaces(input: {
     }
     if (input.citySlug) {
       revalidatePath(`/explore/${input.citySlug}`);
+      revalidatePath(`/discover/cities/${input.citySlug}`);
     }
     if (input.previousCitySlug && input.previousCitySlug !== input.citySlug) {
       revalidatePath(`/explore/${input.previousCitySlug}`);
+      revalidatePath(`/discover/cities/${input.previousCitySlug}`);
     }
   } catch (error) {
     // Domain services are also used by migrations, workers, scripts and

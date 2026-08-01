@@ -165,3 +165,17 @@ administrator-created spaces can be distinguished from user-created spaces.
 Guides now reference one validated `MediaAsset` cover through `coverMediaId`;
 the legacy raw key remains untouched for compatibility but is not used by the
 new CMS. All three migrations are additive and require no data rewrite.
+
+## Part 8 migration decision
+
+Part 8 requires no schema or production data transformation, so it adds no
+Prisma migration. Compatibility remains additive and read-only. Run
+`npm run legacy:audit` before release to reconcile legacy scholarships,
+ScholarshipAgent retention, Organization slug aliases, legacy Journey inference
+and possible Marketplace Housing records without writing data.
+
+Any future transformation must default to dry-run, log aggregate counts without
+PII, detect duplicates, support safe rerun/partial recovery, use bounded
+transactions and ship a compensating rollback. Never use `prisma db push` or a
+destructive seed against production. See
+[`LEGACY_COMPATIBILITY.md`](./LEGACY_COMPATIBILITY.md).

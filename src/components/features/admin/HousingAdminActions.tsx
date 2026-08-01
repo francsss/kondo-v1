@@ -5,9 +5,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 export function HousingAdminActions({
+  canRemove,
+  canReview,
   listingId,
   status,
 }: {
+  canRemove: boolean;
+  canReview: boolean;
   listingId: string;
   status: string;
 }) {
@@ -43,7 +47,7 @@ export function HousingAdminActions({
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {status === "PENDING_REVIEW" ? (
+        {canReview && status === "PENDING_REVIEW" ? (
           <>
             <Button disabled={busy} onClick={() => act("publish")} size="sm">
               Approve
@@ -58,7 +62,7 @@ export function HousingAdminActions({
             </Button>
           </>
         ) : null}
-        {status === "PUBLISHED" || status === "PAUSED" ? (
+        {canRemove && (status === "PUBLISHED" || status === "PAUSED") ? (
           <Button
             disabled={busy}
             onClick={() => act("remove")}

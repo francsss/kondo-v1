@@ -42,12 +42,18 @@ describe("role authorization helpers", () => {
       hasAdminPermission("MODERATOR", "REPORT_VIEW_EVIDENCE_REDACTED"),
     ).toBe(true);
     expect(hasAdminPermission("MODERATOR", "REPORT_ASSIGN_ANY")).toBe(false);
+    expect(
+      hasAdminPermission("MODERATOR", "REPORT_VIEW_REPORTER_IDENTITY"),
+    ).toBe(false);
     expect(hasAdminPermission("MODERATOR", "AUDIT_VIEW_GLOBAL")).toBe(false);
     expect(
       hasAdminPermission("MODERATOR", "ADMIN_VIEW_PLATFORM_OVERVIEW"),
     ).toBe(false);
 
     expect(hasAdminPermission("ADMIN", "REPORT_ASSIGN_ANY")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "REPORT_VIEW_REPORTER_IDENTITY")).toBe(
+      true,
+    );
     expect(hasAdminPermission("ADMIN", "REPORT_REOPEN")).toBe(true);
     expect(hasAdminPermission("ADMIN", "AUDIT_VIEW_GLOBAL")).toBe(true);
     expect(hasAdminPermission("ADMIN", "AUDIT_VIEW_SECURITY_METADATA")).toBe(
@@ -65,6 +71,19 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("ADMIN", "COMMUNITY_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("ADMIN", "MARKETPLACE_CMS_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "MARKETPLACE_CMS_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "ORGANIZATION_CATALOG_VIEW")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "ORGANIZATION_CATALOG_MODERATE")).toBe(
+      true,
+    );
+    expect(
+      hasAdminPermission("MODERATOR", "ORGANIZATION_CATALOG_MODERATE"),
+    ).toBe(false);
+    expect(hasAdminPermission("ADMIN", "HOUSING_PRIVATE_LOCATION_VIEW")).toBe(
+      true,
+    );
+    expect(
+      hasAdminPermission("MODERATOR", "HOUSING_PRIVATE_LOCATION_VIEW"),
+    ).toBe(false);
     expect(hasAdminPermission("ADMIN", "USER_MANAGE")).toBe(true);
     expect(hasAdminPermission("ADMIN", "USER_ROLE_MANAGE")).toBe(false);
     expect(hasAdminPermission("ADMIN", "ANALYTICS_VIEW")).toBe(true);
@@ -73,6 +92,9 @@ describe("role authorization helpers", () => {
     expect(hasAdminPermission("ADMIN", "GUIDE_CMS_MANAGE")).toBe(true);
     expect(hasAdminPermission("ADMIN", "STUDENT_HUB_CONFIG_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "STUDENT_HUB_CONFIG_MANAGE")).toBe(true);
+    expect(hasAdminPermission("ADMIN", "OPPORTUNITY_APPLICATIONS_VIEW")).toBe(
+      true,
+    );
     expect(hasAdminPermission("ADMIN", "FEEDBACK_VIEW")).toBe(true);
     expect(hasAdminPermission("ADMIN", "FEEDBACK_MANAGE")).toBe(true);
     expect(hasAdminPermission("MODERATOR", "REFERENCE_DATA_VIEW")).toBe(false);

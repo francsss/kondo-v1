@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { HousingAdminActions } from "@/components/features/admin/HousingAdminActions";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { Card } from "@/components/ui/Card";
+import { writeAuditLog } from "@/lib/audit";
+import { hasAdminPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPermission } from "@/lib/server-auth";
 
@@ -10,7 +12,11 @@ export default async function AdminHousingListingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdminPermission("HOUSING_VIEW");
+  const admin = await requireAdminPermission("HOUSING_VIEW");
+  const canViewPrivateLocation = hasAdminPermission(
+    admin.role,
+    "HOUSING_PRIVATE_LOCATION_VIEW",
+  );
   const listing = await prisma.housingListing.findUnique({
     where: { id: (await params).id },
     select: {
@@ -22,7 +28,6 @@ export default async function AdminHousingListingPage({
       type: true,
       publisherType: true,
       publicLocationLabel: true,
-      privateAddress: true,
       monthlyRentMinor: true,
       currency: true,
       accuracyConfirmedAt: true,
@@ -30,7 +35,7 @@ export default async function AdminHousingListingPage({
       createdAt: true,
       city: { select: { name: true } },
       publisherUser: {
-        select: { firstName: true, lastName: true, email: true },
+        select: { firstName: true, lastName: true },
       },
       publisherOrganization: { select: { publicName: true } },
       media: {
@@ -41,6 +46,21 @@ export default async function AdminHousingListingPage({
     },
   });
   if (!listing) notFound();
+  const privateLocation = canViewPrivateLocation
+    ? await prisma.housingListing.findUnique({
+        where: { id: listing.id },
+        select: { privateAddress: true },
+      })
+    : null;
+  if (canViewPrivateLocation) {
+    await writeAuditLog({
+      actorId: admin.id,
+      action: "HOUSING_PRIVATE_LOCATION_VIEWED",
+      entityType: "HousingListing",
+      entityId: listing.id,
+      newValue: { purpose: "housing_moderation_review" },
+    });
+  }
   return (
     <section className="mx-auto max-w-5xl">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-kondo-green">
@@ -57,7 +77,12 @@ export default async function AdminHousingListingPage({
             · {listing.city.name}
           </p>
         </div>
-        <HousingAdminActions listingId={listing.id} status={listing.status} />
+        <HousingAdminActions
+          canRemove={hasAdminPermission(admin.role, "HOUSING_LISTINGS_REMOVE")}
+          canReview={hasAdminPermission(admin.role, "HOUSING_LISTINGS_REVIEW")}
+          listingId={listing.id}
+          status={listing.status}
+        />
       </div>
       <div className="mt-7 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-5">
@@ -90,7 +115,12 @@ export default async function AdminHousingListingPage({
                 ["Status", listing.status.replaceAll("_", " ")],
                 ["Type", listing.type.replaceAll("_", " ")],
                 ["Public location", listing.publicLocationLabel],
-                ["Private address", listing.privateAddress ?? "Not supplied"],
+                [
+                  "Private address",
+                  canViewPrivateLocation
+                    ? (privateLocation?.privateAddress ?? "Not supplied")
+                    : "Protected · elevated permission required",
+                ],
                 [
                   "Price",
                   `${listing.currency} ${Math.round(listing.monthlyRentMinor / 100)}/month`,

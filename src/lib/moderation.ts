@@ -5,7 +5,7 @@ import {
   type ReportStatus,
 } from "@prisma/client";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
-import { writeAuditLogWithClient } from "@/lib/audit";
+import { writeAuditLog, writeAuditLogWithClient } from "@/lib/audit";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
@@ -246,7 +246,6 @@ export async function listReports(
         version: true,
         createdAt: true,
         updatedAt: true,
-        reporter: { select: moderationUserSelect },
         subjectUser: { select: moderationUserSelect },
         assignee: { select: moderationUserSelect },
         _count: { select: { notes: true, evidence: true } },
@@ -271,7 +270,10 @@ export async function listReports(
       version: report.version,
       createdAt: report.createdAt,
       updatedAt: report.updatedAt,
-      reporter: safeUser(report.reporter),
+      // Reporter identity is never needed to triage a queue. It is revealed
+      // only from an individual case to an explicitly authorized operator,
+      // where the sensitive access is audited below.
+      reporter: null,
       subjectUser: safeUser(report.subjectUser),
       assignee: safeUser(report.assignee),
       noteCount: report._count.notes,
@@ -778,6 +780,20 @@ export async function getReportDetail(
       })
     : [];
 
+  const canViewReporterIdentity = hasAdminPermission(
+    actor.role,
+    "REPORT_VIEW_REPORTER_IDENTITY",
+  );
+  if (canViewReporterIdentity && report.reporter) {
+    await writeAuditLog({
+      actorId: actor.id,
+      action: "REPORT_REPORTER_IDENTITY_VIEWED",
+      entityType: "Report",
+      entityId: report.id,
+      newValue: { purpose: "moderation_case_review" },
+    });
+  }
+
   return {
     id: report.id,
     targetType: report.targetType,
@@ -793,7 +809,7 @@ export async function getReportDetail(
     version: report.version,
     createdAt: report.createdAt,
     updatedAt: report.updatedAt,
-    reporter: safeUser(report.reporter),
+    reporter: canViewReporterIdentity ? safeUser(report.reporter) : null,
     subjectUser: safeUser(report.subjectUser),
     assignee: safeUser(report.assignee),
     assignedBy: safeUser(report.assignedBy),
@@ -828,6 +844,7 @@ export async function getReportDetail(
         : hasAdminPermission(actor.role, "REPORT_VIEW_EVIDENCE_FULL")
           ? "full"
           : "redacted",
+      canViewReporterIdentity,
     },
   };
 }

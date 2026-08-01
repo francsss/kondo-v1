@@ -65,6 +65,10 @@ export default defineConfig({
         env: {
           ...process.env,
           PORT,
+          // Exercise local uploads against the production-built test server
+          // without external R2 credentials. Storage ignores this escape
+          // hatch on Vercel and production environment validation rejects it.
+          KONDO_E2E: "true",
         },
       },
 });

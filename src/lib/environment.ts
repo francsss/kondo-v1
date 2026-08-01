@@ -282,6 +282,9 @@ export function productionEnvironmentIssues(
   if (environment.KONDO_ALLOW_DESTRUCTIVE_SEED === "true") {
     issues.push("KONDO_ALLOW_DESTRUCTIVE_SEED must not be enabled.");
   }
+  if (environment.KONDO_E2E === "true") {
+    issues.push("KONDO_E2E must not be enabled.");
+  }
 
   return [...new Set(issues)];
 }

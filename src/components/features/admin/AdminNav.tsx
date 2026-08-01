@@ -46,6 +46,12 @@ const items = [
     permission: "MARKETPLACE_CMS_VIEW" as const,
   },
   {
+    href: "/admin/catalog",
+    label: "Products & services",
+    icon: ShoppingBag,
+    permission: "ORGANIZATION_CATALOG_VIEW" as const,
+  },
+  {
     href: "/admin/housing",
     label: "Housing",
     icon: House,
@@ -134,6 +140,24 @@ const items = [
     label: "Opportunities",
     icon: BriefcaseBusiness,
     permission: "OPPORTUNITIES_VIEW" as const,
+  },
+  {
+    href: "/admin/opportunity-applications",
+    label: "Opportunity applications",
+    icon: Files,
+    permission: "OPPORTUNITY_APPLICATIONS_VIEW" as const,
+  },
+  {
+    href: "/admin/opportunity-reports",
+    label: "Opportunity reports",
+    icon: FileSearch,
+    permission: "OPPORTUNITY_REPORTS_REVIEW" as const,
+  },
+  {
+    href: "/admin/scholarship-agents",
+    label: "Scholarship agents",
+    icon: GraduationCap,
+    permission: "SCHOLARSHIP_AGENTS_VIEW" as const,
   },
   {
     href: "/admin/live",

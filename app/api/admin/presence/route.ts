@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { authorizeAdminApi } from "@/lib/admin-auth";
 import { presenceStore } from "@/lib/presence";
 import { internalApiError } from "@/lib/request";
-import { requireAdminPermission } from "@/lib/server-auth";
 
 export async function GET() {
-  await requireAdminPermission("ANALYTICS_VIEW");
+  const auth = await authorizeAdminApi("ANALYTICS_VIEW");
+  if (!auth.authorized) return auth.error;
   try {
     const users = await presenceStore.listOnline();
     return NextResponse.json(

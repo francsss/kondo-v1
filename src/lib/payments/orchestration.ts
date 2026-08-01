@@ -16,6 +16,67 @@ export type PaymentCapability = {
   reason: string;
 };
 
+export type PaymentStatus =
+  | "PREPARING"
+  | "PROVIDER_REQUIRED"
+  | "PENDING"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED"
+  | "REFUNDED";
+
+export type SettlementStatus =
+  "NOT_STARTED" | "PENDING" | "SETTLED" | "FAILED" | "REVERSED";
+
+/**
+ * Payment-domain contracts are intentionally separate even while the provider
+ * is disabled. They are adapter DTOs, not claims that a payment was processed
+ * or that Kondo stores money. Persistence is introduced only with a reviewed,
+ * licensed provider contract and a dedicated additive migration.
+ */
+export type PaymentInvoice = {
+  id: string;
+  useCase: PaymentUseCase;
+  source: "OFFICIAL_LINK" | "OFFICIAL_QR" | "MANUAL_IMPORT" | "ADAPTER";
+  sourceReference: string;
+  beneficiaryId: string | null;
+  amountMinor: number | null;
+  currency: string | null;
+  verifiedByAdapter: boolean;
+};
+
+export type PaymentBeneficiary = {
+  id: string;
+  displayName: string;
+  providerBeneficiaryReference: string | null;
+  verifiedByProvider: boolean;
+};
+
+export type PaymentIntent = {
+  id: string;
+  invoiceId: string;
+  quoteReference: string | null;
+  status: PaymentStatus;
+  providerReference: string | null;
+};
+
+export type ProviderTransaction = {
+  providerName: string;
+  providerReference: string;
+  paymentIntentId: string;
+  status: PaymentStatus;
+  settlementStatus: SettlementStatus;
+  lastVerifiedAt: Date;
+};
+
+export type PaymentReceipt = {
+  id: string;
+  paymentIntentId: string;
+  providerReference: string;
+  issuedAt: Date;
+  providerConfirmed: true;
+};
+
 export type ProviderQuote = {
   providerReference: string;
   sourceAmountMinor: number;
@@ -37,7 +98,12 @@ export interface PaymentProviderAdapter {
   }): Promise<ProviderQuote>;
   getPaymentStatus(
     providerReference: string,
-  ): Promise<"PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "REFUNDED">;
+  ): Promise<
+    Extract<
+      PaymentStatus,
+      "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "REFUNDED"
+    >
+  >;
 }
 
 export interface UniversityBillingAdapter {

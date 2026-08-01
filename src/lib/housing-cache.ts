@@ -27,6 +27,8 @@ export function revalidateHousing(input: {
   revalidateHousingPath("/housing/map");
   revalidateHousingPath("/housing/manage");
   revalidateHousingPath("/housing/saved");
+  revalidateHousingPath("/discover");
+  revalidateHousingPath("/discover/essentials");
   revalidateHousingPath("/search");
   revalidateHousingPath("/sitemap.xml");
   if (input.listingId) {
@@ -37,5 +39,8 @@ export function revalidateHousing(input: {
     revalidateHousingPath(`/organizations/${input.organizationSlug}`);
     revalidateHousingPath(`/organizations/${input.organizationSlug}/housing`);
   }
-  if (input.citySlug) revalidateHousingPath(`/explore/${input.citySlug}`);
+  if (input.citySlug) {
+    revalidateHousingPath(`/explore/${input.citySlug}`);
+    revalidateHousingPath(`/discover/cities/${input.citySlug}`);
+  }
 }

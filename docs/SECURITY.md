@@ -148,3 +148,22 @@ At the time of this version, the stable Next.js 16.2.10 package pins an internal
 - `KONDO_ALLOW_DESTRUCTIVE_SEED=true` is required for every intentional local/demo reset.
 - `NODE_ENV=production` or `VERCEL_ENV=production` always blocks execution, even when the opt-in is present.
 - Keep `KONDO_ALLOW_DESTRUCTIVE_SEED` unset or `false` in hosted environments. This release does not add a production reference-data seed system.
+
+## Part 8 sensitive read controls
+
+- Reporter identity is omitted from moderation queues. A permitted case-detail
+  reveal requires `REPORT_VIEW_REPORTER_IDENTITY` and writes an AuditLog.
+- Exact Housing address is not selected for ordinary moderation. A permitted
+  detail query requires `HOUSING_PRIVATE_LOCATION_VIEW` and writes an AuditLog
+  without the address value.
+- Opportunity application lists require
+  `OPPORTUNITY_APPLICATIONS_VIEW`; general opportunity moderation does not
+  imply candidate-data access.
+- Product/service moderation uses dedicated permissions, validated lifecycle
+  transitions, mandatory internal notes, affected-party notification, AuditLog
+  and source-wide cache invalidation.
+- Every Admin API is checked by `npm run release:audit`; navigation visibility
+  never replaces the server permission.
+
+The final threat checklist and limitations are in
+[`PART8_RELEASE_AUDIT.md`](./PART8_RELEASE_AUDIT.md).
