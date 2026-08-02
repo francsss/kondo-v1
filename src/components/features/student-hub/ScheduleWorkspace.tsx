@@ -1983,19 +1983,15 @@ function WeekScheduleGrid({
   function showDay(dayNumber: number) {
     // `scrollIntoView` cooperates with mandatory scroll snapping, where a
     // smooth `scrollTo` on the container gets snapped straight back.
-    dayPagerRef.current?.children[dayNumber - 1]?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "start",
-    });
+    // Scroll the timetable so the chosen day's column is in view. The grid
+    // keeps a fixed time rail, so the target is offset past it.
+    const grid = dayPagerRef.current;
+    if (grid?.scrollWidth) {
+      const rail = 58;
+      const column = (grid.scrollWidth - rail) / 7;
+      grid.scrollTo({ left: (dayNumber - 1) * column, behavior: "smooth" });
+    }
     setMobileDay(dayNumber);
-  }
-
-  function onPagerScroll() {
-    const pager = dayPagerRef.current;
-    if (!pager || !pager.clientWidth) return;
-    const day = Math.round(pager.scrollLeft / pager.clientWidth) + 1;
-    if (day >= 1 && day <= 7 && day !== mobileDay) setMobileDay(day);
   }
 
   return (
@@ -2003,6 +1999,9 @@ function WeekScheduleGrid({
       {/* Mobile: a swipeable day calendar rather than a flat list. The day
           strip scrolls horizontally, and swiping the panel moves between days
           exactly as a native calendar does. Desktop is untouched below. */}
+      {/* Mobile keeps the day strip as a quick jump, then shows the same
+          timetable as desktop rather than a flat list: periods stay rows,
+          days stay columns, and the grid scrolls horizontally. */}
       <div className="border-t border-border md:hidden">
         <div
           aria-label="Select a day"
@@ -2060,90 +2059,8 @@ function WeekScheduleGrid({
             );
           })}
         </div>
-
-        <div
-          className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          onScroll={onPagerScroll}
-          ref={dayPagerRef}
-        >
-          {dates.map((date, index) => {
-            const dayNumber = index + 1;
-            const dayCourses = coursesForDay(dayNumber);
-            return (
-              <section
-                aria-label={DAY_NAMES[index]}
-                className="w-full shrink-0 snap-center"
-                key={date.toISOString()}
-              >
-                <div className="divide-y divide-border">
-                  {dayCourses.map((course) => (
-                    <div
-                      className="flex items-stretch gap-3 px-4 py-4"
-                      key={course.id}
-                    >
-                      {/* The period rail keeps the structure of the day
-                          visible instead of flattening it into a list. */}
-                      <div className="w-14 shrink-0 text-right">
-                        <p className="text-sm font-black leading-tight">
-                          {course.startTime ??
-                            (course.startPeriod
-                              ? `P${course.startPeriod}`
-                              : "—")}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {course.endTime ??
-                            (course.endPeriod ? `P${course.endPeriod}` : "TBC")}
-                        </p>
-                        {course.startPeriod ? (
-                          <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                            Period {course.startPeriod}
-                          </p>
-                        ) : null}
-                      </div>
-                      <span
-                        aria-hidden="true"
-                        className="w-1 shrink-0 rounded-full"
-                        style={{ backgroundColor: course.color }}
-                      />
-                      <button
-                        className="min-w-0 flex-1 rounded-2xl bg-muted/40 p-3 text-left transition active:scale-[0.99] motion-reduce:transform-none"
-                        onClick={() => onEdit(course)}
-                        type="button"
-                      >
-                        <p className="text-sm font-black leading-snug">
-                          {course.courseName}
-                        </p>
-                        {course.room || course.teacher ? (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {[course.room, course.teacher]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </p>
-                        ) : null}
-                      </button>
-                      <Button
-                        aria-label={`Delete ${course.courseName}`}
-                        className="self-center"
-                        onClick={() => void onDelete(course.id)}
-                        size="icon"
-                        variant="ghost"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  ))}
-                  {!dayCourses.length ? (
-                    <p className="px-4 py-14 text-center text-sm text-muted-foreground">
-                      No classes on {DAY_NAMES[index]}.
-                    </p>
-                  ) : null}
-                </div>
-              </section>
-            );
-          })}
-        </div>
       </div>
-      <div className="hidden overflow-x-auto border-t border-border md:block">
+      <div className="overflow-x-auto border-t border-border" ref={dayPagerRef}>
         <div className="min-w-[760px]">
           <div className="grid grid-cols-[58px_repeat(7,minmax(92px,1fr))] border-b border-border bg-muted/25">
             <div />

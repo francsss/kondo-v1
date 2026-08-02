@@ -17,6 +17,7 @@ describe("Student Hub section registry", () => {
       "internships",
       "jobs",
       "programs",
+      "competitions",
       "applications",
     ]);
   });
@@ -61,11 +62,13 @@ describe("Student Hub filter mapping", () => {
     expect(studentHubSectionTypes("programs")).toEqual([
       "RESEARCH_OPPORTUNITY",
       "VOLUNTEERING",
-      "COMPETITION",
       "EXCHANGE_PROGRAM",
       "SUMMER_PROGRAM",
       "OTHER_PROGRAM",
     ]);
+    // Competitions moved out of Programs into their own tab — moved, not
+    // duplicated, so every type is still surfaced exactly once.
+    expect(studentHubSectionTypes("competitions")).toEqual(["COMPETITION"]);
   });
 
   it("keeps the listing sections mutually exclusive", () => {

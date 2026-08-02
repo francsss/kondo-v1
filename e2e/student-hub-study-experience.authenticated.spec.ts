@@ -15,15 +15,14 @@ test.describe("Student Hub study-first experience", () => {
     const modules = page.getByRole("navigation", {
       name: "Student Hub modules",
     });
-    await expect(modules.getByRole("link", { name: "Study" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(
+      modules.getByRole("link", { name: "Studies" }),
+    ).toHaveAttribute("aria-current", "page");
     await expect(
       modules.getByRole("link", { name: "Opportunities" }),
     ).toBeVisible();
 
-    const study = page.getByRole("navigation", { name: "Study navigation" });
+    const study = page.getByRole("navigation", { name: "Studies navigation" });
     for (const label of ["Overview", "Planner", "Student Q&A"]) {
       await expect(study.getByRole("link", { name: label })).toBeVisible();
     }
@@ -68,7 +67,7 @@ test.describe("Student Hub study-first experience", () => {
     ).toBeVisible();
     await expect(
       page
-        .getByRole("navigation", { name: "Study navigation" })
+        .getByRole("navigation", { name: "Studies navigation" })
         .getByRole("link", { name: "Planner" }),
     ).toBeVisible();
     expect(

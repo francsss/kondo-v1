@@ -61,10 +61,10 @@ describe("Student Hub active tab", () => {
 
 describe("Student Hub module navigation", () => {
   it("groups study work separately from opportunity discovery", () => {
-    expect(studentHubModuleForPath("/student-hub")).toBe("study");
-    expect(studentHubModuleForPath("/student-hub/tools")).toBe("study");
+    expect(studentHubModuleForPath("/student-hub")).toBe("studies");
+    expect(studentHubModuleForPath("/student-hub/tools")).toBe("studies");
     expect(studentHubModuleForPath("/student-hub/help/visa-renewal")).toBe(
-      "study",
+      "studies",
     );
     expect(studentHubModuleForPath("/student-hub/scholarships")).toBe(
       "opportunities",
@@ -76,10 +76,10 @@ describe("Student Hub module navigation", () => {
 
   it("shows Planner only for journeys with academic-tool access", () => {
     expect(
-      studentHubTabsForModule("study", true).map((tab) => tab.key),
+      studentHubTabsForModule("studies", true).map((tab) => tab.key),
     ).toEqual(["overview", "tools", "help"]);
     expect(
-      studentHubTabsForModule("study", false).map((tab) => tab.key),
+      studentHubTabsForModule("studies", false).map((tab) => tab.key),
     ).toEqual(["overview", "help"]);
   });
 
@@ -99,7 +99,21 @@ describe("Student Hub module navigation", () => {
       "internships",
       "jobs",
       "programs",
+      "competitions",
       "applications",
     ]);
+  });
+
+  it("gives Resources its own module with no second level", () => {
+    expect(studentHubModuleForPath("/student-hub/resources")).toBe("resources");
+    expect(studentHubTabsForModule("resources", true)).toEqual([]);
+  });
+
+  it("keeps Studies as the default module", () => {
+    expect(studentHubModuleForPath("/student-hub")).toBe("studies");
+    expect(studentHubModuleForPath("/student-hub/tools")).toBe("studies");
+    expect(studentHubModuleForPath("/student-hub/competitions")).toBe(
+      "opportunities",
+    );
   });
 });

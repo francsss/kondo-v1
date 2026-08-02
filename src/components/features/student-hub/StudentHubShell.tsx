@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, GraduationCap } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
@@ -18,9 +18,14 @@ const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
 const STUDENT_HUB_MODULES: readonly HorizontalTab[] = [
   {
-    key: "study",
+    key: "studies",
     href: "/student-hub",
-    label: "Study",
+    label: "Studies",
+  },
+  {
+    key: "resources",
+    href: "/student-hub/resources",
+    label: "Resources",
   },
   {
     key: "opportunities",
@@ -55,23 +60,33 @@ const STUDY_TABS: readonly HorizontalTab[] = [
  * destinations inside the active module. Routes and source domains stay
  * unchanged; this is an information-architecture layer, not duplicated data.
  */
-export function studentHubModuleForPath(pathname: string) {
+export type StudentHubModule = "studies" | "resources" | "opportunities";
+
+export function studentHubModuleForPath(pathname: string): StudentHubModule {
+  if (
+    pathname === "/student-hub/resources" ||
+    pathname.startsWith("/student-hub/resources/")
+  ) {
+    return "resources";
+  }
   return STUDENT_HUB_SECTIONS.some(
     (section) =>
       section.key !== "overview" &&
       (pathname === section.href || pathname.startsWith(`${section.href}/`)),
   )
     ? "opportunities"
-    : "study";
+    : "studies";
 }
 
 export function studentHubTabsForModule(
-  module: "study" | "opportunities",
+  module: StudentHubModule,
   showAcademicTools: boolean,
 ): HorizontalTab[] {
-  if (module === "study") {
+  if (module === "studies") {
     return STUDY_TABS.filter((tab) => tab.key !== "tools" || showAcademicTools);
   }
+  // Resources is a single destination today, so it needs no second level.
+  if (module === "resources") return [];
   return STUDENT_HUB_SECTIONS.filter(
     (section) => section.key !== "overview",
   ).map((section) => ({
@@ -140,7 +155,7 @@ export function StudentHubShell({
       <PresenceHeartbeat />
       <ProductAnalyticsIdentity user={user} />
       <header className="sticky top-0 z-50 border-b border-border bg-background/90 shadow-[0_8px_28px_rgb(var(--foreground)/0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto grid max-w-[1440px] grid-cols-[auto_minmax(0,1fr)] items-center gap-4 px-4 py-2.5 sm:px-6 lg:gap-8 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4 px-4 py-2.5 sm:px-6 lg:gap-8 lg:px-8">
           <Link
             aria-label="Back to Kondo"
             className="group inline-flex w-fit items-center gap-2 rounded-full px-2 py-2 text-sm font-bold text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -150,6 +165,22 @@ export function StudentHubShell({
             <span className="hidden sm:inline">Back to Kondo</span>
             <span className="sm:hidden">Kondo</span>
           </Link>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+            >
+              <GraduationCap className="h-[18px] w-[18px]" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-kondo-green">
+                Student Hub
+              </span>
+              <span className="block truncate text-sm font-black leading-tight">
+                {user.university?.name ?? "Your academic space"}
+              </span>
+            </span>
+          </div>
           <HorizontalTabs
             activeKey={activeModule}
             ariaLabel="Student Hub modules"
@@ -157,16 +188,20 @@ export function StudentHubShell({
             tabs={STUDENT_HUB_MODULES}
           />
         </div>
-        <div className="border-t border-border/70 bg-muted/20">
-          <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-            <HorizontalTabs
-              activeKey={activeKey}
-              ariaLabel={`${activeModule === "study" ? "Study" : "Opportunity"} navigation`}
-              className="py-1 sm:justify-center"
-              tabs={tabs}
-            />
+        {tabs.length ? (
+          <div className="border-t border-border/70 bg-muted/20">
+            <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+              <HorizontalTabs
+                activeKey={activeKey}
+                ariaLabel={`${
+                  activeModule === "studies" ? "Studies" : "Opportunity"
+                } navigation`}
+                className="py-1 sm:justify-center"
+                tabs={tabs}
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
       </header>
       <main>
         <TabPanelTransition index={activeIndex}>{children}</TabPanelTransition>

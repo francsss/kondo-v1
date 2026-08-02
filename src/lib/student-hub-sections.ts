@@ -21,6 +21,7 @@ export type StudentHubSectionKey =
   | "internships"
   | "jobs"
   | "programs"
+  | "competitions"
   | "applications";
 
 export type StudentHubSection = {
@@ -43,11 +44,11 @@ const JOB_TYPES = ["PART_TIME_JOB", "FULL_TIME_JOB", "CAMPUS_JOB"] as const;
 const PROGRAM_TYPES = [
   "RESEARCH_OPPORTUNITY",
   "VOLUNTEERING",
-  "COMPETITION",
   "EXCHANGE_PROGRAM",
   "SUMMER_PROGRAM",
   "OTHER_PROGRAM",
 ] as const;
+const COMPETITION_TYPES = ["COMPETITION"] as const;
 
 export const STUDENT_HUB_SECTIONS = [
   {
@@ -108,6 +109,18 @@ export const STUDENT_HUB_SECTIONS = [
     emptyTitle: "No programme matches these filters",
     emptyBody:
       "No matching programme or research opportunity is available right now. Try a broader search.",
+  },
+  {
+    key: "competitions",
+    href: "/student-hub/competitions",
+    label: "Competitions",
+    title: "Competitions",
+    description:
+      "Contests, hackathons and challenge programmes open to students.",
+    types: COMPETITION_TYPES,
+    emptyTitle: "No competition matches these filters",
+    emptyBody:
+      "No matching competition is open right now. Try a broader search.",
   },
   {
     key: "applications",

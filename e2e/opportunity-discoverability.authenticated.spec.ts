@@ -253,7 +253,7 @@ test.describe.serial("opportunity route discoverability", () => {
       name: "Student Hub modules",
     });
     await expect(
-      moduleNav.getByRole("link", { name: "Study", exact: true }),
+      moduleNav.getByRole("link", { name: "Studies", exact: true }),
     ).toHaveAttribute("aria-current", "page");
     await moduleNav
       .getByRole("link", { name: "Opportunities", exact: true })
