@@ -25,11 +25,17 @@ export function MobileViewportStabilizer() {
     }
 
     update();
+    // `interactive-widget=resizes-content` resizes the layout viewport, which
+    // does not always emit a visualViewport event. Listening to both keeps the
+    // variable from going stale and leaving a fixed shell taller than the
+    // screen — which would push the message composer out of view.
+    window.addEventListener("resize", update);
     viewport?.addEventListener("resize", update);
     viewport?.addEventListener("scroll", update);
     window.addEventListener("orientationchange", update);
 
     return () => {
+      window.removeEventListener("resize", update);
       viewport?.removeEventListener("resize", update);
       viewport?.removeEventListener("scroll", update);
       window.removeEventListener("orientationchange", update);

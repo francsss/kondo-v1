@@ -50,6 +50,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // The mobile keyboard resizes the layout instead of overlaying it, so a
+  // bottom-anchored composer stays above the keyboard the way a native chat
+  // app behaves, rather than being covered and pushed out of view.
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f8f7f2" },
     { media: "(prefers-color-scheme: dark)", color: "#0c1412" },

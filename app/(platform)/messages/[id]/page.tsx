@@ -54,7 +54,11 @@ export default async function ConversationPage({
   );
 
   return (
-    <div className="flex h-[var(--visual-viewport-height,100dvh)] min-h-0 flex-col overflow-hidden bg-background pt-[env(safe-area-inset-top)]">
+    /* Pinned to the visual viewport rather than laid out in the document, so
+       the browser cannot drag the conversation upward when it scrolls to
+       reveal the focused composer. `--visual-viewport-offset-top` keeps the
+       shell aligned with the visible area while the keyboard animates. */
+    <div className="fixed inset-x-0 top-[var(--visual-viewport-offset-top,0px)] z-30 flex h-[min(100dvh,var(--visual-viewport-height,100dvh))] min-h-0 flex-col overflow-hidden bg-background pt-[env(safe-area-inset-top)]">
       <header className="relative z-20 flex min-h-16 shrink-0 items-center gap-1 border-b border-border/75 bg-card/95 px-2 backdrop-blur-xl sm:gap-2 sm:px-4">
         <Button
           asChild
