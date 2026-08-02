@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 export function RoommateProfileComposer({
   cities,
@@ -28,6 +29,7 @@ export function RoommateProfileComposer({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cityId, setCityId] = useState(profile?.cityId ?? "");
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -95,19 +97,17 @@ export function RoommateProfileComposer({
     >
       <label className="grid gap-2 text-sm font-bold">
         City
-        <select
-          className="h-11 rounded-2xl border border-border bg-background px-3"
-          defaultValue={profile?.cityId ?? ""}
-          name="cityId"
-          required
-        >
-          <option value="">Choose a city</option>
-          {cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}
-            </option>
-          ))}
-        </select>
+        {/* Hundreds of cities: searchable rather than a long scroll. The
+            hidden input keeps the surrounding form submission unchanged. */}
+        <input name="cityId" type="hidden" value={cityId} />
+        <SearchableSelect
+          label="City"
+          onSelect={setCityId}
+          options={cities.map((city) => ({ id: city.id, name: city.name }))}
+          placeholder="Choose a city"
+          searchPlaceholder="Search city"
+          selected={cityId}
+        />
       </label>
       <label className="grid gap-2 text-sm font-bold">
         Move-in date

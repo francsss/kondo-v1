@@ -88,14 +88,69 @@
     background: rgb(var(--primary) / 0.22);
   }
 
-  :focus-visible {
+  /*
+   * Keyboard focus ring for everything that is not a text field.
+   *
+   * `ring-offset-2` draws the ring detached from the element. On a pill button
+   * that reads as a halo, but on a rectangular input it rendered as a hard dark
+   * green rectangle around the field — the "green square" on focus. Text fields
+   * are excluded here and get the premium treatment below instead.
+   */
+  :focus-visible:not(input):not(textarea):not(select):not([contenteditable]) {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
   input,
   select,
   textarea {
-    @apply text-foreground transition-colors duration-200 placeholder:text-muted-foreground;
+    @apply text-foreground placeholder:text-muted-foreground;
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease,
+      color 200ms ease;
+  }
+
+  /*
+   * One premium focus treatment for every text field in the product: a thin
+   * Kondo green border plus a soft green illumination, with no background
+   * change and no detached ring. Fields keep whatever radius their own class
+   * gives them, so this never fights a component's shape.
+   *
+   * Applied in the base layer because Kondo has no shared Input component:
+   * search bars, the message composer, filters, authentication and admin forms
+   * all use native elements, so this is the single place that reaches them all.
+   */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [contenteditable]:focus-visible {
+    @apply outline-none;
+    border-color: rgb(var(--ring));
+    box-shadow: 0 0 0 4px rgb(var(--ring) / 0.16);
+  }
+
+  /* A field wrapped in a bordered container illuminates the container. */
+  .field-shell:focus-within {
+    border-color: rgb(var(--ring));
+    box-shadow: 0 0 0 4px rgb(var(--ring) / 0.16);
+  }
+
+  @media (prefers-contrast: more) {
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    [contenteditable]:focus-visible {
+      outline: 2px solid rgb(var(--ring));
+      outline-offset: 1px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    input,
+    select,
+    textarea {
+      transition: none;
+    }
   }
 
   img,

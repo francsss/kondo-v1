@@ -43,6 +43,7 @@ import {
   isPendingAcademicTask,
 } from "@/lib/student-academic-tools";
 import { DAY_NAMES, formatCourseTime } from "@/lib/student-schedule";
+import { cn } from "@/lib/utils";
 
 type University = {
   id: string;
@@ -1946,87 +1947,200 @@ function WeekScheduleGrid({
   const hours = Array.from({ length: 11 }, (_, index) => index + 8);
   const todayKey = new Date().toDateString();
   const [mobileDay, setMobileDay] = useState(() => new Date().getDay() || 7);
-  const mobileCourses = courses
-    .filter((course) => course.dayOfWeek === mobileDay)
-    .sort((left, right) =>
-      String(left.startTime ?? left.startPeriod).localeCompare(
-        String(right.startTime ?? right.startPeriod),
-      ),
+  const dayStripRef = useRef<HTMLDivElement | null>(null);
+  const dayPagerRef = useRef<HTMLDivElement | null>(null);
+
+  function coursesForDay(dayNumber: number) {
+    return courses
+      .filter((course) => course.dayOfWeek === dayNumber)
+      .sort((left, right) =>
+        String(left.startTime ?? left.startPeriod).localeCompare(
+          String(right.startTime ?? right.startPeriod),
+        ),
+      );
+  }
+
+  // Keep the day strip and the swipeable pager showing the same day, whichever
+  // one the student used.
+  useEffect(() => {
+    const strip = dayStripRef.current;
+    const active = strip?.querySelector<HTMLElement>(
+      `[data-day="${mobileDay}"]`,
     );
+    if (strip && active) {
+      strip.scrollTo({
+        left: active.offsetLeft - (strip.clientWidth - active.clientWidth) / 2,
+        behavior: "smooth",
+      });
+    }
+  }, [mobileDay]);
+
+  /**
+   * The pager is the single source of truth for the visible day: tapping a day
+   * scrolls it, and scrolling it updates the highlight. One direction only, so
+   * the two controls can never fight each other into an inconsistent state.
+   */
+  function showDay(dayNumber: number) {
+    // `scrollIntoView` cooperates with mandatory scroll snapping, where a
+    // smooth `scrollTo` on the container gets snapped straight back.
+    dayPagerRef.current?.children[dayNumber - 1]?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "start",
+    });
+    setMobileDay(dayNumber);
+  }
+
+  function onPagerScroll() {
+    const pager = dayPagerRef.current;
+    if (!pager || !pager.clientWidth) return;
+    const day = Math.round(pager.scrollLeft / pager.clientWidth) + 1;
+    if (day >= 1 && day <= 7 && day !== mobileDay) setMobileDay(day);
+  }
+
   return (
     <>
+      {/* Mobile: a swipeable day calendar rather than a flat list. The day
+          strip scrolls horizontally, and swiping the panel moves between days
+          exactly as a native calendar does. Desktop is untouched below. */}
       <div className="border-t border-border md:hidden">
-        <div className="grid grid-cols-7 border-b border-border bg-muted/25 px-1">
+        <div
+          aria-label="Select a day"
+          className="subnav-row gap-1 border-b border-border bg-muted/25 px-2 py-2"
+          ref={dayStripRef}
+          role="tablist"
+        >
           {dates.map((date, index) => {
             const dayNumber = index + 1;
             const active = mobileDay === dayNumber;
+            const count = coursesForDay(dayNumber).length;
+            const isToday = date.toDateString() === todayKey;
             return (
               <button
-                className={`py-3 text-center transition ${
-                  active ? "text-kondo-green" : "text-muted-foreground"
-                }`}
+                aria-selected={active}
+                className={cn(
+                  "flex min-h-16 w-[3.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 transition",
+                  active
+                    ? "bg-kondo-green text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+                data-day={dayNumber}
                 key={date.toISOString()}
-                onClick={() => setMobileDay(dayNumber)}
+                onClick={() => showDay(dayNumber)}
+                role="tab"
                 type="button"
               >
-                <span className="block text-[9px] font-black uppercase">
-                  {DAY_NAMES[index]?.slice(0, 1)}
+                <span className="text-[10px] font-black uppercase tracking-wide">
+                  {DAY_NAMES[index]?.slice(0, 3)}
                 </span>
                 <span
-                  className={`mt-1 inline-grid h-7 w-7 place-items-center rounded-full text-xs font-black ${
-                    active ? "bg-kondo-green text-white" : ""
-                  }`}
+                  className={cn(
+                    "text-sm font-black",
+                    !active && isToday && "text-kondo-green",
+                  )}
                 >
                   {date.getDate()}
+                </span>
+                {/* A real count, never a decorative dot. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "h-1 w-1 rounded-full",
+                    count
+                      ? active
+                        ? "bg-white"
+                        : "bg-kondo-green"
+                      : "bg-transparent",
+                  )}
+                />
+                <span className="sr-only">
+                  {count === 1 ? "1 class" : `${count} classes`}
                 </span>
               </button>
             );
           })}
         </div>
-        <div className="divide-y divide-border">
-          {mobileCourses.map((course) => (
-            <div className="flex items-center gap-3 px-4 py-4" key={course.id}>
-              <span
-                className="h-12 w-1 rounded-full"
-                style={{ backgroundColor: course.color }}
-              />
-              <div className="w-16 shrink-0">
-                <p className="text-xs font-black">
-                  {course.startTime ??
-                    (course.startPeriod ? `P${course.startPeriod}` : "Time")}
-                </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  {course.endTime ??
-                    (course.endPeriod ? `P${course.endPeriod}` : "TBC")}
-                </p>
-              </div>
-              <button
-                className="min-w-0 flex-1 text-left"
-                onClick={() => onEdit(course)}
-                type="button"
+
+        <div
+          className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          onScroll={onPagerScroll}
+          ref={dayPagerRef}
+        >
+          {dates.map((date, index) => {
+            const dayNumber = index + 1;
+            const dayCourses = coursesForDay(dayNumber);
+            return (
+              <section
+                aria-label={DAY_NAMES[index]}
+                className="w-full shrink-0 snap-center"
+                key={date.toISOString()}
               >
-                <p className="truncate text-sm font-black">
-                  {course.courseName}
-                </p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {course.room || course.teacher || "Class"}
-                </p>
-              </button>
-              <Button
-                aria-label={`Delete ${course.courseName}`}
-                onClick={() => void onDelete(course.id)}
-                size="icon"
-                variant="ghost"
-              >
-                <Trash2 className="h-4 w-4 text-red-600" />
-              </Button>
-            </div>
-          ))}
-          {!mobileCourses.length ? (
-            <p className="px-4 py-14 text-center text-sm text-muted-foreground">
-              No classes on {DAY_NAMES[mobileDay - 1]}.
-            </p>
-          ) : null}
+                <div className="divide-y divide-border">
+                  {dayCourses.map((course) => (
+                    <div
+                      className="flex items-stretch gap-3 px-4 py-4"
+                      key={course.id}
+                    >
+                      {/* The period rail keeps the structure of the day
+                          visible instead of flattening it into a list. */}
+                      <div className="w-14 shrink-0 text-right">
+                        <p className="text-sm font-black leading-tight">
+                          {course.startTime ??
+                            (course.startPeriod
+                              ? `P${course.startPeriod}`
+                              : "—")}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {course.endTime ??
+                            (course.endPeriod ? `P${course.endPeriod}` : "TBC")}
+                        </p>
+                        {course.startPeriod ? (
+                          <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            Period {course.startPeriod}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span
+                        aria-hidden="true"
+                        className="w-1 shrink-0 rounded-full"
+                        style={{ backgroundColor: course.color }}
+                      />
+                      <button
+                        className="min-w-0 flex-1 rounded-2xl bg-muted/40 p-3 text-left transition active:scale-[0.99] motion-reduce:transform-none"
+                        onClick={() => onEdit(course)}
+                        type="button"
+                      >
+                        <p className="text-sm font-black leading-snug">
+                          {course.courseName}
+                        </p>
+                        {course.room || course.teacher ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {[course.room, course.teacher]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        ) : null}
+                      </button>
+                      <Button
+                        aria-label={`Delete ${course.courseName}`}
+                        className="self-center"
+                        onClick={() => void onDelete(course.id)}
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ))}
+                  {!dayCourses.length ? (
+                    <p className="px-4 py-14 text-center text-sm text-muted-foreground">
+                      No classes on {DAY_NAMES[index]}.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
       <div className="hidden overflow-x-auto border-t border-border md:block">

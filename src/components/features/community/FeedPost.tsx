@@ -26,6 +26,7 @@ import { Card } from "@/components/ui/Card";
 import { formatRelativeDate } from "@/lib/presentation";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import { ExpandableText } from "@/components/ui/ClampedText";
 import { cn } from "@/lib/utils";
 
 export type FeedPostData = {
@@ -226,14 +227,18 @@ export function FeedPost({
               {post.title}
             </h2>
           ) : null}
-          <p
+          {/* Collapsed in the feed so a long post cannot take a whole screen;
+              the immersive reader shows the complete text with no control. */}
+          <ExpandableText
             className={cn(
               "mt-2 whitespace-pre-line text-[15px] leading-7 text-muted-foreground",
               immersive && "mt-3 leading-7 text-foreground/80 sm:text-base",
             )}
-          >
-            {post.content}
-          </p>
+            collapsible={!immersive}
+            lines={5}
+            mobileLines={3}
+            text={post.content}
+          />
           {post.media?.length ? (
             <PostMediaGallery immersive={immersive} media={post.media} />
           ) : null}

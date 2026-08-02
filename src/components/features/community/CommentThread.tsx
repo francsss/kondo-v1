@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { formatRelativeDate } from "@/lib/presentation";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
+import { ExpandableText } from "@/components/ui/ClampedText";
 import { cn } from "@/lib/utils";
 
 export type CommentItem = {
@@ -448,9 +449,12 @@ function CommentRow({
             {comment.editedAt ? " · edited" : ""}
           </span>
         </div>
-        <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-foreground/80">
-          {comment.content}
-        </p>
+        <ExpandableText
+          className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-foreground/80"
+          lines={4}
+          mobileLines={3}
+          text={comment.content}
+        />
         <div className="mt-1.5 flex flex-wrap items-center gap-0.5">
           <Button
             aria-label={reacted ? "Remove reaction" : "React to comment"}

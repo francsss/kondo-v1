@@ -98,7 +98,9 @@ test.describe.serial("organization public profile", () => {
     await expect(page.getByRole("status")).toContainText(
       "profile is now public",
     );
-    await page.getByRole("link", { name: "View public page" }).click();
+    // The workspace hero also offers this action once the profile is
+    // published, so both links point at the same page.
+    await page.getByRole("link", { name: "View public page" }).first().click();
     await expect(
       page.getByRole("heading", { name: publicName, exact: true }),
     ).toBeVisible();

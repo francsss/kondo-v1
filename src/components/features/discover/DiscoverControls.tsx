@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 export function DiscoverControls({
   cities,
@@ -83,37 +84,31 @@ export function DiscoverControls({
           </button>
         ) : null}
       </label>
-      <label>
-        <span className="sr-only">Filter by city</span>
-        <select
-          className="h-12 w-full rounded-2xl border-0 bg-muted/50 px-4 text-sm font-bold outline-none ring-kondo-green focus:ring-2"
-          onChange={(event) => setCity(event.target.value)}
-          value={searchParams.get("cityId") ?? ""}
-        >
-          <option value="">All active cities</option>
-          {cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Hundreds of cities and universities: a native select forces the
+          student to scroll blindly, so both use the shared searchable
+          selector instead. */}
+      <SearchableSelect
+        clearLabel="All active cities"
+        label="Filter by city"
+        onSelect={setCity}
+        options={cities.map((city) => ({ id: city.id, name: city.name }))}
+        placeholder="All active cities"
+        searchPlaceholder="Search city"
+        selected={searchParams.get("cityId") ?? ""}
+      />
       {supportsUniversity ? (
-        <label>
-          <span className="sr-only">Filter by university</span>
-          <select
-            className="h-12 w-full rounded-2xl border-0 bg-muted/50 px-4 text-sm font-bold outline-none ring-kondo-green focus:ring-2"
-            onChange={(event) => setUniversity(event.target.value)}
-            value={searchParams.get("universityId") ?? ""}
-          >
-            <option value="">All universities</option>
-            {universities.map((university) => (
-              <option key={university.id} value={university.id}>
-                {university.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SearchableSelect
+          clearLabel="All universities"
+          label="Filter by university"
+          onSelect={setUniversity}
+          options={universities.map((university) => ({
+            id: university.id,
+            name: university.name,
+          }))}
+          placeholder="All universities"
+          searchPlaceholder="Search university"
+          selected={searchParams.get("universityId") ?? ""}
+        />
       ) : null}
     </div>
   );
