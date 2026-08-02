@@ -89,12 +89,12 @@
   }
 
   /*
-   * Keyboard focus ring for everything that is not a text field.
+   * Keyboard focus ring for controls that are not text fields.
    *
-   * `ring-offset-2` draws the ring detached from the element. On a pill button
-   * that reads as a halo, but on a rectangular input it rendered as a hard dark
-   * green rectangle around the field — the "green square" on focus. Text fields
-   * are excluded here and get the premium treatment below instead.
+   * `ring-offset-2` paints the ring detached from the element. That reads as a
+   * halo on a pill button, but as a hard rectangle around a text field — and on
+   * a bare field sitting inside a rounded shell, as a rectangle *inside* the
+   * shell. Text fields are handled separately below.
    */
   :focus-visible:not(input):not(textarea):not(select):not([contenteditable]) {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
@@ -103,58 +103,27 @@
   input,
   select,
   textarea {
-    @apply text-foreground placeholder:text-muted-foreground;
-    transition:
-      border-color 200ms ease,
-      box-shadow 200ms ease,
-      color 200ms ease;
+    @apply text-foreground transition-colors duration-200 placeholder:text-muted-foreground;
   }
 
   /*
-   * One premium focus treatment for every text field in the product: a thin
-   * Kondo green border plus a soft green illumination, with no background
-   * change and no detached ring. Fields keep whatever radius their own class
-   * gives them, so this never fights a component's shape.
-   *
-   * Applied in the base layer because Kondo has no shared Input component:
-   * search bars, the message composer, filters, authentication and admin forms
-   * all use native elements, so this is the single place that reaches them all.
+   * Text fields never draw a ring or a browser outline — that is where the
+   * blue default focus ring came from. Only the border colour changes, which
+   * is self-limiting: a field with no border of its own paints nothing, so no
+   * rectangle can ever appear. The visible illumination belongs to
+   * `.kondo-field` below, on whichever element draws the rounded shape.
    */
+  input:focus,
   input:focus-visible,
+  textarea:focus,
   textarea:focus-visible,
+  select:focus,
   select:focus-visible,
+  [contenteditable]:focus,
   [contenteditable]:focus-visible {
-    /* Only the border colour changes. A field with no border of its own — the
-     * message composer, a search box inside a rounded shell — has nothing to
-     * paint, so it can never grow a hard rectangle inside its container. A
-     * box-shadow here did exactly that. */
-    @apply outline-none;
-    border-color: rgb(var(--ring));
-  }
-
-  /*
-   * The soft illumination is not defined here. A base-layer rule loses to the
-   * Tailwind utilities these shells already carry (`shadow-soft`,
-   * `border-border`), so the glow is expressed with `focus-within:` utilities
-   * on the shell itself — the pattern the message composer already uses.
-   */
-
-  @media (prefers-contrast: more) {
-    input:focus-visible,
-    textarea:focus-visible,
-    select:focus-visible,
-    [contenteditable]:focus-visible {
-      outline: 2px solid rgb(var(--ring));
-      outline-offset: 1px;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    input,
-    select,
-    textarea {
-      transition: none;
-    }
+    outline: none;
+    box-shadow: none;
+    border-color: rgb(var(--ring) / 0.55);
   }
 
   img,
@@ -248,6 +217,35 @@ textarea {
 }
 
 @layer components {
+  /*
+   * The one Kondo focus treatment for text entry. Put it on whichever element
+   * draws the rounded shape — the field itself when it owns its border, or the
+   * shell wrapping a bare transparent field such as the message composer.
+   *
+   * The illumination is `inset`, so it lives inside the rounded shape and can
+   * never paint a rectangle outside it. The class is repeated in the selector
+   * purely for specificity: these shells carry Tailwind utilities such as
+   * `shadow-soft`, which would otherwise win and swallow the focus state.
+   */
+  .kondo-field.kondo-field {
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .kondo-field.kondo-field:focus-within {
+    border-color: rgb(var(--ring) / 0.55);
+    box-shadow:
+      inset 0 0 0 1px rgb(var(--ring) / 0.28),
+      inset 0 0 14px 0 rgb(var(--ring) / 0.1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kondo-field.kondo-field {
+      transition: none;
+    }
+  }
+
   .subnav-row {
     display: flex;
     width: 100%;

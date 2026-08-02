@@ -197,7 +197,7 @@ test.describe.serial("marketplace sections", () => {
 
   test("keeps student skills in their own section", async ({ page }) => {
     await page.goto("/marketplace?view=skills");
-    await expect(page.getByText(skillTitle)).toBeVisible();
+    await expect(page.getByText(skillTitle).first()).toBeVisible();
     // A skill must never be presented as an organization service.
     await expect(page.getByText("Organization service")).toHaveCount(0);
   });
@@ -262,7 +262,7 @@ test.describe.serial("marketplace sections", () => {
     page,
   }) => {
     await page.goto("/marketplace?view=skills");
-    await expect(page.getByText(skillTitle)).toBeVisible();
+    await expect(page.getByText(skillTitle).first()).toBeVisible();
     const body = (await page.textContent("body")) ?? "";
     expect(body).not.toContain("sections.e2e");
   });

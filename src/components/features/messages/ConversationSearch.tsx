@@ -33,7 +33,7 @@ export function ConversationSearch({
   }, [archived, query, router]);
 
   return (
-    <div className="group flex h-12 items-center gap-3 rounded-2xl border border-border bg-card px-4 shadow-[0_4px_18px_rgba(13,51,40,0.045)] transition focus-within:border-kondo-green/45 focus-within:ring-4 focus-within:ring-kondo-green/8">
+    <div className="kondo-field group flex h-12 items-center gap-3 rounded-2xl border border-border bg-card px-4 shadow-[0_4px_18px_rgba(13,51,40,0.045)]">
       <Search
         aria-hidden="true"
         className="h-4 w-4 text-muted-foreground transition group-focus-within:text-kondo-green"

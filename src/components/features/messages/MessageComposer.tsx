@@ -338,7 +338,7 @@ export function MessageComposer({
         </div>
       ) : null}
 
-      <div className="flex items-end gap-1 rounded-[1.65rem] border border-border bg-background p-1.5 shadow-[0_8px_32px_rgba(13,51,40,0.08)] transition focus-within:border-kondo-green/45 focus-within:ring-4 focus-within:ring-kondo-green/8 dark:bg-white/5 sm:gap-1.5">
+      <div className="kondo-field flex items-end gap-1 rounded-[1.65rem] border border-border bg-background p-1.5 shadow-[0_8px_32px_rgba(13,51,40,0.08)] dark:bg-white/5 sm:gap-1.5">
         <Button
           aria-expanded={emojiOpen}
           aria-label="Choose an emoji"

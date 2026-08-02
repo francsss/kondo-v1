@@ -175,6 +175,26 @@ export function ConversationThread({
     scrollToBottom("auto");
   }, [scrollToBottom]);
 
+  /**
+   * Focusing the composer opens the mobile keyboard, which shrinks the visual
+   * viewport and therefore the thread. A reader who was at the latest message
+   * would suddenly find it pushed above the fold and have to scroll back down
+   * before typing. Re-pin the thread whenever the viewport resizes, but only
+   * for someone who was already reading the bottom — never yank a reader who
+   * had deliberately scrolled up into the history.
+   */
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    function onViewportResize() {
+      if (!atBottomRef.current) return;
+      // Jump, never animate: the keyboard transition is already in motion.
+      scrollToBottom("auto");
+    }
+    viewport.addEventListener("resize", onViewportResize);
+    return () => viewport.removeEventListener("resize", onViewportResize);
+  }, [scrollToBottom]);
+
   useEffect(() => {
     void markLatestRead();
   }, [markLatestRead]);

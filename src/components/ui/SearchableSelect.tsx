@@ -96,8 +96,8 @@ export function SearchableSelect({
         aria-labelledby={`${id}-label`}
         className={cn(
           "flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 text-left text-sm shadow-sm outline-none transition",
-          "hover:border-kondo-green/50 focus-visible:border-kondo-green focus-visible:ring-4 focus-visible:ring-kondo-green/10",
-          open && "border-kondo-green ring-4 ring-kondo-green/10",
+          "kondo-field hover:border-kondo-green/50",
+          open && "border-kondo-green",
           disabled && "cursor-not-allowed opacity-55",
         )}
         disabled={disabled}
@@ -130,7 +130,7 @@ export function SearchableSelect({
       {open ? (
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-xl shadow-black/10 dark:shadow-black/30">
           <div className="border-b border-border p-3">
-            <div className="flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 focus-within:border-kondo-green focus-within:ring-4 focus-within:ring-kondo-green/10">
+            <div className="kondo-field flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-3">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
               <input
                 aria-label={searchPlaceholder}
