@@ -94,7 +94,7 @@ test.describe("authenticated member journeys", () => {
     for (const label of [
       "Home",
       "Student Hub",
-      "Discover",
+      "Marketplace",
       "Communities",
       "Messages",
     ]) {

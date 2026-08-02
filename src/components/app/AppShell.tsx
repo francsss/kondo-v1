@@ -104,7 +104,10 @@ const navigation: NavigationItem[] = [
     icon: GraduationCap,
     aliases: ["/guides", "/help"],
   },
-  { href: "/discover", label: "Discover", icon: Compass },
+  // Marketplace takes the slot Discover held; Discover takes Marketplace's
+  // slot in the secondary menu below. Position swap only — each entry keeps
+  // its own route, label and icon.
+  { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
   { href: "/communities", label: "Communities", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
@@ -113,7 +116,7 @@ const secondaryNavigation: NavigationItem[] = [
   { href: "/housing", label: "Housing", icon: House },
   { href: "/stories", label: "Student Stories", icon: Clapperboard },
   { href: "/saved", label: "Saved", icon: Bookmark },
-  { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
+  { href: "/discover", label: "Discover", icon: Compass },
 ];
 
 /**

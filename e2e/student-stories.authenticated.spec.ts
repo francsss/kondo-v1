@@ -42,7 +42,7 @@ test.describe("Student Stories access and responsive navigation", () => {
     expect(quickHrefs).toEqual([
       "/home",
       "/student-hub",
-      "/discover",
+      "/marketplace",
       "/communities",
       "/messages",
     ]);
@@ -68,8 +68,8 @@ test.describe("Student Stories access and responsive navigation", () => {
       navigation.getByRole("link", { name: "Saved" }),
     ).toHaveAttribute("href", "/saved");
     await expect(
-      navigation.getByRole("link", { name: "Marketplace" }),
-    ).toHaveAttribute("href", "/marketplace");
+      navigation.getByRole("link", { name: "Discover" }),
+    ).toHaveAttribute("href", "/discover");
   });
 
   test("opens publishing and official-profile workflows without overflow", async ({
