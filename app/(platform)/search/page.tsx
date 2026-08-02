@@ -82,8 +82,9 @@ export default async function SearchPage({
   }
   return (
     <div className="mx-auto max-w-[1040px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16">
+      {/* The input is bare, so the rounded shell owns the focus treatment. */}
       <form
-        className="flex h-16 items-center gap-4 rounded-3xl border border-border bg-card px-5 text-card-foreground shadow-soft"
+        className="flex h-16 items-center gap-4 rounded-3xl border border-border bg-card px-5 text-card-foreground shadow-soft transition focus-within:border-kondo-green/45 focus-within:ring-4 focus-within:ring-kondo-green/8"
         role="search"
       >
         <Search className="h-5 w-5 text-kondo-green" />

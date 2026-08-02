@@ -124,16 +124,20 @@
   textarea:focus-visible,
   select:focus-visible,
   [contenteditable]:focus-visible {
+    /* Only the border colour changes. A field with no border of its own — the
+     * message composer, a search box inside a rounded shell — has nothing to
+     * paint, so it can never grow a hard rectangle inside its container. A
+     * box-shadow here did exactly that. */
     @apply outline-none;
     border-color: rgb(var(--ring));
-    box-shadow: 0 0 0 4px rgb(var(--ring) / 0.16);
   }
 
-  /* A field wrapped in a bordered container illuminates the container. */
-  .field-shell:focus-within {
-    border-color: rgb(var(--ring));
-    box-shadow: 0 0 0 4px rgb(var(--ring) / 0.16);
-  }
+  /*
+   * The soft illumination is not defined here. A base-layer rule loses to the
+   * Tailwind utilities these shells already carry (`shadow-soft`,
+   * `border-border`), so the glow is expressed with `focus-within:` utilities
+   * on the shell itself — the pattern the message composer already uses.
+   */
 
   @media (prefers-contrast: more) {
     input:focus-visible,
