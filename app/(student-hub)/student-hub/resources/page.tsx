@@ -85,7 +85,7 @@ export default function StudentHubResourcesPage() {
           const Icon = category.icon;
           return (
             <li key={category.key}>
-              <article className="flex h-full flex-col rounded-3xl border border-border bg-card p-5">
+              <article className="flex h-full flex-col rounded-3xl border border-border bg-card p-5 transition duration-200 hover:-translate-y-0.5 hover:border-kondo-green/25 hover:shadow-soft motion-reduce:transform-none">
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200">
                   <Icon aria-hidden="true" className="h-5 w-5" />
                 </span>
