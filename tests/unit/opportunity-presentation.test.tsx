@@ -184,8 +184,10 @@ describe("horizontal tab semantics", () => {
 
   it("respects the reduced-motion preference in both the row and the panel", () => {
     expect(source).toContain("useReducedMotion");
-    expect(source).toContain("if (reducedMotion) return <div");
     expect(source).toContain('behavior: reducedMotion ? "auto" : "smooth"');
+    expect(source).toContain("duration: reducedMotion ? 0 : 0.18");
+    expect(source).toContain("motion-reduce:!transform-none");
+    expect(source).toContain("motion-reduce:!opacity-100");
   });
 
   it("scrolls only the inline axis so the page never jumps", () => {

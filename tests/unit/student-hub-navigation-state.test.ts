@@ -74,7 +74,7 @@ describe("Student Hub module navigation", () => {
     );
   });
 
-  it("shows Planner only for journeys with academic-tool access", () => {
+  it("shows Academic tools only for journeys with academic-tool access", () => {
     expect(
       studentHubTabsForModule("studies", true).map((tab) => tab.key),
     ).toEqual(["overview", "tools", "help"]);
@@ -104,9 +104,24 @@ describe("Student Hub module navigation", () => {
     ]);
   });
 
-  it("gives Resources its own module with no second level", () => {
+  it("gives Resources a contextual row of existing Kondo destinations", () => {
     expect(studentHubModuleForPath("/student-hub/resources")).toBe("resources");
-    expect(studentHubTabsForModule("resources", true)).toEqual([]);
+    expect(
+      studentHubTabsForModule("resources", true).map((tab) => tab.key),
+    ).toEqual([
+      "resource-home",
+      "guides",
+      "stories",
+      "communities",
+      "housing",
+      "city-resources",
+    ]);
+    expect(
+      activeStudentHubTab(
+        "/student-hub/resources",
+        studentHubTabsForModule("resources", true),
+      ),
+    ).toBe("resource-home");
   });
 
   it("keeps Studies as the default module", () => {

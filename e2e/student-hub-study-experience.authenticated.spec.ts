@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Student Hub study-first experience", () => {
-  test("keeps study work and opportunities in two clear modules", async ({
+  test("keeps studies, resources and opportunities in three clear modules", async ({
     page,
   }) => {
     await page.goto("/student-hub");
@@ -23,10 +23,10 @@ test.describe("Student Hub study-first experience", () => {
     ).toBeVisible();
 
     const study = page.getByRole("navigation", { name: "Studies navigation" });
-    for (const label of ["Overview", "Planner", "Student Q&A"]) {
+    for (const label of ["Overview", "Academic tools", "Student Q&A"]) {
       await expect(study.getByRole("link", { name: label })).toBeVisible();
     }
-    await study.getByRole("link", { name: "Planner" }).click();
+    await study.getByRole("link", { name: "Academic tools" }).click();
     await expect(page).toHaveURL(/\/student-hub\/tools/);
     await expect(
       page.getByRole("heading", {
@@ -36,8 +36,24 @@ test.describe("Student Hub study-first experience", () => {
     ).toBeVisible();
 
     const planner = page.getByRole("navigation", { name: "Academic tools" });
-    await planner.getByRole("button", { name: "Schedule" }).click();
+    await planner.getByRole("link", { name: "Schedule" }).click();
     await expect(page).toHaveURL(/view=schedule/);
+
+    await modules.getByRole("link", { name: "Resources" }).click();
+    await expect(page).toHaveURL(/\/student-hub\/resources/);
+    const resources = page.getByRole("navigation", {
+      name: "Resources navigation",
+    });
+    for (const label of [
+      "Overview",
+      "Guides",
+      "Student Stories",
+      "Communities",
+      "Housing",
+      "City resources",
+    ]) {
+      await expect(resources.getByRole("link", { name: label })).toBeVisible();
+    }
 
     await modules.getByRole("link", { name: "Opportunities" }).click();
     await expect(page).toHaveURL(/\/student-hub\/scholarships/);
@@ -60,6 +76,7 @@ test.describe("Student Hub study-first experience", () => {
   test("keeps both navigation levels usable without mobile page overflow", async ({
     page,
   }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/student-hub");
     await expect(
@@ -68,12 +85,61 @@ test.describe("Student Hub study-first experience", () => {
     await expect(
       page
         .getByRole("navigation", { name: "Studies navigation" })
-        .getByRole("link", { name: "Planner" }),
+        .getByRole("link", { name: "Academic tools" }),
     ).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
       ),
     ).toBe(true);
+    await expect(
+      page.getByRole("link", { name: "Skip to Student Hub content" }),
+    ).toBeAttached();
+    const transitionStyle = await page
+      .locator("#student-hub-content > div")
+      .first()
+      .evaluate((element) => ({
+        opacity: getComputedStyle(element).opacity,
+        transform: getComputedStyle(element).transform,
+      }));
+    expect(transitionStyle).toEqual({ opacity: "1", transform: "none" });
+  });
+
+  test("keeps the shared Kondo brand visually locked between shells", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/home");
+    const globalBrand = page.getByRole("link", { name: "Kondo home" }).first();
+    await expect(globalBrand).toBeVisible();
+    const globalBounds = await globalBrand.boundingBox();
+    expect(globalBounds).not.toBeNull();
+
+    await page.locator("[data-navigation-scroll]").evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const scrolledBounds = await globalBrand.boundingBox();
+    expect(scrolledBounds).toEqual(globalBounds);
+
+    for (const route of ["/discover", "/communities", "/messages"]) {
+      await page.goto(route);
+      const routeBrand = page.getByRole("link", { name: "Kondo home" }).first();
+      await expect(routeBrand).toBeVisible();
+      const routeBounds = await routeBrand.boundingBox();
+      expect(routeBounds).not.toBeNull();
+      expect(routeBounds!.x).toBe(globalBounds!.x);
+      expect(routeBounds!.y).toBe(globalBounds!.y);
+      expect(routeBounds!.height).toBe(globalBounds!.height);
+    }
+
+    await page.goto("/student-hub");
+    const hubBrand = page.getByRole("link", { name: "Kondo home" }).first();
+    await expect(hubBrand).toBeVisible();
+    const hubBounds = await hubBrand.boundingBox();
+    expect(hubBounds).not.toBeNull();
+
+    expect(Math.abs(hubBounds!.x - globalBounds!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(hubBounds!.y - globalBounds!.y)).toBeLessThanOrEqual(2);
+    expect(hubBounds!.height).toBe(globalBounds!.height);
   });
 });

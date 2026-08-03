@@ -457,98 +457,103 @@ export function AppShell({
       <KondoPet enabled={kondoPetEnabled} />
       <aside
         aria-label="Desktop navigation"
-        className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-y-auto border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col"
+        className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-hidden border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col"
       >
-        <div className="px-2">
+        <div className="flex h-11 shrink-0 items-center px-2">
           <KondoLogo href="/home" />
         </div>
-        <nav aria-label="Primary navigation" className="mt-10 space-y-1">
-          {organizationWorkspace
-            ? workspaceNavigation.map((item) => (
-                <NavLink
-                  href={item.href}
-                  icon={WORKSPACE_MOBILE_ICONS[item.icon]}
-                  key={item.key}
-                  label={item.label}
-                  pathname={pathname}
-                />
-              ))
-            : navigation.map((item) => (
-                <NavLink
-                  badgeCount={
-                    item.href === "/messages" ? messageUnreadCount : undefined
-                  }
-                  key={item.href}
-                  {...item}
-                  pathname={pathname}
-                />
-              ))}
-        </nav>
+        <div
+          className="mt-8 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-1"
+          data-navigation-scroll=""
+        >
+          <nav aria-label="Primary navigation" className="space-y-1">
+            {organizationWorkspace
+              ? workspaceNavigation.map((item) => (
+                  <NavLink
+                    href={item.href}
+                    icon={WORKSPACE_MOBILE_ICONS[item.icon]}
+                    key={item.key}
+                    label={item.label}
+                    pathname={pathname}
+                  />
+                ))
+              : navigation.map((item) => (
+                  <NavLink
+                    badgeCount={
+                      item.href === "/messages" ? messageUnreadCount : undefined
+                    }
+                    key={item.href}
+                    {...item}
+                    pathname={pathname}
+                  />
+                ))}
+          </nav>
 
-        <div className="mt-6 border-t border-border pt-4">
-          <div className="space-y-1">
-            <WorkspaceSwitcher
-              presentation="menu"
-              user={user}
-              workspaces={workspaces}
-            />
-            {organizationWorkspace ? (
+          <div className="mt-6 border-t border-border pt-4">
+            <div className="space-y-1">
+              <WorkspaceSwitcher
+                presentation="menu"
+                user={user}
+                workspaces={workspaces}
+              />
+              {organizationWorkspace ? (
+                <NavLink
+                  href="/home"
+                  icon={UserRound}
+                  label="Return to Personal"
+                  pathname={pathname}
+                />
+              ) : (
+                secondaryNavigation.map((item) => (
+                  <NavLink key={item.href} {...item} pathname={pathname} />
+                ))
+              )}
+              <ThemeToggle presentation="menu" />
+            </div>
+          </div>
+
+          <div className="mt-auto space-y-2 pt-2">
+            {!user.onboardingCompletedAt ? (
+              <div className="rounded-3xl bg-gradient-to-br from-kondo-navy to-kondo-forest p-4 text-white shadow-lift">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/12">
+                  <Compass aria-hidden="true" className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-sm font-bold">Make Kondo yours</p>
+                <p className="mt-1 text-xs leading-5 text-white/65">
+                  Finish your profile for more relevant people, places, and
+                  guides.
+                </p>
+                <Link
+                  className="mt-3 inline-flex text-xs font-bold text-kondo-lime"
+                  href="/onboarding"
+                >
+                  Complete profile →
+                </Link>
+              </div>
+            ) : null}
+            {isAdmin ? (
               <NavLink
-                href="/home"
-                icon={UserRound}
-                label="Return to Personal"
+                href="/admin"
+                icon={Settings}
+                label="Admin"
                 pathname={pathname}
               />
-            ) : (
-              secondaryNavigation.map((item) => (
-                <NavLink key={item.href} {...item} pathname={pathname} />
-              ))
-            )}
-            <ThemeToggle presentation="menu" />
+            ) : null}
+            <button
+              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              onClick={logout}
+              type="button"
+            >
+              <LogOut className="h-5 w-5" /> Sign out
+            </button>
           </div>
-        </div>
-
-        <div className="mt-auto space-y-2">
-          {!user.onboardingCompletedAt ? (
-            <div className="rounded-3xl bg-gradient-to-br from-kondo-navy to-kondo-forest p-4 text-white shadow-lift">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/12">
-                <Compass aria-hidden="true" className="h-4 w-4" />
-              </div>
-              <p className="mt-3 text-sm font-bold">Make Kondo yours</p>
-              <p className="mt-1 text-xs leading-5 text-white/65">
-                Finish your profile for more relevant people, places, and
-                guides.
-              </p>
-              <Link
-                className="mt-3 inline-flex text-xs font-bold text-kondo-lime"
-                href="/onboarding"
-              >
-                Complete profile →
-              </Link>
-            </div>
-          ) : null}
-          {isAdmin ? (
-            <NavLink
-              href="/admin"
-              icon={Settings}
-              label="Admin"
-              pathname={pathname}
-            />
-          ) : null}
-          <button
-            className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            onClick={logout}
-            type="button"
-          >
-            <LogOut className="h-5 w-5" /> Sign out
-          </button>
         </div>
       </aside>
 
       <div className="lg:pl-[248px]">
-        <header className="sticky top-0 z-30 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-[1440px] items-center gap-3">
-            <div className="flex items-center lg:hidden">
+        <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-full max-w-[1440px] items-center gap-3">
+            <div className="flex h-11 shrink-0 items-center lg:hidden">
               <Button
                 aria-expanded={menuOpen}
                 aria-controls="mobile-navigation"
@@ -562,7 +567,7 @@ export function AppShell({
               </Button>
             </div>
             <Link
-              className="group mx-auto flex h-11 min-w-0 w-full max-w-xl items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md sm:mx-0"
+              className="group mx-auto flex h-11 min-w-0 flex-1 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md sm:mx-0 sm:max-w-xl"
               href="/search"
             >
               <Search
@@ -574,7 +579,7 @@ export function AppShell({
                 ⌘ K
               </kbd>
             </Link>
-            <div className="ml-auto flex shrink-0 items-center gap-1">
+            <div className="ml-auto flex h-11 shrink-0 items-center gap-1">
               <Button asChild className="relative" size="icon" variant="ghost">
                 <Link
                   aria-label={`Notifications${
@@ -643,7 +648,7 @@ export function AppShell({
           )}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex h-11 shrink-0 items-center justify-between">
             <KondoLogo href="/home" />
             <Button
               aria-label="Close navigation"

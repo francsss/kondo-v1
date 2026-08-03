@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -343,11 +344,15 @@ export function ScheduleWorkspace({
   const upcomingEvents = pendingTasks.filter((task) => task.kind === "EVENT");
   const weekDates = useMemo(() => academicWeekDates(weekAnchor), [weekAnchor]);
 
-  function changeSection(nextSection: "today" | "schedule" | "tasks") {
-    setSection(nextSection);
+  function sectionHref(nextSection: "today" | "schedule" | "tasks") {
     const params = new URLSearchParams({ view: nextSection });
     if (selectedSchedule) params.set("schedule", selectedSchedule);
-    router.replace(`/student-hub/tools?${params.toString()}`, {
+    return `/student-hub/tools?${params.toString()}`;
+  }
+
+  function changeSection(nextSection: "today" | "schedule" | "tasks") {
+    setSection(nextSection);
+    router.push(sectionHref(nextSection), {
       scroll: false,
     });
   }
@@ -883,16 +888,17 @@ export function ScheduleWorkspace({
             ["tasks", "Tasks", ListTodo],
           ] as const
         ).map(([value, label, Icon]) => (
-          <button
+          <Link
             aria-current={section === value ? "page" : undefined}
             className={`relative flex min-h-12 items-center justify-center gap-2 px-2 text-sm font-black transition ${
               section === value
                 ? "text-kondo-green"
                 : "text-muted-foreground hover:text-foreground"
             }`}
+            href={sectionHref(value)}
             key={value}
-            onClick={() => changeSection(value)}
-            type="button"
+            onClick={() => setSection(value)}
+            scroll={false}
           >
             <Icon className="h-4 w-4" />
             {label}
@@ -903,7 +909,7 @@ export function ScheduleWorkspace({
                   : "scale-x-0 opacity-0"
               }`}
             />
-          </button>
+          </Link>
         ))}
       </nav>
 

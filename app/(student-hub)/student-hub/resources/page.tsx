@@ -1,106 +1,118 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
+  ArrowUpRight,
   BookOpenText,
-  GraduationCap,
-  Languages,
-  Microscope,
-  Sparkles,
+  Clapperboard,
+  Compass,
+  House,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
+import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = {
-  title: "Resources",
-  description: "Academic resources that help students succeed in China.",
+  title: "Resources — Student Hub",
+  description:
+    "Trusted Kondo guides and student-life resources for studying in China.",
 };
 
-/**
- * Resources module.
- *
- * Structure and navigation only for now: the categories below describe what
- * this space will hold, without pretending anything is published yet. Nothing
- * here reads or writes data, so no model, API or permission is involved.
- */
-const PLANNED_CATEGORIES = [
-  {
-    key: "study-materials",
-    label: "Study materials",
-    description:
-      "Course notes, past papers and revision packs shared on Kondo.",
-    icon: BookOpenText,
-  },
-  {
-    key: "academic-guides",
-    label: "Academic guides",
-    description:
-      "How registration, credits, exams and graduation actually work here.",
-    icon: GraduationCap,
-  },
-  {
-    key: "research",
-    label: "Research resources",
-    description: "Finding a supervisor, reading papers and writing a thesis.",
-    icon: Microscope,
-  },
-  {
-    key: "languages",
-    label: "Language learning",
-    description: "Mandarin practice and academic language support.",
-    icon: Languages,
-  },
-  {
-    key: "ai-tools",
-    label: "AI study tools",
-    description:
-      "Reviewed tools for studying, with guidance on using them well.",
-    icon: Sparkles,
-  },
-] as const;
+type ResourceDestination = {
+  description: string;
+  href: string;
+  icon: LucideIcon;
+  label: string;
+};
 
-export default function StudentHubResourcesPage() {
+export default async function StudentHubResourcesPage() {
+  const user = await requireUser();
+  const cityHref = user.city?.slug
+    ? `/discover/cities/${user.city.slug}`
+    : "/discover";
+  const destinations: readonly ResourceDestination[] = [
+    {
+      label: "Guides",
+      description:
+        "Practical, reviewed guidance for university procedures and everyday student life.",
+      href: "/guides",
+      icon: BookOpenText,
+    },
+    {
+      label: "Student Stories",
+      description:
+        "Real experiences from students navigating campuses, cities and life in China.",
+      href: "/stories",
+      icon: Clapperboard,
+    },
+    {
+      label: "Communities",
+      description:
+        "Ask questions and learn from students who share your city, university or background.",
+      href: "/communities",
+      icon: Users,
+    },
+    {
+      label: "Housing resources",
+      description:
+        "Browse housing, roommate options and the guidance that helps you choose safely.",
+      href: "/housing",
+      icon: House,
+    },
+    {
+      label: user.city ? `${user.city.name} city resources` : "City resources",
+      description:
+        "Find useful places, services and local knowledge for your life beyond campus.",
+      href: cityHref,
+      icon: Compass,
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-[1240px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
+    <div className="mx-auto max-w-[1080px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
       <header>
         <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-          Student Hub
+          Student Hub · Resources
         </p>
-        <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-          Resources
+        <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-[-0.04em] sm:text-4xl">
+          Trusted support for study and student life.
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Everything that helps you actually get through your studies, in one
-          place.
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+          Move directly into the Kondo spaces that can help with your studies,
+          your campus life and your city.
         </p>
       </header>
 
-      {/* An honest empty state: the space exists, the content does not yet. */}
-      <div className="mt-8 rounded-3xl border border-dashed border-border p-8 text-center">
-        <h2 className="text-lg font-black">Nothing published yet</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Resources are being prepared. The categories below are what this space
-          will hold — nothing is hidden from you today.
-        </p>
-      </div>
-
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {PLANNED_CATEGORIES.map((category) => {
-          const Icon = category.icon;
+      <nav
+        aria-label="Student resources"
+        className="mt-8 divide-y divide-border border-y border-border"
+      >
+        {destinations.map((destination) => {
+          const Icon = destination.icon;
           return (
-            <li key={category.key}>
-              <article className="flex h-full flex-col rounded-3xl border border-border bg-card p-5 transition duration-200 hover:-translate-y-0.5 hover:border-kondo-green/25 hover:shadow-soft motion-reduce:transform-none">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200">
-                  <Icon aria-hidden="true" className="h-5 w-5" />
+            <Link
+              className="group grid min-h-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-5 outline-none transition-colors hover:text-kondo-green focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background sm:gap-5 sm:px-2"
+              href={destination.href}
+              key={destination.label}
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest transition-colors group-hover:bg-kondo-green group-hover:text-white dark:bg-emerald-400/10 dark:text-emerald-200">
+                <Icon aria-hidden="true" className="h-5 w-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-black tracking-[-0.015em] text-foreground">
+                  {destination.label}
                 </span>
-                <h3 className="mt-4 font-black">{category.label}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-                  {category.description}
-                </p>
-                <p className="mt-auto pt-4 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-                  Coming soon
-                </p>
-              </article>
-            </li>
+                <span className="mt-1 block max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {destination.description}
+                </span>
+              </span>
+              <ArrowUpRight
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-kondo-green motion-reduce:transform-none motion-reduce:transition-none"
+              />
+            </Link>
           );
         })}
-      </ul>
+      </nav>
     </div>
   );
 }

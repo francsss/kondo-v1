@@ -1,24 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ArrowLeft,
-  Compass,
-  GraduationCap,
-  Library,
-  NotebookPen,
-} from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
+import { KondoLogo } from "@/components/KondoLogo";
 import {
   HorizontalTabs,
   TabPanelTransition,
   type HorizontalTab,
 } from "@/components/ui/HorizontalTabs";
 import { studentHubAccessForJourney } from "@/lib/personal-journeys";
-import { cn } from "@/lib/utils";
 import { STUDENT_HUB_SECTIONS } from "@/lib/student-hub-sections";
 
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
@@ -41,30 +34,6 @@ const STUDENT_HUB_MODULES: readonly HorizontalTab[] = [
   },
 ];
 
-const STUDENT_HUB_PILLARS = [
-  {
-    key: "studies",
-    href: "/student-hub",
-    label: "Studies",
-    description: "Your timetable, deadlines and questions.",
-    icon: NotebookPen,
-  },
-  {
-    key: "resources",
-    href: "/student-hub/resources",
-    label: "Resources",
-    description: "Materials and guides that help you study.",
-    icon: Library,
-  },
-  {
-    key: "opportunities",
-    href: "/student-hub/scholarships",
-    label: "Opportunities",
-    description: "Scholarships, internships, jobs and programmes.",
-    icon: Compass,
-  },
-] as const;
-
 const STUDY_TABS: readonly HorizontalTab[] = [
   {
     key: "overview",
@@ -74,7 +43,7 @@ const STUDY_TABS: readonly HorizontalTab[] = [
   {
     key: "tools",
     href: "/student-hub/tools",
-    label: "Planner",
+    label: "Academic tools",
   },
   {
     key: "help",
@@ -83,13 +52,46 @@ const STUDY_TABS: readonly HorizontalTab[] = [
   },
 ];
 
+const RESOURCE_TABS: readonly HorizontalTab[] = [
+  {
+    key: "resource-home",
+    href: "/student-hub/resources",
+    label: "Overview",
+  },
+  {
+    key: "guides",
+    href: "/guides",
+    label: "Guides",
+  },
+  {
+    key: "stories",
+    href: "/stories",
+    label: "Student Stories",
+  },
+  {
+    key: "communities",
+    href: "/communities",
+    label: "Communities",
+  },
+  {
+    key: "housing",
+    href: "/housing",
+    label: "Housing",
+  },
+  {
+    key: "city-resources",
+    href: "/discover",
+    label: "City resources",
+  },
+];
+
 /**
  * Student Hub navigation.
  *
- * The first level contains only the two mental models a student needs: doing
- * their studies and finding opportunities. The second level exposes the real
- * destinations inside the active module. Routes and source domains stay
- * unchanged; this is an information-architecture layer, not duplicated data.
+ * The first level contains the three stable mental models of the workspace.
+ * The second level exposes only real destinations inside the active module.
+ * Routes and source domains stay unchanged; this is an information-architecture
+ * layer, not duplicated data.
  */
 export type StudentHubModule = "studies" | "resources" | "opportunities";
 
@@ -116,8 +118,7 @@ export function studentHubTabsForModule(
   if (module === "studies") {
     return STUDY_TABS.filter((tab) => tab.key !== "tools" || showAcademicTools);
   }
-  // Resources is a single destination today, so it needs no second level.
-  if (module === "resources") return [];
+  if (module === "resources") return [...RESOURCE_TABS];
   return STUDENT_HUB_SECTIONS.filter(
     (section) => section.key !== "overview",
   ).map((section) => ({
@@ -176,48 +177,61 @@ export function StudentHubShell({
   const activeModule = studentHubModuleForPath(pathname);
   const tabs = studentHubTabsForModule(activeModule, access.academicTools);
   const activeKey = activeStudentHubTab(pathname, tabs);
-  const activeIndex = Math.max(
+  const activeModuleIndex = STUDENT_HUB_MODULES.findIndex(
+    (module) => module.key === activeModule,
+  );
+  const activeTabIndex = Math.max(
     0,
     tabs.findIndex((tab) => tab.key === activeKey),
   );
+  // A module-level offset preserves transition direction even when both
+  // modules open on their first contextual destination.
+  const transitionIndex = Math.max(0, activeModuleIndex) * 10 + activeTabIndex;
+  const secondaryNavigationLabel =
+    activeModule === "studies"
+      ? "Studies navigation"
+      : activeModule === "resources"
+        ? "Resources navigation"
+        : "Opportunity navigation";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PresenceHeartbeat />
       <ProductAnalyticsIdentity user={user} />
-      {/* A slim, always-available way out. Just the arrow in a soft green
-          circle — the hub identity belongs to the hero below, not here. */}
+      <a
+        className="sr-only z-[60] rounded-full bg-background px-4 py-2 font-bold text-foreground shadow-lg focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        href="#student-hub-content"
+      >
+        Skip to Student Hub content
+      </a>
+
+      {/* The same locked brand geometry used by Kondo's global shell keeps the
+          transition into this dedicated workspace visually stable. */}
       <div className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-        <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
-          <Link
-            aria-label="Back to Kondo"
-            className="group grid h-10 w-10 shrink-0 place-items-center rounded-full border border-kondo-green/25 bg-kondo-green/8 text-kondo-green shadow-[0_0_0_4px_rgb(var(--ring)/0.06)] transition duration-200 hover:bg-kondo-green/14 hover:shadow-[0_0_0_6px_rgb(var(--ring)/0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            href="/home"
-          >
-            <ArrowLeft className="h-[18px] w-[18px] transition-transform duration-200 group-hover:-translate-x-0.5" />
-          </Link>
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-3 sm:px-6 lg:h-[5.5rem]">
+          <KondoLogo compactOnMobile href="/home" />
           <HorizontalTabs
             activeKey={activeModule}
             ariaLabel="Student Hub modules"
-            className="justify-end"
+            className="ml-auto max-w-[720px] py-1"
             tabs={STUDENT_HUB_MODULES}
           />
         </div>
       </div>
 
-      {/* The entrance. Three equal pillars, none of them the identity of the
-          hub on its own — the hub is the academic space that contains them. */}
+      {/* The compact academic identity replaces the duplicate set of three
+          navigation cards. The top row is now the single primary navigation. */}
       <header className="relative overflow-hidden border-b border-border/60">
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-gradient-to-br from-kondo-mint/70 via-background to-background dark:from-emerald-400/10 dark:via-background dark:to-background"
         />
         <div aria-hidden="true" className="noise absolute inset-0 opacity-70" />
-        <div className="relative mx-auto max-w-[1440px] px-4 pb-7 pt-8 sm:px-6 sm:pb-9 sm:pt-11 lg:px-8">
+        <div className="relative mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8">
           <div className="flex items-center gap-3">
             <span
               aria-hidden="true"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-kondo-green text-white shadow-lift"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-kondo-green text-white shadow-soft"
             >
               <GraduationCap className="h-5 w-5" />
             </span>
@@ -228,78 +242,35 @@ export function StudentHubShell({
 
           {/* Deliberately not an <h1>: this banner is shared chrome, and each
               page inside the hub owns the document heading that describes it. */}
-          <p className="mt-5 max-w-3xl font-display text-3xl font-black leading-[1.05] tracking-[-0.04em] sm:text-4xl lg:text-5xl">
+          <p className="mt-4 max-w-3xl font-display text-3xl font-black leading-[1.08] tracking-[-0.04em] sm:text-4xl">
             {user.university?.name
               ? `Your academic space at ${user.university.name}.`
               : "Your academic space."}
           </p>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+          <p className="mt-2.5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
             Everything for your studies in one place — your timetable and
             deadlines, the resources that help you, and the opportunities open
             to you.
           </p>
-
-          <nav
-            aria-label="Student Hub pillars"
-            className="mt-7 grid gap-3 sm:mt-8 sm:grid-cols-3"
-          >
-            {STUDENT_HUB_PILLARS.map((pillar) => {
-              const Icon = pillar.icon;
-              const active = pillar.key === activeModule;
-              return (
-                <Link
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "group flex items-start gap-3 rounded-3xl border p-4 transition duration-200 hover:-translate-y-0.5 motion-reduce:transform-none sm:p-5",
-                    active
-                      ? "border-kondo-green/35 bg-card shadow-soft"
-                      : "border-border/70 bg-card/55 hover:border-kondo-green/25 hover:bg-card",
-                  )}
-                  href={pillar.href}
-                  key={pillar.key}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "grid h-10 w-10 shrink-0 place-items-center rounded-2xl transition",
-                      active
-                        ? "bg-kondo-green text-white"
-                        : "bg-muted text-muted-foreground group-hover:bg-kondo-mint group-hover:text-kondo-forest dark:group-hover:bg-emerald-400/10 dark:group-hover:text-emerald-200",
-                    )}
-                  >
-                    <Icon className="h-[18px] w-[18px]" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-black leading-tight">
-                      {pillar.label}
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                      {pillar.description}
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
         </div>
       </header>
 
       {tabs.length ? (
-        <div className="sticky top-[3.75rem] z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+        <div className="sticky top-16 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 lg:top-[5.5rem]">
           <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <HorizontalTabs
               activeKey={activeKey}
-              ariaLabel={`${
-                activeModule === "studies" ? "Studies" : "Opportunity"
-              } navigation`}
+              ariaLabel={secondaryNavigationLabel}
               className="py-1.5"
               tabs={tabs}
             />
           </div>
         </div>
       ) : null}
-      <main>
-        <TabPanelTransition index={activeIndex}>{children}</TabPanelTransition>
+      <main id="student-hub-content">
+        <TabPanelTransition index={transitionIndex}>
+          {children}
+        </TabPanelTransition>
       </main>
       <KondoPet enabled={kondoPetEnabled} />
     </div>

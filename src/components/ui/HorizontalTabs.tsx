@@ -134,17 +134,21 @@ export function TabPanelTransition({
     setTracked({ index, direction });
   }
 
-  if (reducedMotion) return <div className={className}>{children}</div>;
-
   return (
     <AnimatePresence initial={false} mode="wait">
       <motion.div
         animate={{ opacity: 1, x: 0 }}
-        className={className}
+        className={cn(
+          "motion-reduce:!transform-none motion-reduce:!opacity-100",
+          className,
+        )}
         exit={{ opacity: 0 }}
         initial={{ opacity: 0, x: direction * 12 }}
         key={`${pathname}?${searchParams.toString()}`}
-        transition={{ duration: 0.18, ease: "easeOut" }}
+        transition={{
+          duration: reducedMotion ? 0 : 0.18,
+          ease: "easeOut",
+        }}
       >
         {children}
       </motion.div>
