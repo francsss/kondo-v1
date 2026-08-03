@@ -72,6 +72,12 @@ export default async function OrganizationPublicProfilePage({
       <OrganizationPublicChrome
         backHref="/organizations"
         backLabel="All organizations"
+        organization={{
+          name: result.profile.publicName,
+          logoUrl: result.profile.logo?.url ?? null,
+          verified: result.profile.trust.verification.state === "VERIFIED",
+          type: result.profile.organizationType,
+        }}
       />
       <OrganizationPublicPage
         activeSection={activeSection}

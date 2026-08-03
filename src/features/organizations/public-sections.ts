@@ -1,4 +1,8 @@
-import type { OrganizationCapabilityKey } from "@prisma/client";
+import type {
+  OrganizationCapabilityKey,
+  OrganizationType,
+} from "@prisma/client";
+import { organizationTypeMetadata } from "@/features/organizations/registry";
 import { getOrganizationHousingProjection } from "@/lib/housing-projections";
 import {
   getOrganizationJobsProjection,
@@ -30,6 +34,8 @@ export type OrganizationPublicProjection = {
     title: string;
     href: string;
     context?: string | null;
+    /** Cover image, when the owning domain publishes one. */
+    imageUrl?: string | null;
   }[];
   sectionRoute: string | null;
   visibility: "PUBLIC" | "HIDDEN";
@@ -99,7 +105,7 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     key: "overview",
     label: "Overview",
     icon: "sparkles",
-    order: 10,
+    order: 20,
     accessibilityLabel: "Organization overview",
     analyticsId: "overview",
     futureProviderKey: null,
@@ -108,7 +114,7 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     key: "about",
     label: "About",
     icon: "building",
-    order: 20,
+    order: 30,
     accessibilityLabel: "About this organization",
     analyticsId: "about",
     futureProviderKey: null,
@@ -117,7 +123,7 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     key: "capabilities",
     label: "Activity areas",
     icon: "grid",
-    order: 30,
+    order: 40,
     accessibilityLabel: "Organization activity areas",
     analyticsId: "capabilities",
     futureProviderKey: null,
@@ -126,7 +132,7 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     key: "gallery",
     label: "Gallery",
     icon: "image",
-    order: 40,
+    order: 50,
     accessibilityLabel: "Organization image gallery",
     analyticsId: "gallery",
     futureProviderKey: null,
@@ -135,7 +141,7 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     key: "contact",
     label: "Contact",
     icon: "contact",
-    order: 50,
+    order: 60,
     accessibilityLabel: "Public organization contact details",
     analyticsId: "contact",
     futureProviderKey: null,
@@ -144,7 +150,7 @@ export const ORGANIZATION_PUBLIC_SECTIONS = [
     key: "city-context",
     label: "City",
     icon: "map",
-    order: 60,
+    order: 70,
     accessibilityLabel: "Related Kondo city guide",
     analyticsId: "city_context",
     futureProviderKey: null,
@@ -155,7 +161,7 @@ export const ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION = {
   key: "scholarships",
   label: "Scholarships",
   icon: "graduation-cap",
-  order: 36,
+  order: 13,
   accessibilityLabel: "Scholarships published by this organization",
   analyticsId: "scholarships",
   futureProviderKey: "scholarships",
@@ -165,7 +171,7 @@ export const ORGANIZATION_JOBS_PUBLIC_SECTION = {
   key: "jobs",
   label: "Internships & jobs",
   icon: "briefcase",
-  order: 37,
+  order: 14,
   accessibilityLabel: "Internships and jobs published by this organization",
   analyticsId: "jobs",
   futureProviderKey: "jobs",
@@ -175,7 +181,7 @@ export const ORGANIZATION_HOUSING_PUBLIC_SECTION = {
   key: "housing",
   label: "Housing",
   icon: "home",
-  order: 35,
+  order: 12,
   accessibilityLabel: "Housing published by this organization",
   analyticsId: "housing",
   futureProviderKey: "housing",
@@ -185,7 +191,7 @@ export const ORGANIZATION_PRODUCTS_PUBLIC_SECTION = {
   key: "products",
   label: "Products",
   icon: "package",
-  order: 38,
+  order: 10,
   accessibilityLabel: "Products published by this organization",
   analyticsId: "products",
   futureProviderKey: "products",
@@ -195,11 +201,36 @@ export const ORGANIZATION_SERVICES_PUBLIC_SECTION = {
   key: "student-services",
   label: "Services",
   icon: "users",
-  order: 39,
+  order: 11,
   accessibilityLabel: "Student services published by this organization",
   analyticsId: "student_services",
   futureProviderKey: "student-services",
 } as const;
+
+type OrderedSection = { key: string; order: number };
+
+/**
+ * Orders the visible sections of a public profile.
+ *
+ * Value sections carry the lowest base order, so the first tab always answers
+ * "what does this organization offer?" rather than opening on About. Within
+ * those, the organization type's own `sectionPriority` decides which one
+ * leads: a housing provider opens on Housing, a company on Products. Sections
+ * the type does not prioritise keep their default order.
+ */
+export function orderOrganizationSections<Section extends OrderedSection>(
+  sections: readonly Section[],
+  organizationType: OrganizationType | string,
+): Section[] {
+  const priority: readonly string[] =
+    organizationTypeMetadata(organizationType).sectionPriority;
+  const rank = (section: Section) => {
+    const index = priority.indexOf(section.key);
+    // Prioritised value sections sort ahead of every default order.
+    return index === -1 ? section.order : index - priority.length;
+  };
+  return [...sections].sort((first, second) => rank(first) - rank(second));
+}
 
 export function visibleOrganizationSections(input: {
   hasOverview: boolean;

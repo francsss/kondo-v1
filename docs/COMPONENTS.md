@@ -162,6 +162,12 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 - `OrganizationOnboardingFlow`: three steps — identity, profile (activity areas, introduction and contact on one screen), review. Shares `OnboardingShell` with the personal flow.
 - Step completion rules live in `src/lib/onboarding-requirements.ts` and return the sentence shown next to the primary action, so a disabled button always states what is missing.
 
+### Public organization profile
+
+- `OrganizationPublicChrome`: the chrome for a public organization page. It carries no main platform navigation — the organization is the subject of the page. The account area resolves from `/api/auth/me` on the client, so a signed-in member is never offered "Log in" while the route itself stays cacheable for anonymous visitors and crawlers; nothing renders in that slot until the answer is known. Past the hero it hands the bar over to the organization: logo, name and verification mark.
+- `OrganizationPublicPage`: hero, section tabs and panels. The hero states what the organization publishes (`3 Products`, `2 Internships & jobs`) so the first impression answers "what do they offer?" before a tab is opened.
+- Tab order comes from `orderOrganizationSections` in `src/features/organizations/public-sections.ts`. Value sections carry the lowest base order, so a profile never opens on About, and each organization type's `sectionPriority` in the registry decides which value section leads — Housing for a housing provider, Products for a company. Only sections with real published content are ever visible.
+
 ### Help center
 
 - `QuestionComposer`: validated question creation and redirect to the new knowledge page.

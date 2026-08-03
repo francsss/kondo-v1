@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestCountry } from "../helpers/reference-data";
 import { getPublicHousingListing } from "@/lib/housing-listings";
 import { expireHousingRequests } from "@/lib/housing-requests";
 import {
@@ -52,11 +53,8 @@ postgresDescribe("Housing public privacy and visibility", () => {
   beforeAll(async () => {
     await cleanup();
     const suffix = randomUUID().replaceAll("-", "");
-    const country = await prisma.country.create({
-      data: {
-        code: suffix.slice(0, 2).toUpperCase(),
-        name: `Housing Test ${suffix}`,
-      },
+    const country = await createTestCountry(prisma, {
+      name: `Housing Test ${suffix}`,
     });
     const city = await prisma.city.create({
       data: {

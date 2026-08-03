@@ -13,6 +13,7 @@ import {
   ORGANIZATION_SCHOLARSHIPS_PUBLIC_SECTION,
   ORGANIZATION_PRODUCTS_PUBLIC_SECTION,
   ORGANIZATION_SERVICES_PUBLIC_SECTION,
+  orderOrganizationSections,
   visibleOrganizationSections,
   type OrganizationPublicProjection,
 } from "@/features/organizations/public-sections";
@@ -202,11 +203,10 @@ export async function serializeOrganizationPublicProfile(
       ? ORGANIZATION_SERVICES_PUBLIC_SECTION
       : null,
   ].filter((section) => section !== null);
-  const visibleSections = domainSections.length
-    ? [...baseVisibleSections, ...domainSections].sort(
-        (first, second) => first.order - second.order,
-      )
-    : baseVisibleSections;
+  const visibleSections = orderOrganizationSections(
+    [...baseVisibleSections, ...domainSections],
+    organization.type,
+  );
   return {
     id: organization.id,
     slug: organization.slug,

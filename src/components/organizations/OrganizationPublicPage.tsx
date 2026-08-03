@@ -80,6 +80,18 @@ export function OrganizationPublicPage({
   ]
     .filter(Boolean)
     .join(", ");
+  /**
+   * What this organization actually publishes, stated in the hero so the
+   * first impression answers "what do they offer?" before any tab is opened.
+   * Ordered exactly like the tabs, which are already adapted to the type.
+   */
+  const offerings = organization.visibleSections.flatMap((section) => {
+    const projection = organization.projections[section.key];
+    if (!projection?.itemCount) return [];
+    return [
+      { key: section.key, label: section.label, count: projection.itemCount },
+    ];
+  });
 
   return (
     <Root
@@ -159,11 +171,31 @@ export function OrganizationPublicPage({
                   {organization.tagline}
                 </p>
               ) : null}
+              {!organization.tagline && organization.shortDescription ? (
+                <p className="mt-3 line-clamp-3 max-w-3xl text-base leading-7 text-white/75">
+                  {organization.shortDescription}
+                </p>
+              ) : null}
               {location ? (
                 <p className="mt-3 flex items-center gap-2 text-sm font-bold text-white/65">
                   <MapPin className="h-4 w-4" />
                   {location}
                 </p>
+              ) : null}
+              {offerings.length ? (
+                <ul className="mt-5 flex flex-wrap gap-2">
+                  {offerings.map((offering) => (
+                    <li key={offering.key}>
+                      <a
+                        className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-black text-white backdrop-blur transition hover:border-kondo-lime hover:bg-white/20"
+                        href={`?section=${encodeURIComponent(offering.key)}`}
+                      >
+                        <span className="tabular-nums">{offering.count}</span>
+                        {offering.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
             <div className="w-full md:w-auto">
@@ -500,20 +532,34 @@ function OrganizationProjectionCards({
       <div className="grid gap-3 sm:grid-cols-2">
         {projection.featuredItems.map((item) => (
           <Link
-            className="group rounded-3xl border border-border bg-muted/25 p-4 transition hover:border-foreground/20 hover:bg-muted/50"
+            className="group flex flex-col overflow-hidden rounded-3xl border border-border bg-muted/25 transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-muted/50 hover:shadow-lift motion-reduce:transform-none"
             href={item.href}
             key={item.id}
           >
-            <p className="line-clamp-2 font-black group-hover:text-kondo-green">
-              {item.title}
-            </p>
-            {item.context ? (
-              <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                {item.context}
-              </p>
+            {item.imageUrl ? (
+              <span className="block aspect-[16/10] overflow-hidden bg-muted">
+                {/* The media endpoint enforces publication visibility itself. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  alt=""
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transform-none"
+                  loading="lazy"
+                  src={item.imageUrl}
+                />
+              </span>
             ) : null}
-            <span className="mt-4 inline-flex items-center gap-1 text-sm font-black text-kondo-green">
-              {actionLabel} <ArrowRight className="h-4 w-4" />
+            <span className="flex flex-1 flex-col p-4">
+              <span className="line-clamp-2 font-black group-hover:text-kondo-green">
+                {item.title}
+              </span>
+              {item.context ? (
+                <span className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                  {item.context}
+                </span>
+              ) : null}
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-black text-kondo-green">
+                {actionLabel} <ArrowRight className="h-4 w-4" />
+              </span>
             </span>
           </Link>
         ))}

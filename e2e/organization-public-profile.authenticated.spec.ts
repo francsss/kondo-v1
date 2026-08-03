@@ -105,6 +105,27 @@ test.describe.serial("organization public profile", () => {
       page.getByRole("heading", { name: publicName, exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Unverified organization")).toBeVisible();
+
+    // A signed-in member browsing an organization stays signed in: the page
+    // never offers to log in or join, and keeps a way back into Kondo.
+    const chrome = page.getByRole("banner");
+    await expect(chrome.getByRole("link", { name: "Log in" })).toHaveCount(0);
+    await expect(chrome.getByRole("link", { name: "Join Kondo" })).toHaveCount(
+      0,
+    );
+    await expect(
+      chrome.getByRole("link", { name: "Back to Kondo" }),
+    ).toBeVisible();
+
+    // Scrolling past the hero hands the header over to the organization.
+    const compactIdentity = page.getByTestId("organization-compact-identity");
+    await expect(compactIdentity).toHaveAttribute("data-compact", "false");
+    await expect(compactIdentity).toContainText(publicName);
+    await page.mouse.wheel(0, 600);
+    await expect(compactIdentity).toHaveAttribute("data-compact", "true");
+    await page.mouse.wheel(0, -600);
+    await expect(compactIdentity).toHaveAttribute("data-compact", "false");
+
     await page.getByRole("button", { name: "Contact" }).click();
     await expect(
       page.getByRole("heading", { name: "Public contact channels" }),

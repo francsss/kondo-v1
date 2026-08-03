@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestCountry } from "../helpers/reference-data";
 import {
   jobDetailSchema,
   opportunityDraftSchema,
@@ -134,12 +135,8 @@ async function makeOrganization(input: {
 
 postgresDescribe("opportunity publishing (postgres)", () => {
   beforeAll(async () => {
-    const country = await prisma.country.create({
-      data: {
-        name: `Publish Land ${randomUUID().slice(0, 8)}`,
-        code: randomUUID().slice(0, 2).toUpperCase(),
-      },
-      select: { id: true },
+    const country = await createTestCountry(prisma, {
+      name: `Publish Land ${randomUUID().slice(0, 8)}`,
     });
     const [ownerId, editorId, viewerId, outsiderId] = await Promise.all([
       makeUser("owner"),

@@ -1,47 +1,48 @@
 import type { OrganizationType } from "@prisma/client";
 
+/**
+ * `sectionPriority` lists the value sections that lead a public profile for
+ * this organization type, most important first. A visitor's first question is
+ * "what does this organization offer?", so About and background sections are
+ * never listed here — they follow the value sections by their own order.
+ * Only sections with real published content ever become visible.
+ */
 export const ORGANIZATION_TYPES = [
   {
     key: "COMPANY",
     label: "Company",
     description: "A company serving students or the wider China ecosystem.",
-    sectionPriority: ["about", "capabilities", "jobs", "products", "events"],
+    sectionPriority: ["products", "jobs", "student-services", "events"],
   },
   {
     key: "UNIVERSITY",
     label: "University",
     description: "A university or higher-education institution.",
-    sectionPriority: [
-      "about",
-      "university-information",
-      "scholarships",
-      "events",
-    ],
+    sectionPriority: ["university-information", "scholarships", "events"],
   },
   {
     key: "EDUCATION_AGENCY",
     label: "Education agency",
     description: "An education consultancy or student admissions agency.",
-    sectionPriority: ["about", "scholarships", "student-services"],
+    sectionPriority: ["scholarships", "student-services", "jobs"],
   },
   {
     key: "HOUSING_PROVIDER",
     label: "Housing provider",
     description: "An organization providing student accommodation services.",
-    sectionPriority: ["about", "housing", "student-services"],
+    sectionPriority: ["housing", "student-services"],
   },
   {
     key: "STUDENT_ASSOCIATION",
     label: "Student association",
     description: "A recognized student-led association or network.",
-    sectionPriority: ["about", "events", "student-services"],
+    sectionPriority: ["events", "student-services"],
   },
   {
     key: "EMBASSY_OR_CONSULATE",
     label: "Embassy or consulate",
     description: "A diplomatic mission or consular organization.",
     sectionPriority: [
-      "about",
       "student-services",
       "university-information",
       "events",
@@ -51,19 +52,19 @@ export const ORGANIZATION_TYPES = [
     key: "RECRUITMENT_ORGANIZATION",
     label: "Recruitment organization",
     description: "An organization connecting students with career pathways.",
-    sectionPriority: ["about", "jobs", "student-services"],
+    sectionPriority: ["jobs", "student-services"],
   },
   {
     key: "SERVICE_PROVIDER",
     label: "Service provider",
     description: "A professional service provider supporting student life.",
-    sectionPriority: ["about", "student-services", "products"],
+    sectionPriority: ["student-services", "products"],
   },
   {
     key: "OTHER",
     label: "Other organization",
     description: "Another organization relevant to Kondo students.",
-    sectionPriority: ["about", "capabilities"],
+    sectionPriority: [],
   },
 ] as const satisfies ReadonlyArray<{
   key: OrganizationType;

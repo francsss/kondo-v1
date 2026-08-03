@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestCountry } from "../helpers/reference-data";
 import { getPublicOpportunityBySlug } from "@/lib/opportunities";
 import {
   getApplicationForApplicant,
@@ -70,12 +71,8 @@ async function makeUser(prefix: string) {
 
 postgresDescribe("opportunities (postgres)", () => {
   beforeAll(async () => {
-    const country = await prisma.country.create({
-      data: {
-        name: `Opportunity Land ${randomUUID().slice(0, 8)}`,
-        code: randomUUID().slice(0, 2).toUpperCase(),
-      },
-      select: { id: true },
+    const country = await createTestCountry(prisma, {
+      name: `Opportunity Land ${randomUUID().slice(0, 8)}`,
     });
 
     const [ownerId, editorId, applicantId, outsiderId] = await Promise.all([

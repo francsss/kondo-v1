@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createTestCountry } from "../helpers/reference-data";
 import { discoverResources } from "@/lib/discover";
 import { recommendLocalResources } from "@/lib/local-recommendations";
 import { listPublicCatalog } from "@/lib/organization-catalog";
@@ -49,12 +50,8 @@ function serviceIds(items: Array<{ id: string }>) {
 
 postgresDescribe("marketplace sections (postgres)", () => {
   beforeAll(async () => {
-    const country = await prisma.country.create({
-      data: {
-        name: `Sections Land ${randomUUID().slice(0, 8)}`,
-        code: randomUUID().slice(0, 2).toUpperCase(),
-      },
-      select: { id: true },
+    const country = await createTestCountry(prisma, {
+      name: `Sections Land ${randomUUID().slice(0, 8)}`,
     });
     const [city, otherCity] = await Promise.all([
       prisma.city.create({

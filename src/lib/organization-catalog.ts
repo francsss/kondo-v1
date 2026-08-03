@@ -1193,6 +1193,10 @@ export async function getOrganizationCatalogProjection(
       title: item.title,
       href: item.href,
       context: `${item.priceLabel}${item.availabilityLabel ? ` · ${item.availabilityLabel}` : ""}`,
+      // Already loaded with the record: the public profile shows the same
+      // cover a visitor sees on the catalog page itself.
+      imageUrl:
+        (item.media.find((media) => media.cover) ?? item.media[0])?.url ?? null,
     })),
     sectionRoute: total
       ? `/discover?type=${kind === "product" ? "products" : "services"}&organizationId=${organizationId}`

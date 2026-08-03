@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createTestCountry } from "../helpers/reference-data";
 import { discoverRoommateProfiles } from "@/lib/roommate-profiles";
 import { prisma } from "@/lib/prisma";
 
@@ -88,12 +89,8 @@ function userIds(result: Awaited<ReturnType<typeof discoverRoommateProfiles>>) {
 
 postgresDescribe("roommate matching (postgres)", () => {
   beforeAll(async () => {
-    const country = await prisma.country.create({
-      data: {
-        name: `Roommate Land ${randomUUID().slice(0, 8)}`,
-        code: randomUUID().slice(0, 2).toUpperCase(),
-      },
-      select: { id: true },
+    const country = await createTestCountry(prisma, {
+      name: `Roommate Land ${randomUUID().slice(0, 8)}`,
     });
     const [city, otherCity] = await Promise.all([
       prisma.city.create({
