@@ -14,12 +14,14 @@ export function StoryPreviewRail({
   eyebrow = "Stories for you",
   title = "See student life, then take the next useful step.",
   compact = false,
+  immersive = false,
   entryPoint,
 }: {
   stories: StoryFeedItem[];
   eyebrow?: string;
   title?: string;
   compact?: boolean;
+  immersive?: boolean;
   entryPoint: string;
 }) {
   const router = useRouter();
@@ -87,11 +89,25 @@ export function StoryPreviewRail({
     <section
       aria-labelledby={`story-rail-${entryPoint}`}
       className={cn(
-        "noise relative overflow-hidden rounded-[2rem] border border-emerald-950/10 bg-gradient-to-br from-card via-card to-kondo-mint/50 text-card-foreground shadow-[0_18px_55px_rgba(16,48,37,0.09)] dark:border-emerald-300/10 dark:to-emerald-400/10",
-        compact ? "p-4 sm:p-5" : "p-5 sm:p-7",
+        "relative text-card-foreground",
+        immersive
+          ? "isolate -mx-4 overflow-visible py-2 sm:mx-0 sm:py-3"
+          : "noise overflow-hidden rounded-[2rem] border border-emerald-950/10 bg-gradient-to-br from-card via-card to-kondo-mint/50 shadow-[0_18px_55px_rgba(16,48,37,0.09)] dark:border-emerald-300/10 dark:to-emerald-400/10",
+        !immersive && (compact ? "p-4 sm:p-5" : "p-5 sm:p-7"),
       )}
     >
-      <div className="flex items-end justify-between gap-4">
+      {immersive ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-x-4 inset-y-10 -z-10 bg-[radial-gradient(circle_at_18%_35%,rgba(32,165,119,0.13),transparent_36%),radial-gradient(circle_at_82%_58%,rgba(207,239,93,0.12),transparent_34%)] blur-2xl dark:opacity-70 sm:-inset-x-8"
+        />
+      ) : null}
+      <div
+        className={cn(
+          "flex items-end justify-between gap-4",
+          immersive && "px-4 sm:px-0",
+        )}
+      >
         <div>
           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.17em] text-kondo-green">
             <span className="relative flex h-2.5 w-2.5">
@@ -103,7 +119,11 @@ export function StoryPreviewRail({
           <h2
             className={cn(
               "mt-1.5 max-w-2xl font-black tracking-[-0.03em] text-kondo-ink dark:text-white",
-              compact ? "text-lg" : "text-xl sm:text-2xl",
+              immersive
+                ? "text-xl sm:text-2xl"
+                : compact
+                  ? "text-lg"
+                  : "text-xl sm:text-2xl",
             )}
             id={`story-rail-${entryPoint}`}
           >
@@ -138,7 +158,12 @@ export function StoryPreviewRail({
         </div>
       </div>
       <div
-        className="scrollbar-none -mx-1 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 touch-pan-x sm:mt-5 sm:gap-4"
+        className={cn(
+          "scrollbar-none flex snap-x snap-mandatory overflow-x-auto touch-pan-x",
+          immersive
+            ? "mt-4 gap-3 scroll-px-4 px-4 pb-3 sm:mt-5 sm:gap-4 sm:scroll-px-0 sm:px-0"
+            : "-mx-1 mt-4 gap-3 px-1 pb-2 sm:mt-5 sm:gap-4",
+        )}
         onScroll={updateScrollState}
         ref={railRef}
       >
@@ -147,9 +172,11 @@ export function StoryPreviewRail({
             aria-label={`Watch ${story.title}`}
             className={cn(
               "group relative isolate shrink-0 snap-start overflow-hidden rounded-[1.5rem] bg-kondo-ink text-white outline-none ring-offset-card transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_35px_rgba(4,29,22,0.25)] focus-visible:ring-2 focus-visible:ring-kondo-green focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none",
-              compact
-                ? "h-64 w-[172px] sm:h-[17rem] sm:w-[184px]"
-                : "h-72 w-[190px] sm:h-80 sm:w-[214px]",
+              immersive
+                ? "h-[19rem] w-[172px] shadow-[0_20px_48px_rgba(4,29,22,0.2)] sm:h-[21rem] sm:w-[208px]"
+                : compact
+                  ? "h-64 w-[172px] sm:h-[17rem] sm:w-[184px]"
+                  : "h-72 w-[190px] sm:h-80 sm:w-[214px]",
             )}
             href={story.href}
             key={story.id}
@@ -220,9 +247,11 @@ export function StoryPreviewRail({
         <Link
           className={cn(
             "grid shrink-0 snap-start place-items-center rounded-[1.4rem] border border-dashed border-kondo-green/35 bg-kondo-mint/50 p-4 text-center text-kondo-forest transition hover:bg-kondo-mint dark:bg-emerald-400/5 dark:text-emerald-300",
-            compact
-              ? "h-64 w-[150px] sm:h-[17rem]"
-              : "h-72 w-[170px] sm:h-80 sm:w-[185px]",
+            immersive
+              ? "h-[19rem] w-[160px] sm:h-[21rem] sm:w-[185px]"
+              : compact
+                ? "h-64 w-[150px] sm:h-[17rem]"
+                : "h-72 w-[170px] sm:h-80 sm:w-[185px]",
           )}
           href="/stories"
         >

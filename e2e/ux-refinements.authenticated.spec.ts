@@ -1,6 +1,37 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("premium UX refinements", () => {
+  test("keeps long Home publications compact until the reader expands them", async ({
+    page,
+  }) => {
+    await page.goto("/home");
+    const post = page
+      .getByRole("article")
+      .filter({
+        hasText: "Three things I wish I checked before signing my lease",
+      })
+      .first();
+    const expander = post.getByRole("button", { name: "See more" });
+    await expect(expander).toBeVisible();
+    await expect(expander).toHaveAttribute("aria-expanded", "false");
+
+    const contentId = await expander.getAttribute("aria-controls");
+    expect(contentId).toBeTruthy();
+    const content = page.locator(`#${contentId}`);
+    const collapsedHeight = await content.evaluate(
+      (element) => element.getBoundingClientRect().height,
+    );
+
+    await expander.click();
+    const collapseButton = post.getByRole("button", { name: "See less" });
+    await expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+    await expect
+      .poll(() =>
+        content.evaluate((element) => element.getBoundingClientRect().height),
+      )
+      .toBeGreaterThan(collapsedHeight);
+  });
+
   test("keeps mobile forms inside the viewport with non-zooming controls", async ({
     page,
   }) => {

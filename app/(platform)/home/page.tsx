@@ -16,6 +16,7 @@ import { requireUser } from "@/lib/server-auth";
 import { getStoryFeed } from "@/lib/stories";
 import { getNavigatorActions } from "@/lib/navigator";
 import { LocalRecommendationsRail } from "@/components/features/home/LocalRecommendationsRail";
+import { HomeFeedReveal } from "@/components/features/home/HomeFeedReveal";
 import { recommendLocalResources } from "@/lib/local-recommendations";
 
 export const metadata: Metadata = { title: "Home" };
@@ -167,54 +168,60 @@ export default async function HomePage() {
 
           {posts.length ? (
             <>
-              {posts.slice(0, 2).map((post) => (
-                <FeedPost
-                  currentUserId={user.id}
-                  immersive
-                  key={post.id}
-                  post={post}
-                />
+              {posts.slice(0, 2).map((post, index) => (
+                <HomeFeedReveal delay={index * 0.035} key={post.id}>
+                  <FeedPost currentUserId={user.id} immersive post={post} />
+                </HomeFeedReveal>
               ))}
-              <StoryPreviewRail
-                compact
-                entryPoint="home"
-                eyebrow="Student Stories"
-                stories={stories}
-                title="Student life, as it really feels."
-              />
-              {journeyCard}
-              {posts.slice(2).map((post) => (
-                <FeedPost
-                  currentUserId={user.id}
+              <HomeFeedReveal>
+                <StoryPreviewRail
+                  compact
+                  entryPoint="home"
+                  eyebrow="Student Stories"
                   immersive
-                  key={post.id}
-                  post={post}
+                  stories={stories}
+                  title="Student life, as it really feels."
                 />
+              </HomeFeedReveal>
+              {journeyCard ? (
+                <HomeFeedReveal>{journeyCard}</HomeFeedReveal>
+              ) : null}
+              {posts.slice(2).map((post) => (
+                <HomeFeedReveal key={post.id}>
+                  <FeedPost currentUserId={user.id} immersive post={post} />
+                </HomeFeedReveal>
               ))}
             </>
           ) : (
             <>
-              <Card className="py-14 text-center">
-                <p className="text-3xl">🌱</p>
-                <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
-                  Your feed is ready to grow
-                </h2>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                  Join a few communities and the conversations that matter to
-                  you will appear here.
-                </p>
-                <Button asChild className="mt-5" variant="soft">
-                  <Link href="/communities">Explore communities</Link>
-                </Button>
-              </Card>
-              <StoryPreviewRail
-                compact
-                entryPoint="home"
-                eyebrow="Student Stories"
-                stories={stories}
-                title="Student life, as it really feels."
-              />
-              {journeyCard}
+              <HomeFeedReveal>
+                <Card className="py-14 text-center">
+                  <p className="text-3xl">🌱</p>
+                  <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
+                    Your feed is ready to grow
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                    Join a few communities and the conversations that matter to
+                    you will appear here.
+                  </p>
+                  <Button asChild className="mt-5" variant="soft">
+                    <Link href="/communities">Explore communities</Link>
+                  </Button>
+                </Card>
+              </HomeFeedReveal>
+              <HomeFeedReveal>
+                <StoryPreviewRail
+                  compact
+                  entryPoint="home"
+                  eyebrow="Student Stories"
+                  immersive
+                  stories={stories}
+                  title="Student life, as it really feels."
+                />
+              </HomeFeedReveal>
+              {journeyCard ? (
+                <HomeFeedReveal>{journeyCard}</HomeFeedReveal>
+              ) : null}
             </>
           )}
         </div>

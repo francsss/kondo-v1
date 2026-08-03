@@ -220,22 +220,22 @@ export function FeedPost({
           {post.title ? (
             <h2
               className={cn(
-                "mt-5 text-xl font-black tracking-[-0.025em] text-kondo-ink dark:text-white",
+                "mt-5 line-clamp-2 text-xl font-black tracking-[-0.025em] text-kondo-ink dark:text-white",
                 immersive && "text-[1.35rem] leading-tight sm:text-2xl",
               )}
             >
               {post.title}
             </h2>
           ) : null}
-          {/* Collapsed in the feed so a long post cannot take a whole screen;
-              the immersive reader shows the complete text with no control. */}
+          {/* Feed previews stay compact, including Home's immersive cards.
+              The focused post reader is the only surface that starts fully expanded. */}
           <ExpandableText
             className={cn(
               "mt-2 whitespace-pre-line text-[15px] leading-7 text-muted-foreground",
               immersive && "mt-3 leading-7 text-foreground/80 sm:text-base",
             )}
-            collapsible={!immersive}
-            lines={5}
+            collapsible={!focused}
+            lines={3}
             mobileLines={3}
             text={post.content}
           />
