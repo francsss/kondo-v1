@@ -71,6 +71,7 @@ export function StoryReader({
   const completed = useRef(new Set<string>());
   const opened = useRef(new Set<string>());
   const lastActiveIndex = useRef(0);
+  const observedActiveIndex = useRef(0);
   const [stories, setStories] = useState(initialStories);
   const [activeIndex, setActiveIndex] = useState(0);
   const [preference, setPreference] = useState<PlaybackPreference | null>(null);
@@ -85,6 +86,7 @@ export function StoryReader({
   const [copied, setCopied] = useState(false);
   const [loadErrors, setLoadErrors] = useState<Set<string>>(new Set());
   const [online, setOnline] = useState(true);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
 
   const current = stories[activeIndex];
   const announcement = current
@@ -171,7 +173,11 @@ export function StoryReader({
           )[0];
         if (!visible) return;
         const index = Number((visible.target as HTMLElement).dataset.index);
-        if (Number.isFinite(index)) setActiveIndex(index);
+        if (Number.isFinite(index) && observedActiveIndex.current !== index) {
+          observedActiveIndex.current = index;
+          setPlaybackProgress(0);
+          setActiveIndex(index);
+        }
       },
       { root, threshold: [0.55, 0.72, 0.9] },
     );
@@ -406,6 +412,29 @@ export function StoryReader({
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-3 top-[max(0.35rem,env(safe-area-inset-top))] z-50 flex gap-1 sm:inset-x-5"
+      >
+        {stories.map((story, index) => (
+          <span
+            className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25"
+            key={story.id}
+          >
+            <span
+              className="block h-full rounded-full bg-white transition-[width] duration-150 motion-reduce:transition-none"
+              style={{
+                width:
+                  index < activeIndex
+                    ? "100%"
+                    : index === activeIndex
+                      ? `${playbackProgress}%`
+                      : "0%",
+              }}
+            />
+          </span>
+        ))}
+      </div>
       <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-5">
         <Button
           aria-label="Return to the previous page"
@@ -481,6 +510,16 @@ export function StoryReader({
                       if (active) setPaused(true);
                     }}
                     onPlaying={() => onPlaying(story)}
+                    onTimeUpdate={(event) => {
+                      if (!active) return;
+                      const video = event.currentTarget;
+                      const duration = video.duration || story.durationSeconds;
+                      if (duration > 0) {
+                        setPlaybackProgress(
+                          Math.min(100, (video.currentTime / duration) * 100),
+                        );
+                      }
+                    }}
                     playsInline
                     poster={story.posterUrl ?? undefined}
                     preload={active ? "auto" : "metadata"}
@@ -549,6 +588,26 @@ export function StoryReader({
                   </button>
                 ) : null}
 
+                {active && !hasError ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-44 top-20 z-[5] flex lg:hidden">
+                    <button
+                      aria-label="Previous Story"
+                      className="pointer-events-auto h-full w-1/4 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:pointer-events-none"
+                      disabled={index === 0}
+                      onClick={() => moveTo(index - 1)}
+                      type="button"
+                    />
+                    <span className="w-1/2" />
+                    <button
+                      aria-label="Next Story"
+                      className="pointer-events-auto h-full w-1/4 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:pointer-events-none"
+                      disabled={index === stories.length - 1}
+                      onClick={() => moveTo(index + 1)}
+                      type="button"
+                    />
+                  </div>
+                ) : null}
+
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/65 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 z-10 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">
                   <div className="max-w-[calc(100%-4.5rem)]">
@@ -602,8 +661,20 @@ export function StoryReader({
                           mediaId={story.creator.avatarMediaId}
                           seed={story.creator.id}
                         />
-                        <span className="truncate text-sm font-black">
-                          {story.creator.name}
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-black">
+                            {story.creator.name}
+                          </span>
+                          {story.creator.country || story.creator.university ? (
+                            <span className="mt-0.5 block truncate text-[10px] font-semibold text-white/65">
+                              {story.creator.country?.emoji
+                                ? `${story.creator.country.emoji} `
+                                : ""}
+                              {story.creator.university?.shortName ??
+                                story.creator.university?.name ??
+                                story.creator.country?.name}
+                            </span>
+                          ) : null}
                         </span>
                       </Link>
                       {story.creator.official ? (

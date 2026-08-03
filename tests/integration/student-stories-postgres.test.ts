@@ -205,7 +205,7 @@ postgresDescribe("Student Stories and official profiles on PostgreSQL", () => {
       id: submitted.id,
       durationSeconds: 75,
       viewer: { liked: false, saved: false },
-      creator: { official: false },
+      creator: { official: false, country: null, university: null },
     });
 
     await updateStoryInteraction(fixture.viewer, submitted.id, {

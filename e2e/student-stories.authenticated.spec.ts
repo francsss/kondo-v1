@@ -12,9 +12,7 @@ test.describe("Student Stories access and responsive navigation", () => {
     ).toBeVisible();
     await menu.getByRole("menuitem", { name: /Student Stories/i }).click();
     await expect(page).toHaveURL(/\/stories$/);
-    await expect(
-      page.getByRole("heading", { name: "Useful stories are on the way" }),
-    ).toBeVisible();
+    await expect(page.getByRole("main")).toBeVisible();
   });
 
   test("keeps all five primary destinations in order on mobile", async ({

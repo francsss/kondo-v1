@@ -30,6 +30,7 @@
     "opportunities:reminders": "tsx scripts/process-opportunity-reminders.ts",
     "community-requests:expire": "tsx scripts/expire-community-requests.ts",
     "stories:publish": "tsx scripts/publish-scheduled-stories.ts",
+    "stories:demo": "tsx scripts/seed-demo-stories.ts",
     "posthog:setup": "node scripts/setup-posthog-dashboards.mjs",
     "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts",
     "release:audit": "node scripts/release-audit.mjs",

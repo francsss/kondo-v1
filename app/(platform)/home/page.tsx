@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Fragment } from "react";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIntro";
 import { JourneyNavigator } from "@/components/features/navigator/JourneyNavigator";
@@ -44,7 +43,7 @@ export default async function HomePage() {
   ] = await Promise.all([
     getHomeData(user.id),
     getHomeActivityStream(user),
-    getStoryFeed(user, { limit: 6 }),
+    getStoryFeed(user, { limit: 10 }),
     getNavigatorActions(user.id),
     // Personalized to this member only, and never cached across members.
     recommendLocalResources({ userId: user.id, limit: 6 }),
@@ -81,6 +80,47 @@ export default async function HomePage() {
         community.members[0]?.role ?? "",
       ),
     }));
+  const journeyCard = firstGuide ? (
+    <Card className="noise relative overflow-hidden border-emerald-100 bg-gradient-to-r from-kondo-navy via-kondo-forest to-[#237d61] p-0 text-white shadow-lift dark:border-emerald-400/10">
+      <div className="relative z-10 flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/12 text-xl">
+          🛬
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-kondo-lime">
+            <Sparkles aria-hidden="true" className="h-3.5 w-3.5" /> Next on your
+            checklist
+          </div>
+          <h2 className="mt-2 text-lg font-black tracking-tight sm:text-xl">
+            {firstGuide.title}
+          </h2>
+          <p className="mt-1 text-xs text-white/65 sm:text-sm">
+            {completedSteps} of {firstGuide.steps.length} steps complete · Keep
+            your arrival moving smoothly.
+          </p>
+          <div className="mt-3 h-1.5 max-w-xl overflow-hidden rounded-full bg-white/15">
+            <div
+              className="h-full rounded-full bg-kondo-lime"
+              style={{ width: `${guideProgress}%` }}
+            />
+          </div>
+        </div>
+        <Button
+          asChild
+          className="bg-white text-kondo-forest shadow-none hover:bg-kondo-lime"
+          size="sm"
+        >
+          <Link href={`/guides/${firstGuide.slug}`}>
+            Continue <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+      <div
+        aria-hidden="true"
+        className="absolute -right-12 -top-20 h-64 w-64 rounded-full border-[45px] border-white/5"
+      />
+    </Card>
+  ) : null;
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">
@@ -92,58 +132,9 @@ export default async function HomePage() {
         generatedAt={new Date().toISOString()}
       />
 
-      <JourneyNavigator
-        initialActions={navigator.actions}
-        initialJourney={navigator.journey}
-      />
-
-      <LocalRecommendationsRail items={nearYou.items} />
-
-      {firstGuide ? (
-        <Card className="noise relative mt-7 overflow-hidden border-emerald-100 bg-gradient-to-r from-kondo-navy via-kondo-forest to-[#237d61] p-0 text-white shadow-lift dark:border-emerald-400/10">
-          <div className="relative z-10 flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-7">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/12 text-2xl">
-              🛬
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-kondo-lime">
-                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" /> Next on
-                your checklist
-              </div>
-              <h2 className="mt-2 text-xl font-black tracking-tight sm:text-2xl">
-                {firstGuide.title}
-              </h2>
-              <p className="mt-1 text-sm text-white/65">
-                {completedSteps} of {firstGuide.steps.length} steps complete ·
-                Keep your next steps moving.
-              </p>
-              <div className="mt-4 h-1.5 max-w-xl overflow-hidden rounded-full bg-white/15">
-                <div
-                  className="h-full rounded-full bg-kondo-lime"
-                  style={{ width: `${guideProgress}%` }}
-                />
-              </div>
-            </div>
-            <Button
-              asChild
-              className="bg-white text-kondo-forest shadow-none hover:bg-kondo-lime"
-              size="sm"
-            >
-              <Link href={`/guides/${firstGuide.slug}`}>
-                Continue <ArrowRight aria-hidden="true" className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          <div
-            aria-hidden="true"
-            className="absolute -right-12 -top-20 h-64 w-64 rounded-full border-[45px] border-white/5"
-          />
-        </Card>
-      ) : null}
-
-      <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-6">
-          <Card className="flex items-center gap-3 p-4">
+      <div className="mt-7 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-4">
+          <Card className="flex items-center gap-3 border-border/80 p-3.5 shadow-sm sm:p-4">
             <Avatar
               firstName={user.firstName}
               lastName={user.lastName}
@@ -175,19 +166,32 @@ export default async function HomePage() {
           </div>
 
           {posts.length ? (
-            posts.map((post, index) => (
-              <Fragment key={post.id}>
-                <FeedPost currentUserId={user.id} post={post} />
-                {index === Math.min(1, posts.length - 1) ? (
-                  <StoryPreviewRail
-                    compact
-                    entryPoint="home"
-                    stories={stories}
-                    title="A quick visual guide to something useful today."
-                  />
-                ) : null}
-              </Fragment>
-            ))
+            <>
+              {posts.slice(0, 2).map((post) => (
+                <FeedPost
+                  currentUserId={user.id}
+                  immersive
+                  key={post.id}
+                  post={post}
+                />
+              ))}
+              <StoryPreviewRail
+                compact
+                entryPoint="home"
+                eyebrow="Student Stories"
+                stories={stories}
+                title="Student life, as it really feels."
+              />
+              {journeyCard}
+              {posts.slice(2).map((post) => (
+                <FeedPost
+                  currentUserId={user.id}
+                  immersive
+                  key={post.id}
+                  post={post}
+                />
+              ))}
+            </>
           ) : (
             <>
               <Card className="py-14 text-center">
@@ -206,9 +210,11 @@ export default async function HomePage() {
               <StoryPreviewRail
                 compact
                 entryPoint="home"
+                eyebrow="Student Stories"
                 stories={stories}
-                title="A quick visual guide to something useful today."
+                title="Student life, as it really feels."
               />
+              {journeyCard}
             </>
           )}
         </div>
@@ -329,6 +335,13 @@ export default async function HomePage() {
           </Card>
         </aside>
       </div>
+
+      <JourneyNavigator
+        initialActions={navigator.actions}
+        initialJourney={navigator.journey}
+      />
+
+      <LocalRecommendationsRail items={nearYou.items} />
 
       {listings.length ? (
         <section className="mt-12">

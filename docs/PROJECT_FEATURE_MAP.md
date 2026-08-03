@@ -455,7 +455,9 @@ must not be described as implemented.
 - a chronological activity stream;
 - visible posts from joined/accessible communities;
 - post creation;
-- Student Stories rail;
+- a people-first Student Stories rail after the opening community posts, with
+  vertical media cards, creator/country/university identity, and touch
+  discovery;
 - personalized guide/local context;
 - marketplace/local supporting content;
 - presence and product analytics.
@@ -1114,6 +1116,7 @@ Persistence:
 Capabilities:
 
 - immersive vertical story viewer;
+- visible per-Story playback progress and mobile tap navigation;
 - autoplay/data-saver preference;
 - mute/pause and keyboard/touch navigation;
 - MP4, MOV, M4V, HEVC/H.265 and allowed mobile video handling under current
@@ -1127,6 +1130,8 @@ Capabilities:
 - scheduled publishing worker;
 - Admin categories, creator approvals, moderation, and transitions;
 - contextual recommendations and analytics.
+- a local-only, explicitly enabled ten-Story demo dataset for UI validation;
+  it is never part of the normal or production seed path.
 
 Primary locations:
 

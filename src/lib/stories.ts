@@ -77,6 +77,8 @@ const storyFeedInclude = (userId: string) =>
         officialOrganizationType: true,
         officialOrganizationName: true,
         officialVerifiedAt: true,
+        country: { select: { name: true, emoji: true } },
+        university: { select: { name: true, shortName: true } },
       },
     },
     entityLinks: {
@@ -211,6 +213,8 @@ function storyDto(
       officialOrganizationType: official.officialOrganizationType,
       officialOrganizationName: official.officialOrganizationName,
       officialVerifiedAt: official.officialVerifiedAt?.toISOString() ?? null,
+      country: story.creator.country,
+      university: story.creator.university,
     },
     links,
     isInstitutional: story.isInstitutional,

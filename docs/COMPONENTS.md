@@ -38,6 +38,12 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 - `ContentReportButton` and `PostActions`: reusable community safety and post ownership/moderation controls.
 - `FeedPost` also exposes direct messaging for another post author without adding friend or follow state.
 
+### Student Stories
+
+- `StoryPreviewRail`: immersive horizontal discovery rail with vertical poster cards, creator avatar, country, university, category, duration, responsive touch snapping, and contextual Story entry tracking.
+- `StoryReader`: full-viewport vertical reader with real playback progress, adjacent Story preloading, tap/keyboard navigation, play/pause, mute, captions, reactions, comments, reporting, creator identity, and reduced-motion/data-saver support.
+- Demo-only story media can be installed locally with `npm run stories:demo` after explicitly setting `KONDO_ALLOW_DEMO_STORIES=true`; the script refuses production and non-local storage.
+
 ### Community Admin
 
 - `CommunityAdminActions`: Admin/Super Admin activation, archival/removal lifecycle, and platform verification control.
