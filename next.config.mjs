@@ -10,11 +10,26 @@ const configuredDevOrigins = (process.env.KONDO_DEV_ORIGINS ?? "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+function configuredStorageOrigin() {
+  const endpoint = process.env.STORAGE_ENDPOINT;
+  if (!endpoint) return null;
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+const storageOrigin = configuredStorageOrigin();
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://*.posthog.com https://maps.googleapis.com https://maps.gstatic.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   `img-src 'self' data: blob: https:${isDevelopment ? " http:" : ""}`,
+  `media-src 'self' blob:${storageOrigin ? ` ${storageOrigin}` : ""}`,
   "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self' https: wss:${isDevelopment ? " http: ws:" : ""}`,
   "worker-src 'self' blob:",

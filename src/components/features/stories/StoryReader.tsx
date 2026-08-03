@@ -498,7 +498,6 @@ export function StoryReader({
                     aria-label={story.title}
                     className="relative h-full w-full object-contain"
                     controls={false}
-                    crossOrigin="anonymous"
                     loop={false}
                     muted={muted}
                     onClick={() => setPaused((value) => !value)}

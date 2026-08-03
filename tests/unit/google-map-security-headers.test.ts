@@ -14,4 +14,15 @@ describe("Google Maps Content Security Policy", () => {
     expect(nextConfig).not.toContain("api.map.baidu.com");
     expect(nextConfig).not.toContain("bdimg.com");
   });
+
+  it("allows Story media from the configured object-storage origin", () => {
+    const nextConfig = readFileSync(
+      new URL("../../next.config.mjs", import.meta.url),
+      "utf8",
+    );
+
+    expect(nextConfig).toContain("configuredStorageOrigin");
+    expect(nextConfig).toContain("media-src 'self' blob:");
+    expect(nextConfig).toContain("url.origin");
+  });
 });
