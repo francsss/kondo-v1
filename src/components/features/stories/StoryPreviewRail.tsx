@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { MediaImage } from "@/components/ui/MediaImage";
 import type { StoryFeedItem } from "@/lib/stories";
@@ -22,7 +23,48 @@ export function StoryPreviewRail({
   entryPoint: string;
 }) {
   const router = useRouter();
+  const railRef = useRef<HTMLDivElement>(null);
+  const [scrollState, setScrollState] = useState({
+    backward: false,
+    forward: stories.length > 1,
+  });
+
+  const updateScrollState = useCallback(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const next = {
+      backward: rail.scrollLeft > 8,
+      forward: rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8,
+    };
+    setScrollState((current) =>
+      current.backward === next.backward && current.forward === next.forward
+        ? current
+        : next,
+    );
+  }, []);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(updateScrollState);
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [stories.length, updateScrollState]);
+
   if (!stories.length) return null;
+
+  function scrollRail(direction: -1 | 1) {
+    const rail = railRef.current;
+    if (!rail) return;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    rail.scrollBy({
+      behavior: reduceMotion ? "auto" : "smooth",
+      left: direction * Math.max(220, rail.clientWidth * 0.72),
+    });
+  }
 
   function openStory(
     event: React.MouseEvent<HTMLAnchorElement>,
@@ -53,7 +95,7 @@ export function StoryPreviewRail({
         <div>
           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.17em] text-kondo-green">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-kondo-green opacity-40 motion-reduce:animate-none" />
+              <span className="absolute inline-flex h-full w-full animate-[ping_700ms_cubic-bezier(0,0,0.2,1)_1] rounded-full bg-kondo-green opacity-40 motion-reduce:animate-none" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-kondo-green" />
             </span>
             {eyebrow}
@@ -68,14 +110,38 @@ export function StoryPreviewRail({
             {title}
           </h2>
         </div>
-        <Link
-          className="hidden shrink-0 items-center gap-1.5 text-xs font-black text-kondo-green hover:underline sm:inline-flex"
-          href="/stories"
-        >
-          View all <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="hidden shrink-0 items-center gap-2 sm:flex">
+          <button
+            aria-label="Previous Stories"
+            className="inline-grid h-9 w-9 place-items-center rounded-full border border-kondo-green/15 bg-background/80 text-kondo-forest shadow-sm transition hover:-translate-y-0.5 hover:border-kondo-green/35 hover:bg-kondo-mint disabled:pointer-events-none disabled:opacity-35 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10 motion-reduce:transform-none motion-reduce:transition-none"
+            disabled={!scrollState.backward}
+            onClick={() => scrollRail(-1)}
+            type="button"
+          >
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+          </button>
+          <button
+            aria-label="Next Stories"
+            className="inline-grid h-9 w-9 place-items-center rounded-full border border-kondo-green/15 bg-background/80 text-kondo-forest shadow-sm transition hover:-translate-y-0.5 hover:border-kondo-green/35 hover:bg-kondo-mint disabled:pointer-events-none disabled:opacity-35 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10 motion-reduce:transform-none motion-reduce:transition-none"
+            disabled={!scrollState.forward}
+            onClick={() => scrollRail(1)}
+            type="button"
+          >
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </button>
+          <Link
+            className="ml-1 inline-flex items-center gap-1.5 text-xs font-black text-kondo-green hover:underline"
+            href="/stories"
+          >
+            View all <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
-      <div className="scrollbar-none -mx-1 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 touch-pan-x sm:mt-5 sm:gap-4">
+      <div
+        className="scrollbar-none -mx-1 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 touch-pan-x sm:mt-5 sm:gap-4"
+        onScroll={updateScrollState}
+        ref={railRef}
+      >
         {stories.map((story) => (
           <Link
             aria-label={`Watch ${story.title}`}
