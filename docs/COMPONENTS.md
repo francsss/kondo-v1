@@ -22,6 +22,7 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 - `Avatar`: deterministic accessible initials and stable profile color.
 - `PageHeader`: page-level title, eyebrow, description, and action layout.
 - `MediaImage`: stable media-ID image renderer using Next Image. Private media bypasses the server optimizer so the browser session cookie reaches the protected delivery endpoint.
+- `BackButton`: the circular back control shared by Kondo's dedicated spaces — organization profiles and the Student Hub. Those surfaces drop the global navigation on purpose, so this is the one way out and carries a Kondo green glow on hover and focus. `overlay` sits on a cover image, `solid` on the page background. It returns to the previous in-app view, falling back to `fallbackHref` on a direct landing.
 - Feature forms use shared visual tokens and native semantic controls; a new shared primitive should be introduced only when two implemented flows require the same behavior.
 
 ## Feature components
@@ -114,6 +115,7 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 
 ### Student Hub
 
+- `StudentHubShell`: the hub reads as a change of place rather than another menu click. The header leads with a `BackButton`, then the Kondo mark, then the academic identity, and only then the three modules (Studies, Resources, Opportunities) — the module row used to be crushed against the Kondo mark in a top bar. The contextual tabs below stay sticky while reading.
 - `StudentHubPage`: composes the existing guide and help-center capabilities into one resource dashboard with arrival, resource, Q&A, checklist, tip, article, and event entry points.
 - Guide and help pages remain the source surfaces, so the merge changes navigation organization without duplicating or removing their behaviors.
 
@@ -164,8 +166,8 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 
 ### Public organization profile
 
-- `OrganizationPublicChrome`: the chrome for a public organization page. It carries no main platform navigation — the organization is the subject of the page. The account area resolves from `/api/auth/me` on the client, so a signed-in member is never offered "Log in" while the route itself stays cacheable for anonymous visitors and crawlers; nothing renders in that slot until the answer is known. Past the hero it hands the bar over to the organization: logo, name and verification mark.
-- `OrganizationPublicPage`: hero, section tabs and panels. The hero states what the organization publishes (`3 Products`, `2 Internships & jobs`) so the first impression answers "what do they offer?" before a tab is opened.
+- `OrganizationPublicChrome`: the only chrome a public organization page carries. No Kondo navigation, wordmark, search or account control — entering an organization should feel like entering that organization's space, not another Kondo tab, and a member who is already signed in is never offered "Log in". A single floating `BackButton` sits over the cover; past the cover the bar materialises with the organization's own identity (logo, name, verification mark). Pass `overCover={false}` on surfaces with no cover behind the bar, such as not-found.
+- `OrganizationPublicPage`: cover-led hero, section tabs and panels. The hero stays uncluttered — identity only, no counters or statistics.
 - Tab order comes from `orderOrganizationSections` in `src/features/organizations/public-sections.ts`. Value sections carry the lowest base order, so a profile never opens on About, and each organization type's `sectionPriority` in the registry decides which value section leads — Housing for a housing provider, Products for a company. Only sections with real published content are ever visible.
 
 ### Help center

@@ -71,7 +71,7 @@ export default async function OrganizationPublicProfilePage({
     <>
       <OrganizationPublicChrome
         backHref="/organizations"
-        backLabel="All organizations"
+        backLabel="Back"
         organization={{
           name: result.profile.publicName,
           logoUrl: result.profile.logo?.url ?? null,

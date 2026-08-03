@@ -132,14 +132,37 @@ test.describe("Student Hub study-first experience", () => {
       expect(routeBounds!.height).toBe(globalBounds!.height);
     }
 
-    await page.goto("/student-hub");
-    const hubBrand = page.getByRole("link", { name: "Kondo home" }).first();
-    await expect(hubBrand).toBeVisible();
-    const hubBounds = await hubBrand.boundingBox();
-    expect(hubBounds).not.toBeNull();
+  });
 
-    expect(Math.abs(hubBounds!.x - globalBounds!.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs(hubBounds!.y - globalBounds!.y)).toBeLessThanOrEqual(2);
-    expect(hubBounds!.height).toBe(globalBounds!.height);
+  test("opens the hub on a back control, then Kondo, then the modules", async ({
+    page,
+  }) => {
+    // Entering the hub is a change of place: the way out comes first, the
+    // academic identity has room, and the modules sit below it rather than
+    // being crushed against the Kondo mark.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/student-hub");
+
+    const back = page.getByRole("button", { name: "Back to Kondo" });
+    const brand = page.getByRole("link", { name: "Kondo home" }).first();
+    const modules = page.getByRole("navigation", {
+      name: "Student Hub modules",
+    });
+    await expect(back).toBeVisible();
+    await expect(brand).toBeVisible();
+    await expect(modules).toBeVisible();
+
+    const [backBox, brandBox, modulesBox] = await Promise.all([
+      back.boundingBox(),
+      brand.boundingBox(),
+      modules.boundingBox(),
+    ]);
+
+    // The back control leads the header, with Kondo beside it.
+    expect(brandBox!.x).toBeGreaterThan(backBox!.x + backBox!.width - 1);
+    expect(Math.abs(brandBox!.y - backBox!.y)).toBeLessThanOrEqual(8);
+
+    // The modules breathe well below the identity block.
+    expect(modulesBox!.y).toBeGreaterThan(backBox!.y + backBox!.height + 120);
   });
 });

@@ -106,18 +106,16 @@ test.describe.serial("organization public profile", () => {
     ).toBeVisible();
     await expect(page.getByText("Unverified organization")).toBeVisible();
 
-    // A signed-in member browsing an organization stays signed in: the page
-    // never offers to log in or join, and keeps a way back into Kondo.
-    const chrome = page.getByRole("banner");
-    await expect(chrome.getByRole("link", { name: "Log in" })).toHaveCount(0);
-    await expect(chrome.getByRole("link", { name: "Join Kondo" })).toHaveCount(
-      0,
-    );
-    await expect(
-      chrome.getByRole("link", { name: "Back to Kondo" }),
-    ).toBeVisible();
+    // The page carries no Kondo navigation at all: no sign-in offer to a
+    // member who is already authenticated, and no platform chrome competing
+    // with the organization. A single back button is the way out.
+    const chrome = page.getByTestId("organization-chrome");
+    await expect(chrome.getByRole("link")).toHaveCount(0);
+    await expect(chrome.getByRole("button", { name: "Back" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Log in" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Join Kondo" })).toHaveCount(0);
 
-    // Scrolling past the hero hands the header over to the organization.
+    // Scrolling past the cover hands the bar over to the organization.
     const compactIdentity = page.getByTestId("organization-compact-identity");
     await expect(compactIdentity).toHaveAttribute("data-compact", "false");
     await expect(compactIdentity).toContainText(publicName);

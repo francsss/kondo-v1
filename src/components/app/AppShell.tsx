@@ -553,7 +553,7 @@ export function AppShell({
       <div className="lg:pl-[248px]">
         <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
           <div className="mx-auto flex h-full max-w-[1440px] items-center gap-3">
-            <div className="flex h-11 shrink-0 items-center lg:hidden">
+            <div className="flex h-10 shrink-0 items-center lg:hidden">
               <Button
                 aria-expanded={menuOpen}
                 aria-controls="mobile-navigation"
@@ -579,7 +579,7 @@ export function AppShell({
                 ⌘ K
               </kbd>
             </Link>
-            <div className="ml-auto flex h-11 shrink-0 items-center gap-1">
+            <div className="ml-auto flex h-10 shrink-0 items-center gap-1">
               <Button asChild className="relative" size="icon" variant="ghost">
                 <Link
                   aria-label={`Notifications${
@@ -601,7 +601,10 @@ export function AppShell({
               </Button>
               <Link
                 aria-label="Open profile"
-                className="ml-1 rounded-full transition hover:scale-105"
+                // A bare inline link put the avatar on the text baseline, three
+                // pixels above the icon buttons beside it. Matching their
+                // 40px box keeps every control on one vertical axis.
+                className="ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-full transition hover:scale-105 motion-reduce:transform-none"
                 href="/profile"
               >
                 <Avatar

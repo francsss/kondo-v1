@@ -64,6 +64,14 @@
     scroll-behavior: smooth;
     max-width: 100%;
     overflow-x: clip;
+    /*
+     * Reserve the scrollbar track on every page. Without it, moving from a
+     * short route to a scrolling one narrows the viewport by the scrollbar
+     * width and the whole header, including the avatar and the menu button,
+     * jumps sideways. Overlay scrollbars (macOS default) never showed this;
+     * classic scrollbars on Windows and Linux always did.
+     */
+    scrollbar-gutter: stable;
   }
 
   body {

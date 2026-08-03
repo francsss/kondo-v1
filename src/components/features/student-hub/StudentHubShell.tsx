@@ -6,6 +6,7 @@ import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytic
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { KondoLogo } from "@/components/KondoLogo";
+import { BackButton } from "@/components/ui/BackButton";
 import {
   HorizontalTabs,
   TabPanelTransition,
@@ -205,30 +206,25 @@ export function StudentHubShell({
         Skip to Student Hub content
       </a>
 
-      {/* The same locked brand geometry used by Kondo's global shell keeps the
-          transition into this dedicated workspace visually stable. */}
-      <div className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-3 sm:px-6 lg:h-[5.5rem]">
-          <KondoLogo compactOnMobile href="/home" />
-          <HorizontalTabs
-            activeKey={activeModule}
-            ariaLabel="Student Hub modules"
-            className="ml-auto max-w-[720px] py-1"
-            tabs={STUDENT_HUB_MODULES}
-          />
-        </div>
-      </div>
-
-      {/* The compact academic identity replaces the duplicate set of three
-          navigation cards. The top row is now the single primary navigation. */}
+      {/*
+        Entering the hub is a change of place, not another menu click. The way
+        out comes first, the academic identity has room to breathe, and the
+        module navigation sits below it instead of being crushed against the
+        Kondo mark.
+      */}
       <header className="relative overflow-hidden border-b border-border/60">
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-gradient-to-br from-kondo-mint/70 via-background to-background dark:from-emerald-400/10 dark:via-background dark:to-background"
         />
         <div aria-hidden="true" className="noise absolute inset-0 opacity-70" />
-        <div className="relative mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8">
+        <div className="relative mx-auto max-w-[1440px] px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
           <div className="flex items-center gap-3">
+            <BackButton fallbackHref="/home" label="Back to Kondo" />
+            <KondoLogo compactOnMobile href="/home" size="sm" />
+          </div>
+
+          <div className="mt-7 flex items-center gap-3 sm:mt-9">
             <span
               aria-hidden="true"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-kondo-green text-white shadow-soft"
@@ -242,21 +238,28 @@ export function StudentHubShell({
 
           {/* Deliberately not an <h1>: this banner is shared chrome, and each
               page inside the hub owns the document heading that describes it. */}
-          <p className="mt-4 max-w-3xl font-display text-3xl font-black leading-[1.08] tracking-[-0.04em] sm:text-4xl">
+          <p className="mt-4 max-w-3xl text-balance font-display text-3xl font-black leading-[1.08] tracking-[-0.04em] sm:text-4xl">
             {user.university?.name
               ? `Your academic space at ${user.university.name}.`
               : "Your academic space."}
           </p>
-          <p className="mt-2.5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+          <p className="mt-2.5 max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
             Everything for your studies in one place — your timetable and
             deadlines, the resources that help you, and the opportunities open
             to you.
           </p>
+
+          <HorizontalTabs
+            activeKey={activeModule}
+            ariaLabel="Student Hub modules"
+            className="mt-8 max-w-[720px] sm:mt-10"
+            tabs={STUDENT_HUB_MODULES}
+          />
         </div>
       </header>
 
       {tabs.length ? (
-        <div className="sticky top-16 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 lg:top-[5.5rem]">
+        <div className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
           <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <HorizontalTabs
               activeKey={activeKey}

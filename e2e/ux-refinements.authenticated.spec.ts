@@ -1,6 +1,49 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("premium UX refinements", () => {
+  test("keeps every top navigation control on one vertical axis", async ({
+    page,
+  }) => {
+    // The avatar used to sit on the text baseline of a bare inline link,
+    // three pixels above the icon buttons beside it.
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 834, height: 1112 },
+      { width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/home");
+      const centers = await page
+        .locator("header")
+        .first()
+        .evaluate((header) =>
+          [
+            '[aria-label="Open navigation"]',
+            '[aria-label^="Notifications"]',
+            '[aria-label="Open profile"] [role="img"]',
+            '[aria-label="Open Explore menu"]',
+            'a[href="/search"]',
+          ]
+            .map((selector) => header.querySelector(selector))
+            .filter((element): element is Element => Boolean(element))
+            .map((element) => {
+              const box = element.getBoundingClientRect();
+              // A control hidden at this breakpoint reports a zero box.
+              return box.height ? box.top + box.height / 2 : null;
+            })
+            .filter((center): center is number => center !== null),
+        );
+      expect(centers.length, `controls at ${viewport.width}px`).toBeGreaterThan(
+        2,
+      );
+      expect(
+        Math.max(...centers) - Math.min(...centers),
+        `vertical drift at ${viewport.width}px`,
+      ).toBeLessThanOrEqual(0.5);
+    }
+  });
+
+
   test("keeps long Home publications compact until the reader expands them", async ({
     page,
   }) => {

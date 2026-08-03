@@ -8,8 +8,9 @@ export default function OrganizationPublicProfileNotFound() {
       <OrganizationPublicChrome
         backHref="/organizations"
         backLabel="All organizations"
+        overCover={false}
       />
-      <main className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-[760px] place-items-center px-4 py-12 sm:px-6">
+      <main className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-[760px] place-items-center px-4 pb-12 pt-28 sm:px-6">
         <section className="w-full rounded-[2rem] border border-border bg-card p-7 text-center shadow-sm sm:p-12">
           <span className="mx-auto grid h-16 w-16 place-items-center rounded-[1.4rem] bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200">
             <Building2 className="h-7 w-7" />

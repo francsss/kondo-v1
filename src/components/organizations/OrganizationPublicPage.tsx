@@ -1,10 +1,12 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Briefcase,
   Building2,
   CalendarDays,
   CheckCircle2,
   Globe2,
+  GraduationCap,
   House,
   Languages,
   MapPin,
@@ -80,18 +82,6 @@ export function OrganizationPublicPage({
   ]
     .filter(Boolean)
     .join(", ");
-  /**
-   * What this organization actually publishes, stated in the hero so the
-   * first impression answers "what do they offer?" before any tab is opened.
-   * Ordered exactly like the tabs, which are already adapted to the type.
-   */
-  const offerings = organization.visibleSections.flatMap((section) => {
-    const projection = organization.projections[section.key];
-    if (!projection?.itemCount) return [];
-    return [
-      { key: section.key, label: section.label, count: projection.itemCount },
-    ];
-  });
 
   return (
     <Root
@@ -181,21 +171,6 @@ export function OrganizationPublicPage({
                   <MapPin className="h-4 w-4" />
                   {location}
                 </p>
-              ) : null}
-              {offerings.length ? (
-                <ul className="mt-5 flex flex-wrap gap-2">
-                  {offerings.map((offering) => (
-                    <li key={offering.key}>
-                      <a
-                        className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-black text-white backdrop-blur transition hover:border-kondo-lime hover:bg-white/20"
-                        href={`?section=${encodeURIComponent(offering.key)}`}
-                      >
-                        <span className="tabular-nums">{offering.count}</span>
-                        {offering.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
               ) : null}
             </div>
             <div className="w-full md:w-auto">
@@ -371,6 +346,35 @@ export function OrganizationPublicPage({
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : null}
+            </PublicSection>
+          ) : null}
+
+          {sectionIds.has("scholarships") &&
+          organization.projections.scholarships ? (
+            <PublicSection
+              description="Scholarships published by this organization."
+              icon={GraduationCap}
+              id="scholarships"
+              title="Scholarships"
+            >
+              <OrganizationProjectionCards
+                actionLabel="View scholarship"
+                projection={organization.projections.scholarships}
+              />
+            </PublicSection>
+          ) : null}
+
+          {sectionIds.has("jobs") && organization.projections.jobs ? (
+            <PublicSection
+              description="Internships and jobs published by this organization."
+              icon={Briefcase}
+              id="jobs"
+              title="Internships & jobs"
+            >
+              <OrganizationProjectionCards
+                actionLabel="View opportunity"
+                projection={organization.projections.jobs}
+              />
             </PublicSection>
           ) : null}
 
