@@ -124,7 +124,7 @@ export default async function HomePage() {
   ) : null;
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">
+    <div className="mx-auto max-w-[1480px] px-3 pb-28 pt-6 sm:px-5 lg:px-6 lg:pb-16 lg:pt-8 xl:px-7">
       <HomeActivityIntro
         activities={activities}
         chinaDate={chinaDate}
@@ -133,8 +133,8 @@ export default async function HomePage() {
         generatedAt={new Date().toISOString()}
       />
 
-      <div className="mt-7 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-4">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,760px)_minmax(300px,320px)] xl:justify-center">
+        <div className="min-w-0 space-y-3.5 sm:space-y-4">
           <Card className="flex items-center gap-3 border-border/80 p-3.5 shadow-sm sm:p-4">
             <Avatar
               firstName={user.firstName}
@@ -226,7 +226,7 @@ export default async function HomePage() {
           )}
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-5 xl:space-y-6">
           <Card>
             <div className="flex items-center justify-between">
               <div>

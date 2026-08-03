@@ -32,6 +32,57 @@ test.describe("premium UX refinements", () => {
       .toBeGreaterThan(collapsedHeight);
   });
 
+  test("keeps the Home feed comfortably wide without viewport overflow", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/home");
+
+    const post = page
+      .getByRole("article")
+      .filter({
+        hasText: "Three things I wish I checked before signing my lease",
+      })
+      .first();
+    await expect(post).toBeVisible();
+
+    const desktopBounds = await post.boundingBox();
+    expect(desktopBounds).not.toBeNull();
+    expect(desktopBounds!.width).toBeGreaterThanOrEqual(600);
+    expect(desktopBounds!.width).toBeLessThanOrEqual(780);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+
+    const reducedMotionStyle = await post.evaluate((element) => {
+      const reveal = element.closest<HTMLElement>("[data-home-feed-reveal]");
+      return reveal
+        ? {
+            opacity: getComputedStyle(reveal).opacity,
+            transform: getComputedStyle(reveal).transform,
+          }
+        : null;
+    });
+    expect(reducedMotionStyle).toEqual({ opacity: "1", transform: "none" });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload();
+    await expect(post).toBeVisible();
+
+    const mobileBounds = await post.boundingBox();
+    expect(mobileBounds).not.toBeNull();
+    expect(mobileBounds!.x).toBeLessThanOrEqual(13);
+    expect(mobileBounds!.width).toBeGreaterThanOrEqual(360);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+
   test("keeps mobile forms inside the viewport with non-zooming controls", async ({
     page,
   }) => {

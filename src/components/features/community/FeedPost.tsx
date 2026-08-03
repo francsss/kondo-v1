@@ -152,14 +152,19 @@ export function FeedPost({
           <div
             className={cn(
               "flex items-center gap-1.5 border-b border-emerald-100 bg-kondo-mint/70 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-kondo-forest dark:border-emerald-400/10 dark:bg-emerald-400/10 dark:text-emerald-300",
-              immersive && "px-5 py-2.5 sm:px-7",
+              immersive && "px-4 py-2.5 sm:px-6 lg:px-[1.625rem]",
             )}
           >
             <Pin aria-hidden="true" className="h-3 w-3" />
             Pinned by community staff
           </div>
         ) : null}
-        <article className={cn("p-5 sm:p-6", immersive && "sm:p-7")}>
+        <article
+          className={cn(
+            "p-5 sm:p-6",
+            immersive && "p-4 sm:p-6 lg:p-[1.625rem]",
+          )}
+        >
           <div className="flex items-start gap-3">
             <Avatar
               className={cn(
@@ -221,7 +226,8 @@ export function FeedPost({
             <h2
               className={cn(
                 "mt-5 line-clamp-2 text-xl font-black tracking-[-0.025em] text-kondo-ink dark:text-white",
-                immersive && "text-[1.35rem] leading-tight sm:text-2xl",
+                immersive &&
+                  "mt-4 text-[1.35rem] leading-tight sm:mt-5 sm:text-2xl",
               )}
             >
               {post.title}
@@ -246,7 +252,7 @@ export function FeedPost({
           <div
             className={cn(
               "mt-5 flex items-center gap-1 border-t border-slate-100 pt-3 dark:border-white/10",
-              immersive && "mt-6 gap-0.5 border-border",
+              immersive && "gap-0.5 border-border",
             )}
           >
             <Button
