@@ -12,6 +12,8 @@ export type HorizontalTab = {
   label: string;
   /** Rendered after the label, e.g. a count or a lock. */
   badge?: React.ReactNode;
+  /** Emoji shown before the label, for top-level pillars. */
+  icon?: string;
 };
 
 /**
@@ -29,11 +31,14 @@ export function HorizontalTabs({
   tabs,
   activeKey,
   className,
+  fill = false,
 }: {
   ariaLabel: string;
   tabs: readonly HorizontalTab[];
   activeKey: string | null;
   className?: string;
+  /** Share the row width equally. Used by the few top-level pillar rows. */
+  fill?: boolean;
 }) {
   const containerRef = useRef<HTMLElement | null>(null);
   const reducedMotion = useReducedMotion();
@@ -62,7 +67,7 @@ export function HorizontalTabs({
   return (
     <nav
       aria-label={ariaLabel}
-      className={cn("subnav-row gap-1", className)}
+      className={cn(fill ? "flex w-full gap-1" : "subnav-row gap-1", className)}
       ref={containerRef}
     >
       {tabs.map((tab) => {
@@ -71,7 +76,12 @@ export function HorizontalTabs({
           <Link
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative isolate inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "relative isolate inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              fill
+                ? // Stacking on a phone gives the whole tab width to the label,
+                  // so a long pillar name never truncates.
+                  "min-w-0 flex-1 flex-col gap-1 px-2 py-2 sm:flex-row sm:gap-2 sm:px-4 sm:py-0"
+                : "shrink-0",
               active
                 ? "text-kondo-forest dark:text-emerald-200"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -93,7 +103,12 @@ export function HorizontalTabs({
                 }
               />
             ) : null}
-            {tab.label}
+            {tab.icon ? (
+              <span aria-hidden="true" className="text-base leading-none">
+                {tab.icon}
+              </span>
+            ) : null}
+            <span className={cn(fill && "truncate")}>{tab.label}</span>
             {tab.badge}
           </Link>
         );

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Student Hub study-first experience", () => {
-  test("keeps studies, resources and opportunities in three clear modules", async ({
+  test("keeps study, guide and opportunities in three clear pillars", async ({
     page,
   }) => {
     await page.goto("/student-hub");
@@ -15,18 +15,20 @@ test.describe("Student Hub study-first experience", () => {
     const modules = page.getByRole("navigation", {
       name: "Student Hub modules",
     });
-    await expect(
-      modules.getByRole("link", { name: "Studies" }),
-    ).toHaveAttribute("aria-current", "page");
+    await expect(modules.getByRole("link", { name: "Study" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(modules.getByRole("link", { name: "Guide" })).toBeVisible();
     await expect(
       modules.getByRole("link", { name: "Opportunities" }),
     ).toBeVisible();
 
-    const study = page.getByRole("navigation", { name: "Studies navigation" });
-    for (const label of ["Overview", "Academic tools", "Student Q&A"]) {
+    const study = page.getByRole("navigation", { name: "Study navigation" });
+    for (const label of ["Overview", "Planner", "Study Essentials"]) {
       await expect(study.getByRole("link", { name: label })).toBeVisible();
     }
-    await study.getByRole("link", { name: "Academic tools" }).click();
+    await study.getByRole("link", { name: "Planner" }).click();
     await expect(page).toHaveURL(/\/student-hub\/tools/);
     await expect(
       page.getByRole("heading", {
@@ -39,20 +41,20 @@ test.describe("Student Hub study-first experience", () => {
     await planner.getByRole("link", { name: "Schedule" }).click();
     await expect(page).toHaveURL(/view=schedule/);
 
-    await modules.getByRole("link", { name: "Resources" }).click();
+    // Student Q&A answers journey questions, so it lives under Guide now.
+    await modules.getByRole("link", { name: "Guide" }).click();
     await expect(page).toHaveURL(/\/student-hub\/resources/);
-    const resources = page.getByRole("navigation", {
-      name: "Resources navigation",
-    });
+    const guide = page.getByRole("navigation", { name: "Guide navigation" });
     for (const label of [
       "Overview",
+      "Student Q&A",
       "Guides",
       "Student Stories",
       "Communities",
       "Housing",
       "City resources",
     ]) {
-      await expect(resources.getByRole("link", { name: label })).toBeVisible();
+      await expect(guide.getByRole("link", { name: label })).toBeVisible();
     }
 
     await modules.getByRole("link", { name: "Opportunities" }).click();
@@ -73,6 +75,70 @@ test.describe("Student Hub study-first experience", () => {
     }
   });
 
+  test("buys a Kondo essential through the simulated checkout", async ({
+    page,
+  }) => {
+    await page.goto("/student-hub/essentials");
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Everything you need to study well.",
+      }),
+    ).toBeVisible();
+
+    await page
+      .getByRole("link", { name: /Kondo Student Planner/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/essentials\/kondo-student-planner$/);
+    await page.getByRole("link", { name: "Buy this" }).click();
+    await expect(page).toHaveURL(/\/checkout$/);
+
+    // Only the simulated provider can be selected while payments are demo.
+    await expect(
+      page.getByRole("button", { name: /Alipay/ }),
+    ).toBeDisabled();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+    await page.getByRole("button", { name: /^Pay / }).click();
+
+    await expect(page).toHaveURL(/\/student-hub\/orders\/KS-/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Order confirmed" }),
+    ).toBeVisible();
+    await expect(page.getByText("Paid (simulated)")).toBeVisible();
+
+    await page.getByRole("link", { name: "Your orders" }).click();
+    await expect(page).toHaveURL(/\/student-hub\/orders$/);
+    await expect(
+      page.getByRole("link", { name: /Kondo Student Planner/ }).first(),
+    ).toBeVisible();
+  });
+
+  test("sends a partner essential to the partner instead of a checkout", async ({
+    page,
+  }) => {
+    await page.goto(
+      "/student-hub/essentials/mandarin-bridge-online-course",
+    );
+    await expect(
+      page.getByRole("link", { name: "Buy this" }),
+    ).toHaveCount(0);
+    const partnerLink = page.getByRole("link", {
+      name: /Open on Mandarin Bridge Institute/,
+    });
+    await expect(partnerLink).toHaveAttribute("target", "_blank");
+    await expect(partnerLink).toHaveAttribute(
+      "rel",
+      /noopener noreferrer nofollow/,
+    );
+
+    // A partner item has nothing to check out on Kondo.
+    await page.goto(
+      "/student-hub/essentials/mandarin-bridge-online-course/checkout",
+    );
+    await expect(page).toHaveURL(/\/essentials\/mandarin-bridge-online-course$/);
+  });
+
   test("keeps both navigation levels usable without mobile page overflow", async ({
     page,
   }) => {
@@ -84,8 +150,8 @@ test.describe("Student Hub study-first experience", () => {
     ).toBeVisible();
     await expect(
       page
-        .getByRole("navigation", { name: "Studies navigation" })
-        .getByRole("link", { name: "Academic tools" }),
+        .getByRole("navigation", { name: "Study navigation" })
+        .getByRole("link", { name: "Study Essentials" }),
     ).toBeVisible();
     expect(
       await page.evaluate(
@@ -134,35 +200,38 @@ test.describe("Student Hub study-first experience", () => {
 
   });
 
-  test("opens the hub on a back control, then Kondo, then the modules", async ({
+  test("opens the hub on a back control and its own name, not the Kondo mark", async ({
     page,
   }) => {
-    // Entering the hub is a change of place: the way out comes first, the
-    // academic identity has room, and the modules sit below it rather than
-    // being crushed against the Kondo mark.
+    // Inside the hub the label names the space the student entered; the Kondo
+    // mark belongs to the global shell they just left.
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/student-hub");
 
-    const back = page.getByRole("button", { name: "Back to Kondo" });
-    const brand = page.getByRole("link", { name: "Kondo home" }).first();
+    const back = page.getByRole("button", { name: "Leave Student Hub" });
     const modules = page.getByRole("navigation", {
       name: "Student Hub modules",
     });
     await expect(back).toBeVisible();
-    await expect(brand).toBeVisible();
     await expect(modules).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Kondo home" }),
+    ).toHaveCount(0);
 
-    const [backBox, brandBox, modulesBox] = await Promise.all([
+    const [backBox, modulesBox] = await Promise.all([
       back.boundingBox(),
-      brand.boundingBox(),
       modules.boundingBox(),
     ]);
-
-    // The back control leads the header, with Kondo beside it.
-    expect(brandBox!.x).toBeGreaterThan(backBox!.x + backBox!.width - 1);
-    expect(Math.abs(brandBox!.y - backBox!.y)).toBeLessThanOrEqual(8);
-
     // The modules breathe well below the identity block.
     expect(modulesBox!.y).toBeGreaterThan(backBox!.y + backBox!.height + 120);
+
+    // Each pillar shares the row width rather than clustering on one side.
+    const widths = await modules
+      .getByRole("link")
+      .evaluateAll((links) =>
+        links.map((link) => Math.round(link.getBoundingClientRect().width)),
+      );
+    expect(widths).toHaveLength(3);
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
   });
 });

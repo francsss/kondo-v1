@@ -5,7 +5,6 @@ import { GraduationCap } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
-import { KondoLogo } from "@/components/KondoLogo";
 import { BackButton } from "@/components/ui/BackButton";
 import {
   HorizontalTabs,
@@ -17,21 +16,29 @@ import { STUDENT_HUB_SECTIONS } from "@/lib/student-hub-sections";
 
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
+/**
+ * The three pillars of the hub. Each answers one student sentence: Study is
+ * "I manage my academic life", Guide is "I get help navigating my journey",
+ * Opportunities is "I build my future".
+ */
 const STUDENT_HUB_MODULES: readonly HorizontalTab[] = [
   {
-    key: "studies",
+    key: "study",
     href: "/student-hub",
-    label: "Studies",
+    label: "Study",
+    icon: "📚",
   },
   {
-    key: "resources",
+    key: "guide",
     href: "/student-hub/resources",
-    label: "Resources",
+    label: "Guide",
+    icon: "📖",
   },
   {
     key: "opportunities",
     href: "/student-hub/scholarships",
     label: "Opportunities",
+    icon: "🚀",
   },
 ];
 
@@ -44,20 +51,30 @@ const STUDY_TABS: readonly HorizontalTab[] = [
   {
     key: "tools",
     href: "/student-hub/tools",
-    label: "Academic tools",
+    label: "Planner",
+  },
+  {
+    key: "essentials",
+    href: "/student-hub/essentials",
+    label: "Study Essentials",
+  },
+];
+
+/**
+ * Guide is where a student goes for help with the journey rather than with a
+ * course. Student Q&A moved here from Study for that reason; the routes
+ * themselves are unchanged.
+ */
+const GUIDE_TABS: readonly HorizontalTab[] = [
+  {
+    key: "resource-home",
+    href: "/student-hub/resources",
+    label: "Overview",
   },
   {
     key: "help",
     href: "/student-hub/help",
     label: "Student Q&A",
-  },
-];
-
-const RESOURCE_TABS: readonly HorizontalTab[] = [
-  {
-    key: "resource-home",
-    href: "/student-hub/resources",
-    label: "Overview",
   },
   {
     key: "guides",
@@ -94,14 +111,16 @@ const RESOURCE_TABS: readonly HorizontalTab[] = [
  * Routes and source domains stay unchanged; this is an information-architecture
  * layer, not duplicated data.
  */
-export type StudentHubModule = "studies" | "resources" | "opportunities";
+export type StudentHubModule = "study" | "guide" | "opportunities";
 
 export function studentHubModuleForPath(pathname: string): StudentHubModule {
   if (
     pathname === "/student-hub/resources" ||
-    pathname.startsWith("/student-hub/resources/")
+    pathname.startsWith("/student-hub/resources/") ||
+    pathname === "/student-hub/help" ||
+    pathname.startsWith("/student-hub/help/")
   ) {
-    return "resources";
+    return "guide";
   }
   return STUDENT_HUB_SECTIONS.some(
     (section) =>
@@ -109,17 +128,19 @@ export function studentHubModuleForPath(pathname: string): StudentHubModule {
       (pathname === section.href || pathname.startsWith(`${section.href}/`)),
   )
     ? "opportunities"
-    : "studies";
+    : "study";
 }
 
 export function studentHubTabsForModule(
   module: StudentHubModule,
   showAcademicTools: boolean,
 ): HorizontalTab[] {
-  if (module === "studies") {
+  if (module === "study") {
+    // The planner is the one Study surface gated on an academic affiliation;
+    // Study Essentials is open to everyone preparing to arrive.
     return STUDY_TABS.filter((tab) => tab.key !== "tools" || showAcademicTools);
   }
-  if (module === "resources") return [...RESOURCE_TABS];
+  if (module === "guide") return [...GUIDE_TABS];
   return STUDENT_HUB_SECTIONS.filter(
     (section) => section.key !== "overview",
   ).map((section) => ({
@@ -143,6 +164,14 @@ export function activeStudentHubTab(
     pathname.startsWith("/student-hub/guide/")
   ) {
     return "overview";
+  }
+  // Orders belong to Study Essentials, so the tab stays lit while a student
+  // reads a receipt.
+  if (
+    pathname.startsWith("/student-hub/essentials") ||
+    pathname.startsWith("/student-hub/orders")
+  ) {
+    return "essentials";
   }
   const match = tabs
     .filter((tab) => tab.href !== "/student-hub")
@@ -189,10 +218,10 @@ export function StudentHubShell({
   // modules open on their first contextual destination.
   const transitionIndex = Math.max(0, activeModuleIndex) * 10 + activeTabIndex;
   const secondaryNavigationLabel =
-    activeModule === "studies"
-      ? "Studies navigation"
-      : activeModule === "resources"
-        ? "Resources navigation"
+    activeModule === "study"
+      ? "Study navigation"
+      : activeModule === "guide"
+        ? "Guide navigation"
         : "Opportunity navigation";
 
   return (
@@ -219,40 +248,41 @@ export function StudentHubShell({
         />
         <div aria-hidden="true" className="noise absolute inset-0 opacity-70" />
         <div className="relative mx-auto max-w-[1440px] px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+          {/* The Kondo mark belongs to the global shell. Inside the hub the
+              label names the space the student just entered. */}
           <div className="flex items-center gap-3">
-            <BackButton fallbackHref="/home" label="Back to Kondo" />
-            <KondoLogo compactOnMobile href="/home" size="sm" />
-          </div>
-
-          <div className="mt-7 flex items-center gap-3 sm:mt-9">
-            <span
-              aria-hidden="true"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-kondo-green text-white shadow-soft"
-            >
-              <GraduationCap className="h-5 w-5" />
+            <BackButton fallbackHref="/home" label="Leave Student Hub" />
+            <span className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-kondo-green text-white shadow-soft"
+              >
+                <GraduationCap className="h-[18px] w-[18px]" />
+              </span>
+              <span className="text-base font-black tracking-tight text-kondo-ink dark:text-white">
+                Student Hub
+              </span>
             </span>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-kondo-green">
-              Student Hub
-            </p>
           </div>
 
           {/* Deliberately not an <h1>: this banner is shared chrome, and each
               page inside the hub owns the document heading that describes it. */}
-          <p className="mt-4 max-w-3xl text-balance font-display text-3xl font-black leading-[1.08] tracking-[-0.04em] sm:text-4xl">
+          <p className="mt-7 max-w-3xl text-balance font-display text-3xl font-black leading-[1.08] tracking-[-0.04em] sm:mt-9 sm:text-4xl">
             {user.university?.name
               ? `Your academic space at ${user.university.name}.`
               : "Your academic space."}
           </p>
           <p className="mt-2.5 max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
             Everything for your studies in one place — your timetable and
-            deadlines, the resources that help you, and the opportunities open
-            to you.
+            deadlines, the guidance that helps you settle, and the
+            opportunities open to you.
           </p>
 
           <HorizontalTabs
             activeKey={activeModule}
             ariaLabel="Student Hub modules"
             className="mt-8 max-w-[720px] sm:mt-10"
+            fill
             tabs={STUDENT_HUB_MODULES}
           />
         </div>

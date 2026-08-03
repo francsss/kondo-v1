@@ -34,7 +34,8 @@
     "posthog:setup": "node scripts/setup-posthog-dashboards.mjs",
     "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts",
     "release:audit": "node scripts/release-audit.mjs",
-    "legacy:audit": "tsx scripts/audit-legacy-compatibility.ts"
+    "legacy:audit": "tsx scripts/audit-legacy-compatibility.ts",
+    "essentials:seed": "tsx scripts/seed-study-essentials.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1088.0",

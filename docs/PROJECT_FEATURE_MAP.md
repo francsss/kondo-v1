@@ -217,6 +217,30 @@ Shell implementation:
 - `src/components/features/student-hub/StudentHubOpportunitySection.tsx`
 - `app/(student-hub)/student-hub/layout.tsx`
 
+#### Study Essentials
+
+A curated academic catalogue owned by Kondo, not a second marketplace. It
+deliberately does not reuse `OrganizationProduct`: that domain models an
+organization's own catalogue with contact-based inquiries and its own
+moderation lifecycle, whereas Study Essentials is Kondo-curated and, for
+Kondo-sourced items, actually sold. `PARTNER` items always send the student to
+the partner's own platform and can never be checked out on Kondo.
+
+Payments are simulated. The order carries its provider, status and payment
+reference, and is settled in the same transaction only because the payment is
+fake — a real provider leaves it `PENDING` until its webhook confirms, which is
+the only part an Alipay or WeChat Pay adapter needs to replace.
+
+- `src/lib/study-essentials.ts` — catalogue reads, orderability rule, order placement
+- `src/components/features/student-hub/StudyEssentialCover.tsx`
+- `src/components/features/student-hub/StudyEssentialCheckout.tsx`
+- `app/(student-hub)/student-hub/essentials/**` — catalogue, product, checkout
+- `app/(student-hub)/student-hub/orders/**` — order history and confirmation
+- `app/api/student-hub/essentials/orders/route.ts`
+- `scripts/seed-study-essentials.ts` — idempotent demo catalogue (`npm run essentials:seed`)
+
+Persistence: `StudyEssential`, `StudyEssentialOrder`.
+
 ### 3.4 Administrator back office
 
 The Admin shell begins at `/admin`. Exact pages are mapped in section 12.

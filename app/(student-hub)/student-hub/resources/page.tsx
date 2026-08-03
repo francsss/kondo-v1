@@ -12,7 +12,7 @@ import {
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = {
-  title: "Resources — Student Hub",
+  title: "Guide — Student Hub",
   description:
     "Trusted Kondo guides and student-life resources for studying in China.",
 };
@@ -71,14 +71,15 @@ export default async function StudentHubResourcesPage() {
     <div className="mx-auto max-w-[1080px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-12">
       <header>
         <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-          Student Hub · Resources
+          Student Hub · Guide
         </p>
         <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-          Trusted support for study and student life.
+          Help with the journey, not just the coursework.
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Move directly into the Kondo spaces that can help with your studies,
-          your campus life and your city.
+          Ask other students, read reviewed guidance, and move directly into
+          the Kondo spaces that help with your campus life, your housing and
+          your city.
         </p>
       </header>
 

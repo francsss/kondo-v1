@@ -115,7 +115,10 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 
 ### Student Hub
 
-- `StudentHubShell`: the hub reads as a change of place rather than another menu click. The header leads with a `BackButton`, then the Kondo mark, then the academic identity, and only then the three modules (Studies, Resources, Opportunities) — the module row used to be crushed against the Kondo mark in a top bar. The contextual tabs below stay sticky while reading.
+- `StudentHubShell`: the hub reads as a change of place rather than another menu click. The header leads with a `BackButton` and the hub's own name — the Kondo mark belongs to the global shell the student just left — then the academic identity, and only then the three pillars. Study ("I manage my academic life"), Guide ("I get help navigating my journey") and Opportunities ("I build my future") share the row width equally, stacking icon over label on a phone so a long pillar name never truncates. The contextual tabs below stay sticky while reading.
+- Study holds Overview, Planner and Study Essentials; Guide holds Student Q&A, Guides, Student Stories, Communities, Housing and City resources. Only the planner is gated on an academic affiliation — Study Essentials stays reachable for students still preparing to arrive.
+- `StudyEssentialCover`: a catalogue entry always has a cover. Partner artwork when published, otherwise a deterministic tint drawn from the slug, so the shelf reads as designed rather than as missing images.
+- `StudyEssentialCheckout`: the simulated checkout. It collects no card details and takes no money, and says so. Its shape is the one a real integration needs — a chosen provider, a quantity, a server-created order settled out of band — so wiring Alipay or WeChat Pay later replaces the payment step rather than this screen.
 - `StudentHubPage`: composes the existing guide and help-center capabilities into one resource dashboard with arrival, resource, Q&A, checklist, tip, article, and event entry points.
 - Guide and help pages remain the source surfaces, so the merge changes navigation organization without duplicating or removing their behaviors.
 

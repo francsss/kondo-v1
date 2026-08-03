@@ -998,6 +998,7 @@ model User {
   targetedOrganizationTransfers       OrganizationOwnershipTransfer[]       @relation("OrganizationOwnershipTransferTarget")
   grantedOrganizationPartnerships     Organization[]                        @relation("OrganizationPartnerGranter")
   createdOrganizationMedia            OrganizationMedia[]                   @relation("OrganizationMediaCreator")
+  studyEssentialOrders                StudyEssentialOrder[]
   createdOrganizationProducts         OrganizationProduct[]                 @relation("OrganizationProductCreator")
   createdOrganizationServices         OrganizationService[]                 @relation("OrganizationServiceCreator")
   savedOrganizationProducts           OrganizationProductSaved[]
@@ -4258,4 +4259,101 @@ model OpportunityApplicationStatusHistory {
 
   @@index([applicationId, createdAt])
   @@index([actingUserId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Study Essentials
+//
+// A curated academic catalogue owned by Kondo, not a second marketplace. It
+// deliberately does not reuse OrganizationProduct: that domain models an
+// organization's own catalogue with contact-based inquiries and its own
+// moderation lifecycle, whereas Study Essentials is Kondo-curated and, for
+// Kondo-sourced items, actually sold.
+// ---------------------------------------------------------------------------
+
+enum StudyEssentialFormat {
+  DIGITAL
+  PHYSICAL
+}
+
+enum StudyEssentialSource {
+  KONDO
+  PARTNER
+}
+
+enum StudyEssentialStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum StudyEssentialOrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+/// SIMULATED is the only provider wired for the MVP. The real providers are
+/// declared now so adding one is a payment-adapter change, not a schema change.
+enum StudyEssentialPaymentProvider {
+  SIMULATED
+  ALIPAY
+  WECHAT_PAY
+  CARD
+}
+
+model StudyEssential {
+  id               String                @id @default(cuid())
+  slug             String                @unique @db.VarChar(180)
+  title            String                @db.VarChar(180)
+  shortDescription String                @db.VarChar(400)
+  description      String                @db.Text
+  category         String                @db.VarChar(100)
+  format           StudyEssentialFormat
+  source           StudyEssentialSource  @default(KONDO)
+  status           StudyEssentialStatus  @default(DRAFT)
+  /// Null means the price lives on the partner's own platform.
+  priceMinor       Int?
+  currency         String                @default("CNY") @db.Char(3)
+  /// Partner attribution. Always set when source is PARTNER.
+  providerName     String?               @db.VarChar(160)
+  externalUrl      String?               @db.VarChar(500)
+  imageUrl         String?               @db.VarChar(500)
+  /// Fallback cover so a catalogue entry never renders as a broken image.
+  coverEmoji       String?               @db.VarChar(16)
+  highlights       String[]
+  sortOrder        Int                   @default(0)
+  publishedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  orders           StudyEssentialOrder[]
+
+  @@index([status, sortOrder])
+  @@index([status, format])
+  @@index([status, source])
+}
+
+model StudyEssentialOrder {
+  id               String                        @id @default(cuid())
+  reference        String                        @unique @db.VarChar(32)
+  userId           String
+  user             User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  essentialId      String
+  essential        StudyEssential                @relation(fields: [essentialId], references: [id], onDelete: Restrict)
+  /// Snapshots keep a past order readable after the catalogue entry changes.
+  titleSnapshot    String                        @db.VarChar(180)
+  formatSnapshot   StudyEssentialFormat
+  quantity         Int                           @default(1)
+  unitPriceMinor   Int
+  totalMinor       Int
+  currency         String                        @db.Char(3)
+  status           StudyEssentialOrderStatus     @default(PENDING)
+  paymentProvider  StudyEssentialPaymentProvider @default(SIMULATED)
+  paymentReference String?                       @db.VarChar(120)
+  placedAt         DateTime                      @default(now())
+  paidAt           DateTime?
+
+  @@index([userId, placedAt])
+  @@index([essentialId, status])
 }
