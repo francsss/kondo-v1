@@ -156,7 +156,11 @@ Kondo uses a warm, calm visual system: deep forest/ink anchors, emerald actions,
 
 ### Onboarding
 
-- `OnboardingFlow`: four-step country-of-origin, dynamically filtered city/university, study, language, arrival, and interest collection. Each Continue action saves a validated draft; completed members can reopen the flow and save changes.
+- `OnboardingShell`: the shared frame for both onboarding flows. Aura background, one card, a single progress language (`Step X of Y` plus a segmented bar), and a sticky action bar that stays reachable above the mobile keyboard and the home indicator.
+- `fields.tsx`: the onboarding field kit — `TextField`, `DateField`, `TextAreaField`, `ChoiceChips`, `ChoiceCards`, `MultiSelectField`, `TogglePills`, `TokenField`, plus `FieldSection`/`FieldGrid` for grouping. Labels are associated with `htmlFor`; hints are `aria-describedby`, never part of the accessible name.
+- `OnboardingFlow`: three steps — journey, journey-specific details, focus. Gender and country of origin are collected at registration and only asked here when the account genuinely lacks them (organization operators, legacy accounts). Each Continue saves a validated draft; completed members can reopen the flow and save changes.
+- `OrganizationOnboardingFlow`: three steps — identity, profile (activity areas, introduction and contact on one screen), review. Shares `OnboardingShell` with the personal flow.
+- Step completion rules live in `src/lib/onboarding-requirements.ts` and return the sentence shown next to the primary action, so a disabled button always states what is missing.
 
 ### Help center
 

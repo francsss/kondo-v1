@@ -27,7 +27,7 @@ test.describe("public landing and authentication", () => {
     await page
       .locator('input[name="email"]')
       .fill(`e2e-${Date.now()}@example.com`);
-    await page.locator('select[name="gender"]').selectOption("FEMALE");
+    await page.getByRole("button", { name: "Woman" }).click();
     await page.getByRole("button", { name: "Country of origin" }).click();
     await page
       .getByRole("textbox", { name: "Search African countries…" })
@@ -60,7 +60,7 @@ test.describe("public landing and authentication", () => {
 
     await page.goto("/register");
     await page.getByRole("button", { name: /^Organization/ }).click();
-    await expect(page.locator('select[name="gender"]')).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Gender" })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Country of origin" }),
     ).toHaveCount(0);
@@ -108,7 +108,9 @@ test.describe("public landing and authentication", () => {
     await page
       .getByLabel("Public organization name")
       .fill(`Kondo Test Organization ${suffix}`);
-    await page.getByLabel("Organization type").selectOption("EDUCATION_AGENCY");
+    await page.getByRole("button", { name: "Organization type" }).click();
+    await page.getByRole("textbox", { name: "Search types…" }).fill("agency");
+    await page.getByRole("option", { name: /education agency/i }).click();
     await page.getByRole("button", { name: "Country" }).click();
     await page
       .getByRole("textbox", { name: "Search countries…" })
@@ -128,7 +130,6 @@ test.describe("public landing and authentication", () => {
       }),
     ).toBeVisible();
     await page.getByRole("button", { name: /student services/i }).click();
-    await page.getByRole("button", { name: /save & continue/i }).click();
     await page
       .getByLabel("Short description")
       .fill(

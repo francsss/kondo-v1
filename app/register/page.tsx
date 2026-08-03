@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
+import { ChoiceChips } from "@/components/onboarding/fields";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
@@ -96,6 +97,15 @@ export default function RegisterPage() {
       setLoading(false);
     }
   }
+
+  const missingPersonalDetail =
+    intent !== "PERSONAL"
+      ? ""
+      : !gender
+        ? "Select your gender to continue."
+        : !countryCode
+          ? "Select your country of origin to continue."
+          : "";
 
   return (
     <main className="min-h-screen bg-background px-5 py-6 sm:px-10">
@@ -245,28 +255,19 @@ export default function RegisterPage() {
                 />
               </div>
               {intent === "PERSONAL" ? (
-                <label className="block sm:col-span-2">
-                  <span className="mb-2 block text-sm font-bold text-kondo-ink dark:text-white">
-                    Gender
-                  </span>
-                  <select
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-base outline-none transition focus:border-kondo-green dark:border-white/10"
-                    name="gender"
-                    onChange={(event) => setGender(event.target.value)}
-                    required
-                    value={gender}
-                  >
-                    <option disabled value="">
-                      Select your gender
-                    </option>
-                    <option value="MALE">Man</option>
-                    <option value="FEMALE">Woman</option>
-                  </select>
-                  <span className="mt-1.5 block text-[11px] text-muted-foreground">
-                    Used privately to improve Meet compatibility. You can
-                    control discovery visibility later.
-                  </span>
-                </label>
+                <div className="sm:col-span-2">
+                  <input name="gender" type="hidden" value={gender} />
+                  <ChoiceChips
+                    hint="Used privately to improve Meet compatibility. You can control discovery visibility later."
+                    label="Gender"
+                    onSelect={setGender}
+                    options={[
+                      { value: "MALE", label: "Man" },
+                      { value: "FEMALE", label: "Woman" },
+                    ]}
+                    selected={gender}
+                  />
+                </div>
               ) : null}
               {intent === "PERSONAL" ? (
                 <div className="sm:col-span-2">
@@ -296,7 +297,7 @@ export default function RegisterPage() {
                 <span className="relative block">
                   <input
                     autoComplete="new-password"
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 pr-12 text-sm outline-none focus:border-kondo-green dark:border-white/10"
+                    className="kondo-field h-12 w-full rounded-2xl border border-border bg-transparent px-4 pr-12 text-base outline-none sm:text-sm"
                     name="password"
                     required
                     type={showPassword ? "text" : "password"}
@@ -352,11 +353,16 @@ export default function RegisterPage() {
                 </p>
               ) : null}
               <div className="sm:col-span-2">
+                {missingPersonalDetail ? (
+                  <p
+                    aria-live="polite"
+                    className="mb-2.5 text-center text-xs font-semibold text-muted-foreground"
+                  >
+                    {missingPersonalDetail}
+                  </p>
+                ) : null}
                 <Button
-                  disabled={
-                    loading ||
-                    (intent === "PERSONAL" && (!countryCode || !gender))
-                  }
+                  disabled={loading || Boolean(missingPersonalDetail)}
                   fullWidth
                   size="lg"
                   type="submit"
@@ -428,7 +434,7 @@ function Field({
       </span>
       <input
         autoComplete={autoComplete}
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-transparent px-4 text-sm outline-none transition focus:border-kondo-green dark:border-white/10"
+        className="kondo-field h-12 w-full rounded-2xl border border-border bg-transparent px-4 text-base outline-none sm:text-sm"
         name={name}
         required
         type={type}

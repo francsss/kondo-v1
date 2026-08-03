@@ -1,4 +1,3 @@
-import { KondoLogo } from "@/components/KondoLogo";
 import { OrganizationOnboardingFlow } from "@/components/onboarding/OrganizationOnboardingFlow";
 import {
   findOwnedOrganizationDraft,
@@ -23,25 +22,20 @@ export default async function OrganizationOnboardingPage({
       : await findOwnedOrganizationDraft(user.id);
   const { countries, cities } = await getOrganizationReferenceData();
   return (
-    <main className="min-h-screen bg-background px-5 py-6 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <KondoLogo />
-        <OrganizationOnboardingFlow
-          cities={cities.map((city) => ({
-            id: city.id,
-            name: city.name,
-            secondary: [city.province, city.country.name]
-              .filter(Boolean)
-              .join(" · "),
-            countryId: city.countryId,
-          }))}
-          countries={countries.map((country) => ({
-            id: country.id,
-            name: `${country.emoji ?? ""} ${country.name}`.trim(),
-          }))}
-          initialOrganization={initialOrganization}
-        />
-      </div>
-    </main>
+    <OrganizationOnboardingFlow
+      cities={cities.map((city) => ({
+        id: city.id,
+        name: city.name,
+        secondary: [city.province, city.country.name]
+          .filter(Boolean)
+          .join(" · "),
+        countryId: city.countryId,
+      }))}
+      countries={countries.map((country) => ({
+        id: country.id,
+        name: `${country.emoji ?? ""} ${country.name}`.trim(),
+      }))}
+      initialOrganization={initialOrganization}
+    />
   );
 }

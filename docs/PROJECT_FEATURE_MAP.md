@@ -333,7 +333,10 @@ Primary implementation:
 - `app/onboarding/page.tsx`
 - `app/onboarding/personal/page.tsx`
 - `src/components/onboarding/OnboardingFlow.tsx`
+- `src/components/onboarding/OnboardingShell.tsx`
+- `src/components/onboarding/fields.tsx`
 - `src/lib/onboarding.ts`
+- `src/lib/onboarding-requirements.ts`
 - `src/lib/personal-journeys.ts`
 - `src/lib/reference-data.ts`
 - `app/api/onboarding/route.ts`

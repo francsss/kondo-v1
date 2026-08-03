@@ -24,7 +24,7 @@ async function registerPersonal(
   await page.locator('input[name="firstName"]').fill(input.firstName);
   await page.locator('input[name="lastName"]').fill("Journey");
   await page.locator('input[name="email"]').fill(input.email);
-  await page.locator('select[name="gender"]').selectOption("FEMALE");
+  await page.getByRole("button", { name: "Woman" }).click();
   await page.getByRole("button", { name: "Country of origin" }).click();
   await page
     .getByRole("textbox", { name: "Search African countries…" })
@@ -132,15 +132,25 @@ test.describe.serial("restructured personal onboarding", () => {
       select: { id: true },
     });
 
+    // Registration already captured gender and country of origin, so the
+    // journey step must not ask for either of them again.
+    await expect(page.getByText("Step 1 of 3")).toBeVisible();
+    await expect(page.getByRole("group", { name: "Gender" })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Country of origin" }),
+    ).toHaveCount(0);
+
     await page.getByRole("button", { name: /Preparing for China/ }).click();
     await continueOnboarding(page);
-    await continueOnboarding(page);
+
+    await expect(page.getByText("Step 2 of 3")).toBeVisible();
     await expect(
       page.getByText("I have not chosen a university yet"),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Bachelor’s" }).click();
     await continueOnboarding(page);
-    await page.getByLabel("Study level").selectOption("BACHELORS");
-    await continueOnboarding(page);
+
+    await expect(page.getByText("Step 3 of 3")).toBeVisible();
     await page.getByRole("button", { name: "Finish" }).click();
     await expect(page).toHaveURL(/\/home/);
 
@@ -180,7 +190,9 @@ test.describe.serial("restructured personal onboarding", () => {
       .getByRole("button", { name: /Studying and living in China/ })
       .click();
     await continueOnboarding(page);
-    await continueOnboarding(page);
+
+    // Campus and program used to live on two separate steps.
+    await expect(page.getByText("Step 2 of 3")).toBeVisible();
     await page.getByRole("button", { name: "Study city" }).click();
     await page
       .getByRole("textbox", { name: "Search cities or provinces…" })
@@ -193,10 +205,10 @@ test.describe.serial("restructured personal onboarding", () => {
     await page
       .getByRole("option", { name: new RegExp(universityName) })
       .click();
-    await continueOnboarding(page);
     await page.getByLabel("Program or study field").fill("Computer Science");
-    await page.getByLabel("Study level").selectOption("BACHELORS");
+    await page.getByRole("button", { name: "Bachelor’s" }).click();
     await continueOnboarding(page);
+
     await page.getByRole("button", { name: "Finish" }).click();
     await expect(page).toHaveURL(/\/home/);
 

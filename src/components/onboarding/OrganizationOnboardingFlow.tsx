@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Building2,
-  Check,
-  ImagePlus,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Building2, Check, ImagePlus, ShieldCheck } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import {
+  FieldGrid,
+  FieldSection,
+  TextAreaField,
+  TextField,
+} from "@/components/onboarding/fields";
+import {
+  OnboardingShell,
+  type OnboardingStepDefinition,
+} from "@/components/onboarding/OnboardingShell";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { ORGANIZATION_TYPES } from "@/features/organizations/registry";
 import { uploadMediaFile } from "@/lib/client-media";
+import { missingOrganizationOnboardingRequirement } from "@/lib/onboarding-requirements";
 import { ORGANIZATION_CAPABILITIES } from "@/lib/organization-capabilities";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -57,7 +61,29 @@ type OrganizationSetup = {
   city: { name: string } | null;
 };
 
-const stepLabels = ["Identity", "Activity areas", "Introduction", "Review"];
+const STEPS: OnboardingStepDefinition[] = [
+  {
+    key: "identity",
+    label: "Identity",
+    title: "Tell us who you represent",
+    description:
+      "You stay signed in through your personal account. This organization never receives a shared password.",
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    title: "What does the organization offer?",
+    description:
+      "Activity areas and a short introduction. These describe future activity and grant no publishing or verification permission.",
+  },
+  {
+    key: "review",
+    label: "Review",
+    title: "Review before finishing",
+    description:
+      "Nothing here presents the organization as verified or official.",
+  },
+];
 
 export function OrganizationOnboardingFlow({
   initialOrganization,
@@ -76,7 +102,7 @@ export function OrganizationOnboardingFlow({
     initialOrganization?.slug ?? "",
   );
   const [step, setStep] = useState(
-    Math.min(Math.max((initialOrganization?.setupStep ?? 1) - 1, 0), 3),
+    Math.min(Math.max((initialOrganization?.setupStep ?? 1) - 1, 0), 2),
   );
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -114,7 +140,7 @@ export function OrganizationOnboardingFlow({
   async function saveDraft(nextStep: number) {
     const normalizedWebsite = normalizeWebsiteUrl(form.website);
     if (
-      step === 2 &&
+      step === 1 &&
       normalizedWebsite &&
       !isHttpWebsiteUrl(normalizedWebsite)
     ) {
@@ -182,7 +208,7 @@ export function OrganizationOnboardingFlow({
     if (normalizedWebsite && !isHttpWebsiteUrl(normalizedWebsite)) {
       setWebsiteError(WEBSITE_URL_ERROR);
       setError("");
-      setStep(2);
+      setStep(1);
       return;
     }
     const draft = { ...form, website: normalizedWebsite };
@@ -244,114 +270,89 @@ export function OrganizationOnboardingFlow({
     }
   }
 
-  const canContinue =
-    step === 0
-      ? Boolean(
-          form.publicName.trim().length >= 2 && form.type && form.countryId,
-        )
-      : step === 1
-        ? form.capabilities.length > 0
-        : step === 2
-          ? form.shortDescription.trim().length >= 20
-          : true;
+  const missing = missingOrganizationOnboardingRequirement(form, step);
+  const canContinue = !missing;
 
   if (complete) {
     return (
-      <section className="mx-auto mt-14 max-w-2xl rounded-4xl border border-border bg-card p-8 text-center shadow-soft sm:p-12">
-        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
-          <Check className="h-8 w-8" />
-        </span>
-        <h1 className="mt-6 text-3xl font-black tracking-tight">
-          Organization setup complete
-        </h1>
-        <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
-          {form.publicName} is ready inside Kondo. Verification is a separate
-          review and no verified badge has been granted.
-        </p>
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Button asChild>
-            <Link
-              href={
-                organizationSlug
-                  ? `/organizations/${organizationSlug}/dashboard`
-                  : "/settings/organizations"
-              }
-            >
-              Open organization workspace
-            </Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href="/settings/organizations">View organizations</Link>
-          </Button>
-        </div>
-      </section>
+      <main className="relative grid min-h-[100dvh] place-items-center bg-background px-4 py-10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(120%_100%_at_50%_0%,rgb(var(--brand)/0.16),transparent_70%)]"
+        />
+        <section className="relative w-full max-w-2xl rounded-4xl border border-border bg-card p-7 text-center shadow-soft sm:p-12">
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
+            <Check className="h-8 w-8" />
+          </span>
+          <h1 className="mt-6 text-balance text-3xl font-black tracking-tight text-kondo-ink dark:text-white">
+            Organization setup complete
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-pretty text-sm leading-6 text-muted-foreground">
+            {form.publicName} is ready inside Kondo. Verification is a separate
+            review and no verified badge has been granted.
+          </p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button asChild>
+              <Link
+                href={
+                  organizationSlug
+                    ? `/organizations/${organizationSlug}/dashboard`
+                    : "/settings/organizations"
+                }
+              >
+                Open organization workspace
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/settings/organizations">View organizations</Link>
+            </Button>
+          </div>
+        </section>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto grid min-h-[calc(100vh-96px)] max-w-5xl items-center gap-8 py-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside aria-label="Organization setup progress">
-        <div className="flex gap-2 lg:flex-col">
-          {stepLabels.map((label, index) => (
-            <div
-              className={cn(
-                "flex flex-1 items-center gap-3 rounded-2xl p-3",
-                step === index && "bg-card shadow-sm",
-              )}
-              key={label}
-            >
-              <span
-                className={cn(
-                  "grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black",
-                  index < step
-                    ? "bg-primary text-primary-foreground"
-                    : step === index
-                      ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {index < step ? <Check className="h-4 w-4" /> : index + 1}
-              </span>
-              <span className="hidden text-sm font-bold lg:block">{label}</span>
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      <section className="rounded-4xl border border-border bg-card p-6 shadow-soft sm:p-10">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-          Organization setup · Step {step + 1} of 4
-        </p>
-        <h1 className="mt-4 text-3xl font-black tracking-[-0.04em]">
-          {step === 0
-            ? "Tell us who you represent"
-            : step === 1
-              ? "What does the organization offer?"
-              : step === 2
-                ? "Create a clear introduction"
-                : "Review before finishing"}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {step === 0
-            ? "You remain signed in through your personal account. This organization never receives a shared password."
-            : step === 1
-              ? "These choices describe future activity areas. They do not grant publishing or verification permissions."
-              : step === 2
-                ? "A short, factual introduction helps people understand the organization."
-                : "Nothing here presents the organization as verified or official."}
-        </p>
-
-        <div className="mt-8 min-h-[310px]">
-          {step === 0 ? (
-            <IdentityStep
-              availableCities={availableCities}
-              countries={countries}
-              form={form}
-              setForm={setForm}
-            />
-          ) : null}
-          {step === 1 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+    <OnboardingShell
+      action={
+        step === STEPS.length - 1 ? (
+          <Button disabled={loading || !canContinue} onClick={finish}>
+            {loading ? "Finishing…" : "Finish setup"}
+            {!loading ? <Check className="h-4 w-4" /> : null}
+          </Button>
+        ) : (
+          <Button
+            disabled={loading || uploading || !canContinue}
+            onClick={() => saveDraft(step + 1)}
+          >
+            {loading ? "Saving…" : "Save & continue"}
+            {!loading ? <ArrowRight className="h-4 w-4" /> : null}
+          </Button>
+        )
+      }
+      backDisabled={loading || step === 0}
+      error={error}
+      eyebrow="Organization setup"
+      hint={missing}
+      onBack={() => setStep((current) => Math.max(0, current - 1))}
+      step={step}
+      steps={STEPS}
+    >
+      {step === 0 ? (
+        <IdentityStep
+          availableCities={availableCities}
+          countries={countries}
+          form={form}
+          setForm={setForm}
+        />
+      ) : null}
+      {step === 1 ? (
+        <div className="grid gap-7">
+          <FieldSection
+            hint="Choose everything the organization plans to do on Kondo."
+            title="Activity areas"
+          >
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {ORGANIZATION_CAPABILITIES.map((capability) => {
                 const Icon = capability.icon;
                 const selected = form.capabilities.includes(capability.key);
@@ -359,10 +360,11 @@ export function OrganizationOnboardingFlow({
                   <button
                     aria-pressed={selected}
                     className={cn(
-                      "rounded-3xl border p-4 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-kondo-green/20",
+                      "rounded-3xl border p-4 text-left outline-none transition motion-reduce:transition-none",
+                      "focus-visible:ring-4 focus-visible:ring-kondo-green/20",
                       selected
-                        ? "border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                        : "border-border bg-background hover:border-kondo-green/50",
+                        ? "border-kondo-green bg-kondo-mint text-kondo-forest shadow-sm dark:bg-emerald-400/10 dark:text-emerald-200"
+                        : "border-border bg-background hover:border-kondo-green/50 hover:bg-muted/60",
                     )}
                     key={capability.key}
                     onClick={() =>
@@ -377,7 +379,12 @@ export function OrganizationOnboardingFlow({
                     }
                     type="button"
                   >
-                    <Icon className="h-5 w-5 text-kondo-green" />
+                    <span className="flex items-center justify-between gap-2">
+                      <Icon className="h-5 w-5 text-kondo-green" />
+                      {selected ? (
+                        <Check className="h-4 w-4 shrink-0" />
+                      ) : null}
+                    </span>
                     <span className="mt-3 block text-sm font-black">
                       {capability.label}
                     </span>
@@ -388,142 +395,100 @@ export function OrganizationOnboardingFlow({
                 );
               })}
             </div>
-          ) : null}
-          {step === 2 ? (
-            <div className="grid gap-5">
-              <label>
-                <span className="mb-2 block text-sm font-bold">
-                  Short description
+          </FieldSection>
+
+          <FieldSection
+            hint="A short, factual introduction helps people understand the organization."
+            title="Introduction"
+          >
+            <TextAreaField
+              label="Short description"
+              maxLength={500}
+              onChange={(shortDescription) =>
+                setForm({ ...form, shortDescription })
+              }
+              placeholder="Describe what the organization does and who it serves."
+              value={form.shortDescription}
+            />
+          </FieldSection>
+
+          <FieldSection title="Contact (optional)">
+            <FieldGrid>
+              <WebsiteField
+                error={websiteError}
+                onBlur={(website) => {
+                  const normalized = normalizeWebsiteUrl(website);
+                  setForm((current) => ({ ...current, website: normalized }));
+                  setWebsiteError(
+                    normalized && !isHttpWebsiteUrl(normalized)
+                      ? WEBSITE_URL_ERROR
+                      : "",
+                  );
+                }}
+                onChange={(website) => {
+                  setForm({ ...form, website });
+                  if (websiteError) setWebsiteError("");
+                }}
+                value={form.website}
+              />
+              <TextField
+                autoComplete="email"
+                label="Professional email"
+                onChange={(professionalEmail) =>
+                  setForm({ ...form, professionalEmail })
+                }
+                placeholder="contact@example.org"
+                value={form.professionalEmail}
+              />
+              <TextField
+                autoComplete="tel"
+                inputMode="tel"
+                label="Professional phone"
+                onChange={(professionalPhone) =>
+                  setForm({ ...form, professionalPhone })
+                }
+                placeholder="+86…"
+                value={form.professionalPhone}
+              />
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-bold text-kondo-ink dark:text-white">
+                  Logo
                 </span>
-                <textarea
-                  className="min-h-28 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-kondo-green"
-                  maxLength={500}
-                  onChange={(event) =>
-                    setForm({ ...form, shortDescription: event.target.value })
-                  }
-                  placeholder="Describe what the organization does and who it serves."
-                  value={form.shortDescription}
-                />
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {form.shortDescription.length}/500
+                <span className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-background px-4 text-sm font-bold transition hover:border-kondo-green/60">
+                  <ImagePlus className="h-4 w-4" />
+                  {uploading
+                    ? `Uploading ${uploadProgress}%`
+                    : form.logoMediaId
+                      ? "Logo ready"
+                      : "Choose an image"}
+                  <input
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={uploading}
+                    onChange={uploadLogo}
+                    type="file"
+                  />
                 </span>
               </label>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <TextInput
-                  error={websiteError}
-                  label="Website (optional)"
-                  onBlur={(website) => {
-                    const normalized = normalizeWebsiteUrl(website);
-                    setForm((current) => ({
-                      ...current,
-                      website: normalized,
-                    }));
-                    setWebsiteError(
-                      normalized && !isHttpWebsiteUrl(normalized)
-                        ? WEBSITE_URL_ERROR
-                        : "",
-                    );
-                  }}
-                  onChange={(website) => {
-                    setForm({ ...form, website });
-                    if (websiteError) setWebsiteError("");
-                  }}
-                  placeholder="https://example.org"
-                  type="url"
-                  value={form.website}
-                />
-                <TextInput
-                  label="Professional email (optional)"
-                  onChange={(professionalEmail) =>
-                    setForm({ ...form, professionalEmail })
-                  }
-                  placeholder="contact@example.org"
-                  type="email"
-                  value={form.professionalEmail}
-                />
-                <TextInput
-                  label="Professional phone (optional)"
-                  onChange={(professionalPhone) =>
-                    setForm({ ...form, professionalPhone })
-                  }
-                  placeholder="+86…"
-                  value={form.professionalPhone}
-                />
-                <label className="block">
-                  <span className="mb-2 block text-sm font-bold">
-                    Logo (optional)
-                  </span>
-                  <span className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-background px-4 text-sm font-bold transition hover:border-kondo-green/60">
-                    <ImagePlus className="h-4 w-4" />
-                    {uploading
-                      ? `Uploading ${uploadProgress}%`
-                      : form.logoMediaId
-                        ? "Logo ready"
-                        : "Choose an image"}
-                    <input
-                      accept="image/jpeg,image/png,image/webp"
-                      className="sr-only"
-                      disabled={uploading}
-                      onChange={uploadLogo}
-                      type="file"
-                    />
-                  </span>
-                </label>
-              </div>
-            </div>
-          ) : null}
-          {step === 3 ? (
-            <ReviewCard
-              capabilities={form.capabilities}
-              city={availableCities.find((city) => city.id === form.cityId)}
-              country={countries.find(
-                (country) => country.id === form.countryId,
-              )}
-              description={form.shortDescription}
-              logoMediaId={form.logoMediaId}
-              name={form.publicName}
-              type={
-                ORGANIZATION_TYPES.find(({ key }) => key === form.type)
-                  ?.label ?? form.type
-              }
-            />
-          ) : null}
+            </FieldGrid>
+          </FieldSection>
         </div>
-
-        {error ? (
-          <p
-            className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <div className="mt-7 flex items-center justify-between gap-3">
-          <Button
-            disabled={loading || step === 0}
-            onClick={() => setStep((current) => Math.max(0, current - 1))}
-            variant="ghost"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-          {step === 3 ? (
-            <Button disabled={loading || !canContinue} onClick={finish}>
-              {loading ? "Finishing…" : "Finish setup"}
-              {!loading ? <Check className="h-4 w-4" /> : null}
-            </Button>
-          ) : (
-            <Button
-              disabled={loading || uploading || !canContinue}
-              onClick={() => saveDraft(step + 1)}
-            >
-              {loading ? "Saving…" : "Save & continue"}
-              {!loading ? <ArrowRight className="h-4 w-4" /> : null}
-            </Button>
-          )}
-        </div>
-      </section>
-    </div>
+      ) : null}
+      {step === 2 ? (
+        <ReviewCard
+          capabilities={form.capabilities}
+          city={availableCities.find((city) => city.id === form.cityId)}
+          country={countries.find((country) => country.id === form.countryId)}
+          description={form.shortDescription}
+          logoMediaId={form.logoMediaId}
+          name={form.publicName}
+          type={
+            ORGANIZATION_TYPES.find(({ key }) => key === form.type)?.label ??
+            form.type
+          }
+        />
+      ) : null}
+    </OnboardingShell>
   );
 }
 
@@ -553,55 +518,102 @@ function IdentityStep({
   availableCities: CityOption[];
 }) {
   return (
-    <div className="grid gap-5">
-      <TextInput
-        label="Public organization name"
-        onChange={(publicName) => setForm({ ...form, publicName })}
-        placeholder="Jiaxing International Student Association"
-        value={form.publicName}
-      />
-      <label>
-        <span className="mb-2 block text-sm font-bold">Organization type</span>
-        <select
-          className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-kondo-green"
-          onChange={(event) => setForm({ ...form, type: event.target.value })}
-          value={form.type}
-        >
-          <option value="">Select a type</option>
-          {ORGANIZATION_TYPES.map(({ key, label }) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <SearchableSelect
-        label="Country"
-        onSelect={(countryId) => setForm({ ...form, countryId, cityId: "" })}
-        options={countries}
-        placeholder="Select a country"
-        searchPlaceholder="Search countries…"
-        selected={form.countryId}
-      />
-      <SearchableSelect
-        clearLabel="No city selected"
-        disabled={!form.countryId}
-        label="City (optional)"
-        onSelect={(cityId) => setForm({ ...form, cityId })}
-        options={availableCities}
-        placeholder={
-          form.countryId ? "Select a city" : "Select a country first"
-        }
-        searchPlaceholder="Search cities…"
-        selected={form.cityId}
-      />
-      <TextInput
-        label="Legal name (optional during setup)"
+    <div className="grid gap-7">
+      <FieldSection title="Organization identity">
+        <TextField
+          label="Public organization name"
+          maxLength={160}
+          onChange={(publicName) => setForm({ ...form, publicName })}
+          placeholder="Jiaxing International Student Association"
+          value={form.publicName}
+        />
+        <SearchableSelect
+          emptyMessage="No organization type matches your search."
+          label="Organization type"
+          onSelect={(type) => setForm({ ...form, type })}
+          options={ORGANIZATION_TYPES.map(({ key, label }) => ({
+            id: key,
+            name: label,
+          }))}
+          placeholder="Select a type"
+          searchPlaceholder="Search types…"
+          selected={form.type}
+        />
+      </FieldSection>
+
+      <FieldSection title="Where it operates">
+        <SearchableSelect
+          label="Country"
+          onSelect={(countryId) => setForm({ ...form, countryId, cityId: "" })}
+          options={countries}
+          placeholder="Select a country"
+          searchPlaceholder="Search countries…"
+          selected={form.countryId}
+        />
+        <SearchableSelect
+          clearLabel="No city selected"
+          disabled={!form.countryId}
+          label="City (optional)"
+          onSelect={(cityId) => setForm({ ...form, cityId })}
+          options={availableCities}
+          placeholder={
+            form.countryId ? "Select a city" : "Select a country first"
+          }
+          searchPlaceholder="Search cities…"
+          selected={form.cityId}
+        />
+      </FieldSection>
+
+      <TextField
+        hint="Only needed if it differs from the public name. You can add it later."
+        label="Legal name (optional)"
+        maxLength={200}
         onChange={(legalName) => setForm({ ...form, legalName })}
         placeholder="Registered legal name"
         value={form.legalName}
       />
     </div>
+  );
+}
+
+function WebsiteField({
+  value,
+  onChange,
+  onBlur,
+  error,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: (value: string) => void;
+  error?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-bold text-kondo-ink dark:text-white">
+        Website
+      </span>
+      <input
+        aria-describedby={error ? "organization-website-error" : undefined}
+        aria-invalid={Boolean(error)}
+        className={cn(
+          "kondo-field h-12 w-full rounded-2xl border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted-foreground sm:text-sm",
+          error ? "border-red-500" : "border-border",
+        )}
+        onBlur={(event) => onBlur(event.target.value)}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="https://example.org"
+        type="url"
+        value={value}
+      />
+      {error ? (
+        <span
+          className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-300"
+          id="organization-website-error"
+        >
+          {error}
+        </span>
+      ) : null}
+    </label>
   );
 }
 
@@ -624,7 +636,7 @@ function ReviewCard({
 }) {
   return (
     <div className="overflow-hidden rounded-4xl border border-border bg-background shadow-sm">
-      <div className="bg-gradient-to-br from-kondo-forest to-kondo-green p-6 text-white">
+      <div className="bg-gradient-to-br from-kondo-forest to-kondo-green p-5 text-white sm:p-6">
         <div className="flex items-center gap-4">
           <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/15">
             {logoMediaId ? (
@@ -638,19 +650,23 @@ function ReviewCard({
               <Building2 className="h-8 w-8" />
             )}
           </span>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/65">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/65">
               Draft organization
             </p>
-            <h2 className="mt-1 text-2xl font-black">{name}</h2>
+            <h2 className="mt-1 text-balance text-2xl font-black">{name}</h2>
             <p className="mt-1 text-sm text-white/75">
-              {type} · {[city?.name, country?.name].filter(Boolean).join(", ")}
+              {[type, [city?.name, country?.name].filter(Boolean).join(", ")]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
         </div>
       </div>
-      <div className="p-6">
-        <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+      <div className="p-5 sm:p-6">
+        <p className="text-pretty text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
         <div className="mt-5 flex flex-wrap gap-2">
           {capabilities.map((key) => (
             <span
@@ -672,49 +688,3 @@ function ReviewCard({
   );
 }
 
-function TextInput({
-  label,
-  value,
-  onChange,
-  onBlur,
-  placeholder,
-  type = "text",
-  error,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: (value: string) => void;
-  placeholder?: string;
-  type?: "text" | "email" | "url";
-  error?: string;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm font-bold">{label}</span>
-      <input
-        aria-describedby={error ? "organization-website-error" : undefined}
-        aria-invalid={Boolean(error)}
-        className={cn(
-          "h-12 w-full rounded-2xl border bg-background px-4 text-sm outline-none focus:ring-4",
-          error
-            ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-            : "border-border focus:border-kondo-green focus:ring-kondo-green/10",
-        )}
-        onBlur={(event) => onBlur?.(event.target.value)}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        type={type}
-        value={value}
-      />
-      {error ? (
-        <span
-          className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-300"
-          id="organization-website-error"
-        >
-          {error}
-        </span>
-      ) : null}
-    </label>
-  );
-}

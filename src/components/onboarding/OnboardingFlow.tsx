@@ -2,15 +2,24 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  GraduationCap,
-  MapPin,
-  Search,
-} from "lucide-react";
+import { ArrowRight, Check, GraduationCap, MapPin } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChoiceCards,
+  ChoiceChips,
+  DateField,
+  FieldGrid,
+  FieldSection,
+  MultiSelectField,
+  TextAreaField,
+  TextField,
+  TogglePills,
+  TokenField,
+} from "@/components/onboarding/fields";
+import {
+  OnboardingShell,
+  type OnboardingStepDefinition,
+} from "@/components/onboarding/OnboardingShell";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
@@ -21,9 +30,9 @@ import {
   journeyStageLabel,
   legacyJourneyFor,
 } from "@/lib/journey";
+import { missingPersonalOnboardingRequirement } from "@/lib/onboarding-requirements";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
-import { cn } from "@/lib/utils";
 
 type Option = { id: string; name: string; secondary?: string };
 type CityOption = Option & { countryId: string };
@@ -97,62 +106,121 @@ type OnboardingForm = {
 
 type FormSetter = React.Dispatch<React.SetStateAction<OnboardingForm>>;
 
-const interests = [
-  "Housing",
-  "Roommate",
-  "Community",
-  "Marketplace",
-  "Internship",
-  "Scholarship",
-  "Student Guide",
+const INTEREST_OPTIONS = [
+  { value: "Housing", label: "Housing", icon: "🏠" },
+  { value: "Roommate", label: "Roommate", icon: "🧑🏾‍🤝‍🧑🏿" },
+  { value: "Community", label: "Community", icon: "🌍" },
+  { value: "Marketplace", label: "Marketplace", icon: "🛍️" },
+  { value: "Internship", label: "Internship", icon: "💼" },
+  { value: "Scholarship", label: "Scholarship", icon: "🏅" },
+  { value: "Student Guide", label: "Student Guide", icon: "🧭" },
 ] as const;
 
-const interestEmoji: Record<string, string> = {
-  Housing: "🏠",
-  Roommate: "🧑🏾‍🤝‍🧑🏿",
-  Community: "🌍",
-  Marketplace: "🛍️",
-  Internship: "💼",
-  Scholarship: "🏅",
-  "Student Guide": "🧭",
-};
+const LANGUAGE_SUGGESTIONS = [
+  "English",
+  "French",
+  "Chinese",
+  "Arabic",
+  "Portuguese",
+  "Swahili",
+  "Spanish",
+] as const;
 
-const steps = [
+const STUDY_LEVEL_OPTIONS = [
+  { value: "LANGUAGE", label: "Language" },
+  { value: "BACHELORS", label: "Bachelor’s" },
+  { value: "MASTERS", label: "Master’s" },
+  { value: "DOCTORATE", label: "Doctorate" },
+  { value: "EXCHANGE", label: "Exchange" },
+  { value: "OTHER", label: "Other" },
+] as const satisfies readonly { value: StudyLevel; label: string }[];
+
+const UNIVERSITY_PREFERENCE_OPTIONS = [
   {
-    key: "personal_journey",
-    title: "Which situation best describes you?",
-    description:
-      "Choose your current situation. You can update it later without creating a new account.",
-    icon: "👋",
+    value: "NOT_CHOSEN",
+    label: "I have not chosen a university yet",
+    description: "Kondo will suggest options as you explore.",
   },
   {
-    key: "country",
-    title: "Where are you from?",
-    description:
-      "Your personal country connects you with the right national community.",
-    icon: "🌍",
+    value: "CONSIDERING_SEVERAL",
+    label: "I am considering several universities",
+    description: "Shortlist them below so we can follow their deadlines.",
   },
   {
-    key: "context",
-    title: "Add the context that matters",
-    description:
-      "Kondo only asks for information relevant to your current journey.",
-    icon: "🧭",
-  },
-  {
-    key: "plans",
-    title: "Tell us a little more",
-    description: "This helps Kondo prioritize useful guidance and tools.",
-    icon: "📚",
-  },
-  {
-    key: "interests",
-    title: "What would be useful to you?",
-    description:
-      "Choose what matters now. Everything can be changed from Settings.",
-    icon: "✨",
+    value: "PREFERRED_SELECTED",
+    label: "I already have preferred universities",
+    description: "Pick them below to get targeted guidance.",
   },
 ] as const;
+
+/**
+ * Titles adapt to the selected journey so the middle step never asks a
+ * question that does not belong to this member's situation.
+ */
+function profileStepCopy(journey: StudentJourney | ""): {
+  title: string;
+  description: string;
+} {
+  if (journey === "PROFESSIONAL") {
+    return {
+      title: "Tell us about your work",
+      description:
+        "This helps Kondo connect you with the right students, alumni and organizations.",
+    };
+  }
+  if (journey === "ALUMNI") {
+    return {
+      title: "Your studies and where you are now",
+      description:
+        "Everything here is optional. Share what helps others recognise your experience.",
+    };
+  }
+  if (journey === "PROSPECTIVE_STUDENT") {
+    return {
+      title: "What are you aiming for?",
+      description:
+        "Only your study plans. Nothing about a campus you have not joined yet.",
+    };
+  }
+  if (journey === "ADMITTED_STUDENT") {
+    return {
+      title: "Your admission and arrival",
+      description:
+        "This unlocks arrival guidance for your city and university.",
+    };
+  }
+  return {
+    title: "Your university life",
+    description:
+      "This connects you to your campus, your city and the students around you.",
+  };
+}
+
+function buildSteps(journey: StudentJourney | ""): OnboardingStepDefinition[] {
+  const profile = profileStepCopy(journey);
+  return [
+    {
+      key: "journey",
+      label: "Your journey",
+      title: "Where are you in your China journey?",
+      description:
+        "Kondo builds the rest of this form around your answer. You can change it later from Settings.",
+    },
+    {
+      key: "profile",
+      label: "Your details",
+      title: profile.title,
+      description: profile.description,
+    },
+    {
+      key: "focus",
+      label: "Your focus",
+      title: "What should Kondo bring you first?",
+      description:
+        "Pick what matters right now. Everything stays editable from Settings.",
+    },
+  ];
+}
 
 function toOptional(value: string) {
   return value.trim() || undefined;
@@ -172,9 +240,6 @@ export function OnboardingFlow({
   completed: boolean;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(
-    Math.min(Math.max(initialValues.onboardingStep ?? 0, 0), steps.length - 1),
-  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const stepStartedAt = useRef<number | null>(null);
@@ -191,12 +256,22 @@ export function OnboardingFlow({
           ].includes(initialValues.studentJourney)
         ? initialValues.studentJourney
         : "";
-  const initialCanonicalJourney = inferJourney({
-    group: initialValues.journeyGroup,
-    stage: initialValues.journeyStage,
-    legacyJourney: initialValues.studentJourney,
-    applicationStage: initialValues.applicationStage as never,
-  });
+  /**
+   * `inferJourney` always returns a fallback group. Applying it to a brand new
+   * account would render a journey card as selected while the flow still
+   * refuses to continue, so it is only used to restore a known journey.
+   */
+  const hasStoredJourney = Boolean(
+    (initialValues.journeyGroup && initialValues.journeyStage) || initialJourney,
+  );
+  const initialCanonicalJourney = hasStoredJourney
+    ? inferJourney({
+        group: initialValues.journeyGroup,
+        stage: initialValues.journeyStage,
+        legacyJourney: initialValues.studentJourney,
+        applicationStage: initialValues.applicationStage as never,
+      })
+    : { group: "" as const, stage: "" as const };
   const [form, setForm] = useState<OnboardingForm>({
     gender: initialValues.gender ?? "",
     studentJourney: initialJourney as StudentJourney | "",
@@ -227,6 +302,22 @@ export function OnboardingFlow({
     arrivalPreparationContext: initialValues.arrivalPreparationContext ?? "",
   });
 
+  const steps = useMemo(
+    () => buildSteps(form.studentJourney),
+    [form.studentJourney],
+  );
+  const [step, setStep] = useState(() =>
+    Math.min(Math.max(initialValues.onboardingStep ?? 0, 0), 2),
+  );
+
+  /**
+   * Registration already collects gender and country of origin for personal
+   * accounts. They are only asked again when the account genuinely lacks them
+   * (organization operators and legacy accounts), never as a repeat question.
+   */
+  const needsGender = !initialValues.gender;
+  const needsCountry = !initialValues.countryId;
+
   const availableUniversities = useMemo(
     () =>
       universities.filter((university) => university.cityId === form.cityId),
@@ -254,6 +345,9 @@ export function OnboardingFlow({
       step: steps[step].key,
       step_number: step + 1,
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Journey changes rewrite step copy but must not re-emit a step event.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   function requestBody(nextStep = step) {
@@ -352,263 +446,184 @@ export function OnboardingFlow({
     router.refresh();
   }
 
-  const canContinue =
-    step === 0
-      ? Boolean(
-          form.gender &&
-          form.studentJourney &&
-          form.journeyGroup &&
-          form.journeyStage,
-        )
-      : step === 1
-        ? Boolean(form.countryId)
-        : step === 2
-          ? contextStepComplete(form)
-          : step === 3
-            ? planStepComplete(form)
-            : true;
+  const missing = missingPersonalOnboardingRequirement(form, step, {
+    needsGender,
+    needsCountry,
+  });
+  const canContinue = !missing;
+  const isLastStep = step === steps.length - 1;
 
   return (
-    <div className="mx-auto grid min-h-[calc(100vh-96px)] max-w-5xl items-center gap-8 py-8 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside aria-label="Onboarding progress">
-        <div className="flex gap-2 lg:flex-col">
-          {steps.map((item, index) => (
-            <div
-              className={cn(
-                "flex flex-1 items-center gap-3 rounded-2xl p-3 transition motion-reduce:transition-none",
-                step === index && "bg-card shadow-sm",
-              )}
-              key={item.key}
-            >
-              <span
-                className={cn(
-                  "grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black",
-                  index < step
-                    ? "bg-primary text-primary-foreground"
-                    : step === index
-                      ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {index < step ? <Check className="h-4 w-4" /> : index + 1}
-              </span>
-              <span className="hidden text-sm font-bold lg:block">
-                {item.title}
-              </span>
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      <section className="rounded-4xl border border-border bg-card p-6 text-card-foreground shadow-soft sm:p-10">
-        <div className="flex items-center justify-between gap-4">
-          <span aria-hidden="true" className="text-4xl">
-            {steps[step].icon}
-          </span>
-          {completed ? (
-            <Button asChild size="sm" variant="ghost">
-              <Link href="/settings">Exit editing</Link>
-            </Button>
-          ) : null}
-        </div>
-        <h1 className="mt-5 text-3xl font-black tracking-[-0.04em] text-kondo-ink dark:text-white">
-          {steps[step].title}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {steps[step].description}
-        </p>
-
-        <div className="mt-8 min-h-[300px]">
-          {step === 0 ? <JourneyStep form={form} setForm={setForm} /> : null}
-          {step === 1 ? (
-            <SearchableSelect
-              emptyMessage="No country matches your search."
-              label="Country of origin"
-              onSelect={(countryId) => setForm({ ...form, countryId })}
-              options={countries}
-              placeholder="Select your country"
-              searchPlaceholder="Search countries…"
-              selected={form.countryId}
-            />
-          ) : null}
-          {step === 2 ? (
-            <ContextStep
-              availableUniversities={availableUniversities}
-              cities={cities}
-              form={form}
-              setForm={setForm}
-              targetUniversities={targetUniversities}
-              universities={universities}
-            />
-          ) : null}
-          {step === 3 ? <PlansStep form={form} setForm={setForm} /> : null}
-          {step === 4 ? <InterestsStep form={form} setForm={setForm} /> : null}
-        </div>
-
-        {error ? (
-          <p
-            className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <div className="mt-7 flex items-center justify-between gap-3">
-          <Button
-            disabled={loading || step === 0}
-            onClick={() => setStep((value) => Math.max(0, value - 1))}
-            type="button"
-            variant="ghost"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
+    <OnboardingShell
+      action={
+        isLastStep ? (
+          <Button disabled={loading || !canContinue} onClick={finish}>
+            {loading ? "Saving…" : completed ? "Save changes" : "Finish"}
+            {!loading ? <Check className="h-4 w-4" /> : null}
           </Button>
-          {step === steps.length - 1 ? (
-            <Button disabled={loading || !canContinue} onClick={finish}>
-              {loading ? "Saving…" : completed ? "Save changes" : "Finish"}
-              {!loading ? <Check className="h-4 w-4" /> : null}
-            </Button>
-          ) : (
-            <Button
-              disabled={loading || !canContinue}
-              onClick={continueToNextStep}
-            >
-              {loading ? "Saving…" : "Continue"}
-              {!loading ? <ArrowRight className="h-4 w-4" /> : null}
-            </Button>
-          )}
-        </div>
-      </section>
-    </div>
+        ) : (
+          <Button
+            disabled={loading || !canContinue}
+            onClick={continueToNextStep}
+          >
+            {loading ? "Saving…" : "Continue"}
+            {!loading ? <ArrowRight className="h-4 w-4" /> : null}
+          </Button>
+        )
+      }
+      backDisabled={loading || step === 0}
+      error={error}
+      eyebrow={completed ? "Edit your profile" : "Welcome to Kondo"}
+      headerAction={
+        completed ? (
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/settings">Exit editing</Link>
+          </Button>
+        ) : null
+      }
+      hint={missing}
+      onBack={() => setStep((value) => Math.max(0, value - 1))}
+      step={step}
+      steps={steps}
+    >
+      {step === 0 ? (
+        <JourneyStep
+          countries={countries}
+          form={form}
+          needsCountry={needsCountry}
+          needsGender={needsGender}
+          setForm={setForm}
+        />
+      ) : null}
+      {step === 1 ? (
+        <ProfileStep
+          availableUniversities={availableUniversities}
+          cities={cities}
+          form={form}
+          setForm={setForm}
+          targetUniversities={targetUniversities}
+          universities={universities}
+        />
+      ) : null}
+      {step === 2 ? <FocusStep form={form} setForm={setForm} /> : null}
+    </OnboardingShell>
   );
 }
 
 function JourneyStep({
   form,
   setForm,
+  countries,
+  needsGender,
+  needsCountry,
 }: {
   form: OnboardingForm;
   setForm: FormSetter;
+  countries: Option[];
+  needsGender: boolean;
+  needsCountry: boolean;
 }) {
   return (
-    <div className="grid gap-5">
-      <fieldset>
-        <legend className="mb-2 text-sm font-bold text-kondo-ink dark:text-white">
-          Gender
-        </legend>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { value: "MALE", label: "Man" },
-            { value: "FEMALE", label: "Woman" },
-          ].map((option) => (
-            <button
-              aria-pressed={form.gender === option.value}
-              className={selectionClass(form.gender === option.value)}
-              key={option.value}
-              onClick={() =>
-                setForm((current) => ({
-                  ...current,
-                  gender: option.value,
-                }))
+    <div className="grid gap-7">
+      <ChoiceCards
+        onSelect={(group) => {
+          const stage = JOURNEY_STAGES_BY_GROUP[group][0];
+          setForm((current) => ({
+            ...current,
+            journeyGroup: group,
+            journeyStage: stage,
+            studentJourney: legacyJourneyFor(group, stage),
+            applicationStage:
+              group === "PREPARING_FOR_CHINA" ? stage : current.applicationStage,
+          }));
+          captureProductEvent(PRODUCT_EVENTS.PERSONAL_JOURNEY_SELECTED, {
+            journey: group,
+          });
+        }}
+        options={JOURNEY_GROUPS.map((group) => ({
+          value: group,
+          label: JOURNEY_GROUP_PRESENTATION[group].label,
+          description: JOURNEY_GROUP_PRESENTATION[group].description,
+          icon: JOURNEY_GROUP_PRESENTATION[group].icon,
+        }))}
+        selected={form.journeyGroup}
+      />
+
+      {form.journeyGroup ? (
+        <ChoiceChips
+          label="Where are you now?"
+          onSelect={(stage) =>
+            setForm((current) => ({
+              ...current,
+              journeyStage: stage,
+              studentJourney: legacyJourneyFor(
+                current.journeyGroup as JourneyGroup,
+                stage,
+              ),
+              applicationStage:
+                current.journeyGroup === "PREPARING_FOR_CHINA"
+                  ? stage
+                  : current.applicationStage,
+            }))
+          }
+          options={JOURNEY_STAGES_BY_GROUP[form.journeyGroup].map((stage) => ({
+            value: stage,
+            label: journeyStageLabel(stage),
+          }))}
+          selected={form.journeyStage}
+        />
+      ) : null}
+
+      {needsGender || needsCountry ? (
+        <FieldSection
+          hint="Kondo did not collect this when your account was created."
+          title="A couple of missing details"
+        >
+          {needsGender ? (
+            <ChoiceChips
+              hint="Used privately to improve Meet compatibility."
+              label="Gender"
+              onSelect={(gender) =>
+                setForm((current) => ({ ...current, gender }))
               }
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <div className="grid gap-3">
-        {JOURNEY_GROUPS.map((group) => {
-          const item = JOURNEY_GROUP_PRESENTATION[group];
-          const selected = form.journeyGroup === group;
-          return (
-            <button
-              aria-pressed={selected}
-              className={cn(
-                "flex items-center gap-4 rounded-3xl border p-4 text-left outline-none transition motion-reduce:transition-none focus-visible:ring-4 focus-visible:ring-kondo-green/20",
-                selected
-                  ? "border-kondo-green bg-kondo-mint text-kondo-forest shadow-sm dark:bg-emerald-400/10 dark:text-emerald-200"
-                  : "border-border bg-background hover:border-kondo-green/50 hover:bg-muted/60",
-              )}
-              key={group}
-              onClick={() => {
-                const stage = JOURNEY_STAGES_BY_GROUP[group][0];
-                setForm((current) => ({
-                  ...current,
-                  journeyGroup: group,
-                  journeyStage: stage,
-                  studentJourney: legacyJourneyFor(group, stage),
-                }));
-                captureProductEvent(PRODUCT_EVENTS.PERSONAL_JOURNEY_SELECTED, {
-                  journey: group,
-                });
-              }}
-              type="button"
-            >
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-card text-2xl shadow-sm">
-                {item.icon}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-black">{item.label}</span>
-                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  {item.description}
-                </span>
-              </span>
-              {selected ? <Check className="h-5 w-5 shrink-0" /> : null}
-            </button>
-          );
-        })}
-        {form.journeyGroup ? (
-          <fieldset className="mt-3 rounded-3xl border border-border bg-muted/30 p-4">
-            <legend className="px-2 text-sm font-black text-kondo-ink dark:text-white">
-              Where are you now?
-            </legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {JOURNEY_STAGES_BY_GROUP[form.journeyGroup].map((stage) => (
-                <button
-                  aria-pressed={form.journeyStage === stage}
-                  className={cn(
-                    "rounded-full border px-3 py-2 text-xs font-bold transition motion-reduce:transition-none",
-                    form.journeyStage === stage
-                      ? "border-kondo-green bg-kondo-green text-white"
-                      : "border-border bg-card text-muted-foreground hover:border-kondo-green/50 hover:text-foreground",
-                  )}
-                  key={stage}
-                  onClick={() =>
-                    setForm((current) => ({
-                      ...current,
-                      journeyStage: stage,
-                      studentJourney: legacyJourneyFor(
-                        current.journeyGroup as JourneyGroup,
-                        stage,
-                      ),
-                      applicationStage:
-                        current.journeyGroup === "PREPARING_FOR_CHINA"
-                          ? stage
-                          : current.applicationStage,
-                    }))
-                  }
-                  type="button"
-                >
-                  {journeyStageLabel(stage)}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        ) : null}
-        {form.studentJourney === "INCOMING_STUDENT" ? (
-          <p className="rounded-2xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">
-            Your legacy “Incoming student” status is preserved. Choose
-            Prospective or Admitted only when you are ready to clarify it.
-          </p>
-        ) : null}
-      </div>
+              options={[
+                { value: "MALE", label: "Man" },
+                { value: "FEMALE", label: "Woman" },
+              ]}
+              selected={form.gender}
+            />
+          ) : null}
+          {needsCountry ? (
+            <SearchableSelect
+              emptyMessage="No country matches your search."
+              label="Country of origin"
+              onSelect={(countryId) =>
+                setForm((current) => ({ ...current, countryId }))
+              }
+              options={countries}
+              placeholder="Select your country"
+              searchPlaceholder="Search countries…"
+              selected={form.countryId}
+            />
+          ) : null}
+        </FieldSection>
+      ) : null}
+
+      {form.studentJourney === "INCOMING_STUDENT" ? (
+        <p className="rounded-2xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+          Your legacy “Incoming student” status is preserved. Choose a journey
+          above only when you are ready to clarify it.
+        </p>
+      ) : null}
     </div>
   );
 }
 
-function ContextStep({
+/**
+ * One screen per journey. Context and study plans used to be two separate
+ * steps asking for fields that belong to the same mental question.
+ */
+function ProfileStep({
   form,
   setForm,
   cities,
@@ -625,25 +640,29 @@ function ContextStep({
 }) {
   if (form.studentJourney === "PROFESSIONAL") {
     return (
-      <div className="grid gap-5">
-        <InputField
-          label="Current city"
-          onChange={(currentCityName) =>
-            setForm((current) => ({ ...current, currentCityName }))
-          }
-          placeholder="Douala, Shanghai, Paris…"
-          value={form.currentCityName}
-        />
-        <InputField
-          label="Professional area"
-          onChange={(professionalArea) =>
-            setForm((current) => ({ ...current, professionalArea }))
-          }
-          placeholder="Education, technology, trade…"
-          value={form.professionalArea}
-        />
+      <div className="grid gap-6">
+        <FieldGrid>
+          <TextField
+            label="Current city"
+            onChange={(currentCityName) =>
+              setForm((current) => ({ ...current, currentCityName }))
+            }
+            placeholder="Douala, Shanghai, Paris…"
+            value={form.currentCityName}
+          />
+          <TextField
+            label="Professional area"
+            onChange={(professionalArea) =>
+              setForm((current) => ({ ...current, professionalArea }))
+            }
+            placeholder="Education, technology, trade…"
+            value={form.professionalArea}
+          />
+        </FieldGrid>
         <TextAreaField
+          hint="What you do, what you are building, or what you are looking for."
           label="Your professional connection with China"
+          maxLength={500}
           onChange={(chinaRelationship) =>
             setForm((current) => ({ ...current, chinaRelationship }))
           }
@@ -656,248 +675,236 @@ function ContextStep({
 
   if (form.studentJourney === "PROSPECTIVE_STUDENT") {
     return (
-      <div className="grid gap-5">
-        <fieldset>
-          <legend className="mb-2 text-sm font-bold">University plans</legend>
-          <div className="grid gap-2">
-            {[
-              ["NOT_CHOSEN", "I have not chosen a university yet"],
-              ["CONSIDERING_SEVERAL", "I am considering several universities"],
-              ["PREFERRED_SELECTED", "I already have preferred universities"],
-            ].map(([value, label]) => (
-              <button
-                aria-pressed={form.universityPreferenceMode === value}
-                className={selectionClass(
-                  form.universityPreferenceMode === value,
-                )}
-                key={value}
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    universityPreferenceMode: value,
-                    targetUniversityIds:
-                      value === "NOT_CHOSEN" ? [] : current.targetUniversityIds,
-                  }))
-                }
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <MultiOptionPicker
-          label="Preferred Chinese cities (optional)"
-          onChange={(targetCityIds) =>
-            setForm((current) => ({
-              ...current,
-              targetCityIds,
-              targetUniversityIds: current.targetUniversityIds.filter((id) => {
-                const university = universities.find(
-                  (option) => option.id === id,
-                );
-                return (
-                  !targetCityIds.length ||
-                  Boolean(
-                    university && targetCityIds.includes(university.cityId),
-                  )
-                );
-              }),
-            }))
-          }
-          options={cities}
-          selected={form.targetCityIds}
-        />
-        {form.universityPreferenceMode !== "NOT_CHOSEN" ? (
-          <MultiOptionPicker
-            label="Preferred universities"
-            onChange={(targetUniversityIds) =>
+      <div className="grid gap-7">
+        <FieldSection title="Your university plans">
+          <ChoiceCards
+            onSelect={(value) =>
               setForm((current) => ({
                 ...current,
-                targetUniversityIds,
+                universityPreferenceMode: value,
+                targetUniversityIds:
+                  value === "NOT_CHOSEN" ? [] : current.targetUniversityIds,
               }))
             }
-            options={targetUniversities}
-            selected={form.targetUniversityIds}
+            options={UNIVERSITY_PREFERENCE_OPTIONS}
+            selected={form.universityPreferenceMode}
           />
-        ) : null}
+          <MultiSelectField
+            hint="Optional. Helps Kondo surface the right cost of living and housing."
+            label="Preferred Chinese cities"
+            onChange={(targetCityIds) =>
+              setForm((current) => ({
+                ...current,
+                targetCityIds,
+                targetUniversityIds: current.targetUniversityIds.filter((id) => {
+                  const university = universities.find(
+                    (option) => option.id === id,
+                  );
+                  return (
+                    !targetCityIds.length ||
+                    Boolean(
+                      university && targetCityIds.includes(university.cityId),
+                    )
+                  );
+                }),
+              }))
+            }
+            options={cities}
+            searchPlaceholder="Search cities or provinces…"
+            selected={form.targetCityIds}
+          />
+          {form.universityPreferenceMode !== "NOT_CHOSEN" ? (
+            <MultiSelectField
+              label="Preferred universities"
+              onChange={(targetUniversityIds) =>
+                setForm((current) => ({ ...current, targetUniversityIds }))
+              }
+              options={targetUniversities}
+              searchPlaceholder="Search universities…"
+              selected={form.targetUniversityIds}
+            />
+          ) : null}
+        </FieldSection>
+
+        <FieldSection title="Your study goal">
+          <TextField
+            label="Intended field or education goal"
+            onChange={(degree) => setForm((current) => ({ ...current, degree }))}
+            placeholder="Computer Science"
+            value={form.degree}
+          />
+          <ChoiceChips
+            label="Study level"
+            onSelect={(studyLevel) =>
+              setForm((current) => ({ ...current, studyLevel }))
+            }
+            options={STUDY_LEVEL_OPTIONS}
+            selected={form.studyLevel}
+          />
+          <FieldGrid>
+            <DateField
+              label="Expected intake (optional)"
+              onChange={(expectedIntake) =>
+                setForm((current) => ({ ...current, expectedIntake }))
+              }
+              value={form.expectedIntake}
+            />
+            <DateField
+              label="Expected arrival date (optional)"
+              onChange={(arrivalDate) =>
+                setForm((current) => ({ ...current, arrivalDate }))
+              }
+              value={form.arrivalDate}
+            />
+          </FieldGrid>
+        </FieldSection>
       </div>
     );
   }
 
-  const optional = form.studentJourney === "ALUMNI";
-  return (
-    <div className="grid gap-5">
-      <SearchableSelect
-        clearLabel={optional ? "No former study city selected" : undefined}
-        icon={<MapPin />}
-        label={optional ? "Former study city (optional)" : "Study city"}
-        onSelect={(cityId) =>
-          setForm((current) => ({
-            ...current,
-            cityId,
-            universityId: universities.some(
-              (university) =>
-                university.id === current.universityId &&
-                university.cityId === cityId,
-            )
-              ? current.universityId
-              : "",
-          }))
-        }
-        options={cities}
-        placeholder="Select a city"
-        searchPlaceholder="Search cities or provinces…"
-        selected={form.cityId}
-      />
-      <SearchableSelect
-        clearLabel={optional ? "No former university selected" : undefined}
-        disabled={!form.cityId}
-        emptyMessage="No university is registered for this city."
-        icon={<GraduationCap />}
-        label={optional ? "Former university (optional)" : "University"}
-        onSelect={(universityId) =>
-          setForm((current) => ({ ...current, universityId }))
-        }
-        options={availableUniversities}
-        placeholder={
-          form.cityId ? "Select a university" : "Select a city first"
-        }
-        searchPlaceholder="Search universities…"
-        selected={form.universityId}
-      />
-      {form.studentJourney === "CURRENT_STUDENT" ? (
-        <InputField
-          label="Campus (optional)"
-          onChange={(campusName) =>
-            setForm((current) => ({ ...current, campusName }))
-          }
-          placeholder="Main campus"
-          value={form.campusName}
-        />
-      ) : null}
-      {form.studentJourney === "ALUMNI" ? (
-        <InputField
-          inputMode="numeric"
-          label="Graduation year (optional)"
-          onChange={(graduationYear) =>
-            setForm((current) => ({ ...current, graduationYear }))
-          }
-          placeholder="2024"
-          value={form.graduationYear}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function PlansStep({
-  form,
-  setForm,
-}: {
-  form: OnboardingForm;
-  setForm: FormSetter;
-}) {
-  if (form.studentJourney === "PROFESSIONAL") {
+  if (form.studentJourney === "ALUMNI") {
     return (
-      <TextAreaField
-        label="Current professional context (optional)"
-        onChange={(currentProfessionalContext) =>
-          setForm((current) => ({
-            ...current,
-            currentProfessionalContext,
-          }))
-        }
-        placeholder="What are you building, offering or looking for?"
-        value={form.currentProfessionalContext}
-      />
+      <div className="grid gap-7">
+        <FieldSection title="Where you studied">
+          <SearchableSelect
+            clearLabel="No former study city selected"
+            icon={<MapPin />}
+            label="Former study city (optional)"
+            onSelect={(cityId) =>
+              setForm((current) => ({
+                ...current,
+                cityId,
+                universityId: universities.some(
+                  (university) =>
+                    university.id === current.universityId &&
+                    university.cityId === cityId,
+                )
+                  ? current.universityId
+                  : "",
+              }))
+            }
+            options={cities}
+            placeholder="Select a city"
+            searchPlaceholder="Search cities or provinces…"
+            selected={form.cityId}
+          />
+          <SearchableSelect
+            clearLabel="No former university selected"
+            disabled={!form.cityId}
+            emptyMessage="No university is registered for this city."
+            icon={<GraduationCap />}
+            label="Former university (optional)"
+            onSelect={(universityId) =>
+              setForm((current) => ({ ...current, universityId }))
+            }
+            options={availableUniversities}
+            placeholder={
+              form.cityId ? "Select a university" : "Select a city first"
+            }
+            searchPlaceholder="Search universities…"
+            selected={form.universityId}
+          />
+          <FieldGrid>
+            <TextField
+              inputMode="numeric"
+              label="Graduation year (optional)"
+              maxLength={4}
+              onChange={(graduationYear) =>
+                setForm((current) => ({ ...current, graduationYear }))
+              }
+              placeholder="2024"
+              value={form.graduationYear}
+            />
+            <TextField
+              label="Current city (optional)"
+              onChange={(currentCityName) =>
+                setForm((current) => ({ ...current, currentCityName }))
+              }
+              placeholder="Douala, Shanghai, Paris…"
+              value={form.currentCityName}
+            />
+          </FieldGrid>
+        </FieldSection>
+        <TextAreaField
+          label="What you do now (optional)"
+          maxLength={500}
+          onChange={(currentProfessionalContext) =>
+            setForm((current) => ({ ...current, currentProfessionalContext }))
+          }
+          placeholder="Share what you do now or what kind of connections you are looking for."
+          value={form.currentProfessionalContext}
+        />
+      </div>
     );
   }
+
+  const admitted = form.studentJourney === "ADMITTED_STUDENT";
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      <InputField
-        label={
-          form.studentJourney === "PROSPECTIVE_STUDENT"
-            ? "Intended field or education goal"
-            : "Program or study field"
-        }
-        onChange={(degree) => setForm((current) => ({ ...current, degree }))}
-        placeholder="Computer Science"
-        value={form.degree}
-      />
-      <label>
-        <span className="mb-2 block text-sm font-bold">Study level</span>
-        <select
-          className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-kondo-green"
-          onChange={(event) =>
+    <div className="grid gap-7">
+      <FieldSection title={admitted ? "Where you are admitted" : "Your campus"}>
+        <SearchableSelect
+          icon={<MapPin />}
+          label="Study city"
+          onSelect={(cityId) =>
             setForm((current) => ({
               ...current,
-              studyLevel: event.target.value as StudyLevel,
+              cityId,
+              universityId: universities.some(
+                (university) =>
+                  university.id === current.universityId &&
+                  university.cityId === cityId,
+              )
+                ? current.universityId
+                : "",
             }))
           }
-          value={form.studyLevel}
-        >
-          <option value="">Select a level</option>
-          <option value="LANGUAGE">Language program</option>
-          <option value="BACHELORS">Bachelor’s</option>
-          <option value="MASTERS">Master’s</option>
-          <option value="DOCTORATE">Doctorate</option>
-          <option value="EXCHANGE">Exchange</option>
-          <option value="OTHER">Other</option>
-        </select>
-      </label>
-      {form.studentJourney === "PROSPECTIVE_STUDENT" ? (
-        <>
-          <label>
-            <span className="mb-2 block text-sm font-bold">
-              Application stage (optional)
-            </span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-kondo-green"
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  applicationStage: event.target.value,
-                }))
-              }
-              value={form.applicationStage}
-            >
-              <option value="EXPLORING">Exploring</option>
-              <option value="SEARCHING_SCHOLARSHIPS">
-                Searching for scholarships
-              </option>
-              <option value="PREPARING_APPLICATION">
-                Preparing an application
-              </option>
-              <option value="APPLICATION_SUBMITTED">
-                Application submitted
-              </option>
-              <option value="WAITING_FOR_DECISION">
-                Waiting for a decision
-              </option>
-              <option value="ADMITTED">Admitted</option>
-              <option value="PREPARING_ARRIVAL">Preparing to arrive</option>
-            </select>
-          </label>
-          <DateField
-            label="Expected intake (optional)"
-            onChange={(expectedIntake) =>
-              setForm((current) => ({ ...current, expectedIntake }))
+          options={cities}
+          placeholder="Select a city"
+          searchPlaceholder="Search cities or provinces…"
+          selected={form.cityId}
+        />
+        <SearchableSelect
+          disabled={!form.cityId}
+          emptyMessage="No university is registered for this city."
+          icon={<GraduationCap />}
+          label="University"
+          onSelect={(universityId) =>
+            setForm((current) => ({ ...current, universityId }))
+          }
+          options={availableUniversities}
+          placeholder={
+            form.cityId ? "Select a university" : "Select a city first"
+          }
+          searchPlaceholder="Search universities…"
+          selected={form.universityId}
+        />
+        {form.studentJourney === "CURRENT_STUDENT" ? (
+          <TextField
+            label="Campus (optional)"
+            onChange={(campusName) =>
+              setForm((current) => ({ ...current, campusName }))
             }
-            value={form.expectedIntake}
+            placeholder="Main campus"
+            value={form.campusName}
           />
-          <DateField
-            label="Expected arrival date (optional)"
-            onChange={(arrivalDate) =>
-              setForm((current) => ({ ...current, arrivalDate }))
-            }
-            value={form.arrivalDate}
-          />
-        </>
-      ) : null}
-      {["ADMITTED_STUDENT", "CURRENT_STUDENT", "INCOMING_STUDENT"].includes(
-        form.studentJourney,
-      ) ? (
+        ) : null}
+      </FieldSection>
+
+      <FieldSection title="Your program">
+        <TextField
+          label="Program or study field"
+          onChange={(degree) => setForm((current) => ({ ...current, degree }))}
+          placeholder="Computer Science"
+          value={form.degree}
+        />
+        <ChoiceChips
+          label="Study level"
+          onSelect={(studyLevel) =>
+            setForm((current) => ({ ...current, studyLevel }))
+          }
+          options={STUDY_LEVEL_OPTIONS}
+          selected={form.studyLevel}
+        />
         <DateField
           label={
             form.studentJourney === "CURRENT_STUDENT"
@@ -909,52 +916,25 @@ function PlansStep({
           }
           value={form.arrivalDate}
         />
-      ) : null}
-      {form.studentJourney === "ADMITTED_STUDENT" ? (
-        <div className="sm:col-span-2">
-          <TextAreaField
-            label="Arrival preparation context (optional)"
-            onChange={(arrivalPreparationContext) =>
-              setForm((current) => ({
-                ...current,
-                arrivalPreparationContext,
-              }))
-            }
-            placeholder="Visa, housing, airport arrival, campus registration, or anything you are preparing now."
-            value={form.arrivalPreparationContext}
-          />
-        </div>
-      ) : null}
-      {form.studentJourney === "ALUMNI" ? (
-        <>
-          <InputField
-            label="Current city (optional)"
-            onChange={(currentCityName) =>
-              setForm((current) => ({ ...current, currentCityName }))
-            }
-            placeholder="Douala, Shanghai, Paris…"
-            value={form.currentCityName}
-          />
-          <div className="sm:col-span-2">
-            <TextAreaField
-              label="Current professional context (optional)"
-              onChange={(currentProfessionalContext) =>
-                setForm((current) => ({
-                  ...current,
-                  currentProfessionalContext,
-                }))
-              }
-              placeholder="Share what you do now or what kind of connections you are looking for."
-              value={form.currentProfessionalContext}
-            />
-          </div>
-        </>
+      </FieldSection>
+
+      {admitted ? (
+        <TextAreaField
+          hint="Visa, housing, airport arrival, campus registration — anything you are preparing now."
+          label="What are you preparing? (optional)"
+          maxLength={500}
+          onChange={(arrivalPreparationContext) =>
+            setForm((current) => ({ ...current, arrivalPreparationContext }))
+          }
+          placeholder="I am preparing my visa appointment and looking for housing near campus."
+          value={form.arrivalPreparationContext}
+        />
       ) : null}
     </div>
   );
 }
 
-function InterestsStep({
+function FocusStep({
   form,
   setForm,
 }: {
@@ -962,246 +942,23 @@ function InterestsStep({
   setForm: FormSetter;
 }) {
   return (
-    <div className="grid gap-6">
-      <div>
-        <p className="mb-3 text-sm font-bold">Interests (optional)</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {interests.map((interest) => {
-            const selected = form.interests.includes(interest);
-            return (
-              <button
-                aria-pressed={selected}
-                className={selectionClass(selected)}
-                key={interest}
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    interests: selected
-                      ? current.interests.filter((item) => item !== interest)
-                      : [...current.interests, interest],
-                  }))
-                }
-                type="button"
-              >
-                <span className="mr-1">{interestEmoji[interest]}</span>{" "}
-                {interest}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <InputField
-        label="Languages (comma separated)"
-        onChange={(value) =>
-          setForm((current) => ({
-            ...current,
-            languages: value
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean)
-              .slice(0, 8),
-          }))
-        }
-        placeholder="English, French"
-        value={form.languages.join(", ")}
+    <div className="grid gap-7">
+      <TogglePills
+        hint="Optional. Choose as many as you want."
+        label="What would be useful to you?"
+        onChange={(interests) => setForm((current) => ({ ...current, interests }))}
+        options={INTEREST_OPTIONS}
+        selected={form.interests}
+      />
+      <TokenField
+        hint="Helps Kondo match you with students you can actually talk to."
+        label="Languages you speak"
+        onChange={(languages) => setForm((current) => ({ ...current, languages }))}
+        placeholder="Add a language"
+        suggestions={LANGUAGE_SUGGESTIONS}
+        values={form.languages}
       />
     </div>
   );
 }
 
-function MultiOptionPicker({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: Option[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = options.filter((option) =>
-    `${option.name} ${option.secondary ?? ""}`
-      .toLowerCase()
-      .includes(query.trim().toLowerCase()),
-  );
-  return (
-    <fieldset>
-      <legend className="mb-2 text-sm font-bold">{label}</legend>
-      <div className="overflow-hidden rounded-2xl border border-border bg-background">
-        <label className="flex h-11 items-center gap-2 border-b border-border px-3">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <span className="sr-only">Search {label}</span>
-          <input
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Search ${label.toLowerCase()}…`}
-            value={query}
-          />
-        </label>
-        <div className="max-h-48 overflow-y-auto p-2">
-          {filtered.length ? (
-            filtered.map((option) => {
-              const checked = selected.includes(option.id);
-              return (
-                <button
-                  aria-pressed={checked}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition",
-                    checked
-                      ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                      : "hover:bg-muted",
-                  )}
-                  key={option.id}
-                  onClick={() =>
-                    onChange(
-                      checked
-                        ? selected.filter((id) => id !== option.id)
-                        : [...selected, option.id],
-                    )
-                  }
-                  type="button"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">
-                      {option.name}
-                    </span>
-                    {option.secondary ? (
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {option.secondary}
-                      </span>
-                    ) : null}
-                  </span>
-                  {checked ? <Check className="h-4 w-4" /> : null}
-                </button>
-              );
-            })
-          ) : (
-            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-              No match found.
-            </p>
-          )}
-        </div>
-      </div>
-      {selected.length ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {selected.length} selected
-        </p>
-      ) : null}
-    </fieldset>
-  );
-}
-
-function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  inputMode,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm font-bold">{label}</span>
-      <input
-        className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-kondo-green focus:ring-4 focus:ring-kondo-green/10"
-        inputMode={inputMode}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        value={value}
-      />
-    </label>
-  );
-}
-
-function DateField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm font-bold">{label}</span>
-      <input
-        className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-kondo-green"
-        onChange={(event) => onChange(event.target.value)}
-        type="date"
-        value={value}
-      />
-    </label>
-  );
-}
-
-function TextAreaField({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm font-bold">{label}</span>
-      <textarea
-        className="min-h-28 w-full resize-y rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-kondo-green focus:ring-4 focus:ring-kondo-green/10"
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        value={value}
-      />
-    </label>
-  );
-}
-
-function selectionClass(selected: boolean) {
-  return cn(
-    "rounded-2xl border px-4 py-3 text-sm font-bold outline-none transition motion-reduce:transition-none focus-visible:ring-4 focus-visible:ring-kondo-green/20",
-    selected
-      ? "border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-      : "border-border bg-background text-foreground hover:border-kondo-green/50 hover:bg-muted",
-  );
-}
-
-function contextStepComplete(form: OnboardingForm) {
-  if (form.studentJourney === "PROFESSIONAL") {
-    return Boolean(
-      form.currentCityName.trim() &&
-      form.professionalArea.trim() &&
-      form.chinaRelationship.trim(),
-    );
-  }
-  if (form.studentJourney === "PROSPECTIVE_STUDENT") {
-    return (
-      form.universityPreferenceMode !== "PREFERRED_SELECTED" ||
-      form.targetUniversityIds.length > 0
-    );
-  }
-  if (form.studentJourney === "ALUMNI") return true;
-  return Boolean(form.cityId && form.universityId);
-}
-
-function planStepComplete(form: OnboardingForm) {
-  if (
-    form.studentJourney === "PROFESSIONAL" ||
-    form.studentJourney === "ALUMNI"
-  ) {
-    return true;
-  }
-  if (form.studentJourney === "PROSPECTIVE_STUDENT") {
-    return Boolean(form.degree.trim() || form.studyLevel);
-  }
-  return Boolean(form.degree.trim() && form.studyLevel);
-}
