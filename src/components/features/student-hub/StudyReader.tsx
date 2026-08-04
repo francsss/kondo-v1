@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
+  Bot,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { STUDY_ASSISTANT_ACTIONS } from "@/lib/study-assistant-actions";
 import { cn } from "@/lib/utils";
 
 type Chapter = { id: string; position: number; title: string; body: string };
@@ -31,8 +33,10 @@ type Note = {
  * Selecting a passage opens the actions the brief describes: keep it as a
  * highlight, write a note about it, or raise a task. The task is created in
  * the existing planner — this screen never stores a task of its own.
- * "Ask AI" is present but explicitly disabled: the architecture is ready, the
- * capability is not, and pretending otherwise would be worse than saying so.
+ * "Ask Kondo AI" runs server-side: the client sends the slug, chapter and the
+ * selected passage, and the key never leaves the server. When no key is
+ * configured the action is offered as unavailable rather than hidden, so the
+ * rest of the reader still works exactly as before.
  */
 export function StudyReader({
   slug,
@@ -55,7 +59,10 @@ export function StudyReader({
   const [selection, setSelection] = useState("");
   const [draft, setDraft] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
-  const [mode, setMode] = useState<"note" | "task" | null>(null);
+  const [mode, setMode] = useState<"note" | "task" | "ai" | null>(null);
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiAction, setAiAction] = useState<string | null>(null);
+  const [assistantReady, setAssistantReady] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
@@ -95,12 +102,64 @@ export function StudyReader({
     setSaved("");
   }, []);
 
+  // Whether the assistant is available is a server fact; ask once.
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/student-hub/essentials/assistant", {
+      credentials: "include",
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled) setAssistantReady(Boolean(data?.configured));
+      })
+      .catch(() => {
+        if (!cancelled) setAssistantReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function closePanel() {
     setSelection("");
     setDraft("");
     setTaskTitle("");
     setMode(null);
     setError("");
+    setAiAnswer("");
+    setAiAction(null);
+  }
+
+  async function ask(action: string) {
+    setSaving(true);
+    setError("");
+    setAiAnswer("");
+    setAiAction(action);
+    try {
+      const response = await fetch("/api/student-hub/essentials/assistant", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, chapterId, passage: selection, action }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error ?? "The assistant could not answer.");
+        return;
+      }
+      setAiAnswer(data.answer);
+    } catch {
+      setError("Kondo could not reach the assistant. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /** Keeps an assistant answer as a note, so it lands in Notes like any other. */
+  async function keepAnswer() {
+    setDraft(aiAnswer);
+    setMode("note");
+    setAiAnswer("");
   }
 
   async function save(withTask: boolean) {
@@ -312,6 +371,25 @@ export function StudyReader({
               />
             ) : null}
 
+            {mode === "ai" && aiAnswer ? (
+              <div
+                aria-live="polite"
+                className="mt-3 max-h-56 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-4"
+              >
+                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-kondo-green">
+                  <Bot aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5" />
+                  Kondo AI
+                </p>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                  {aiAnswer}
+                </div>
+                <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
+                  Generated from the passage you selected. Check anything you
+                  rely on for an exam.
+                </p>
+              </div>
+            ) : null}
+
             {error ? (
               <p
                 className="mt-3 rounded-2xl bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
@@ -338,8 +416,54 @@ export function StudyReader({
                   <Button onClick={() => setMode("task")} size="sm" variant="secondary">
                     <SquareCheckBig className="h-4 w-4" /> Create task
                   </Button>
-                  <Button disabled size="sm" title="Coming soon" variant="ghost">
-                    Ask AI · soon
+                  <Button
+                    disabled={assistantReady === false}
+                    onClick={() => setMode("ai")}
+                    size="sm"
+                    title={
+                      assistantReady === false
+                        ? "The study assistant is not configured on this deployment."
+                        : undefined
+                    }
+                    variant="secondary"
+                  >
+                    <Bot className="h-4 w-4" />
+                    Ask Kondo AI
+                    {assistantReady === false ? " · off" : null}
+                  </Button>
+                </>
+              ) : mode === "ai" ? (
+                <>
+                  {STUDY_ASSISTANT_ACTIONS.map((action) => (
+                    <Button
+                      disabled={saving}
+                      key={action.key}
+                      onClick={() => ask(action.key)}
+                      size="sm"
+                      variant={aiAction === action.key ? "primary" : "secondary"}
+                    >
+                      {saving && aiAction === action.key ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : null}
+                      {action.label}
+                    </Button>
+                  ))}
+                  {aiAnswer ? (
+                    <Button disabled={saving} onClick={keepAnswer} size="sm">
+                      <NotebookPen className="h-4 w-4" /> Keep as note
+                    </Button>
+                  ) : null}
+                  <Button
+                    disabled={saving}
+                    onClick={() => {
+                      setMode(null);
+                      setAiAnswer("");
+                      setAiAction(null);
+                    }}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Back
                   </Button>
                 </>
               ) : (

@@ -61,6 +61,7 @@ import {
   NOTIFICATION_COUNT_EVENT,
 } from "@/lib/notification-client";
 import { resetProductAnalytics } from "@/lib/product-analytics-client";
+import { LAST_MAIN_PATH_KEY } from "@/lib/space-exit";
 import { cn } from "@/lib/utils";
 
 type ShellUser = {
@@ -347,6 +348,18 @@ export function AppShell({
   const activeWorkspaceKey = organizationWorkspace
     ? activeWorkspaceNavigationKey(workspaceNavigation, pathname)
     : null;
+
+  /**
+   * Record where the member is in the main app.
+   *
+   * Kondo's dedicated spaces — the Student Hub, organization profiles — drop
+   * this shell, so their exit button has no shell state to read. Client-side
+   * navigation leaves `document.referrer` empty, so the way out has to be
+   * written down while the member is still out here.
+   */
+  useEffect(() => {
+    window.sessionStorage.setItem(LAST_MAIN_PATH_KEY, pathname);
+  }, [pathname]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

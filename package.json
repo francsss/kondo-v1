@@ -38,6 +38,7 @@
     "essentials:seed": "tsx scripts/seed-study-essentials.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@aws-sdk/client-s3": "^3.1088.0",
     "@aws-sdk/s3-request-presigner": "^3.1088.0",
     "@googlemaps/js-api-loader": "^2.1.1",

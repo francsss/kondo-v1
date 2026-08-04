@@ -14,6 +14,27 @@ type Seed = Omit<Prisma.StudyEssentialCreateInput, "publishedAt">;
 const CATALOGUE: Seed[] = [
   // --- Kondo digital -------------------------------------------------------
   {
+    slug: "artificial-intelligence-fundamentals",
+    title: "Artificial Intelligence Fundamentals",
+    shortDescription:
+      "A first course in AI: what the field actually claims, how the main methods work, and where each one breaks.",
+    description:
+      "Written for students meeting artificial intelligence as a subject rather than a headline. It builds from what a learning system is, through the methods that dominate current practice, to the questions of evaluation and responsibility that decide whether a model should be used at all. Each chapter assumes only the previous ones and closes on the limits of what it just taught. Used as the worked example throughout the Kondo reader.",
+    category: "Technology",
+    format: "DIGITAL",
+    source: "KONDO",
+    status: "PUBLISHED",
+    priceMinor: 9900,
+    currency: "CNY",
+    coverEmoji: "🧠",
+    highlights: [
+      "Six chapters, each ending on its own limits",
+      "No prior machine-learning background assumed",
+      "The worked example for highlights, notes and tasks",
+    ],
+    sortOrder: 5,
+  },
+  {
     slug: "hsk-complete-preparation-guide",
     title: "HSK Complete Preparation Guide",
     shortDescription:
@@ -351,6 +372,32 @@ const CATALOGUE: Seed[] = [
  * and keep their own highlight text.
  */
 const CHAPTERS: Record<string, { title: string; body: string }[]> = {
+  "artificial-intelligence-fundamentals": [
+    {
+      title: "What artificial intelligence actually means",
+      body: "The phrase covers two quite different claims. The weak claim is that a machine can perform a task that, done by a person, would be said to require intelligence. The strong claim is that the machine understands what it is doing. Almost everything built today rests on the weak claim, and confusing the two is the most common error in public discussion of the field.\n\nA useful working definition: an artificial intelligence system takes in data about the world, produces an output intended to be useful, and improves that output as it receives more data. Note what this definition does not require — consciousness, understanding, or any resemblance to how a brain works.\n\nThe field divides roughly into symbolic approaches, which encode knowledge as explicit rules, and statistical approaches, which infer patterns from examples. The last two decades belong overwhelmingly to the statistical side, but the symbolic tradition solved problems that statistical methods still handle poorly, and the boundary is less settled than current practice suggests.",
+    },
+    {
+      title: "Learning from data",
+      body: "Machine learning allows systems to improve their predictions from data rather than from explicit instructions. The mechanism is simple to state: define a measure of how wrong the system currently is, then adjust its parameters to reduce that measure.\n\nThree settings recur. In supervised learning, each example arrives with the correct answer attached, and the system learns to reproduce it. In unsupervised learning, no answers are given, and the system finds structure — clusters, directions of variation — on its own. In reinforcement learning, the system acts, receives a reward, and learns which actions lead to reward over time.\n\nThe hard part is rarely the algorithm. It is deciding what the correct answer even is, and obtaining enough examples of it. A dataset is an argument about what matters, made in advance and usually left unexamined.",
+    },
+    {
+      title: "Neural networks",
+      body: "A neural network is a stack of simple functions, each taking the previous layer's output and passing on its own. Every connection has a weight, and learning means adjusting those weights so the final output is closer to what was wanted.\n\nThe idea is old. What changed was scale: enough data to fit millions of parameters, enough computation to fit them in reasonable time, and a training procedure — backpropagation with gradient descent — that remains stable at that size.\n\nDepth matters because each layer can build on the representation the previous one produced. Early layers in a vision network detect edges; later layers combine edges into shapes, and shapes into objects. Nobody specifies this hierarchy; it emerges from training. That is the source of both the method's power and its opacity — the network's internal representation is not something anyone designed, and it is often not something anyone can read.",
+    },
+    {
+      title: "Evaluation, and how it goes wrong",
+      body: "A model that performs well on the data it was trained on has demonstrated nothing. The only meaningful test is performance on data it has never seen, which is why any honest evaluation holds out a portion of the data from the start.\n\nOverfitting is the failure mode: the model memorises the training examples, including their noise, and fails on anything new. It is detected by the gap between training performance and held-out performance, and reduced by more data, a simpler model, or explicit constraints during training.\n\nAccuracy alone is a poor measure. A test for a condition affecting one person in a thousand can be 99.9% accurate while never detecting a single case. Which metric to report is a decision about what kind of error is acceptable — and that is a question about the world the model is used in, not about the model.",
+    },
+    {
+      title: "Where these systems fail",
+      body: "A model learns the distribution it was trained on. Presented with data drawn from a different distribution, it does not fail loudly; it produces a confident answer that happens to be wrong. This is the central practical risk in deployment.\n\nBias in a model is usually bias in its data, faithfully reproduced. A hiring model trained on past decisions learns those decisions, including the ones nobody would defend. Removing the sensitive attribute does not remove the bias, because other attributes stand in for it.\n\nThe third failure is one of framing: a system optimises the objective it was given, not the goal that objective was meant to represent. When the two diverge — and at scale they usually do — the system pursues the measure and abandons the intent.",
+    },
+    {
+      title: "Using these systems responsibly",
+      body: "Whether a model should be deployed is not a technical question, and it is not answered by the model's accuracy. It depends on what happens when the model is wrong, who bears that cost, and whether they had any say in the matter.\n\nThree questions are worth asking of any deployed system. What decision does it actually influence? Who can contest its output, and how? What would have to be true for it to be withdrawn? A system with no answer to the third question is not being evaluated at all.\n\nThe field's current capabilities are real and its trajectory is steep. Neither fact settles the question of where these systems belong — and that question is one every student entering the field will be asked to answer, in practice, long before it is settled in theory.",
+    },
+  ],
   "hsk-complete-preparation-guide": [
     {
       title: "Before you start: choosing your level",

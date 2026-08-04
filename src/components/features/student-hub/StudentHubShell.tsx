@@ -336,7 +336,11 @@ export function StudentHubShell({
           {/* The Kondo mark belongs to the global shell. Inside the hub the
               label names the space the student just entered. */}
           <div className="flex items-center gap-3">
-            <BackButton fallbackHref="/home" label="Leave Student Hub" />
+            <BackButton
+              exitPrefix="/student-hub"
+              fallbackHref="/home"
+              label="Leave Student Hub"
+            />
             <span className="flex items-center gap-2.5">
               <span
                 aria-hidden="true"

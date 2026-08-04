@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useCallback } from "react";
+import { LAST_MAIN_PATH_KEY, resolveSpaceExitPath } from "@/lib/space-exit";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,12 +17,19 @@ import { cn } from "@/lib/utils";
  */
 export function BackButton({
   fallbackHref,
+  exitPrefix,
   label = "Back",
   tone = "solid",
   className,
 }: {
   /** Used when there is no in-app history, such as a direct landing. */
   fallbackHref: string;
+  /**
+   * Path prefix of the space this button leaves (e.g. "/student-hub"). When
+   * set, the button always exits the space instead of stepping back one page
+   * inside it.
+   */
+  exitPrefix?: string;
   label?: string;
   tone?: "solid" | "overlay";
   className?: string;
@@ -29,12 +37,22 @@ export function BackButton({
   const router = useRouter();
 
   const goBack = useCallback(() => {
+    if (exitPrefix) {
+      const exit = resolveSpaceExitPath(
+        window.sessionStorage.getItem(LAST_MAIN_PATH_KEY),
+        exitPrefix,
+      );
+      // Always a push, never history.back(): inside a space with its own tabs,
+      // one step back is another page of the same space.
+      router.push(exit ?? fallbackHref);
+      return;
+    }
     if (window.history.length > 1) {
       router.back();
       return;
     }
     router.push(fallbackHref);
-  }, [fallbackHref, router]);
+  }, [exitPrefix, fallbackHref, router]);
 
   return (
     <button
