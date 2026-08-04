@@ -1,10 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { GraduationCap } from "lucide-react";
+import { Compass, GraduationCap, Library, Rocket } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
+import { StudentHubMobileNav } from "@/components/features/student-hub/StudentHubMobileNav";
 import { BackButton } from "@/components/ui/BackButton";
 import {
   HorizontalTabs,
@@ -17,30 +18,53 @@ import { STUDENT_HUB_SECTIONS } from "@/lib/student-hub-sections";
 const kondoPetEnabled = process.env.NEXT_PUBLIC_KONDO_PET_ENABLED !== "false";
 
 /**
- * The three pillars of the hub. Each answers one student sentence: Study is
- * "I manage my academic life", Guide is "I get help navigating my journey",
- * Opportunities is "I build my future".
+ * The four pillars of the hub. Each answers one student sentence: Study is
+ * "I manage my academic life", Study Essentials is "my academic resources",
+ * Guide is "help me navigate my journey", Opportunities is "I build my
+ * future".
+ *
+ * Study Essentials is a pillar in its own right rather than a Study tab: a
+ * library, a reader and personal notes are a place a student goes to, not a
+ * sub-page of coursework management.
  */
-const STUDENT_HUB_MODULES: readonly HorizontalTab[] = [
+export const STUDENT_HUB_PILLARS = [
   {
     key: "study",
     href: "/student-hub",
     label: "Study",
-    icon: "📚",
+    shortLabel: "Study",
+    emoji: "📚",
+    Icon: GraduationCap,
+  },
+  {
+    key: "essentials",
+    href: "/student-hub/essentials",
+    label: "Study Essentials",
+    shortLabel: "Essentials",
+    emoji: "📗",
+    Icon: Library,
   },
   {
     key: "guide",
     href: "/student-hub/resources",
     label: "Guide",
-    icon: "📖",
+    shortLabel: "Guide",
+    emoji: "📖",
+    Icon: Compass,
   },
   {
     key: "opportunities",
     href: "/student-hub/scholarships",
     label: "Opportunities",
-    icon: "🚀",
+    shortLabel: "Future",
+    emoji: "🚀",
+    Icon: Rocket,
   },
-];
+] as const;
+
+const STUDENT_HUB_MODULES: readonly HorizontalTab[] = STUDENT_HUB_PILLARS.map(
+  ({ key, href, label, emoji }) => ({ key, href, label, icon: emoji }),
+);
 
 const STUDY_TABS: readonly HorizontalTab[] = [
   {
@@ -54,27 +78,59 @@ const STUDY_TABS: readonly HorizontalTab[] = [
     label: "Planner",
   },
   {
-    key: "essentials",
+    key: "academic-tools",
+    href: "/student-hub/tools/academic",
+    label: "Academic tools",
+  },
+  {
+    key: "help",
+    href: "/student-hub/help",
+    label: "Student Q&A",
+  },
+];
+
+/**
+ * Study Essentials owns acquiring, reading and annotating. Digital Books and
+ * Purchased Materials are the two shelves of the same library rather than
+ * separate stores, so they share its data and differ only by what they show.
+ */
+const ESSENTIALS_TABS: readonly HorizontalTab[] = [
+  {
+    key: "library",
+    href: "/student-hub/essentials/library",
+    label: "My Library",
+  },
+  {
+    key: "books",
+    href: "/student-hub/essentials/books",
+    label: "Digital Books",
+  },
+  {
+    key: "materials",
+    href: "/student-hub/essentials/materials",
+    label: "Purchased Materials",
+  },
+  {
+    key: "notes",
+    href: "/student-hub/essentials/notes",
+    label: "Notes",
+  },
+  {
+    key: "resources",
     href: "/student-hub/essentials",
-    label: "Study Essentials",
+    label: "Study Resources",
   },
 ];
 
 /**
  * Guide is where a student goes for help with the journey rather than with a
- * course. Student Q&A moved here from Study for that reason; the routes
- * themselves are unchanged.
+ * course. The routes themselves are unchanged.
  */
 const GUIDE_TABS: readonly HorizontalTab[] = [
   {
     key: "resource-home",
     href: "/student-hub/resources",
     label: "Overview",
-  },
-  {
-    key: "help",
-    href: "/student-hub/help",
-    label: "Student Q&A",
   },
   {
     key: "guides",
@@ -111,14 +167,25 @@ const GUIDE_TABS: readonly HorizontalTab[] = [
  * Routes and source domains stay unchanged; this is an information-architecture
  * layer, not duplicated data.
  */
-export type StudentHubModule = "study" | "guide" | "opportunities";
+export type StudentHubModule =
+  | "study"
+  | "essentials"
+  | "guide"
+  | "opportunities";
 
 export function studentHubModuleForPath(pathname: string): StudentHubModule {
+  // Orders are receipts for acquired resources, so they belong to Essentials.
+  if (
+    pathname === "/student-hub/essentials" ||
+    pathname.startsWith("/student-hub/essentials/") ||
+    pathname === "/student-hub/orders" ||
+    pathname.startsWith("/student-hub/orders/")
+  ) {
+    return "essentials";
+  }
   if (
     pathname === "/student-hub/resources" ||
-    pathname.startsWith("/student-hub/resources/") ||
-    pathname === "/student-hub/help" ||
-    pathname.startsWith("/student-hub/help/")
+    pathname.startsWith("/student-hub/resources/")
   ) {
     return "guide";
   }
@@ -136,10 +203,15 @@ export function studentHubTabsForModule(
   showAcademicTools: boolean,
 ): HorizontalTab[] {
   if (module === "study") {
-    // The planner is the one Study surface gated on an academic affiliation;
-    // Study Essentials is open to everyone preparing to arrive.
-    return STUDY_TABS.filter((tab) => tab.key !== "tools" || showAcademicTools);
+    // The planner and the academic tools both need a real timetable, so they
+    // are gated on an academic affiliation. Overview and Student Q&A are not.
+    return STUDY_TABS.filter(
+      (tab) =>
+        showAcademicTools ||
+        (tab.key !== "tools" && tab.key !== "academic-tools"),
+    );
   }
+  if (module === "essentials") return [...ESSENTIALS_TABS];
   if (module === "guide") return [...GUIDE_TABS];
   return STUDENT_HUB_SECTIONS.filter(
     (section) => section.key !== "overview",
@@ -165,13 +237,24 @@ export function activeStudentHubTab(
   ) {
     return "overview";
   }
-  // Orders belong to Study Essentials, so the tab stays lit while a student
-  // reads a receipt.
+  // The reader and a receipt both belong to the shelf the resource sits on,
+  // so My Library stays lit while a student reads or checks an order.
   if (
-    pathname.startsWith("/student-hub/essentials") ||
+    pathname.startsWith("/student-hub/essentials/read/") ||
     pathname.startsWith("/student-hub/orders")
   ) {
-    return "essentials";
+    return "library";
+  }
+  // A product page and its checkout belong to the catalogue they came from.
+  if (
+    pathname === "/student-hub/essentials" ||
+    /^\/student-hub\/essentials\/[^/]+(\/checkout)?$/.test(pathname)
+  ) {
+    const owned = new Set(["library", "books", "materials", "notes"]);
+    const dedicated = tabs.find(
+      (tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`),
+    );
+    if (!dedicated || !owned.has(dedicated.key)) return "resources";
   }
   const match = tabs
     .filter((tab) => tab.href !== "/student-hub")
@@ -220,9 +303,11 @@ export function StudentHubShell({
   const secondaryNavigationLabel =
     activeModule === "study"
       ? "Study navigation"
-      : activeModule === "guide"
-        ? "Guide navigation"
-        : "Opportunity navigation";
+      : activeModule === "essentials"
+        ? "Study Essentials navigation"
+        : activeModule === "guide"
+          ? "Guide navigation"
+          : "Opportunity navigation";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -278,10 +363,12 @@ export function StudentHubShell({
             opportunities open to you.
           </p>
 
+          {/* Desktop keeps the premium horizontal pillars; a phone gets the
+              dedicated bottom bar instead, so the two never compete. */}
           <HorizontalTabs
             activeKey={activeModule}
             ariaLabel="Student Hub modules"
-            className="mt-8 max-w-[720px] sm:mt-10"
+            className="mt-8 hidden max-w-[860px] lg:mt-10 lg:flex"
             fill
             tabs={STUDENT_HUB_MODULES}
           />
@@ -300,11 +387,13 @@ export function StudentHubShell({
           </div>
         </div>
       ) : null}
-      <main id="student-hub-content">
+      {/* The hub's own bottom bar clears the last rows of content on a phone. */}
+      <main className="pb-24 lg:pb-0" id="student-hub-content">
         <TabPanelTransition index={transitionIndex}>
           {children}
         </TabPanelTransition>
       </main>
+      <StudentHubMobileNav activeModule={activeModule} />
       <KondoPet enabled={kondoPetEnabled} />
     </div>
   );

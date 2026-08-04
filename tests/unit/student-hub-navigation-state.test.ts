@@ -60,34 +60,40 @@ describe("Student Hub active tab", () => {
 });
 
 describe("Student Hub module navigation", () => {
-  it("splits the hub into study, guide and opportunity pillars", () => {
+  it("splits the hub into four independent pillars", () => {
     expect(studentHubModuleForPath("/student-hub")).toBe("study");
     expect(studentHubModuleForPath("/student-hub/tools")).toBe("study");
-    expect(studentHubModuleForPath("/student-hub/essentials")).toBe("study");
-    expect(studentHubModuleForPath("/student-hub/resources")).toBe("guide");
-    // Student Q&A answers journey questions, not coursework ones.
+    expect(studentHubModuleForPath("/student-hub/tools/academic")).toBe("study");
+    // Student Q&A is coursework support, so it sits with Study.
     expect(studentHubModuleForPath("/student-hub/help/visa-renewal")).toBe(
-      "guide",
+      "study",
     );
+    // Study Essentials is a pillar of its own, not a Study tab.
+    expect(studentHubModuleForPath("/student-hub/essentials")).toBe(
+      "essentials",
+    );
+    expect(studentHubModuleForPath("/student-hub/essentials/library")).toBe(
+      "essentials",
+    );
+    expect(studentHubModuleForPath("/student-hub/orders/KS-1234")).toBe(
+      "essentials",
+    );
+    expect(studentHubModuleForPath("/student-hub/resources")).toBe("guide");
     expect(studentHubModuleForPath("/student-hub/scholarships")).toBe(
       "opportunities",
     );
     expect(studentHubModuleForPath("/student-hub/applications")).toBe(
       "opportunities",
     );
-    expect(studentHubModuleForPath("/student-hub/competitions")).toBe(
-      "opportunities",
-    );
   });
 
-  it("gates only the planner on academic-tool access", () => {
+  it("gates the planner and the tools on academic access, never Q&A", () => {
     expect(
       studentHubTabsForModule("study", true).map((tab) => tab.key),
-    ).toEqual(["overview", "tools", "essentials"]);
-    // Study Essentials stays reachable for students still preparing to arrive.
+    ).toEqual(["overview", "tools", "academic-tools", "help"]);
     expect(
       studentHubTabsForModule("study", false).map((tab) => tab.key),
-    ).toEqual(["overview", "essentials"]);
+    ).toEqual(["overview", "help"]);
   });
 
   it("keeps the planner for legacy students with a university affiliation", () => {
@@ -96,6 +102,12 @@ describe("Student Hub module navigation", () => {
     expect(studentHubAccessForJourney("ALUMNI", true).academicTools).toBe(
       false,
     );
+  });
+
+  it("gives Study Essentials the shelves of a workspace", () => {
+    expect(
+      studentHubTabsForModule("essentials", true).map((tab) => tab.key),
+    ).toEqual(["library", "books", "materials", "notes", "resources"]);
   });
 
   it("keeps all opportunity destinations in one contextual row", () => {
@@ -111,12 +123,11 @@ describe("Student Hub module navigation", () => {
     ]);
   });
 
-  it("gathers journey support under Guide, with Student Q&A first", () => {
+  it("gathers journey support under Guide", () => {
     expect(
       studentHubTabsForModule("guide", true).map((tab) => tab.key),
     ).toEqual([
       "resource-home",
-      "help",
       "guides",
       "stories",
       "communities",
@@ -129,27 +140,45 @@ describe("Student Hub module navigation", () => {
         studentHubTabsForModule("guide", true),
       ),
     ).toBe("resource-home");
-    expect(
-      activeStudentHubTab(
-        "/student-hub/help",
-        studentHubTabsForModule("guide", true),
-      ),
-    ).toBe("help");
   });
 
-  it("keeps Study Essentials highlighted on a product and its checkout", () => {
-    const tabs = studentHubTabsForModule("study", true);
-    for (const path of [
-      "/student-hub/essentials",
-      "/student-hub/essentials/kondo-student-planner",
-      "/student-hub/essentials/kondo-student-planner/checkout",
-    ]) {
-      expect(activeStudentHubTab(path, tabs)).toBe("essentials");
-    }
+  it("lights the shelf a reader or a receipt belongs to", () => {
+    const tabs = studentHubTabsForModule("essentials", true);
+    expect(activeStudentHubTab("/student-hub/essentials/library", tabs)).toBe(
+      "library",
+    );
+    expect(activeStudentHubTab("/student-hub/essentials/books", tabs)).toBe(
+      "books",
+    );
+    expect(activeStudentHubTab("/student-hub/essentials/materials", tabs)).toBe(
+      "materials",
+    );
+    // Reading and receipts stay under My Library.
+    expect(
+      activeStudentHubTab("/student-hub/essentials/read/a-book", tabs),
+    ).toBe("library");
+    expect(activeStudentHubTab("/student-hub/orders/KS-1234", tabs)).toBe(
+      "library",
+    );
+    // A product page and its checkout belong to the catalogue.
+    expect(activeStudentHubTab("/student-hub/essentials", tabs)).toBe(
+      "resources",
+    );
+    expect(
+      activeStudentHubTab("/student-hub/essentials/kondo-planner", tabs),
+    ).toBe("resources");
+    expect(
+      activeStudentHubTab(
+        "/student-hub/essentials/kondo-planner/checkout",
+        tabs,
+      ),
+    ).toBe("resources");
   });
 
   it("keeps Study as the default module", () => {
     expect(studentHubModuleForPath("/student-hub")).toBe("study");
-    expect(studentHubModuleForPath("/student-hub/tools")).toBe("study");
+    expect(activeStudentHubTab("/student-hub", studentHubTabsForModule("study", true))).toBe(
+      "overview",
+    );
   });
 });

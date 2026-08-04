@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, NotebookPen, SquareCheckBig } from "lucide-react";
 import { StudyEssentialCover } from "@/components/features/student-hub/StudyEssentialCover";
-import { StudyEssentialsNav } from "@/components/features/student-hub/StudyEssentialsNav";
 import { requireUser } from "@/lib/server-auth";
 import { listStudyNotes } from "@/lib/study-workspace";
 
@@ -30,9 +29,6 @@ export default async function StudyNotesPage() {
         </p>
       </header>
 
-      <div className="mt-6">
-        <StudyEssentialsNav active="notes" />
-      </div>
 
       {notes.length ? (
         <ul className="mt-8 grid gap-3">
