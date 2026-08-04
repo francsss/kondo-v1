@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, Package, Receipt, Sparkles } from "lucide-react";
 import { StudyEssentialCover } from "@/components/features/student-hub/StudyEssentialCover";
+import { StudyEssentialsNav } from "@/components/features/student-hub/StudyEssentialsNav";
 import { HorizontalTabs } from "@/components/ui/HorizontalTabs";
 import { requireUser } from "@/lib/server-auth";
 import {
@@ -53,6 +54,10 @@ export default async function StudyEssentialsPage({
           we would.
         </p>
       </header>
+
+      <div className="mt-6">
+        <StudyEssentialsNav active="browse" />
+      </div>
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
         <HorizontalTabs

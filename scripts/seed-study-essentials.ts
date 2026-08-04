@@ -344,6 +344,113 @@ const CATALOGUE: Seed[] = [
   },
 ];
 
+/**
+ * Readable content for the Kondo digital titles, so My Library has something
+ * to open rather than an empty shell. Chapters are replaced wholesale on each
+ * run, which is safe because notes reference a chapter with ON DELETE SET NULL
+ * and keep their own highlight text.
+ */
+const CHAPTERS: Record<string, { title: string; body: string }[]> = {
+  "hsk-complete-preparation-guide": [
+    {
+      title: "Before you start: choosing your level",
+      body: "Most students pick an HSK level from the number of characters they recognise, which is the wrong measure. The examination tests recognition under time pressure, listening at natural speed, and — from HSK 4 — the ability to produce written sentences.\n\nStart with the diagnostic at the end of this chapter. Take it without a dictionary and without pausing the audio. Score yourself honestly. If you are between two levels, prepare for the lower one and sit the higher paper: the confidence you gain from a comfortable pass is worth more than a marginal one.",
+    },
+    {
+      title: "Vocabulary that actually appears",
+      body: "The official word lists are long, and not every word carries the same weight. Roughly a fifth of the vocabulary accounts for most of what appears in reading passages, because examiners build passages around everyday situations: renting, travelling, studying, seeing a doctor.\n\nLearn words in the situations they belong to rather than alphabetically. A word met inside a sentence about registering at a university is remembered; the same word met in a column of two hundred is not.",
+    },
+    {
+      title: "Listening at natural speed",
+      body: "Listening is the section international students lose most marks on, and the reason is rarely vocabulary. It is that the audio does not pause where a learner expects a pause.\n\nTrain with material played once, at full speed, with no transcript on the first pass. Write down only what you caught. Then replay with the transcript and mark the gap between what was said and what you heard. That gap, not the word list, is your syllabus.",
+    },
+    {
+      title: "The written paper",
+      body: "From HSK 4 the paper asks you to produce language, not only recognise it. Marks come from sentences that are complete and correct, not from sentences that are ambitious.\n\nBuild a small set of reliable structures you can write without hesitation, and use them. A paper made of correct simple sentences scores better than one made of half-finished complex ones.",
+    },
+    {
+      title: "The last two weeks",
+      body: "Stop learning new vocabulary two weeks before the examination. The words will not settle in time and the effort is better spent elsewhere.\n\nUse the remaining time on full mock papers, taken at the hour of your real examination, in one sitting, with no interruptions. You are training stamina and timing now, not knowledge.",
+    },
+  ],
+  "chinese-university-survival-handbook": [
+    {
+      title: "The first week",
+      body: "Campus registration, the residence permit and the health check all have their own queues and their own deadlines, and they do not wait for each other. The residence permit is the one with legal consequences: you have thirty days from entry.\n\nGo to the international student office on your first working day, even if you have nothing to hand in. Ask for the list of deadlines that apply to your programme and write them down. Nobody will chase you.",
+    },
+    {
+      title: "Residence permit and the health check",
+      body: "The health check must be done at a designated public facility; a report from a private clinic is usually refused. Bring your passport, admission letter and passport photographs, and go early — the examination is done fasting.\n\nThe residence permit application follows the health check. Budget two visits to the exit-entry bureau, and do not book travel until the permit is in your passport.",
+    },
+    {
+      title: "Course selection and the campus intranet",
+      body: "Course selection usually happens on an internal system that opens for a short window and is not translated. Ask a second-year student from your programme to sit with you the first time; this saves more trouble than any guide.\n\nScreenshot your selected courses once the window closes. Systems change and screenshots settle disputes.",
+    },
+    {
+      title: "Money, phones and daily life",
+      body: "A Chinese bank account and a phone number registered in your name unlock nearly everything else — payments, deliveries, campus services. Open the account before you need it, not when you do.\n\nKeep a small amount of cash for the first days. Not everything works before your account is active.",
+    },
+  ],
+  "academic-writing-guide": [
+    {
+      title: "What an academic argument is",
+      body: "An academic argument is a claim you defend with evidence, in an order a reader can follow. It is not a summary of what has been read, and it is not an opinion.\n\nMost weak drafts fail at the claim: they describe a topic instead of asserting something about it. Before writing, put your claim in one sentence. If you cannot, the reading is not finished.",
+    },
+    {
+      title: "Structure that carries the reader",
+      body: "A paragraph does one job. It opens by saying what it will establish, establishes it, and closes by connecting to the next.\n\nWhen a paragraph does two jobs, split it. When it does none, cut it. This single habit improves more drafts than any advice about vocabulary.",
+    },
+    {
+      title: "Citation without anxiety",
+      body: "Cite when the idea is not yours, when the wording is not yours, and when a reader might want to check. Chinese universities vary in the style they require, so ask your department rather than guessing.\n\nKeep a reference as soon as you read the source. Reconstructing citations at the end is where most accidental plagiarism happens.",
+    },
+    {
+      title: "Editing your own work",
+      body: "Edit in passes, each with one purpose: argument, then structure, then sentences, then references. Trying to fix everything at once fixes nothing well.\n\nRead the draft aloud for the sentence pass. A sentence you cannot say comfortably is one your reader will stumble over.",
+    },
+  ],
+  "ai-engineering-starter-pack": [
+    {
+      title: "Python you actually need",
+      body: "You do not need all of Python to start. You need lists, dictionaries, functions, and enough understanding of imports to read someone else's code.\n\nWrite small programs that do something real from the first week: read a file, count something, print a summary. Reading tutorials without writing code produces the feeling of progress without the fact of it.",
+    },
+    {
+      title: "Working with data",
+      body: "Most of the work in a machine-learning project is preparing data, and most beginners underestimate this by an order of magnitude.\n\nLearn to load a dataset, inspect it, find the missing values and decide what to do about them. A model trained on data you have not looked at will teach you nothing about the problem.",
+    },
+    {
+      title: "Your first model",
+      body: "Start with a model simple enough to explain to a classmate. Linear and tree-based models are not toys — they are strong baselines that a neural network often fails to beat.\n\nAlways compare against the simplest reasonable answer. A model that cannot beat 'predict the average' is not a model.",
+    },
+    {
+      title: "Neural networks, briefly",
+      body: "A neural network is a stack of simple functions whose parameters are adjusted to reduce an error. The ideas that matter early are the loss, the optimiser and overfitting.\n\nTrain on a small dataset first so a full run takes seconds. Fast feedback is worth more than a large experiment you run once.",
+    },
+    {
+      title: "Deploying something you can show",
+      body: "A project nobody can run is hard to put on an application. Package your model behind a small interface, write a short README, and make sure a stranger can start it.\n\nThe goal of this chapter is not scale. It is that a supervisor or an employer can open a link and see your work.",
+    },
+  ],
+  "research-paper-guide": [
+    {
+      title: "Framing a question",
+      body: "A research question is narrow enough to answer and open enough to be worth asking. 'What is machine learning' is neither.\n\nWrite your question, then write what an answer would look like. If you cannot describe the answer's shape, narrow the question.",
+    },
+    {
+      title: "The literature review",
+      body: "A literature review is an argument about a field, not a list of papers. It says: here is what is known, here is what is disputed, here is the gap this work addresses.\n\nRead the most-cited paper first and follow its references backwards. This finds the conversation faster than a keyword search.",
+    },
+    {
+      title: "Working with your supervisor",
+      body: "Expectations differ. In many Chinese departments a supervisor expects to be shown work regularly and briefly, rather than a finished draft at the end.\n\nAgree at the first meeting how often you will meet, what you will bring, and how authorship will be handled. Writing this down prevents most of the problems international students report.",
+    },
+    {
+      title: "Preparing to submit",
+      body: "Match the target venue's format before the final read, not after: reformatting late introduces errors in exactly the places nobody re-checks.\n\nGive yourself one full day between finishing and submitting. Everything you find on that day, you would otherwise have found after submission.",
+    },
+  ],
+};
+
 async function main() {
   let created = 0;
   let updated = 0;
@@ -352,16 +459,33 @@ async function main() {
       where: { slug: entry.slug },
       select: { id: true },
     });
-    await prisma.studyEssential.upsert({
+    const essential = await prisma.studyEssential.upsert({
       where: { slug: entry.slug },
       create: { ...entry, publishedAt: new Date() },
       update: { ...entry, publishedAt: new Date() },
+      select: { id: true },
     });
     if (existing) updated += 1;
     else created += 1;
+
+    const chapters = CHAPTERS[entry.slug];
+    if (chapters) {
+      await prisma.studyEssentialChapter.deleteMany({
+        where: { essentialId: essential.id },
+      });
+      await prisma.studyEssentialChapter.createMany({
+        data: chapters.map((chapter, index) => ({
+          essentialId: essential.id,
+          position: index + 1,
+          title: chapter.title,
+          body: chapter.body,
+        })),
+      });
+    }
   }
+  const chapterCount = await prisma.studyEssentialChapter.count();
   console.log(
-    `Study Essentials catalogue ready: ${created} created, ${updated} updated, ${CATALOGUE.length} total.`,
+    `Study Essentials catalogue ready: ${created} created, ${updated} updated, ${CATALOGUE.length} total, ${chapterCount} chapters.`,
   );
 }
 

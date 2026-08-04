@@ -85,6 +85,12 @@ export function HorizontalTabs({
               active
                 ? "text-kondo-forest dark:text-emerald-200"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              // A pillar row states which environment the member is in: the
+              // active one gains weight, the others recede without leaving.
+              // Faded rather than blurred — blurring the label would cost
+              // legibility for the people who need it most.
+              fill && !active && "opacity-60 hover:opacity-100",
+              fill && active && "font-black",
             )}
             data-tab-key={tab.key}
             href={tab.href}
@@ -104,7 +110,13 @@ export function HorizontalTabs({
               />
             ) : null}
             {tab.icon ? (
-              <span aria-hidden="true" className="text-base leading-none">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "text-base leading-none transition duration-300 motion-reduce:transition-none",
+                  active ? "scale-110" : "grayscale",
+                )}
+              >
                 {tab.icon}
               </span>
             ) : null}

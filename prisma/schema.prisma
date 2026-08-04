@@ -999,6 +999,8 @@ model User {
   grantedOrganizationPartnerships     Organization[]                        @relation("OrganizationPartnerGranter")
   createdOrganizationMedia            OrganizationMedia[]                   @relation("OrganizationMediaCreator")
   studyEssentialOrders                StudyEssentialOrder[]
+  studyNotes                          StudyNote[]
+  studyReadingProgress                StudyReadingProgress[]
   createdOrganizationProducts         OrganizationProduct[]                 @relation("OrganizationProductCreator")
   createdOrganizationServices         OrganizationService[]                 @relation("OrganizationServiceCreator")
   savedOrganizationProducts           OrganizationProductSaved[]
@@ -1912,6 +1914,7 @@ model AcademicTask {
   completedAt DateTime?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+  studyNotes  StudyNote[]
 
   @@index([ownerId, status, dueAt])
   @@index([scheduleId, status])
@@ -4304,30 +4307,33 @@ enum StudyEssentialPaymentProvider {
 }
 
 model StudyEssential {
-  id               String                @id @default(cuid())
-  slug             String                @unique @db.VarChar(180)
-  title            String                @db.VarChar(180)
-  shortDescription String                @db.VarChar(400)
-  description      String                @db.Text
-  category         String                @db.VarChar(100)
+  id               String                  @id @default(cuid())
+  slug             String                  @unique @db.VarChar(180)
+  title            String                  @db.VarChar(180)
+  shortDescription String                  @db.VarChar(400)
+  description      String                  @db.Text
+  category         String                  @db.VarChar(100)
   format           StudyEssentialFormat
-  source           StudyEssentialSource  @default(KONDO)
-  status           StudyEssentialStatus  @default(DRAFT)
+  source           StudyEssentialSource    @default(KONDO)
+  status           StudyEssentialStatus    @default(DRAFT)
   /// Null means the price lives on the partner's own platform.
   priceMinor       Int?
-  currency         String                @default("CNY") @db.Char(3)
+  currency         String                  @default("CNY") @db.Char(3)
   /// Partner attribution. Always set when source is PARTNER.
-  providerName     String?               @db.VarChar(160)
-  externalUrl      String?               @db.VarChar(500)
-  imageUrl         String?               @db.VarChar(500)
+  providerName     String?                 @db.VarChar(160)
+  externalUrl      String?                 @db.VarChar(500)
+  imageUrl         String?                 @db.VarChar(500)
   /// Fallback cover so a catalogue entry never renders as a broken image.
-  coverEmoji       String?               @db.VarChar(16)
+  coverEmoji       String?                 @db.VarChar(16)
   highlights       String[]
-  sortOrder        Int                   @default(0)
+  sortOrder        Int                     @default(0)
   publishedAt      DateTime?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
   orders           StudyEssentialOrder[]
+  chapters         StudyEssentialChapter[]
+  notes            StudyNote[]
+  readingProgress  StudyReadingProgress[]
 
   @@index([status, sortOrder])
   @@index([status, format])
@@ -4356,4 +4362,66 @@ model StudyEssentialOrder {
 
   @@index([userId, placedAt])
   @@index([essentialId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Study workspace
+//
+// The reading side of Study Essentials. A purchased essential becomes a
+// readable resource, a selection becomes a highlight, a highlight becomes a
+// note, and a note can raise a task — in the existing AcademicTask system
+// rather than a second one. AcademicTask itself is untouched: the link lives
+// on the note, so the planner keeps owning tasks.
+// ---------------------------------------------------------------------------
+
+model StudyEssentialChapter {
+  id          String                 @id @default(cuid())
+  essentialId String
+  essential   StudyEssential         @relation(fields: [essentialId], references: [id], onDelete: Cascade)
+  position    Int
+  title       String                 @db.VarChar(200)
+  body        String                 @db.Text
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  notes       StudyNote[]
+  progress    StudyReadingProgress[]
+
+  @@unique([essentialId, position])
+  @@index([essentialId, position])
+}
+
+model StudyReadingProgress {
+  id          String                 @id @default(cuid())
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  essentialId String
+  essential   StudyEssential         @relation(fields: [essentialId], references: [id], onDelete: Cascade)
+  chapterId   String?
+  chapter     StudyEssentialChapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  lastReadAt  DateTime               @default(now())
+
+  @@unique([userId, essentialId])
+  @@index([userId, lastReadAt])
+}
+
+model StudyNote {
+  id          String                 @id @default(cuid())
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  essentialId String
+  essential   StudyEssential         @relation(fields: [essentialId], references: [id], onDelete: Cascade)
+  chapterId   String?
+  chapter     StudyEssentialChapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  /// The passage the student selected, kept verbatim.
+  highlight   String?                @db.VarChar(2000)
+  /// What the student wrote about it. A highlight alone is a valid note.
+  body        String?                @db.Text
+  /// Set when this note raised a task. The task stays owned by the planner.
+  taskId      String?
+  task        AcademicTask?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([essentialId, userId])
 }
