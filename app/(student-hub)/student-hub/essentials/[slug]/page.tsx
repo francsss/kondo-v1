@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { StudyEssentialCover } from "@/components/features/student-hub/StudyEssentialCover";
 import { requireUser } from "@/lib/server-auth";
+import { ownsEssential } from "@/lib/study-workspace";
 import {
   formatEssentialPrice,
   getStudyEssential,
@@ -37,13 +38,15 @@ export default async function StudyEssentialDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const essential = await getStudyEssential((await params).slug);
   if (!essential) notFound();
 
   const price = formatEssentialPrice(essential.priceMinor, essential.currency);
   const orderable = isOrderable(essential);
   const digital = essential.format === "DIGITAL";
+  // Ownership comes from the one place that defines it: a PAID order.
+  const owned = await ownsEssential(user.id, essential.id);
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
@@ -134,7 +137,20 @@ export default async function StudyEssentialDetailPage({
               </p>
             )}
 
-            {orderable ? (
+            {owned ? (
+              /* Already paid for. Offering to sell it again is the fastest way
+                 to look like the store is not paying attention. */
+              <Link
+                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-black text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 motion-reduce:transform-none"
+                href={
+                  digital
+                    ? `/student-hub/essentials/read/${essential.slug}`
+                    : "/student-hub/essentials/library"
+                }
+              >
+                {digital ? "Open book" : "In your library"}
+              </Link>
+            ) : orderable ? (
               <Link
                 className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-black text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 motion-reduce:transform-none"
                 href={`/student-hub/essentials/${essential.slug}/checkout`}
@@ -155,9 +171,15 @@ export default async function StudyEssentialDetailPage({
 
             <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
               {digital ? (
-                <Download aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green" />
+                <Download
+                  aria-hidden="true"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green"
+                />
               ) : (
-                <Truck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green" />
+                <Truck
+                  aria-hidden="true"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green"
+                />
               )}
               {digital
                 ? "Digital item — available from your orders once the purchase completes."

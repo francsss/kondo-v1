@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import { CatalogCard } from "@/components/features/catalog/CatalogCard";
+import { ProductGrid } from "@/components/features/commerce/ProductCard";
 import {
   listSavedCatalog,
   type PublicCatalogItem,
@@ -71,11 +72,11 @@ function CatalogGroup({
   return (
     <section>
       <h2 className="text-2xl font-black tracking-tight">{title}</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <ProductGrid className="mt-4">
         {items.map((item) => (
           <CatalogCard item={item} key={`${item.kind}:${item.id}`} />
         ))}
-      </div>
+      </ProductGrid>
     </section>
   );
 }
