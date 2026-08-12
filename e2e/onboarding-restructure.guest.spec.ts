@@ -25,9 +25,9 @@ async function registerPersonal(
   await page.locator('input[name="lastName"]').fill("Journey");
   await page.locator('input[name="email"]').fill(input.email);
   await page.getByRole("button", { name: "Woman" }).click();
-  await page.getByRole("button", { name: "Country of origin" }).click();
+  await page.getByRole("button", { name: "Country / Region" }).click();
   await page
-    .getByRole("textbox", { name: "Search African countries…" })
+    .getByRole("textbox", { name: "Search country or region…" })
     .fill("Rwanda");
   await page.getByRole("option", { name: /rwanda/i }).click();
   await page.locator('input[name="password"]').fill(password);
@@ -137,7 +137,7 @@ test.describe.serial("restructured personal onboarding", () => {
     await expect(page.getByText("Step 1 of 3")).toBeVisible();
     await expect(page.getByRole("group", { name: "Gender" })).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Country of origin" }),
+      page.getByRole("button", { name: "Country / Region" }),
     ).toHaveCount(0);
 
     await page.getByRole("button", { name: /Preparing for China/ }).click();

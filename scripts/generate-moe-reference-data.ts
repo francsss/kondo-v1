@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pinyin } from "pinyin-pro";
-import { AFRICAN_COUNTRIES } from "../src/lib/african-countries";
+import { COUNTRIES } from "../src/lib/countries";
 
 const MOE_LIST_ID = "10000101";
 const MOE_BASE_URL = "https://hudong.moe.gov.cn/school/wcmdata";
@@ -272,10 +272,7 @@ function buildMigration(
   cities: CityRecord[],
   universities: UniversityRecord[],
 ) {
-  const countries = [
-    { code: "CN", name: "China", emoji: "🇨🇳" },
-    ...AFRICAN_COUNTRIES,
-  ];
+  const countries = COUNTRIES;
   const statements: string[] = [
     "-- Generated from the official 2026 Ministry of Education directory.",
     "-- Existing rows are updated by stable code/slug so user relations are preserved.",

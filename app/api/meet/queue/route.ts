@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { getAfricanCountry } from "@/lib/african-countries";
+import { getCountry } from "@/lib/countries";
 import { findMeetMatch, leaveMeetQueue } from "@/lib/calls/service";
 import { prisma } from "@/lib/prisma";
 import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
@@ -38,15 +38,21 @@ export async function POST(request: NextRequest) {
       );
     }
     const countryReference = parsed.data.countryPreferenceCode
-      ? getAfricanCountry(parsed.data.countryPreferenceCode)
+      ? getCountry(parsed.data.countryPreferenceCode)
       : null;
     if (parsed.data.countryPreferenceCode && !countryReference) {
-      return jsonError("Select a valid African country.");
+      return jsonError("Select a valid country or region.");
     }
     const country = countryReference
       ? await prisma.country.upsert({
           where: { code: countryReference.code },
-          create: { ...countryReference, isActive: true, verified: true },
+          create: {
+            code: countryReference.code,
+            name: countryReference.name,
+            emoji: countryReference.emoji,
+            isActive: true,
+            verified: true,
+          },
           update: { isActive: true, emoji: countryReference.emoji },
           select: { id: true },
         })

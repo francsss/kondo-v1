@@ -1,5 +1,5 @@
 import { Prisma, type UserGender } from "@prisma/client";
-import { getAfricanCountry } from "@/lib/african-countries";
+import { getCountry } from "@/lib/countries";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import {
   enqueueNotificationJobWithClient,
@@ -128,7 +128,7 @@ export async function ensurePersonalNationalCommunityWithClient(
     where: { id: input.countryId },
     select: { id: true, code: true, name: true, emoji: true },
   });
-  if (!country || !getAfricanCountry(country.code)) return null;
+  if (!country || !getCountry(country.code)) return null;
   return ensureNationalCommunityWithClient(tx, {
     userId: input.userId,
     country,
@@ -138,7 +138,7 @@ export async function ensurePersonalNationalCommunityWithClient(
 export async function registerUserWithNationalCommunity(
   input: RegistrationInput,
 ) {
-  const countryReference = getAfricanCountry(input.countryCode);
+  const countryReference = getCountry(input.countryCode);
   if (!countryReference) throw new Error("Unsupported country code.");
 
   let finalError: unknown;

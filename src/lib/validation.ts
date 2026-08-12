@@ -1,7 +1,7 @@
 import { MediaPurpose } from "@prisma/client";
 import { z } from "zod";
 import { ORGANIZATION_TYPE_KEYS } from "@/features/organizations/registry";
-import { isAfricanCountryCode } from "@/lib/african-countries";
+import { isCountryCode } from "@/lib/countries";
 import { SUPPORTED_CURRENCY_CODES } from "@/lib/currencies";
 import { isJourneyStageInGroup } from "@/lib/journey";
 import { STUDENT_SKILL_CATEGORIES } from "@/lib/peer-marketplace";
@@ -41,11 +41,11 @@ export const registerSchema = z
     }
     if (
       data.intent === "PERSONAL" &&
-      (!data.countryCode || !isAfricanCountryCode(data.countryCode))
+      (!data.countryCode || !isCountryCode(data.countryCode))
     ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Select a valid African country.",
+        message: "Select your country or region.",
         path: ["countryCode"],
       });
     }

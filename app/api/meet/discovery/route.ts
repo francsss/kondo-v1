@@ -5,7 +5,7 @@ import {
   type MeetPremiumFeature,
 } from "@/features/meet/config";
 import { meetDiscoveryRequestSchema } from "@/features/meet/schemas";
-import { isAfricanCountryCode } from "@/lib/african-countries";
+import { isCountryCode } from "@/lib/countries";
 import { logServerEvent } from "@/lib/logger";
 import {
   getPremiumAccess,
@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
   }
   if (
     parsed.data.countryPreferenceCode &&
-    !isAfricanCountryCode(parsed.data.countryPreferenceCode)
+    !isCountryCode(parsed.data.countryPreferenceCode)
   ) {
-    return jsonError("Select a valid African country.");
+    return jsonError("Select a valid country or region.");
   }
 
   try {

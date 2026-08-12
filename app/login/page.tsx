@@ -170,7 +170,7 @@ export default function LoginPage() {
       <aside className="noise relative hidden overflow-hidden bg-gradient-to-br from-kondo-navy via-kondo-forest to-[#238164] p-14 text-white lg:block">
         <div className="relative z-10 flex h-full flex-col justify-between">
           <p className="text-sm font-bold text-kondo-lime">
-            The digital home for African students in China.
+            The digital ecosystem for international students in China.
           </p>
           <div className="max-w-xl">
             <blockquote className="text-balance text-4xl font-black leading-tight tracking-[-0.04em]">

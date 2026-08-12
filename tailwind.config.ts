@@ -5,6 +5,10 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      screens: {
+        // Large phones, where a top-bar action has room for its label.
+        xs: "400px",
+      },
       colors: {
         background: "rgb(var(--background) / <alpha-value>)",
         foreground: "rgb(var(--foreground) / <alpha-value>)",
@@ -70,10 +74,15 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        "overlay-in": {
+          from: { opacity: "0", transform: "scale(0.99)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         float: "float 6s ease-in-out infinite",
         shimmer: "shimmer 1.8s infinite",
+        "overlay-in": "overlay-in 160ms ease-out",
       },
     },
   },

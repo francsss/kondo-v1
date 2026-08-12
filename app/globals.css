@@ -219,6 +219,15 @@ textarea {
     scrollbar-width: none;
   }
 
+  /*
+   * Mobile browsers paint their own grey box over a tapped link. The bottom
+   * navigation draws its own active state, so the default artifact is removed
+   * wherever Kondo owns the feedback.
+   */
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }

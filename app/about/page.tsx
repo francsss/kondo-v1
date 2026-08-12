@@ -8,7 +8,7 @@ export default function AboutPage() {
     <InfoPage
       eyebrow="Why Kondo exists"
       title="Student life should feel less lonely and less confusing."
-      description="Kondo is building the trusted digital home African students can carry with them before, during, and after their studies in China."
+      description="Kondo is the digital ecosystem international students carry with them before, during, and after their studies in China."
     >
       <section>
         <h2>The problem</h2>
@@ -32,7 +32,7 @@ export default function AboutPage() {
           <li>Reliability and safety before feature count.</li>
           <li>Advice shaped by real student context.</li>
           <li>Useful engagement instead of noisy attention.</li>
-          <li>Respect for the many cultures represented across Africa.</li>
+          <li>Respect for every culture that studies in China.</li>
         </ul>
       </section>
     </InfoPage>

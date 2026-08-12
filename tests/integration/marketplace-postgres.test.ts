@@ -130,7 +130,9 @@ async function createFixture() {
   );
   const country = await prisma.country.create({
     data: {
-      code: `Q${suffix.slice(0, 1).toUpperCase()}`,
+      // A digit keeps this synthetic code outside ISO 3166-1, which Kondo now
+      // seeds in full — a letter here collides with a real country such as QA.
+      code: `Q${Math.floor(Math.random() * 10)}`,
       name: `Module 12 Country ${suffix}`,
       isActive: true,
       verified: true,

@@ -10,24 +10,26 @@ import "@livekit/components-styles";
 export const metadata: Metadata = {
   metadataBase: new URL(getAppUrl()),
   title: {
-    default: "Kondo — Your student life in China, connected",
+    default: "Kondo — Your campus companion in China",
     template: "%s · Kondo",
   },
   description:
-    "The trusted community, marketplace, and student guide for Africans studying in China.",
+    "The digital ecosystem for international students in China — community, marketplace, and student guides before, during, and after your studies.",
   applicationName: "Kondo",
   manifest: "/manifest.webmanifest",
   keywords: [
-    "African students in China",
+    "international students in China",
+    "study in China",
     "student community",
     "China student guide",
     "student marketplace",
+    "foreign students China",
   ],
   openGraph: {
     type: "website",
     title: "Kondo — Find your people. Find your way.",
     description:
-      "Community, trusted answers, local marketplace, and practical guides for African students in China.",
+      "Community, trusted answers, local marketplace, and practical guides for international students in China.",
     siteName: "Kondo",
     images: [
       {
@@ -41,7 +43,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Kondo — Find your people. Find your way.",
-    description: "The digital home for African students in China.",
+    description: "The digital ecosystem for international students in China.",
     images: ["/og.png"],
   },
 };
