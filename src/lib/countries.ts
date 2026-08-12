@@ -8,11 +8,7 @@
  * itself. Regenerate with `npm run reference:countries`.
  */
 export type CountryRegion =
-  | "Africa"
-  | "Americas"
-  | "Asia"
-  | "Europe"
-  | "Oceania";
+  "Africa" | "Americas" | "Asia" | "Europe" | "Oceania";
 
 export type CountryReference = {
   code: string;
