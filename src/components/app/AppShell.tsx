@@ -98,7 +98,7 @@ type NavigationItem = {
   aliases?: readonly string[];
 };
 
-const STUDENT_HUB_NAVIGATION: NavigationItem = {
+export const STUDENT_HUB_NAVIGATION: NavigationItem = {
   href: "/student-hub",
   label: "Student Hub",
   icon: GraduationCap,
@@ -113,9 +113,9 @@ const STUDENT_HUB_NAVIGATION: NavigationItem = {
  * frees the centre slot, and Discover takes it — the index is load-bearing, the
  * bar renders five equal columns and the middle one carries the emphasis.
  */
-const DISCOVER_MOBILE_INDEX = 2;
+export const DISCOVER_MOBILE_INDEX = 2;
 
-const mobileNavigation: NavigationItem[] = [
+export const mobileNavigation: NavigationItem[] = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
   { href: "/discover", label: "Discover", icon: Compass },
@@ -127,7 +127,7 @@ const mobileNavigation: NavigationItem[] = [
  * The desktop sidebar has vertical room the mobile bar does not, so Student Hub
  * keeps a place in the list there as well as in the top bar.
  */
-const desktopNavigation: NavigationItem[] = [
+export const desktopNavigation: NavigationItem[] = [
   { href: "/home", label: "Home", icon: Home },
   STUDENT_HUB_NAVIGATION,
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
@@ -142,7 +142,7 @@ const secondaryNavigation: NavigationItem[] = [
   { href: "/saved", label: "Saved", icon: Bookmark },
 ];
 
-function isNavigationItemActive(
+export function isNavigationItemActive(
   pathname: string,
   { href, aliases }: Pick<NavigationItem, "href" | "aliases">,
 ) {
@@ -910,7 +910,11 @@ export function AppShell({
                   aria-current={active ? "page" : undefined}
                   aria-label={label}
                   className={cn(
-                    "tap-highlight-none relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold transition-colors duration-200 motion-reduce:transition-none",
+                    // Five columns share the bar, and "Communities" is the word
+                    // that sets the type size: at 10px it elides at common
+                    // phone widths. A navigation that abbreviates its own
+                    // destinations is worse than one set a point smaller.
+                    "tap-highlight-none relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[9px] font-bold transition-colors duration-200 motion-reduce:transition-none",
                     active
                       ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
                       : "text-muted-foreground",
