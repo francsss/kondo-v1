@@ -1,31 +1,28 @@
 "use client";
 
-import Link from "next/link";
-import { Heart, MapPin } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useState } from "react";
-import { formatPrice } from "@/lib/presentation";
-import { cn } from "@/lib/utils";
+import {
+  ProductCard,
+  type ProductCardBadge,
+} from "@/components/features/commerce/ProductCard";
 import { MediaImage } from "@/components/ui/MediaImage";
+import { formatPrice } from "@/lib/presentation";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
-const categoryStyles: Record<string, string> = {
-  Housing:
-    "from-teal-100 via-emerald-50 to-lime-100 dark:from-teal-900/40 dark:to-lime-900/20",
-  Furniture:
-    "from-amber-100 via-orange-50 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/20",
-  Bicycle:
-    "from-sky-100 via-cyan-50 to-teal-100 dark:from-sky-900/40 dark:to-teal-900/20",
-  Laptop:
-    "from-violet-100 via-indigo-50 to-blue-100 dark:from-violet-900/40 dark:to-blue-900/20",
-  Phone:
-    "from-rose-100 via-pink-50 to-orange-100 dark:from-rose-900/40 dark:to-orange-900/20",
-  Books:
-    "from-lime-100 via-green-50 to-emerald-100 dark:from-lime-900/40 dark:to-emerald-900/20",
-};
-
+/**
+ * A Marketplace listing on the shared commerce card.
+ *
+ * What a student buying second-hand needs from the grid: what it looks like,
+ * what it is, what it costs, and where it is. Place and seller share one line
+ * rather than taking two — every text line the card spends is a line the photo
+ * does not get, and the photo is what people actually browse. The saved count
+ * left the card entirely; it decided nothing and cost a row.
+ */
 export function ListingCard({
   listing,
+  priority = false,
 }: {
   listing: {
     id: string;
@@ -40,21 +37,26 @@ export function ListingCard({
     favorites: Array<{ id: string }>;
     images?: Array<{ mediaId: string | null; altText: string | null }>;
   };
+  /** The first row is above the fold; let those images load eagerly. */
+  priority?: boolean;
 }) {
   const [favorite, setFavorite] = useState(listing.favorites.length > 0);
-  const [favoriteCount, setFavoriteCount] = useState(listing._count.favorites);
+  const [pending, setPending] = useState(false);
+  const cover = listing.images?.[0];
 
   async function toggleFavorite() {
+    // Optimistic: the heart fills on tap and rolls back only if the write
+    // fails. A save that waits on a round trip feels broken on mobile data.
     const next = !favorite;
     setFavorite(next);
-    setFavoriteCount((value) => value + (next ? 1 : -1));
+    setPending(true);
     const response = await fetch(`/api/marketplace/${listing.id}/favorites`, {
       method: next ? "POST" : "DELETE",
       credentials: "include",
     }).catch(() => null);
+    setPending(false);
     if (!response?.ok) {
       setFavorite(!next);
-      setFavoriteCount((value) => value + (next ? -1 : 1));
       return;
     }
     if (next) {
@@ -65,72 +67,57 @@ export function ListingCard({
     }
   }
 
+  const badges: ProductCardBadge[] = listing.isNegotiable
+    ? [{ label: "Negotiable" }]
+    : [];
+
   return (
-    <article className="group overflow-hidden rounded-3xl border border-border bg-card text-card-foreground transition duration-300 hover:-translate-y-1 hover:shadow-lift">
-      <div
-        className={cn(
-          "relative grid aspect-[4/3] place-items-center overflow-hidden bg-gradient-to-br",
-          categoryStyles[listing.category.name] ??
-            "from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700",
-        )}
-      >
-        {listing.images?.[0]?.mediaId ? (
-          <MediaImage
-            alt={listing.images[0].altText ?? listing.title}
-            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-            height={720}
-            mediaId={listing.images[0].mediaId}
-            sizes="(min-width: 1280px) 24vw, (min-width: 768px) 32vw, 48vw"
-            width={960}
-          />
-        ) : (
-          <span
-            aria-hidden="true"
-            className="text-7xl transition duration-500 group-hover:scale-110 group-hover:-rotate-3"
-          >
-            {listing.category.icon ?? "📦"}
-          </span>
-        )}
+    <ProductCard
+      action={
         <button
-          aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
+          aria-label={favorite ? "Remove from saved" : "Save this item"}
           aria-pressed={favorite}
-          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-muted-foreground shadow-sm backdrop-blur transition hover:scale-105 hover:text-rose-500 dark:bg-slate-950/70 dark:text-muted-foreground"
+          className="grid h-9 w-9 place-items-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition hover:text-rose-500 active:scale-90 disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
+          disabled={pending}
           onClick={toggleFavorite}
           type="button"
         >
           <Heart
-            className="h-4 w-4"
+            aria-hidden="true"
+            className={favorite ? "h-4 w-4 text-rose-500" : "h-4 w-4"}
             fill={favorite ? "currentColor" : "none"}
           />
         </button>
-      </div>
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <Link
-              className="font-bold text-kondo-ink hover:underline dark:text-white"
-              href={`/marketplace/${listing.slug}`}
-            >
-              <h2 className="truncate">{listing.title}</h2>
-            </Link>
-            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin aria-hidden="true" className="h-3 w-3" />{" "}
-              {listing.city.name}
-            </p>
-          </div>
-          <p className="whitespace-nowrap font-black tracking-tight text-kondo-forest dark:text-emerald-300">
-            {formatPrice(listing.priceFen)}
-          </p>
-        </div>
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-muted-foreground dark:border-white/10">
-          <span>
-            {listing.seller.firstName} {listing.seller.lastName[0]}.
+      }
+      badges={badges}
+      href={`/marketplace/${listing.slug}`}
+      media={{
+        ratio: "square",
+        node: cover?.mediaId ? (
+          <MediaImage
+            alt={cover.altText ?? listing.title}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            height={480}
+            mediaId={cover.mediaId}
+            priority={priority}
+            // Two columns on a phone means each image is about half the
+            // viewport. Asking for a 960px file to paint 180px was most of
+            // the weight of this page.
+            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+            width={640}
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid h-full w-full place-items-center bg-gradient-to-br from-kondo-mint to-emerald-50 text-4xl dark:from-emerald-400/10 dark:to-transparent"
+          >
+            {listing.category.icon ?? "📦"}
           </span>
-          <span>
-            {listing.isNegotiable ? "Negotiable" : `${favoriteCount} saved`}
-          </span>
-        </div>
-      </div>
-    </article>
+        ),
+      }}
+      price={formatPrice(listing.priceFen)}
+      secondary={`${listing.city.name} · ${listing.seller.firstName} ${listing.seller.lastName[0]}.`}
+      title={listing.title}
+    />
   );
 }

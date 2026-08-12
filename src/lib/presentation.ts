@@ -35,6 +35,10 @@ export function formatPrice(priceFen: number) {
   return new Intl.NumberFormat("en-CN", {
     style: "currency",
     currency: "CNY",
+    // "¥75", not "CN¥75". The disambiguating form is for documents that mix
+    // yuan and yen; a price tag in a Chinese marketplace is not one, and the
+    // extra two characters blunt the one number the card exists to show.
+    currencyDisplay: "narrowSymbol",
     maximumFractionDigits: priceFen % 100 === 0 ? 0 : 2,
   }).format(priceFen / 100);
 }

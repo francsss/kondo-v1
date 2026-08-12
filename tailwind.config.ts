@@ -78,11 +78,16 @@ const config: Config = {
           from: { opacity: "0", transform: "scale(0.99)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
+        "sheet-in": {
+          from: { opacity: "0", transform: "translateY(12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         float: "float 6s ease-in-out infinite",
         shimmer: "shimmer 1.8s infinite",
         "overlay-in": "overlay-in 160ms ease-out",
+        "sheet-in": "sheet-in 200ms cubic-bezier(0.32, 0.72, 0, 1)",
       },
     },
   },

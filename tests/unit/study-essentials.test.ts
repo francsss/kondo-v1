@@ -33,8 +33,8 @@ describe("Study Essentials catalogue rules", () => {
   });
 
   it("drops trailing decimals only when the price is a round unit", () => {
-    expect(formatEssentialPrice(13900, "CNY")).toBe("CN¥139");
-    expect(formatEssentialPrice(13950, "CNY")).toBe("CN¥139.50");
+    expect(formatEssentialPrice(13900, "CNY")).toBe("¥139");
+    expect(formatEssentialPrice(13950, "CNY")).toBe("¥139.50");
   });
 
   it("accepts only the declared catalogue filters", () => {
