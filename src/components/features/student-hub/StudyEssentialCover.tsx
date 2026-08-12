@@ -5,12 +5,22 @@ import { cn } from "@/lib/utils";
  * a partner image when one is published, otherwise a deterministic tint drawn
  * from the slug so the shelf reads as designed rather than as missing images.
  */
+/**
+ * Jacket tones for titles with no artwork yet.
+ *
+ * These were five shades of the Kondo green, which turned a shelf of covers
+ * into one green wall — the brand shouting over the thing it is selling.
+ * Green stays in the set, as one book among several, and the rest read like
+ * cloth bindings so the grid looks like a shelf.
+ */
 const TINTS = [
   "from-kondo-forest to-kondo-green",
-  "from-emerald-600 to-teal-500",
-  "from-teal-700 to-emerald-500",
-  "from-green-700 to-lime-500",
-  "from-emerald-800 to-emerald-500",
+  "from-slate-700 to-slate-500",
+  "from-amber-800 to-amber-600",
+  "from-indigo-800 to-indigo-600",
+  "from-rose-900 to-rose-700",
+  "from-teal-800 to-cyan-700",
+  "from-stone-700 to-stone-500",
 ] as const;
 
 function tintFor(seed: string) {
@@ -28,6 +38,7 @@ export function StudyEssentialCover({
   coverEmoji,
   className,
   emojiClassName = "text-5xl",
+  priority = false,
 }: {
   slug: string;
   title: string;
@@ -35,18 +46,20 @@ export function StudyEssentialCover({
   coverEmoji?: string | null;
   className?: string;
   emojiClassName?: string;
+  /** Above-the-fold covers should not wait for the lazy-load threshold. */
+  priority?: boolean;
 }) {
   if (imageUrl) {
     return (
-      <span
-        className={cn("block overflow-hidden bg-muted", className)}
-      >
+      <span className={cn("block overflow-hidden bg-muted", className)}>
         {/* Partner artwork is an absolute URL on the partner's own host. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           alt=""
           className="h-full w-full object-cover"
-          loading="lazy"
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
+          loading={priority ? "eager" : "lazy"}
           src={imageUrl}
         />
       </span>

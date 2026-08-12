@@ -14,7 +14,11 @@ import { StudyEssentialError } from "@/lib/study-essentials";
 
 export const STUDY_ESSENTIAL_SECTIONS = [
   { key: "browse", label: "Browse", href: "/student-hub/essentials" },
-  { key: "library", label: "My Library", href: "/student-hub/essentials/library" },
+  {
+    key: "library",
+    label: "My Library",
+    href: "/student-hub/essentials/library",
+  },
   { key: "notes", label: "Notes", href: "/student-hub/essentials/notes" },
 ] as const;
 
@@ -59,6 +63,26 @@ export async function listLibrary(userId: string) {
   return [...seen.values()].sort(
     (first, second) => second.placedAt.getTime() - first.placedAt.getTime(),
   );
+}
+
+/**
+ * Which of these essentials the member already owns, in one query.
+ *
+ * Ownership has exactly one definition in Kondo — a PAID
+ * `StudyEssentialOrder` — and this reads it rather than keeping a second copy.
+ * The store grid needs the answer for a page of items at once, and asking
+ * `ownsEssential` per card would be one round trip per product.
+ */
+export async function ownedEssentialIds(
+  userId: string,
+  essentialIds: string[],
+) {
+  if (!essentialIds.length) return new Set<string>();
+  const orders = await prisma.studyEssentialOrder.findMany({
+    where: { userId, status: "PAID", essentialId: { in: essentialIds } },
+    select: { essentialId: true },
+  });
+  return new Set(orders.map((order) => order.essentialId));
 }
 
 export async function ownsEssential(userId: string, essentialId: string) {
@@ -180,7 +204,11 @@ export async function createStudyNote(input: {
     if (!essential) throw new StudyEssentialError("Unknown resource.", 404);
 
     const owned = await tx.studyEssentialOrder.findFirst({
-      where: { userId: input.userId, essentialId: essential.id, status: "PAID" },
+      where: {
+        userId: input.userId,
+        essentialId: essential.id,
+        status: "PAID",
+      },
       select: { id: true },
     });
     if (!owned) {
