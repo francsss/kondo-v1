@@ -31,6 +31,9 @@ test.describe("Student Stories access and responsive navigation", () => {
     // The five primary destinations live in the bottom quick-navigation bar on
     // mobile; the drawer carries the secondary destinations and account
     // controls. Assert each against the surface that actually owns it.
+    //
+    // Student Hub is not among them: it is a dedicated environment entered from
+    // the top bar, which is what frees the centre slot for Discover.
     const quickNavigation = page.getByRole("navigation", {
       name: "Mobile quick navigation",
     });
@@ -39,11 +42,14 @@ test.describe("Student Stories access and responsive navigation", () => {
       .evaluateAll((items) => items.map((item) => item.getAttribute("href")));
     expect(quickHrefs).toEqual([
       "/home",
-      "/student-hub",
       "/marketplace",
+      "/discover",
       "/communities",
       "/messages",
     ]);
+    await expect(
+      page.locator("header").getByRole("link", { name: "Student Hub" }),
+    ).toHaveAttribute("href", "/student-hub");
 
     await page.getByRole("button", { name: "Open navigation" }).click();
     const navigation = page.getByRole("dialog", { name: "Mobile navigation" });
@@ -65,9 +71,11 @@ test.describe("Student Stories access and responsive navigation", () => {
     await expect(
       navigation.getByRole("link", { name: "Saved" }),
     ).toHaveAttribute("href", "/saved");
+    // Discover is a primary destination now, so the drawer must not repeat it —
+    // one control per destination.
     await expect(
       navigation.getByRole("link", { name: "Discover" }),
-    ).toHaveAttribute("href", "/discover");
+    ).toHaveCount(0);
   });
 
   test("opens publishing and official-profile workflows without overflow", async ({
