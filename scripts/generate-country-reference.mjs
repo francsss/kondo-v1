@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import * as prettier from "prettier";
 
 const REGIONS = {
   Africa:
@@ -30,6 +31,17 @@ const NAME_OVERRIDES = {
 };
 
 const displayNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+/**
+ * The generated file is committed, so it has to match what `format:check`
+ * expects — otherwise regenerating it fails CI on whitespace alone.
+ */
+async function formatTypeScript(source, filepath) {
+  return prettier.format(source, {
+    ...(await prettier.resolveConfig(filepath)),
+    filepath,
+  });
+}
 
 function flagEmoji(code) {
   return String.fromCodePoint(
@@ -63,9 +75,7 @@ const outputPath =
   process.argv[2] ??
   fileURLToPath(new URL("../src/lib/countries.ts", import.meta.url));
 
-writeFileSync(
-  outputPath,
-  `/**
+const source = `/**
  * Every ISO 3166-1 country and territory Kondo accepts, sorted by English
  * name. Kondo is a digital ecosystem for international students in China, so
  * the country dimension has to cover the whole world: a student from Pakistan,
@@ -124,7 +134,8 @@ export function countrySelectOptions() {
     secondary: country.region,
   }));
 }
-`,
-);
+`;
+
+writeFileSync(outputPath, await formatTypeScript(source, outputPath));
 
 console.log(`Wrote ${rows.length} countries`);

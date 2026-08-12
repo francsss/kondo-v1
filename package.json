@@ -22,6 +22,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "reference:generate": "tsx scripts/generate-moe-reference-data.ts",
     "reference:countries": "node scripts/generate-country-reference.mjs",
+    "reference:currencies": "node scripts/generate-currency-reference.mjs",
     "media:cleanup": "tsx scripts/cleanup-media.ts",
     "notifications:process": "tsx scripts/process-notifications.ts",
     "notifications:digest": "tsx scripts/send-email-digests.ts",
