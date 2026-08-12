@@ -33,7 +33,7 @@ import {
   MEET_NEARBY_RADIUS_OPTIONS,
   MEET_PREMIUM_FEATURES,
 } from "@/features/meet/config";
-import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
+import { countrySelectOptions } from "@/lib/countries";
 import {
   DEFAULT_MEET_NEARBY_RADIUS_METERS,
   meetMapSearchQueries,
@@ -48,10 +48,7 @@ type Gender = "MALE" | "FEMALE";
 type GenderPreference = "ALL" | Gender;
 type MeetMode = "RANDOM" | "NEARBY" | "LOOKING_FOR";
 
-const countryOptions = AFRICAN_COUNTRIES.map((country) => ({
-  id: country.code,
-  name: `${country.emoji} ${country.name}`,
-}));
+const countryOptions = countrySelectOptions();
 const POLL_INTERVAL_MS = 2_500;
 const AVAILABILITY_WINDOW_MS = 20_000;
 
@@ -700,12 +697,12 @@ export function MeetPanel({
                 </label>
 
                 <SearchableSelect
-                  clearLabel="All African countries"
+                  clearLabel="Everywhere"
                   label="Country"
                   onSelect={setCountryPreferenceCode}
                   options={countryOptions}
-                  placeholder="All African countries"
-                  searchPlaceholder="Search countries"
+                  placeholder="Everywhere"
+                  searchPlaceholder="Search country or region…"
                   selected={countryPreferenceCode}
                 />
 
@@ -966,13 +963,13 @@ function RandomMeet({
             </select>
           </label>
           <SearchableSelect
-            clearLabel="All African countries"
+            clearLabel="Everywhere"
             disabled={matching}
             label="Country"
             onSelect={onCountryChange}
             options={countryOptions}
-            placeholder="All African countries"
-            searchPlaceholder="Search countries"
+            placeholder="Everywhere"
+            searchPlaceholder="Search country or region…"
             selected={countryPreferenceCode}
           />
         </div>

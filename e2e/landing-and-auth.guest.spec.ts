@@ -28,9 +28,9 @@ test.describe("public landing and authentication", () => {
       .locator('input[name="email"]')
       .fill(`e2e-${Date.now()}@example.com`);
     await page.getByRole("button", { name: "Woman" }).click();
-    await page.getByRole("button", { name: "Country of origin" }).click();
+    await page.getByRole("button", { name: "Country / Region" }).click();
     await page
-      .getByRole("textbox", { name: "Search African countries…" })
+      .getByRole("textbox", { name: "Search country or region…" })
       .fill("Ghana");
     await page.getByRole("option", { name: /ghana/i }).click();
     await page.locator('input[name="password"]').fill("weak");
@@ -62,7 +62,7 @@ test.describe("public landing and authentication", () => {
     await page.getByRole("button", { name: /^Organization/ }).click();
     await expect(page.getByRole("group", { name: "Gender" })).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Country of origin" }),
+      page.getByRole("button", { name: "Country / Region" }),
     ).toHaveCount(0);
     await expect(
       page.getByText(/personal Kondo login.*never share a password/i),

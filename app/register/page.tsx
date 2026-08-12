@@ -15,7 +15,7 @@ import { KondoLogo } from "@/components/KondoLogo";
 import { ChoiceChips } from "@/components/onboarding/fields";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { AFRICAN_COUNTRIES } from "@/lib/african-countries";
+import { countrySelectOptions } from "@/lib/countries";
 import {
   captureProductEvent,
   identifyProductUser,
@@ -273,15 +273,12 @@ export default function RegisterPage() {
                 <div className="sm:col-span-2">
                   <input name="countryCode" type="hidden" value={countryCode} />
                   <SearchableSelect
-                    emptyMessage="No African country matches your search."
-                    label="Country of origin"
+                    emptyMessage="No country or region matches your search."
+                    label="Country / Region"
                     onSelect={setCountryCode}
-                    options={AFRICAN_COUNTRIES.map((country) => ({
-                      id: country.code,
-                      name: `${country.emoji} ${country.name}`,
-                    }))}
+                    options={countrySelectOptions()}
                     placeholder="Select your country"
-                    searchPlaceholder="Search African countries…"
+                    searchPlaceholder="Search country or region…"
                     selected={countryCode}
                   />
                   <span className="mt-1.5 block text-[11px] text-muted-foreground">

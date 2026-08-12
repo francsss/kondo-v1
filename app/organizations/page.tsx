@@ -30,7 +30,7 @@ import {
 export const metadata: Metadata = {
   title: "Organizations",
   description:
-    "Discover public organizations supporting African students and alumni across the Kondo ecosystem.",
+    "Discover public organizations supporting international students and alumni across the Kondo ecosystem.",
   alternates: { canonical: "/organizations" },
   openGraph: {
     title: "Organizations on Kondo",

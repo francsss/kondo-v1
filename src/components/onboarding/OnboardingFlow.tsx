@@ -595,14 +595,14 @@ function JourneyStep({
           ) : null}
           {needsCountry ? (
             <SearchableSelect
-              emptyMessage="No country matches your search."
-              label="Country of origin"
+              emptyMessage="No country or region matches your search."
+              label="Country / Region"
               onSelect={(countryId) =>
                 setForm((current) => ({ ...current, countryId }))
               }
               options={countries}
               placeholder="Select your country"
-              searchPlaceholder="Search countries…"
+              searchPlaceholder="Search country or region…"
               selected={form.countryId}
             />
           ) : null}

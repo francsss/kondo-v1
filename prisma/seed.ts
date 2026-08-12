@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import sharp from "sharp";
 import chinaHigherEducation from "./reference-data/china-higher-education-2026.json";
-import { AFRICAN_COUNTRIES } from "../src/lib/african-countries";
+import { COUNTRIES } from "../src/lib/countries";
 import { assertDestructiveSeedAllowed } from "../src/lib/seed-safety";
 import { getObjectStorage } from "../src/lib/storage";
 
@@ -111,14 +111,18 @@ async function main() {
   await clearDatabase();
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const countries = await Promise.all(
-    [{ code: "CN", name: "China", emoji: "🇨🇳" }, ...AFRICAN_COUNTRIES].map(
-      ({ code, name, emoji }) =>
-        prisma.country.create({
-          data: { code, name, emoji, isActive: true, verified: true },
-        }),
-    ),
-  );
+  // Every ISO country is seeded, not a regional subset: an international
+  // student from any origin has to be able to register and find their people.
+  await prisma.country.createMany({
+    data: COUNTRIES.map(({ code, name, emoji }) => ({
+      code,
+      name,
+      emoji,
+      isActive: true,
+      verified: true,
+    })),
+  });
+  const countries = await prisma.country.findMany();
   const country = Object.fromEntries(
     countries.map((item) => [item.code, item]),
   );
@@ -345,7 +349,7 @@ async function main() {
               : "MALE",
           passwordHash,
           status: "ACTIVE",
-          bio: `African student in China studying ${data.degree}. Always happy to share what I learn.`,
+          bio: `International student in China studying ${data.degree}. Always happy to share what I learn.`,
           arrivalDate: new Date("2025-09-01"),
           onboardingCompletedAt: new Date(),
           lastActiveAt: new Date(),
@@ -409,6 +413,26 @@ async function main() {
       isVerified: true,
     },
     {
+      slug: "pakistanis-in-china",
+      name: "Pakistanis in China",
+      description:
+        "Scholarships, halal food, visas, and city meetups for Pakistani students across China.",
+      type: "COUNTRY" as const,
+      icon: "🇵🇰",
+      countryId: country.PK.id,
+      isVerified: true,
+    },
+    {
+      slug: "kazakhstanis-in-china",
+      name: "Kazakhstanis in China",
+      description:
+        "Language exchange, paperwork, and community for students from Kazakhstan studying in China.",
+      type: "COUNTRY" as const,
+      icon: "🇰🇿",
+      countryId: country.KZ.id,
+      isVerified: false,
+    },
+    {
       slug: "tsinghua-community",
       name: "Tsinghua Community",
       description:
@@ -447,9 +471,12 @@ async function main() {
     },
   ];
 
+  // Index-parallel with `communityData`.
   const communityOwnerIds = [
     admin.id,
     admin.id,
+    admin.id,
+    moderator.id,
     admin.id,
     moderator.id,
     kwame.id,

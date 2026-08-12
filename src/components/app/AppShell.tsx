@@ -41,6 +41,7 @@ import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { NotificationExperience } from "@/components/features/notifications/NotificationExperience";
+import { MobileSearchOverlay } from "@/components/features/search/MobileSearchOverlay";
 import { RestoreStoryScroll } from "@/components/features/stories/RestoreStoryScroll";
 import { KondoLogo } from "@/components/KondoLogo";
 import {
@@ -97,18 +98,40 @@ type NavigationItem = {
   aliases?: readonly string[];
 };
 
-const navigation: NavigationItem[] = [
+const STUDENT_HUB_NAVIGATION: NavigationItem = {
+  href: "/student-hub",
+  label: "Student Hub",
+  icon: GraduationCap,
+  aliases: ["/guides", "/help"],
+};
+
+/**
+ * The five destinations of the general Kondo environment on mobile.
+ *
+ * Student Hub is deliberately absent: it is a dedicated environment inside
+ * Kondo rather than a sibling of Home, so it is entered from the top bar. That
+ * frees the centre slot, and Discover takes it — the index is load-bearing, the
+ * bar renders five equal columns and the middle one carries the emphasis.
+ */
+const DISCOVER_MOBILE_INDEX = 2;
+
+const mobileNavigation: NavigationItem[] = [
   { href: "/home", label: "Home", icon: Home },
-  {
-    href: "/student-hub",
-    label: "Student Hub",
-    icon: GraduationCap,
-    aliases: ["/guides", "/help"],
-  },
-  // Marketplace takes the slot Discover held; Discover takes Marketplace's
-  // slot in the secondary menu below. Position swap only — each entry keeps
-  // its own route, label and icon.
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
+  { href: "/discover", label: "Discover", icon: Compass },
+  { href: "/communities", label: "Communities", icon: Users },
+  { href: "/messages", label: "Messages", icon: MessageCircle },
+];
+
+/**
+ * The desktop sidebar has vertical room the mobile bar does not, so Student Hub
+ * keeps a place in the list there as well as in the top bar.
+ */
+const desktopNavigation: NavigationItem[] = [
+  { href: "/home", label: "Home", icon: Home },
+  STUDENT_HUB_NAVIGATION,
+  { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
+  { href: "/discover", label: "Discover", icon: Compass },
   { href: "/communities", label: "Communities", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
@@ -117,8 +140,21 @@ const secondaryNavigation: NavigationItem[] = [
   { href: "/housing", label: "Housing", icon: House },
   { href: "/stories", label: "Student Stories", icon: Clapperboard },
   { href: "/saved", label: "Saved", icon: Bookmark },
-  { href: "/discover", label: "Discover", icon: Compass },
 ];
+
+function isNavigationItemActive(
+  pathname: string,
+  { href, aliases }: Pick<NavigationItem, "href" | "aliases">,
+) {
+  return (
+    pathname === href ||
+    pathname.startsWith(`${href}/`) ||
+    (aliases?.some(
+      (alias) => pathname === alias || pathname.startsWith(`${alias}/`),
+    ) ??
+      false)
+  );
+}
 
 /**
  * When an organization workspace is active the mobile bar must stop presenting
@@ -282,12 +318,7 @@ function NavLink({
   onNavigate?: () => void;
   badgeCount?: number;
 }) {
-  const active =
-    pathname === href ||
-    pathname.startsWith(`${href}/`) ||
-    aliases?.some(
-      (alias) => pathname === alias || pathname.startsWith(`${alias}/`),
-    );
+  const active = isNavigationItemActive(pathname, { href, aliases });
 
   return (
     <Link
@@ -316,6 +347,46 @@ function NavLink({
   );
 }
 
+/**
+ * The way into the Student Hub from anywhere in the general Kondo environment.
+ *
+ * It sits in the top bar rather than the bottom bar because the hub is a space
+ * you enter, not a tab you flip to. One tap, always in the same place, with a
+ * fixed 40px box on every breakpoint so the row beside it never reflows while
+ * the label appears.
+ */
+function StudentHubAction({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const active = isNavigationItemActive(pathname, STUDENT_HUB_NAVIGATION);
+
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      aria-label="Student Hub"
+      className={cn(
+        "flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-black transition-colors duration-200 xs:px-3 motion-reduce:transition-none",
+        active
+          ? "border-kondo-green/45 bg-kondo-mint text-kondo-forest dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300"
+          : "border-border bg-card text-foreground hover:border-kondo-green/50 hover:text-kondo-green",
+      )}
+      href={STUDENT_HUB_NAVIGATION.href}
+      onClick={onNavigate}
+    >
+      <GraduationCap
+        aria-hidden="true"
+        className="h-[18px] w-[18px] shrink-0"
+        strokeWidth={active ? 2.4 : 2}
+      />
+      <span className="hidden whitespace-nowrap xs:inline">Student Hub</span>
+    </Link>
+  );
+}
+
 export function AppShell({
   children,
   user,
@@ -331,6 +402,7 @@ export function AppShell({
   const router = useRouter();
   const reducedMotion = useReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(
     user.notificationUnreadCount ?? 0,
   );
@@ -468,6 +540,13 @@ export function AppShell({
       <ProductAnalyticsIdentity user={user} />
       <RestoreStoryScroll />
       <KondoPet enabled={kondoPetEnabled} />
+      {/*
+       * Mounted on demand: the overlay reads recent searches from local
+       * storage as it opens, which only makes sense once there is a client.
+       */}
+      {searchOpen ? (
+        <MobileSearchOverlay onClose={() => setSearchOpen(false)} />
+      ) : null}
       <aside
         aria-label="Desktop navigation"
         className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-hidden border-r border-border bg-card/90 px-4 py-6 backdrop-blur-xl lg:flex lg:flex-col"
@@ -490,7 +569,7 @@ export function AppShell({
                     pathname={pathname}
                   />
                 ))
-              : navigation.map((item) => (
+              : desktopNavigation.map((item) => (
                   <NavLink
                     badgeCount={
                       item.href === "/messages" ? messageUnreadCount : undefined
@@ -579,8 +658,17 @@ export function AppShell({
                 <Menu aria-hidden="true" className="h-5 w-5" />
               </Button>
             </div>
+            {organizationWorkspace ? null : (
+              <StudentHubAction pathname={pathname} />
+            )}
+            {/*
+             * The desktop field stays a field — there is room for it, and it
+             * carries the ⌘K hint. Below `sm` the same destination is an icon,
+             * because a full-width input in a 360px bar leaves nothing for the
+             * controls beside it.
+             */}
             <Link
-              className="group mx-auto flex h-11 min-w-0 flex-1 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md sm:mx-0 sm:max-w-xl"
+              className="group hidden h-11 min-w-0 flex-1 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md sm:flex sm:max-w-xl"
               href="/search"
             >
               <Search
@@ -593,6 +681,18 @@ export function AppShell({
               </kbd>
             </Link>
             <div className="ml-auto flex h-10 shrink-0 items-center gap-1">
+              <Button
+                aria-expanded={searchOpen}
+                aria-haspopup="dialog"
+                aria-label="Search Kondo"
+                className="sm:hidden"
+                onClick={() => setSearchOpen(true)}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Search aria-hidden="true" className="h-[18px] w-[18px]" />
+              </Button>
               <Button asChild className="relative" size="icon" variant="ghost">
                 <Link
                   aria-label={`Notifications${
@@ -794,37 +894,57 @@ export function AppShell({
           aria-label="Mobile quick navigation"
           className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
         >
-          {navigation.map(({ href, icon: Icon, label, aliases }) => {
-            const active =
-              pathname === href ||
-              pathname.startsWith(`${href}/`) ||
-              aliases?.some(
-                (alias) =>
-                  pathname === alias || pathname.startsWith(`${alias}/`),
-              );
-            return (
-              <Link
-                aria-current={active ? "page" : undefined}
-                aria-label={label}
-                className={cn(
-                  "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold",
-                  active
-                    ? "bg-secondary text-secondary-foreground"
-                    : "text-muted-foreground",
-                )}
-                href={href}
-                key={href}
-              >
-                <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
-                <span className="max-w-full truncate px-1">{label}</span>
-                {href === "/messages" && messageUnreadCount ? (
-                  <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-warning px-1 text-[8px] font-black text-warning-foreground">
-                    {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
+          {mobileNavigation.map(
+            ({ href, icon: Icon, label, aliases }, index) => {
+              const active = isNavigationItemActive(pathname, {
+                href,
+                aliases,
+              });
+              // Discover holds the centre column, so it carries a little more
+              // weight than its neighbours — a larger glyph, and a soft Kondo
+              // green halo once it is the destination you are in. Every column
+              // keeps the same width; nothing floats above the bar.
+              const centered = index === DISCOVER_MOBILE_INDEX;
+              return (
+                <Link
+                  aria-current={active ? "page" : undefined}
+                  aria-label={label}
+                  className={cn(
+                    "tap-highlight-none relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-bold transition-colors duration-200 motion-reduce:transition-none",
+                    active
+                      ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
+                      : "text-muted-foreground",
+                  )}
+                  href={href}
+                  key={href}
+                >
+                  <span
+                    className={cn(
+                      "grid place-items-center transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none",
+                      active && "-translate-y-px scale-110",
+                      centered &&
+                        active &&
+                        "drop-shadow-[0_0_8px_rgba(22,91,74,0.35)] dark:drop-shadow-[0_0_8px_rgba(52,211,153,0.45)]",
+                    )}
+                  >
+                    <Icon
+                      aria-hidden="true"
+                      className={cn(centered ? "h-5 w-5" : "h-[18px] w-[18px]")}
+                      strokeWidth={active ? 2.5 : 2}
+                    />
                   </span>
-                ) : null}
-              </Link>
-            );
-          })}
+                  <span className="max-w-full truncate px-0 tracking-[-0.02em]">
+                    {label}
+                  </span>
+                  {href === "/messages" && messageUnreadCount ? (
+                    <span className="absolute right-2 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-warning px-1 text-[8px] font-black text-warning-foreground">
+                      {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            },
+          )}
         </nav>
       )}
     </div>

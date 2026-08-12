@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Kondo",
     short_name: "Kondo",
     description:
-      "Community, student tools and trusted local discovery for Africans in China.",
+      "Community, student tools and trusted local discovery for international students in China.",
     start_url: "/home",
     display: "standalone",
     background_color: "#f8f7f2",

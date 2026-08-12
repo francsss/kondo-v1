@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
 export const metadata: Metadata = {
-  title: "The digital home for African students in China",
+  title: "The digital ecosystem for international students in China",
   description:
     "Meet your community, find trusted answers, shop locally, and settle into student life in China with confidence.",
 };
@@ -133,8 +133,8 @@ export default function LandingPage() {
         />
         <div className="relative mx-auto max-w-7xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/70 px-3 py-1.5 text-xs font-black text-kondo-forest shadow-sm backdrop-blur dark:border-emerald-400/15 dark:bg-white/5 dark:text-emerald-300">
-            <Globe2 className="h-3.5 w-3.5" /> Built with African students in
-            China
+            <Globe2 className="h-3.5 w-3.5" /> Built with international students
+            in China
           </div>
           <h1 className="mx-auto mt-7 max-w-5xl text-balance text-5xl font-black leading-[0.98] tracking-[-0.065em] sm:text-7xl lg:text-[88px]">
             Find your people.
@@ -302,18 +302,19 @@ export default function LandingPage() {
       <section className="border-y border-border bg-card py-8 text-card-foreground">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-5 text-center sm:flex-row sm:text-left">
           <p className="text-sm font-bold text-muted-foreground">
-            Made for students from across Africa
+            Made for international students, wherever you are from
           </p>
           <div className="flex flex-wrap justify-center gap-5 text-xl grayscale-[0.2]">
-            <span>🇬🇭</span>
+            <span>🇵🇰</span>
             <span>🇳🇬</span>
+            <span>🇰🇿</span>
+            <span>🇮🇩</span>
             <span>🇨🇲</span>
-            <span>🇰🇪</span>
-            <span>🇿🇦</span>
-            <span>🇪🇹</span>
+            <span>🇫🇷</span>
+            <span>🇮🇳</span>
             <span>🇷🇼</span>
             <span className="text-xs font-black text-kondo-green">
-              + 40 countries
+              + 200 countries and regions
             </span>
           </div>
         </div>
@@ -418,8 +419,8 @@ export default function LandingPage() {
             Never face them alone.
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
-            Join the growing home for African students building their lives,
-            studies, and friendships in China.
+            Join the growing ecosystem for international students building their
+            lives, studies, and friendships in China.
           </p>
           <Button asChild className="mt-8" size="lg">
             <Link
@@ -438,7 +439,7 @@ export default function LandingPage() {
           <div>
             <KondoLogo />
             <p className="mt-3 text-xs text-muted-foreground">
-              The digital home for African students in China.
+              The digital ecosystem for international students in China.
             </p>
           </div>
           <div className="flex flex-wrap gap-6 text-xs font-bold text-muted-foreground">

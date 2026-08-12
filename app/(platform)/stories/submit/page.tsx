@@ -26,7 +26,7 @@ export default async function StorySubmitPage({
   return (
     <main className="mx-auto max-w-[1320px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <PageHeader
-        description="Share one practical experience that helps another African student find their way in China."
+        description="Share one practical experience that helps another international student find their way in China."
         eyebrow="Student Stories"
         title={editing ? "Revise your Story" : "Submit a useful Story"}
       />
