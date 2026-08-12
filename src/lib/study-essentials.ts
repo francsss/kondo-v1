@@ -94,6 +94,9 @@ export function formatEssentialPrice(
   return new Intl.NumberFormat("en", {
     style: "currency",
     currency,
+    // See `formatPrice`: the price is the loudest thing on a card, so it gets
+    // the symbol a shopper recognises rather than the disambiguating form.
+    currencyDisplay: "narrowSymbol",
     maximumFractionDigits: priceMinor % 100 === 0 ? 0 : 2,
   }).format(priceMinor / 100);
 }

@@ -6,15 +6,14 @@ import {
   ChevronRight,
   LayoutDashboard,
   Plus,
-  ShieldCheck,
   Sparkles,
   UtensilsCrossed,
 } from "lucide-react";
 import { ListingCard } from "@/components/features/marketplace/ListingCard";
-import { MarketplaceFilterBar } from "@/components/features/marketplace/MarketplaceFilterBar";
+import { MarketplaceToolbar } from "@/components/features/marketplace/MarketplaceToolbar";
+import { ProductGrid } from "@/components/features/commerce/ProductCard";
 import { PeerMarketplaceBoard } from "@/components/features/marketplace/PeerMarketplaceBoard";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { TabPanelTransition } from "@/components/ui/HorizontalTabs";
 import { FoodAndServicesBoard } from "@/components/features/marketplace/FoodAndServicesBoard";
@@ -111,7 +110,7 @@ export default async function MarketplacePage({
       }),
     ]);
     return (
-      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
         <MarketplaceNavigation active={view} />
         <TabPanelTransition index={marketplaceSectionIndex(view)}>
           <FoodAndServicesBoard products={products} services={services} />
@@ -151,7 +150,7 @@ export default async function MarketplacePage({
       }),
     ]);
     return (
-      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
         <MarketplaceNavigation active={view} />
         <TabPanelTransition index={marketplaceSectionIndex(view)}>
           <PeerMarketplaceBoard
@@ -255,94 +254,68 @@ export default async function MarketplacePage({
   };
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
+    <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <MarketplaceNavigation active="marketplace" />
       <TabPanelTransition index={0}>
         <PageHeader
           action={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="secondary">
+              <Button asChild size="sm" variant="secondary">
                 <Link href="/marketplace/selling">
-                  <LayoutDashboard className="h-4 w-4" /> Seller dashboard
+                  <LayoutDashboard className="h-4 w-4" /> Selling
                 </Link>
               </Button>
-              <Button asChild>
+              <Button asChild size="sm">
                 <Link href="/marketplace/new">
                   <Plus className="h-4 w-4" /> Sell an item
                 </Link>
               </Button>
             </div>
           }
-          description="Buy from students nearby, sell what you no longer need, and keep good things in the community. No in-app payments."
-          eyebrow="Student to student"
           title="Marketplace"
         />
 
-        <MarketplaceFilterBar
+        <MarketplaceToolbar
+          categories={categories.map((category) => ({
+            id: category.id,
+            slug: category.slug,
+            name: category.name,
+            icon: category.icon,
+            count: category._count.listings,
+          }))}
           cities={cities}
-          values={{
+          query={{
             q: params.q,
+            category: params.category,
             city: params.city,
             min: params.min,
             max: params.max,
             sort: params.sort,
-            category: params.category,
           }}
+          resultCount={total}
         />
 
-        <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-          <Link
-            className={
-              !params.category
-                ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 dark:border-white/10 dark:bg-white/5"
-            }
-            href={href({ ...hrefInput, category: undefined })}
-          >
-            <span className="text-2xl">✨</span>
-            <span className="mt-2 text-xs font-black">All</span>
-          </Link>
-          {categories.map((category) => (
-            <Link
-              className={
-                params.category === category.slug
-                  ? "grid min-h-24 place-items-center rounded-3xl bg-kondo-ink p-3 text-center text-white dark:bg-emerald-400 dark:text-kondo-ink"
-                  : "grid min-h-24 place-items-center rounded-3xl border border-slate-200 bg-white p-3 text-center transition hover:-translate-y-1 hover:border-kondo-green dark:border-white/10 dark:bg-white/5"
-              }
-              href={href({ ...hrefInput, category: category.slug })}
-              key={category.id}
-            >
-              <span className="text-2xl">{category.icon}</span>
-              <span className="mt-2 text-xs font-black">{category.name}</span>
-              <span className="mt-0.5 text-[10px] text-muted-foreground">
-                {category._count.listings}
-              </span>
-            </Link>
+        <ProductGrid className="mt-3">
+          {listings.map((listing, index) => (
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              priority={index < 4}
+            />
           ))}
-        </section>
-
-        <div className="mt-8 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-black text-kondo-ink dark:text-white">
-              Available nearby
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {total} active listings
-            </p>
-          </div>
-          <div className="hidden items-center gap-1.5 text-xs font-bold text-kondo-green sm:flex">
-            <ShieldCheck className="h-4 w-4" /> No deposits or in-app payments
-          </div>
-        </div>
-        <section className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </section>
+        </ProductGrid>
         {!listings.length ? (
-          <Card className="mt-5 py-16 text-center text-sm text-muted-foreground">
-            No active listings match these filters.
-          </Card>
+          <div className="mt-8 text-center">
+            <p className="text-sm font-bold text-foreground">
+              No items match these filters.
+            </p>
+            <Link
+              className="mt-3 inline-flex h-10 items-center rounded-full border border-border px-4 text-sm font-bold text-foreground transition hover:border-kondo-green/40"
+              href="/marketplace"
+            >
+              Clear filters
+            </Link>
+          </div>
         ) : null}
         <div className="mt-7 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
