@@ -66,6 +66,16 @@ const STUDENT_HUB_MODULES: readonly HorizontalTab[] = STUDENT_HUB_PILLARS.map(
   ({ key, href, label, emoji }) => ({ key, href, label, icon: emoji }),
 );
 
+/**
+ * Study asks three questions and nothing else.
+ *
+ * Overview: what is happening? Planner: what do I need to organise?
+ * Workspace: what do I study right now?
+ *
+ * Academic tools moved under Planner, which is where a student already goes to
+ * organise; Student Q&A moved to Guide, because asking how residence permits
+ * work is student life, not coursework. Both keep their routes.
+ */
 const STUDY_TABS: readonly HorizontalTab[] = [
   {
     key: "overview",
@@ -78,14 +88,9 @@ const STUDY_TABS: readonly HorizontalTab[] = [
     label: "Planner",
   },
   {
-    key: "academic-tools",
-    href: "/student-hub/tools/academic",
-    label: "Academic tools",
-  },
-  {
-    key: "help",
-    href: "/student-hub/help",
-    label: "Student Q&A",
+    key: "workspace",
+    href: "/student-hub/workspace",
+    label: "Workspace",
   },
 ];
 
@@ -133,6 +138,11 @@ const GUIDE_TABS: readonly HorizontalTab[] = [
     label: "Overview",
   },
   {
+    key: "help",
+    href: "/student-hub/help",
+    label: "Student Q&A",
+  },
+  {
     key: "guides",
     href: "/guides",
     label: "Guides",
@@ -168,10 +178,7 @@ const GUIDE_TABS: readonly HorizontalTab[] = [
  * layer, not duplicated data.
  */
 export type StudentHubModule =
-  | "study"
-  | "essentials"
-  | "guide"
-  | "opportunities";
+  "study" | "essentials" | "guide" | "opportunities";
 
 export function studentHubModuleForPath(pathname: string): StudentHubModule {
   // Orders are receipts for acquired resources, so they belong to Essentials.
@@ -185,7 +192,12 @@ export function studentHubModuleForPath(pathname: string): StudentHubModule {
   }
   if (
     pathname === "/student-hub/resources" ||
-    pathname.startsWith("/student-hub/resources/")
+    pathname.startsWith("/student-hub/resources/") ||
+    // Student Q&A is help with student life, so it sits under Guide.
+    pathname === "/student-hub/help" ||
+    pathname.startsWith("/student-hub/help/") ||
+    // A guide reader is Guide content; Study stopped listing guides.
+    pathname.startsWith("/student-hub/guide/")
   ) {
     return "guide";
   }
@@ -203,12 +215,11 @@ export function studentHubTabsForModule(
   showAcademicTools: boolean,
 ): HorizontalTab[] {
   if (module === "study") {
-    // The planner and the academic tools both need a real timetable, so they
-    // are gated on an academic affiliation. Overview and Student Q&A are not.
+    // Planner and Workspace both read a real timetable, so they stay gated on
+    // an academic affiliation. Overview is not.
     return STUDY_TABS.filter(
       (tab) =>
-        showAcademicTools ||
-        (tab.key !== "tools" && tab.key !== "academic-tools"),
+        showAcademicTools || (tab.key !== "tools" && tab.key !== "workspace"),
     );
   }
   if (module === "essentials") return [...ESSENTIALS_TABS];
@@ -231,12 +242,9 @@ export function activeStudentHubTab(
   pathname: string,
   tabs: readonly HorizontalTab[],
 ): string | null {
-  if (
-    pathname === "/student-hub" ||
-    pathname.startsWith("/student-hub/guide/")
-  ) {
-    return "overview";
-  }
+  if (pathname === "/student-hub") return "overview";
+  // A guide opened from Guide keeps Guide's Overview lit, not Study's.
+  if (pathname.startsWith("/student-hub/guide/")) return "resource-home";
   // The reader and a receipt both belong to the shelf the resource sits on,
   // so My Library stays lit while a student reads or checks an order.
   if (
@@ -356,15 +364,19 @@ export function StudentHubShell({
 
           {/* Deliberately not an <h1>: this banner is shared chrome, and each
               page inside the hub owns the document heading that describes it. */}
-          <p className="mt-7 max-w-3xl text-balance font-display text-3xl font-black leading-[1.08] tracking-[-0.04em] sm:mt-9 sm:text-4xl">
+          {/* Deliberately smaller on a phone. This banner is shared chrome
+              repeated on every hub screen, and at display size it pushed the
+              first class of the day below the fold. Desktop keeps the full
+              statement, where there is room for both. */}
+          <p className="mt-4 max-w-3xl text-balance font-display text-xl font-black leading-[1.12] tracking-[-0.04em] sm:mt-9 sm:text-4xl sm:leading-[1.08]">
             {user.university?.name
               ? `Your academic space at ${user.university.name}.`
               : "Your academic space."}
           </p>
-          <p className="mt-2.5 max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+          <p className="mt-2.5 hidden max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:block sm:text-base sm:leading-7">
             Everything for your studies in one place — your timetable and
-            deadlines, the guidance that helps you settle, and the
-            opportunities open to you.
+            deadlines, the guidance that helps you settle, and the opportunities
+            open to you.
           </p>
 
           {/* Desktop keeps the premium horizontal pillars; a phone gets the
