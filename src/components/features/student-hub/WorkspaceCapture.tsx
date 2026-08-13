@@ -230,33 +230,36 @@ export function WorkspaceCapture({
         </Link>
       ) : null}
 
-      <div className="flex items-center gap-2">
-        <button
-          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-black text-foreground transition active:scale-[0.99] motion-reduce:active:scale-100"
-          onClick={() => setMode((value) => (value ? null : "menu"))}
-          type="button"
-        >
-          Add to this course
-        </button>
-        <button
-          aria-expanded={mode !== null}
-          aria-label={mode ? "Close add menu" : "Add to this course"}
-          className={cn(
-            "grid h-12 w-12 shrink-0 place-items-center rounded-full border transition",
-            mode
-              ? "border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
-              : "border-border bg-card text-foreground hover:border-kondo-green/40",
-          )}
-          onClick={() => setMode((value) => (value ? null : "menu"))}
-          type="button"
-        >
-          {mode ? (
-            <X aria-hidden="true" className="h-5 w-5" />
-          ) : (
-            <Plus aria-hidden="true" className="h-5 w-5" />
-          )}
-        </button>
-      </div>
+      {/*
+       * One control, not two. A wide button and a `+` that open the same menu
+       * read as two different offers and leave the student guessing which one
+       * is the real one.
+       *
+       * Its weight follows what the screen is for. With no book to resume this
+       * is the only thing to do here, so it is solid; when there is reading to
+       * continue that becomes the primary action and this steps back to an
+       * outline rather than competing with it.
+       */}
+      <button
+        aria-expanded={mode !== null}
+        className={cn(
+          "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-black transition active:scale-[0.99] motion-reduce:active:scale-100",
+          mode
+            ? "border border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
+            : resume
+              ? "border border-border bg-card text-foreground hover:border-kondo-green/40"
+              : "bg-kondo-green text-white",
+        )}
+        onClick={() => setMode((value) => (value ? null : "menu"))}
+        type="button"
+      >
+        {mode ? (
+          <X aria-hidden="true" className="h-4 w-4" />
+        ) : (
+          <Plus aria-hidden="true" className="h-4 w-4" />
+        )}
+        {mode ? "Close" : "Add to this course"}
+      </button>
 
       {saved ? (
         <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-kondo-forest dark:text-emerald-300">

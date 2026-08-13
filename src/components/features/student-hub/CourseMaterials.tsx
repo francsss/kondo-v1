@@ -169,9 +169,10 @@ export function CourseMaterials({
           })}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Nothing linked yet. Attach a book from your library and it will appear
-          here whenever this course is on your timetable.
+        // One short line. Three paragraphs of what you do not have is what an
+        // empty course used to read as.
+        <p className="mt-2 text-sm text-muted-foreground">
+          Attach a book you read for this class.
         </p>
       )}
 
