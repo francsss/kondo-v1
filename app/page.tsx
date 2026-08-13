@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { KondoLogo } from "@/components/KondoLogo";
+import { Reveal } from "@/components/marketing/Reveal";
 import { Button } from "@/components/ui/Button";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 
@@ -122,7 +123,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="noise relative px-5 pb-20 pt-36 sm:px-8 sm:pb-28 sm:pt-44">
+      <section className="noise relative px-5 pb-16 pt-24 sm:px-8 sm:pb-28 sm:pt-44">
         <div
           aria-hidden="true"
           className="absolute left-[8%] top-28 h-72 w-72 rounded-full bg-kondo-lime/30 blur-3xl dark:bg-lime-600/10"
@@ -136,16 +137,16 @@ export default function LandingPage() {
             <Globe2 className="h-3.5 w-3.5" /> Built with international students
             in China
           </div>
-          <h1 className="mx-auto mt-7 max-w-5xl text-balance text-5xl font-black leading-[0.98] tracking-[-0.065em] sm:text-7xl lg:text-[88px]">
+          <h1 className="mx-auto mt-5 max-w-5xl text-balance text-[2.6rem] font-black leading-[0.98] tracking-[-0.065em] sm:mt-7 sm:text-7xl lg:text-[88px]">
             Find your people.
             <br />
             <span className="text-kondo-green">Find your way.</span>
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:text-lg">
-            Community, trusted answers, a local marketplace, and practical
-            guides—everything you need to feel at home while studying in China.
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:mt-7 sm:text-lg">
+            The digital ecosystem for international students in China — before,
+            during and after your studies.
           </p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-9 sm:flex-row">
             <Button asChild size="lg">
               <Link
                 data-product-event={PRODUCT_EVENTS.JOIN_CLICKED}
@@ -163,7 +164,7 @@ export default function LandingPage() {
             Free for students · No payments · Privacy by design
           </p>
 
-          <div className="relative mx-auto mt-16 max-w-6xl rounded-[32px] border border-slate-200 bg-white/80 p-2 shadow-[0_40px_100px_rgba(20,71,58,0.18)] backdrop-blur dark:border-white/10 dark:bg-white/5 sm:p-3">
+          <div className="relative mx-auto mt-10 max-w-6xl rounded-[32px] sm:mt-16 border border-slate-200 bg-white/80 p-2 shadow-[0_40px_100px_rgba(20,71,58,0.18)] backdrop-blur dark:border-white/10 dark:bg-white/5 sm:p-3">
             <div className="overflow-hidden rounded-[24px] bg-[#f7f7f3] text-left dark:bg-[#111c19]">
               <div className="flex h-14 items-center gap-4 border-b border-border bg-card px-4 text-card-foreground sm:px-6">
                 <KondoLogo href="#" size="sm" />
@@ -324,7 +325,7 @@ export default function LandingPage() {
         className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32"
         id="inside"
       >
-        <div className="max-w-3xl">
+        <Reveal className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
             One app. The useful parts.
           </p>
@@ -338,7 +339,7 @@ export default function LandingPage() {
             group chats, old documents, and word of mouth into one calm, trusted
             place.
           </p>
-        </div>
+        </Reveal>
         <div className="mt-14 grid gap-5 sm:grid-cols-2">
           {features.map(
             ({ icon: Icon, eyebrow, title, description, color }) => (
