@@ -32,7 +32,10 @@ export default async function WorkspaceAllCoursesPage() {
   const courses = await listWorkspaceCourses(user.id);
   const byDay = new Map<number, typeof courses>();
   for (const course of courses) {
-    byDay.set(course.dayOfWeek, [...(byDay.get(course.dayOfWeek) ?? []), course]);
+    byDay.set(course.dayOfWeek, [
+      ...(byDay.get(course.dayOfWeek) ?? []),
+      course,
+    ]);
   }
   const days = [...byDay.keys()].sort((a, b) => a - b);
 
@@ -89,7 +92,10 @@ export default async function WorkspaceAllCoursesPage() {
       ) : (
         <p className="mt-6 text-sm text-muted-foreground">
           No courses on your timetable yet.{" "}
-          <Link className="font-bold text-kondo-green" href="/student-hub/tools">
+          <Link
+            className="font-bold text-kondo-green"
+            href="/student-hub/tools"
+          >
             Open the Planner
           </Link>{" "}
           to add them.

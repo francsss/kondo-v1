@@ -101,7 +101,9 @@ export function formatEssentialPrice(
   }).format(priceMinor / 100);
 }
 
-function filterWhere(filter: StudyEssentialFilterKey): Prisma.StudyEssentialWhereInput {
+function filterWhere(
+  filter: StudyEssentialFilterKey,
+): Prisma.StudyEssentialWhereInput {
   if (filter === "digital") return { format: "DIGITAL" };
   if (filter === "physical") return { format: "PHYSICAL" };
   if (filter === "partner") return { source: "PARTNER" };
@@ -169,7 +171,9 @@ export async function placeSimulatedOrder(input: {
     throw new StudyEssentialError("Choose a quantity of at least one.");
   }
   if (input.quantity > 10) {
-    throw new StudyEssentialError("A single demo order is limited to ten items.");
+    throw new StudyEssentialError(
+      "A single demo order is limited to ten items.",
+    );
   }
   if (input.paymentProvider !== "SIMULATED") {
     throw new StudyEssentialError(

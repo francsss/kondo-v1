@@ -262,7 +262,8 @@ export function OnboardingFlow({
    * refuses to continue, so it is only used to restore a known journey.
    */
   const hasStoredJourney = Boolean(
-    (initialValues.journeyGroup && initialValues.journeyStage) || initialJourney,
+    (initialValues.journeyGroup && initialValues.journeyStage) ||
+    initialJourney,
   );
   const initialCanonicalJourney = hasStoredJourney
     ? inferJourney({
@@ -534,7 +535,9 @@ function JourneyStep({
             journeyStage: stage,
             studentJourney: legacyJourneyFor(group, stage),
             applicationStage:
-              group === "PREPARING_FOR_CHINA" ? stage : current.applicationStage,
+              group === "PREPARING_FOR_CHINA"
+                ? stage
+                : current.applicationStage,
           }));
           captureProductEvent(PRODUCT_EVENTS.PERSONAL_JOURNEY_SELECTED, {
             journey: group,
@@ -696,17 +699,19 @@ function ProfileStep({
               setForm((current) => ({
                 ...current,
                 targetCityIds,
-                targetUniversityIds: current.targetUniversityIds.filter((id) => {
-                  const university = universities.find(
-                    (option) => option.id === id,
-                  );
-                  return (
-                    !targetCityIds.length ||
-                    Boolean(
-                      university && targetCityIds.includes(university.cityId),
-                    )
-                  );
-                }),
+                targetUniversityIds: current.targetUniversityIds.filter(
+                  (id) => {
+                    const university = universities.find(
+                      (option) => option.id === id,
+                    );
+                    return (
+                      !targetCityIds.length ||
+                      Boolean(
+                        university && targetCityIds.includes(university.cityId),
+                      )
+                    );
+                  },
+                ),
               }))
             }
             options={cities}
@@ -729,7 +734,9 @@ function ProfileStep({
         <FieldSection title="Your study goal">
           <TextField
             label="Intended field or education goal"
-            onChange={(degree) => setForm((current) => ({ ...current, degree }))}
+            onChange={(degree) =>
+              setForm((current) => ({ ...current, degree }))
+            }
             placeholder="Computer Science"
             value={form.degree}
           />
@@ -946,14 +953,18 @@ function FocusStep({
       <TogglePills
         hint="Optional. Choose as many as you want."
         label="What would be useful to you?"
-        onChange={(interests) => setForm((current) => ({ ...current, interests }))}
+        onChange={(interests) =>
+          setForm((current) => ({ ...current, interests }))
+        }
         options={INTEREST_OPTIONS}
         selected={form.interests}
       />
       <TokenField
         hint="Helps Kondo match you with students you can actually talk to."
         label="Languages you speak"
-        onChange={(languages) => setForm((current) => ({ ...current, languages }))}
+        onChange={(languages) =>
+          setForm((current) => ({ ...current, languages }))
+        }
         placeholder="Add a language"
         suggestions={LANGUAGE_SUGGESTIONS}
         values={form.languages}
@@ -961,4 +972,3 @@ function FocusStep({
     </div>
   );
 }
-

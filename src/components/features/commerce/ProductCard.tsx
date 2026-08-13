@@ -166,7 +166,9 @@ export function ProductCardSkeleton({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className={cn("w-full animate-pulse bg-muted", RATIO_CLASS[ratio])} />
+      <div
+        className={cn("w-full animate-pulse bg-muted", RATIO_CLASS[ratio])}
+      />
       <div className="space-y-2 p-2.5 sm:p-3">
         <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
         <div className="h-3.5 w-1/3 animate-pulse rounded bg-muted" />
