@@ -415,3 +415,35 @@ export async function unlinkCourseResource(userId: string, linkId: string) {
   });
   if (!deleted.count) throw new StudyEssentialError("Link not found.", 404);
 }
+
+/**
+ * The last few notes and highlights a student made in this course's materials.
+ *
+ * Deliberately three: the brief asks for a small Recent section, not an
+ * activity feed. Scoped through `CourseResource`, so a course with no linked
+ * material has no recent activity rather than the student's whole history.
+ */
+export async function listCourseRecentNotes(userId: string, courseId: string) {
+  const links = await prisma.courseResource.findMany({
+    where: { userId, courseId },
+    select: { essentialId: true },
+  });
+  if (!links.length) return [];
+  return prisma.studyNote.findMany({
+    where: {
+      userId,
+      essentialId: { in: links.map((link) => link.essentialId) },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    select: {
+      id: true,
+      body: true,
+      highlight: true,
+      createdAt: true,
+      taskId: true,
+      essential: { select: { title: true, slug: true } },
+      chapter: { select: { title: true } },
+    },
+  });
+}
