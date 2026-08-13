@@ -148,9 +148,14 @@ test.describe("Student Hub study-first experience", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/student-hub");
+    // On a phone the pillars are the bottom bar, and the desktop row of
+    // horizontal pillars is hidden so the two never compete for the screen.
+    await expect(
+      page.getByRole("navigation", { name: "Student Hub navigation" }),
+    ).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: "Student Hub modules" }),
-    ).toBeVisible();
+    ).toBeHidden();
     await expect(
       page
         .getByRole("navigation", { name: "Study navigation" })
