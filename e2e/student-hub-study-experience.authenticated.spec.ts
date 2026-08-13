@@ -1,33 +1,40 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Student Hub study-first experience", () => {
-  test("keeps study, guide and opportunities in three clear pillars", async ({
+  test("keeps study, essentials, guide and opportunities in clear pillars", async ({
     page,
   }) => {
     await page.goto("/student-hub");
-    await expect(
-      page.getByRole("heading", {
-        level: 1,
-        name: "Your studies, organized around you.",
-      }),
-    ).toBeVisible();
+    // The hub names the space the student is in. The greeting heading below it
+    // carries their name, so it is not what identifies the screen.
+    await expect(page.getByText(/^Your academic space/)).toBeVisible();
 
     const modules = page.getByRole("navigation", {
       name: "Student Hub modules",
     });
-    await expect(modules.getByRole("link", { name: "Study" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    // `exact`, because "Study Essentials" is a pillar of its own now and would
+    // otherwise match this locator too.
+    await expect(
+      modules.getByRole("link", { name: "Study", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
     await expect(modules.getByRole("link", { name: "Guide" })).toBeVisible();
     await expect(
       modules.getByRole("link", { name: "Opportunities" }),
     ).toBeVisible();
+    // Study Essentials is a pillar of its own, not a tab inside Study.
+    await expect(
+      modules.getByRole("link", { name: "Study Essentials" }),
+    ).toBeVisible();
 
+    // Study asks three questions and nothing else: what is happening, what do
+    // I organise, what do I study right now.
     const study = page.getByRole("navigation", { name: "Study navigation" });
-    for (const label of ["Overview", "Planner", "Study Essentials"]) {
+    for (const label of ["Overview", "Planner", "Workspace"]) {
       await expect(study.getByRole("link", { name: label })).toBeVisible();
     }
+    await expect(
+      study.getByRole("link", { name: "Study Essentials" }),
+    ).toHaveCount(0);
     await study.getByRole("link", { name: "Planner" }).click();
     await expect(page).toHaveURL(/\/student-hub\/tools/);
     await expect(
@@ -147,7 +154,7 @@ test.describe("Student Hub study-first experience", () => {
     await expect(
       page
         .getByRole("navigation", { name: "Study navigation" })
-        .getByRole("link", { name: "Study Essentials" }),
+        .getByRole("link", { name: "Workspace" }),
     ).toBeVisible();
     expect(
       await page.evaluate(
@@ -224,7 +231,7 @@ test.describe("Student Hub study-first experience", () => {
       .evaluateAll((links) =>
         links.map((link) => Math.round(link.getBoundingClientRect().width)),
       );
-    expect(widths).toHaveLength(3);
+    expect(widths).toHaveLength(4);
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
   });
 });
