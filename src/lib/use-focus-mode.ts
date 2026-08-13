@@ -30,7 +30,8 @@ export function useFocusMode() {
   // Mode, or the chrome stays hidden with no visible way back.
   useEffect(() => {
     function onFullscreenChange() {
-      if (!document.fullscreenElement) setFocused((current) => current && false);
+      if (!document.fullscreenElement)
+        setFocused((current) => current && false);
     }
     document.addEventListener("fullscreenchange", onFullscreenChange);
     return () =>

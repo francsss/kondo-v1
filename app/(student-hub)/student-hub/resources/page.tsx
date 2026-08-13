@@ -77,9 +77,9 @@ export default async function StudentHubResourcesPage() {
           Help with the journey, not just the coursework.
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Ask other students, read reviewed guidance, and move directly into
-          the Kondo spaces that help with your campus life, your housing and
-          your city.
+          Ask other students, read reviewed guidance, and move directly into the
+          Kondo spaces that help with your campus life, your housing and your
+          city.
         </p>
       </header>
 

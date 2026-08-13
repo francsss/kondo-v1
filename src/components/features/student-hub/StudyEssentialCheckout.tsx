@@ -130,7 +130,9 @@ export function StudyEssentialCheckout({
                 <span
                   className={cn(
                     "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border",
-                    selected ? "border-kondo-green bg-kondo-green" : "border-border",
+                    selected
+                      ? "border-kondo-green bg-kondo-green"
+                      : "border-border",
                   )}
                 >
                   {selected ? (

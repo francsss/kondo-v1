@@ -122,7 +122,10 @@ export function MarketplaceToolbar({
         className="kondo-field flex h-11 items-center gap-2 rounded-full border border-border bg-card px-4"
         role="search"
       >
-        <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-kondo-green" />
+        <Search
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-kondo-green"
+        />
         <input
           aria-label="Search the Marketplace"
           className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
@@ -239,9 +242,7 @@ export function MarketplaceToolbar({
                 active={draft.category === category.slug}
                 key={category.id}
                 label={`${category.name} · ${category.count}`}
-                onClick={() =>
-                  setDraft({ ...draft, category: category.slug })
-                }
+                onClick={() => setDraft({ ...draft, category: category.slug })}
               />
             ))}
           </div>

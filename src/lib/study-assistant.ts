@@ -3,7 +3,10 @@ import { logServerError, logServerEvent } from "@/lib/logger";
 import { type StudyAssistantAction } from "@/lib/study-assistant-actions";
 import { StudyEssentialError } from "@/lib/study-essentials";
 
-export { STUDY_ASSISTANT_ACTIONS, isStudyAssistantAction } from "@/lib/study-assistant-actions";
+export {
+  STUDY_ASSISTANT_ACTIONS,
+  isStudyAssistantAction,
+} from "@/lib/study-assistant-actions";
 export type { StudyAssistantAction } from "@/lib/study-assistant-actions";
 
 /**
@@ -24,8 +27,7 @@ const INSTRUCTIONS: Record<StudyAssistantAction, string> = {
     "Explain the passage in plain language. Define any term the passage assumes the reader already knows. Two or three short paragraphs.",
   summarize:
     "Summarize the passage in at most five bullet points, each one sentence. Keep the author's meaning; do not add material that is not in the passage.",
-  quiz:
-    "Write five revision questions that test understanding of the passage, ordered from recall to application. Number them. Do not include the answers.",
+  quiz: "Write five revision questions that test understanding of the passage, ordered from recall to application. Number them. Do not include the answers.",
   notes:
     "Rewrite the passage as study notes: a one-line summary, then short bullet points grouped under two or three headings. Keep it to what the passage actually says.",
 };

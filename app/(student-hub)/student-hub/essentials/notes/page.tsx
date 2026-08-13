@@ -29,7 +29,6 @@ export default async function StudyNotesPage() {
         </p>
       </header>
 
-
       {notes.length ? (
         <ul className="mt-8 grid gap-3">
           {notes.map((note) => (

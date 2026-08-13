@@ -95,9 +95,7 @@ test.describe("Student Hub study-first experience", () => {
     await expect(page).toHaveURL(/\/checkout$/);
 
     // Only the simulated provider can be selected while payments are demo.
-    await expect(
-      page.getByRole("button", { name: /Alipay/ }),
-    ).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Alipay/ })).toBeDisabled();
     await page.getByRole("button", { name: "Increase quantity" }).click();
     await page.getByRole("button", { name: /^Pay / }).click();
 
@@ -117,12 +115,8 @@ test.describe("Student Hub study-first experience", () => {
   test("sends a partner essential to the partner instead of a checkout", async ({
     page,
   }) => {
-    await page.goto(
-      "/student-hub/essentials/mandarin-bridge-online-course",
-    );
-    await expect(
-      page.getByRole("link", { name: "Buy this" }),
-    ).toHaveCount(0);
+    await page.goto("/student-hub/essentials/mandarin-bridge-online-course");
+    await expect(page.getByRole("link", { name: "Buy this" })).toHaveCount(0);
     const partnerLink = page.getByRole("link", {
       name: /Open on Mandarin Bridge Institute/,
     });
@@ -136,7 +130,9 @@ test.describe("Student Hub study-first experience", () => {
     await page.goto(
       "/student-hub/essentials/mandarin-bridge-online-course/checkout",
     );
-    await expect(page).toHaveURL(/\/essentials\/mandarin-bridge-online-course$/);
+    await expect(page).toHaveURL(
+      /\/essentials\/mandarin-bridge-online-course$/,
+    );
   });
 
   test("keeps both navigation levels usable without mobile page overflow", async ({
@@ -197,7 +193,6 @@ test.describe("Student Hub study-first experience", () => {
       expect(routeBounds!.y).toBe(globalBounds!.y);
       expect(routeBounds!.height).toBe(globalBounds!.height);
     }
-
   });
 
   test("opens the hub on a back control and its own name, not the Kondo mark", async ({
@@ -214,9 +209,7 @@ test.describe("Student Hub study-first experience", () => {
     });
     await expect(back).toBeVisible();
     await expect(modules).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Kondo home" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Kondo home" })).toHaveCount(0);
 
     const [backBox, modulesBox] = await Promise.all([
       back.boundingBox(),

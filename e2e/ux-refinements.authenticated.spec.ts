@@ -43,7 +43,6 @@ test.describe("premium UX refinements", () => {
     }
   });
 
-
   test("keeps long Home publications compact until the reader expands them", async ({
     page,
   }) => {

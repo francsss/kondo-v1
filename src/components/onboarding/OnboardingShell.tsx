@@ -143,7 +143,11 @@ function OnboardingProgress({
           >
             <span className="sr-only">
               {item.label}
-              {index < step ? " — completed" : index === step ? " — current" : ""}
+              {index < step
+                ? " — completed"
+                : index === step
+                  ? " — current"
+                  : ""}
             </span>
             <span
               className={cn(

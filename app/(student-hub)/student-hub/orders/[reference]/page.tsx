@@ -19,10 +19,7 @@ export default async function StudyEssentialOrderPage({
   params: Promise<{ reference: string }>;
 }) {
   const user = await requireUser();
-  const order = await getStudyEssentialOrder(
-    user.id,
-    (await params).reference,
-  );
+  const order = await getStudyEssentialOrder(user.id, (await params).reference);
   if (!order) notFound();
 
   const money = (minor: number) =>
@@ -86,9 +83,15 @@ export default async function StudyEssentialOrderPage({
 
         <p className="mt-6 flex items-start gap-2 rounded-2xl bg-muted/60 px-4 py-3 text-left text-xs leading-5 text-muted-foreground">
           {digital ? (
-            <Download aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green" />
+            <Download
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green"
+            />
           ) : (
-            <Truck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green" />
+            <Truck
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green"
+            />
           )}
           {digital
             ? "Delivery of digital items will be enabled with the first real payment provider."

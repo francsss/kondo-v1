@@ -20,9 +20,9 @@ describe("leaving a dedicated space", () => {
   });
 
   it("does not confuse a sibling route with the space", () => {
-    expect(
-      resolveSpaceExitPath("/student-hub-archive", "/student-hub"),
-    ).toBe("/student-hub-archive");
+    expect(resolveSpaceExitPath("/student-hub-archive", "/student-hub")).toBe(
+      "/student-hub-archive",
+    );
   });
 
   it("refuses anything that is not an in-app path", () => {
@@ -31,7 +31,11 @@ describe("leaving a dedicated space", () => {
     expect(
       resolveSpaceExitPath("https://evil.example.com", "/student-hub"),
     ).toBeNull();
-    expect(resolveSpaceExitPath("//evil.example.com", "/student-hub")).toBeNull();
-    expect(resolveSpaceExitPath("/\\evil.example.com", "/student-hub")).toBeNull();
+    expect(
+      resolveSpaceExitPath("//evil.example.com", "/student-hub"),
+    ).toBeNull();
+    expect(
+      resolveSpaceExitPath("/\\evil.example.com", "/student-hub"),
+    ).toBeNull();
   });
 });

@@ -42,11 +42,7 @@ export const ORGANIZATION_TYPES = [
     key: "EMBASSY_OR_CONSULATE",
     label: "Embassy or consulate",
     description: "A diplomatic mission or consular organization.",
-    sectionPriority: [
-      "student-services",
-      "university-information",
-      "events",
-    ],
+    sectionPriority: ["student-services", "university-information", "events"],
   },
   {
     key: "RECRUITMENT_ORGANIZATION",

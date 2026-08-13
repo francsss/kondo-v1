@@ -134,9 +134,9 @@ describe("personal onboarding step requirements", () => {
       studyLevel: "BACHELORS",
       universityPreferenceMode: "PREFERRED_SELECTED",
     });
-    expect(missingPersonalOnboardingRequirement(prospective, 1, collected)).toBe(
-      "Select at least one preferred university.",
-    );
+    expect(
+      missingPersonalOnboardingRequirement(prospective, 1, collected),
+    ).toBe("Select at least one preferred university.");
     expect(
       missingPersonalOnboardingRequirement(
         { ...prospective, targetUniversityIds: ["university"] },
@@ -240,7 +240,11 @@ describe("organization onboarding step requirements", () => {
     );
     expect(
       missingOrganizationOnboardingRequirement(
-        { ...identified, capabilities: ["STUDENT_SERVICES"], shortDescription: "Too short" },
+        {
+          ...identified,
+          capabilities: ["STUDENT_SERVICES"],
+          shortDescription: "Too short",
+        },
         1,
       ),
     ).toBe("Write a short description of at least 20 characters.");

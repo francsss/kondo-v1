@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Building2, Check, ImagePlus, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  Check,
+  ImagePlus,
+  ShieldCheck,
+} from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import {
   FieldGrid,
@@ -381,9 +387,7 @@ export function OrganizationOnboardingFlow({
                   >
                     <span className="flex items-center justify-between gap-2">
                       <Icon className="h-5 w-5 text-kondo-green" />
-                      {selected ? (
-                        <Check className="h-4 w-4 shrink-0" />
-                      ) : null}
+                      {selected ? <Check className="h-4 w-4 shrink-0" /> : null}
                     </span>
                     <span className="mt-3 block text-sm font-black">
                       {capability.label}
@@ -687,4 +691,3 @@ function ReviewCard({
     </div>
   );
 }
-

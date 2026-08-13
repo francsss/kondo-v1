@@ -390,7 +390,10 @@ export function MultiSelectField({
       ) : null}
       <div className="overflow-hidden rounded-2xl border border-border bg-background">
         <div className="kondo-field flex h-12 items-center gap-2 border-b border-border px-3.5">
-          <Search aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+          <Search
+            aria-hidden="true"
+            className="h-4 w-4 text-muted-foreground"
+          />
           <input
             aria-label={searchPlaceholder ?? `Search ${label.toLowerCase()}`}
             className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground sm:text-sm"
@@ -492,7 +495,9 @@ export function TogglePills({
                 <span aria-hidden="true">{option.icon}</span>
               ) : null}
               {option.label}
-              {active ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : null}
+              {active ? (
+                <Check aria-hidden="true" className="h-3.5 w-3.5" />
+              ) : null}
             </button>
           );
         })}
@@ -535,7 +540,9 @@ export function TokenField({
     const value = raw.trim();
     if (!value || values.length >= max) return;
     if (
-      values.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())
+      values.some(
+        (item) => item.toLocaleLowerCase() === value.toLocaleLowerCase(),
+      )
     ) {
       setDraft("");
       return;
@@ -546,7 +553,10 @@ export function TokenField({
 
   return (
     <div className="min-w-0">
-      <label className="mb-1.5 block text-sm font-bold text-kondo-ink dark:text-white" htmlFor={id}>
+      <label
+        className="mb-1.5 block text-sm font-bold text-kondo-ink dark:text-white"
+        htmlFor={id}
+      >
         {label}
       </label>
       {hint ? (
