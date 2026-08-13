@@ -699,6 +699,7 @@ enum MediaKind {
   IMAGE
   DOCUMENT
   VIDEO
+  AUDIO
 }
 
 enum MediaPurpose {
@@ -724,6 +725,9 @@ enum MediaPurpose {
   OPPORTUNITY_APPLICATION_DOCUMENT
   ORGANIZATION_PRODUCT_IMAGE
   ORGANIZATION_SERVICE_IMAGE
+  COURSE_CAPTURE_IMAGE
+  COURSE_CAPTURE_DOCUMENT
+  COURSE_CAPTURE_AUDIO
 }
 
 enum ScheduleWeekPattern {
@@ -1001,6 +1005,7 @@ model User {
   studyEssentialOrders                StudyEssentialOrder[]
   studyNotes                          StudyNote[]
   courseResources                     CourseResource[]
+  courseCaptures                      CourseCapture[]
   studyReadingProgress                StudyReadingProgress[]
   createdOrganizationProducts         OrganizationProduct[]                 @relation("OrganizationProductCreator")
   createdOrganizationServices         OrganizationService[]                 @relation("OrganizationServiceCreator")
@@ -1866,34 +1871,35 @@ model StudentSchedule {
 }
 
 model ScheduleCourse {
-  id           String               @id @default(cuid())
-  scheduleId   String
-  schedule     StudentSchedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  courseName   String
-  teacher      String?
-  dayOfWeek    Int
-  specificDate DateTime?            @db.Date
-  startPeriod  Int?
-  endPeriod    Int?
-  startTime    String?              @db.VarChar(5)
-  endTime      String?              @db.VarChar(5)
-  room         String?
-  building     String?
-  campusLabel  String?
-  startWeek    Int?
-  endWeek      Int?
-  weekPattern  ScheduleWeekPattern  @default(ALL)
-  weeks        Int[]                @default([])
-  language     String?
-  notes        String?              @db.VarChar(2000)
-  color        String               @default("#22A06B") @db.VarChar(9)
-  isOptional   Boolean              @default(false)
-  confidence   Float?
-  source       ScheduleCourseSource @default(MANUAL)
-  tasks        AcademicTask[]
+  id            String               @id @default(cuid())
+  scheduleId    String
+  schedule      StudentSchedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  courseName    String
+  teacher       String?
+  dayOfWeek     Int
+  specificDate  DateTime?            @db.Date
+  startPeriod   Int?
+  endPeriod     Int?
+  startTime     String?              @db.VarChar(5)
+  endTime       String?              @db.VarChar(5)
+  room          String?
+  building      String?
+  campusLabel   String?
+  startWeek     Int?
+  endWeek       Int?
+  weekPattern   ScheduleWeekPattern  @default(ALL)
+  weeks         Int[]                @default([])
+  language      String?
+  notes         String?              @db.VarChar(2000)
+  color         String               @default("#22A06B") @db.VarChar(9)
+  isOptional    Boolean              @default(false)
+  confidence    Float?
+  source        ScheduleCourseSource @default(MANUAL)
+  tasks         AcademicTask[]
   resourceLinks CourseResource[]
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  captures      CourseCapture[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@index([scheduleId, dayOfWeek, startTime])
 }
@@ -3467,6 +3473,7 @@ model MediaAsset {
   userOpportunityDocument          UserOpportunityDocument?          @relation("UserOpportunityDocument")
   organizationProductMedia         OrganizationProductMedia?         @relation("OrganizationProductMedia")
   organizationServiceMedia         OrganizationServiceMedia?         @relation("OrganizationServiceMedia")
+  courseCapture                    CourseCapture?                    @relation("CourseCaptureMedia")
 
   @@index([ownerId, status, createdAt])
   @@index([status, uploadExpiresAt])
@@ -4427,6 +4434,36 @@ model CourseResource {
   @@unique([userId, courseId, essentialId])
   @@index([userId, courseId])
   @@index([essentialId])
+}
+
+/// Something a student captured during or after one class: a typed line, a
+/// photo of the board, a handout, or a spoken note.
+///
+/// This is deliberately not a `StudyNote`. A `StudyNote` is anchored to a book
+/// and a chapter — `essentialId` is required — and a photo of a whiteboard
+/// belongs to the class, not to any book. Rather than weaken that model's
+/// invariant, the class-anchored capture gets its own table.
+model CourseCapture {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    ScheduleCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  kind      CourseCaptureKind
+  /// What the student typed. A capture may be text only, file only, or both.
+  body      String?           @db.Text
+  mediaId   String?           @unique
+  media     MediaAsset?       @relation("CourseCaptureMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  createdAt DateTime          @default(now())
+
+  @@index([userId, courseId, createdAt])
+}
+
+enum CourseCaptureKind {
+  NOTE
+  PHOTO
+  DOCUMENT
+  VOICE
 }
 
 model StudyNote {

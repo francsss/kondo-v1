@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ListTodo } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  FileText,
+  Highlighter,
+  ListTodo,
+  Mic,
+  PenLine,
+} from "lucide-react";
 import { CourseMaterials } from "@/components/features/student-hub/CourseMaterials";
 import { FocusToggle } from "@/components/features/student-hub/FocusToggle";
 import { WorkspaceCapture } from "@/components/features/student-hub/WorkspaceCapture";
@@ -11,8 +19,9 @@ import {
   getWorkspaceCourse,
 } from "@/lib/study-workspace-today";
 import {
-  listCourseRecentNotes,
+  listCourseActivity,
   listCourseResources,
+  type CourseActivityEntry,
 } from "@/lib/study-workspace";
 
 export const metadata: Metadata = { title: "Course — Workspace" };
@@ -26,10 +35,10 @@ export default async function WorkspaceCoursePage({
   const user = await requireUser();
   const courseId = (await params).courseId;
   // Course and its materials in parallel: neither waits on the other.
-  const [course, materials, recent] = await Promise.all([
+  const [course, materials, activity] = await Promise.all([
     getWorkspaceCourse(user.id, courseId),
     listCourseResources(user.id, courseId),
-    listCourseRecentNotes(user.id, courseId),
+    listCourseActivity(user.id, courseId),
   ]);
   if (!course) notFound();
 
@@ -134,28 +143,30 @@ export default async function WorkspaceCoursePage({
         </Link>
       </section>
 
-      {recent.length ? (
+      {activity.length ? (
         <section className="mt-8">
           <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">
             Recent
           </h2>
-          <ul className="mt-3 space-y-2">
-            {recent.map((note) => (
-              <li
-                className="rounded-2xl border border-border bg-card p-3.5"
-                key={note.id}
-              >
-                <p className="truncate text-sm font-bold text-foreground">
-                  {note.body?.trim() || note.highlight || "Highlight"}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {note.essential.title}
-                  {note.chapter ? ` · ${note.chapter.title}` : ""}
-                  {note.taskId ? " · task raised" : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
+          {/*
+           * Grouped by day rather than listed flat. A run of captures taken in
+           * one lecture belongs together, and the heading is what makes them
+           * read as that session instead of six unrelated rows.
+           */}
+          {activity.map((day) => (
+            <div className="mt-4" key={day.key}>
+              <h3 className="text-xs font-black text-foreground">
+                {describeDay(day.date)}
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {day.entries.map((entry) => (
+                  <li key={entry.id}>
+                    <ActivityRow entry={entry} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
       ) : null}
 
@@ -168,6 +179,92 @@ export default async function WorkspaceCoursePage({
             {course.notes}
           </p>
         </section>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Today", "Yesterday", then a plain date once it stops being either. */
+function describeDay(date: Date) {
+  const startOf = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const days = Math.round((startOf(new Date()) - startOf(date)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(days > 300 ? { year: "numeric" } : {}),
+  });
+}
+
+const ACTIVITY_ICON = {
+  NOTE: PenLine,
+  HIGHLIGHT: Highlighter,
+  PHOTO: Camera,
+  DOCUMENT: FileText,
+  VOICE: Mic,
+};
+
+function ActivityRow({ entry }: { entry: CourseActivityEntry }) {
+  const Icon = ACTIVITY_ICON[entry.kind];
+  const time = entry.createdAt.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3.5">
+      <div className="flex items-start gap-3">
+        <Icon
+          aria-hidden="true"
+          className="mt-0.5 h-4 w-4 shrink-0 text-kondo-green"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-foreground">
+            {entry.title}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {[entry.source, time, entry.hasTask ? "task raised" : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+      </div>
+      {/*
+       * The file itself, where showing it beats naming it. Media is served by
+       * `/api/media/[id]`, which authorizes the viewer on every request — the
+       * id in the markup is not the permission.
+       */}
+      {entry.mediaId && entry.kind === "PHOTO" ? (
+        // Private, owner-authorized bytes behind an API route, so the image
+        // optimizer cannot fetch them.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt={entry.title}
+          className="mt-3 max-h-64 w-full rounded-xl object-cover"
+          loading="lazy"
+          src={`/api/media/${entry.mediaId}`}
+        />
+      ) : null}
+      {entry.mediaId && entry.kind === "VOICE" ? (
+        <audio
+          className="mt-3 w-full"
+          controls
+          preload="none"
+          src={`/api/media/${entry.mediaId}`}
+        >
+          <track kind="captions" />
+        </audio>
+      ) : null}
+      {entry.mediaId && entry.kind === "DOCUMENT" ? (
+        <a
+          className="mt-3 inline-flex min-h-9 items-center rounded-full border border-border px-3.5 text-xs font-black text-foreground transition hover:border-kondo-green/40"
+          href={`/api/media/${entry.mediaId}`}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Open document
+        </a>
       ) : null}
     </div>
   );

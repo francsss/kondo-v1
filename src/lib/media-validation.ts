@@ -22,6 +22,7 @@ export function detectMediaMime(bytes: Uint8Array) {
   if (new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-") {
     return "application/pdf";
   }
+  if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return detectWebmMime(bytes);
   if (
     bytes.length >= 12 &&
     new TextDecoder().decode(bytes.slice(4, 8)) === "ftyp"
@@ -32,6 +33,37 @@ export function detectMediaMime(bytes: Uint8Array) {
     return "video/mp4";
   }
   return null;
+}
+
+/**
+ * Tell an audio-only WebM from one carrying video.
+ *
+ * The EBML magic is shared by both, so the container header has to be read.
+ * `TrackType` (element id `0x83`) is a one-byte value inside each
+ * `TrackEntry`: 1 is video, 2 is audio. Both live in `Tracks`, which
+ * `MediaRecorder` writes before the first `Cluster`, so the search stops
+ * there — that keeps it away from the encoded frames, where the same three
+ * bytes would turn up by chance.
+ *
+ * Anything that is neither is rejected by returning null, which
+ * `validateUploadedMedia` treats as a content/MIME mismatch.
+ */
+function detectWebmMime(bytes: Uint8Array) {
+  const cluster = [0x1f, 0x43, 0xb6, 0x75];
+  let limit = Math.min(bytes.length, 65_536);
+  for (let index = 4; index <= limit - cluster.length; index += 1) {
+    if (cluster.every((value, offset) => bytes[index + offset] === value)) {
+      limit = index;
+      break;
+    }
+  }
+  let audio = false;
+  for (let index = 4; index <= limit - 3; index += 1) {
+    if (bytes[index] !== 0x83 || bytes[index + 1] !== 0x81) continue;
+    if (bytes[index + 2] === 0x01) return "video/webm";
+    if (bytes[index + 2] === 0x02) audio = true;
+  }
+  return audio ? "audio/webm" : null;
 }
 
 function readUint64(view: DataView, offset: number) {

@@ -270,6 +270,41 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     maxHeight: 8192,
     altRequired: true,
   },
+  /*
+   * Course captures are one student's own record of one class. They are
+   * PRIVATE and never rendered to anyone else, so alt text is not required —
+   * demanding a description of your own photo of a whiteboard before you can
+   * keep it would make the fastest capture the slowest one.
+   */
+  COURSE_CAPTURE_IMAGE: {
+    kind: "IMAGE",
+    visibility: "PRIVATE",
+    maxBytes: 8 * 1024 * 1024,
+    mimeExtensions: imageTypes,
+    minWidth: 32,
+    minHeight: 32,
+    maxWidth: 8192,
+    maxHeight: 8192,
+    altRequired: false,
+  },
+  COURSE_CAPTURE_DOCUMENT: {
+    kind: "DOCUMENT",
+    visibility: "PRIVATE",
+    maxBytes: 10 * 1024 * 1024,
+    mimeExtensions: { "application/pdf": ["pdf"] },
+    altRequired: false,
+  },
+  COURSE_CAPTURE_AUDIO: {
+    kind: "AUDIO",
+    visibility: "PRIVATE",
+    maxBytes: 10 * 1024 * 1024,
+    // WebM only. It is what `MediaRecorder` produces where Kondo offers the
+    // control, and it is the one audio container whose bytes this codebase can
+    // actually verify — see `detectMediaMime`. The button is hidden on
+    // browsers that cannot record it rather than failing at upload.
+    mimeExtensions: { "audio/webm": ["webm", "weba"] },
+    altRequired: false,
+  },
 };
 
 export class MediaPolicyError extends Error {

@@ -197,3 +197,70 @@ describe("media security primitives", () => {
     expect(detectMp4DurationSeconds(bytes)).toBeNull();
   });
 });
+
+/**
+ * Voice notes are WebM, and so is video. The EBML magic alone cannot tell them
+ * apart, so the container header is read — and it has to be read only as far
+ * as the first Cluster, because the encoded frames after it will eventually
+ * contain the same three bytes by chance.
+ */
+describe("WebM audio detection", () => {
+  const EBML = [0x1a, 0x45, 0xdf, 0xa3];
+  const CLUSTER = [0x1f, 0x43, 0xb6, 0x75];
+  /** TrackType (0x83), one byte long (0x81), then 1 = video or 2 = audio. */
+  const trackType = (value: number) => [0x83, 0x81, value];
+
+  const webm = (...parts: number[][]) => new Uint8Array(parts.flat());
+  const padding = Array.from({ length: 16 }, (_, index) => index);
+
+  it("reads an audio-only track as audio", () => {
+    expect(detectMediaMime(webm(EBML, padding, trackType(2)))).toBe(
+      "audio/webm",
+    );
+  });
+
+  it("reads a file carrying video as video, whichever track comes first", () => {
+    expect(detectMediaMime(webm(EBML, padding, trackType(1)))).toBe(
+      "video/webm",
+    );
+    expect(
+      detectMediaMime(webm(EBML, padding, trackType(2), padding, trackType(1))),
+    ).toBe("video/webm");
+  });
+
+  it("ignores track markers that appear after the first cluster", () => {
+    // Frame bytes are not track declarations. Trusting them would let encoded
+    // audio be read out of a video file.
+    expect(
+      detectMediaMime(webm(EBML, padding, CLUSTER, padding, trackType(2))),
+    ).toBeNull();
+  });
+
+  it("rejects an EBML file that declares no track at all", () => {
+    expect(detectMediaMime(webm(EBML, padding))).toBeNull();
+  });
+
+  it("accepts a recorded voice note and refuses one that is really video", async () => {
+    const audio = webm(EBML, padding, trackType(2));
+    await expect(
+      validateUploadedMedia({
+        purpose: "COURSE_CAPTURE_AUDIO",
+        bytes: audio,
+        declaredMime: "audio/webm",
+        extension: "webm",
+        expectedSizeBytes: audio.byteLength,
+      }),
+    ).resolves.toMatchObject({ detectedMime: "audio/webm" });
+
+    const video = webm(EBML, padding, trackType(1));
+    await expect(
+      validateUploadedMedia({
+        purpose: "COURSE_CAPTURE_AUDIO",
+        bytes: video,
+        declaredMime: "audio/webm",
+        extension: "webm",
+        expectedSizeBytes: video.byteLength,
+      }),
+    ).rejects.toBeInstanceOf(MediaPolicyError);
+  });
+});

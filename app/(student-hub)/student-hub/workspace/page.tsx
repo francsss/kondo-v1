@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarDays, LibraryBig } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  LibraryBig,
+  NotebookPen,
+} from "lucide-react";
 import { studentHubAccessForJourney } from "@/lib/personal-journeys";
 import { requireUser } from "@/lib/server-auth";
 import {
@@ -36,9 +41,8 @@ export default async function StudyWorkspacePage() {
     redirect("/student-hub");
   }
 
-  const { today, current, next, clock, courseCount } = await getWorkspaceToday(
-    user.id,
-  );
+  const { today, current, next, justEnded, clock, courseCount } =
+    await getWorkspaceToday(user.id);
   const dayLabel = clock ? (DAY_LABELS[clock.dayOfWeek] ?? "Today") : "Today";
 
   return (
@@ -67,6 +71,38 @@ export default async function StudyWorkspacePage() {
           course={next}
           label={describeLead(minutesUntil(next.startTime, clock.minutes))}
         />
+      ) : null}
+
+      {/*
+       * The class that has just finished, offered back while it is still fresh.
+       * Quieter than what is next — reviewing is optional, turning up is not —
+       * and it disappears once the window has passed.
+       */}
+      {justEnded ? (
+        <Link
+          className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 transition hover:border-kondo-green/30 active:scale-[0.99] motion-reduce:active:scale-100"
+          href={`/student-hub/workspace/${justEnded.course.id}`}
+        >
+          <NotebookPen
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-kondo-green"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-foreground">
+              Review {justEnded.course.courseName}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              {describeEnded(justEnded.endedMinutesAgo)}
+              {justEnded.course.tasks.length
+                ? ` · ${justEnded.course.tasks.length} open`
+                : ""}
+            </span>
+          </span>
+          <ArrowRight
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+          />
+        </Link>
       ) : null}
 
       {today.length ? (
@@ -118,6 +154,13 @@ export default async function StudyWorkspacePage() {
       ) : null}
     </div>
   );
+}
+
+function describeEnded(minutes: number) {
+  if (minutes < 1) return "Just finished";
+  if (minutes < 60) return `Finished ${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  return `Finished ${hours} ${hours === 1 ? "hour" : "hours"} ago`;
 }
 
 function describeLead(minutes: number | null) {

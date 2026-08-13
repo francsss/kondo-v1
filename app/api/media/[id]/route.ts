@@ -28,7 +28,7 @@ export async function GET(
     const storage = getObjectStorageForProvider(media.storageProvider);
     const isPublic = media.visibility === "PUBLIC";
     const disposition =
-      media.kind === "IMAGE" || media.kind === "VIDEO"
+      media.kind === "IMAGE" || media.kind === "VIDEO" || media.kind === "AUDIO"
         ? "inline"
         : "attachment";
     const contentType = media.detectedMime ?? "application/octet-stream";
