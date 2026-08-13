@@ -47,11 +47,8 @@ describe("Student Hub active tab", () => {
     );
   });
 
-  it("gives Overview the hub root and the guide reader", () => {
+  it("gives Overview the hub root", () => {
     expect(activeStudentHubTab("/student-hub", tabs)).toBe("overview");
-    expect(activeStudentHubTab("/student-hub/guide/visa-basics", tabs)).toBe(
-      "overview",
-    );
   });
 
   it("marks no tab active on an unrelated route", () => {
@@ -63,10 +60,14 @@ describe("Student Hub module navigation", () => {
   it("splits the hub into four independent pillars", () => {
     expect(studentHubModuleForPath("/student-hub")).toBe("study");
     expect(studentHubModuleForPath("/student-hub/tools")).toBe("study");
-    expect(studentHubModuleForPath("/student-hub/tools/academic")).toBe("study");
-    // Student Q&A is coursework support, so it sits with Study.
-    expect(studentHubModuleForPath("/student-hub/help/visa-renewal")).toBe(
+    expect(studentHubModuleForPath("/student-hub/tools/academic")).toBe(
       "study",
+    );
+    expect(studentHubModuleForPath("/student-hub/workspace")).toBe("study");
+    // Student Q&A is help with the journey, not with a course, so it moved to
+    // Guide — "how do I renew a visa" was never coursework.
+    expect(studentHubModuleForPath("/student-hub/help/visa-renewal")).toBe(
+      "guide",
     );
     // Study Essentials is a pillar of its own, not a Study tab.
     expect(studentHubModuleForPath("/student-hub/essentials")).toBe(
@@ -87,13 +88,23 @@ describe("Student Hub module navigation", () => {
     );
   });
 
-  it("gates the planner and the tools on academic access, never Q&A", () => {
+  it("asks three questions in Study and no more", () => {
+    // Overview: what is happening. Planner: what do I organise. Workspace:
+    // what do I study now. Anything else belongs to another pillar.
     expect(
       studentHubTabsForModule("study", true).map((tab) => tab.key),
-    ).toEqual(["overview", "tools", "academic-tools", "help"]);
+    ).toEqual(["overview", "tools", "workspace"]);
+    // Planner and Workspace both read a timetable, so a student without an
+    // academic affiliation keeps Overview alone.
     expect(
       studentHubTabsForModule("study", false).map((tab) => tab.key),
-    ).toEqual(["overview", "help"]);
+    ).toEqual(["overview"]);
+  });
+
+  it("gives Guide the student-life help that used to sit in Study", () => {
+    expect(
+      studentHubTabsForModule("guide", true).map((tab) => tab.key),
+    ).toContain("help");
   });
 
   it("keeps the planner for legacy students with a university affiliation", () => {
@@ -128,12 +139,22 @@ describe("Student Hub module navigation", () => {
       studentHubTabsForModule("guide", true).map((tab) => tab.key),
     ).toEqual([
       "resource-home",
+      // Student Q&A moved here from Study: asking how a residence permit
+      // works is student life, not coursework.
+      "help",
       "guides",
       "stories",
       "communities",
       "housing",
       "city-resources",
     ]);
+    // A guide opened from Guide keeps Guide's Overview lit, not Study's.
+    expect(
+      activeStudentHubTab(
+        "/student-hub/guide/visa-basics",
+        studentHubTabsForModule("guide", true),
+      ),
+    ).toBe("resource-home");
     expect(
       activeStudentHubTab(
         "/student-hub/resources",
@@ -177,8 +198,11 @@ describe("Student Hub module navigation", () => {
 
   it("keeps Study as the default module", () => {
     expect(studentHubModuleForPath("/student-hub")).toBe("study");
-    expect(activeStudentHubTab("/student-hub", studentHubTabsForModule("study", true))).toBe(
-      "overview",
-    );
+    expect(
+      activeStudentHubTab(
+        "/student-hub",
+        studentHubTabsForModule("study", true),
+      ),
+    ).toBe("overview");
   });
 });
