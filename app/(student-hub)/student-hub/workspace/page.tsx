@@ -60,11 +60,7 @@ export default async function StudyWorkspacePage() {
        * from one with a class in ten minutes, and neither wants a dashboard.
        */}
       {current ? (
-        <UpNext
-          action="Open class"
-          course={current}
-          label="In class now"
-        />
+        <UpNext action="Open class" course={current} label="In class now" />
       ) : next && clock ? (
         <UpNext
           action="Prepare class"
@@ -100,7 +96,9 @@ export default async function StudyWorkspacePage() {
           </p>
           <Link
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-kondo-green px-5 text-sm font-black text-white"
-            href={courseCount ? "/student-hub/workspace/all" : "/student-hub/tools"}
+            href={
+              courseCount ? "/student-hub/workspace/all" : "/student-hub/tools"
+            }
           >
             {courseCount ? "Browse courses" : "Open Planner"}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
@@ -169,9 +167,8 @@ function CourseRow({
   course: WorkspaceCourse;
   highlighted: boolean;
 }) {
-  // One course, one line of when and where, and at most one task. Everything
-  // else waits behind the tap.
-  const task = course.tasks[0];
+  // One course, one line of when and where, one line of what it needs.
+  // Everything else waits behind the tap.
   return (
     <Link
       className={cn(
@@ -195,9 +192,17 @@ function CourseRow({
           {formatCourseTime(course)}
           {course.room ? ` · ${course.room}` : ""}
         </span>
-        {task ? (
+        {/* One line of what this class needs: its book and its open work. */}
+        {course.resourceTitle || course.tasks.length ? (
           <span className="mt-1 block truncate text-xs font-bold text-kondo-forest dark:text-emerald-300">
-            {task.title}
+            {[
+              course.resourceTitle,
+              course.tasks.length
+                ? `${course.tasks.length} ${course.tasks.length === 1 ? "task" : "tasks"}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         ) : null}
       </span>

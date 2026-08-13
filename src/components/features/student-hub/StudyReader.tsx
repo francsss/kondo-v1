@@ -310,6 +310,10 @@ export function StudyReader({
           >
             {chapter.body}
           </div>
+          {/* The reader's only persistent status: where you are in the book. */}
+          <p className="mt-6 text-center text-[11px] font-bold tabular-nums text-muted-foreground">
+            {chapter.position} / {chapters.length}
+          </p>
 
           <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-5">
             <Button

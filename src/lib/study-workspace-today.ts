@@ -24,6 +24,8 @@ export type WorkspaceTask = {
 };
 
 export type WorkspaceCourse = {
+  /** The resource linked to this course, if any. Title only — the row needs no more. */
+  resourceTitle?: string | null;
   id: string;
   courseName: string;
   teacher: string | null;
@@ -98,10 +100,33 @@ export async function getWorkspaceToday(userId: string, now = new Date()) {
     schedule.timezone,
   );
 
+  // One extra query for the whole day, not one per course: the row wants to
+  // say "Physics Fundamentals · 1 task", and the book title is the half of
+  // that which does not already live on the course.
+  const todayCourses = today as WorkspaceCourse[];
+  if (todayCourses.length) {
+    const links = await prisma.courseResource.findMany({
+      where: {
+        userId,
+        courseId: { in: todayCourses.map((course) => course.id) },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { courseId: true, essential: { select: { title: true } } },
+    });
+    const titleByCourse = new Map<string, string>();
+    for (const link of links) {
+      if (!titleByCourse.has(link.courseId))
+        titleByCourse.set(link.courseId, link.essential.title);
+    }
+    for (const course of todayCourses) {
+      course.resourceTitle = titleByCourse.get(course.id) ?? null;
+    }
+  }
+
   return {
     schedule: { id: schedule.id, title: schedule.title },
     clock,
-    today: today as WorkspaceCourse[],
+    today: todayCourses,
     current: (current as WorkspaceCourse | null) ?? null,
     next: (next as WorkspaceCourse | null) ?? null,
     courseCount: schedule.courses.length,

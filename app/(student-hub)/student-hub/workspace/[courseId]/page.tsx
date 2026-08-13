@@ -3,13 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ListTodo } from "lucide-react";
 import { CourseMaterials } from "@/components/features/student-hub/CourseMaterials";
+import { FocusToggle } from "@/components/features/student-hub/FocusToggle";
 import { WorkspaceCapture } from "@/components/features/student-hub/WorkspaceCapture";
 import { requireUser } from "@/lib/server-auth";
 import {
   formatCourseTime,
   getWorkspaceCourse,
 } from "@/lib/study-workspace-today";
-import { listCourseResources } from "@/lib/study-workspace";
+import {
+  listCourseRecentNotes,
+  listCourseResources,
+} from "@/lib/study-workspace";
 
 export const metadata: Metadata = { title: "Course — Workspace" };
 export const dynamic = "force-dynamic";
@@ -22,9 +26,10 @@ export default async function WorkspaceCoursePage({
   const user = await requireUser();
   const courseId = (await params).courseId;
   // Course and its materials in parallel: neither waits on the other.
-  const [course, materials] = await Promise.all([
+  const [course, materials, recent] = await Promise.all([
     getWorkspaceCourse(user.id, courseId),
     listCourseResources(user.id, courseId),
+    listCourseRecentNotes(user.id, courseId),
   ]);
   if (!course) notFound();
 
@@ -48,15 +53,18 @@ export default async function WorkspaceCoursePage({
         Workspace
       </Link>
 
-      <header className="mt-4">
-        <h1 className="text-2xl font-black tracking-[-0.035em] sm:text-3xl">
-          {course.courseName}
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {formatCourseTime(course)}
-          {place ? ` · ${place}` : ""}
-          {course.teacher ? ` · ${course.teacher}` : ""}
-        </p>
+      <header className="mt-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black tracking-[-0.035em] sm:text-3xl">
+            {course.courseName}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {formatCourseTime(course)}
+            {place ? ` · ${place}` : ""}
+            {course.teacher ? ` · ${course.teacher}` : ""}
+          </p>
+        </div>
+        <FocusToggle label={course.courseName} />
       </header>
 
       {/*
@@ -125,6 +133,31 @@ export default async function WorkspaceCoursePage({
           Open in Planner →
         </Link>
       </section>
+
+      {recent.length ? (
+        <section className="mt-8">
+          <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">
+            Recent
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {recent.map((note) => (
+              <li
+                className="rounded-2xl border border-border bg-card p-3.5"
+                key={note.id}
+              >
+                <p className="truncate text-sm font-bold text-foreground">
+                  {note.body?.trim() || note.highlight || "Highlight"}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {note.essential.title}
+                  {note.chapter ? ` · ${note.chapter.title}` : ""}
+                  {note.taskId ? " · task raised" : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {course.notes ? (
         <section className="mt-8">
