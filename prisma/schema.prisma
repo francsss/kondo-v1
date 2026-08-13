@@ -1000,6 +1000,7 @@ model User {
   createdOrganizationMedia            OrganizationMedia[]                   @relation("OrganizationMediaCreator")
   studyEssentialOrders                StudyEssentialOrder[]
   studyNotes                          StudyNote[]
+  courseResources                     CourseResource[]
   studyReadingProgress                StudyReadingProgress[]
   createdOrganizationProducts         OrganizationProduct[]                 @relation("OrganizationProductCreator")
   createdOrganizationServices         OrganizationService[]                 @relation("OrganizationServiceCreator")
@@ -1890,6 +1891,7 @@ model ScheduleCourse {
   confidence   Float?
   source       ScheduleCourseSource @default(MANUAL)
   tasks        AcademicTask[]
+  resourceLinks CourseResource[]
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
@@ -4334,6 +4336,7 @@ model StudyEssential {
   chapters         StudyEssentialChapter[]
   notes            StudyNote[]
   readingProgress  StudyReadingProgress[]
+  courseLinks      CourseResource[]
 
   @@index([status, sortOrder])
   @@index([status, format])
@@ -4402,6 +4405,28 @@ model StudyReadingProgress {
 
   @@unique([userId, essentialId])
   @@index([userId, lastReadAt])
+}
+
+/// A resource the student has attached to one of their courses.
+///
+/// Ownership is not stored here and is not implied by it: My Library remains
+/// the only answer to "do I own this", through a PAID StudyEssentialOrder.
+/// This records something different and per-student — "Physics Fundamentals is
+/// the book I use for Physics" — so Workspace can surface the right resource
+/// when Physics is on the timetable, without duplicating the library.
+model CourseResource {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      ScheduleCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  essentialId String
+  essential   StudyEssential @relation(fields: [essentialId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+
+  @@unique([userId, courseId, essentialId])
+  @@index([userId, courseId])
+  @@index([essentialId])
 }
 
 model StudyNote {

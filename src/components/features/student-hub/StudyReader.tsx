@@ -12,10 +12,13 @@ import {
   Sparkles,
   SquareCheckBig,
   X,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { STUDY_ASSISTANT_ACTIONS } from "@/lib/study-assistant-actions";
+import { useFocusMode } from "@/lib/use-focus-mode";
 import { cn } from "@/lib/utils";
 
 type Chapter = { id: string; position: number; title: string; body: string };
@@ -56,6 +59,7 @@ export function StudyReader({
     initialChapterId ?? chapters[0]?.id ?? "",
   );
   const [notes, setNotes] = useState(initialNotes);
+  const { focused, toggle: toggleFocus } = useFocusMode();
   const [selection, setSelection] = useState("");
   const [draft, setDraft] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -175,7 +179,9 @@ export function StudyReader({
           chapterId,
           highlight: selection,
           body: draft || null,
-          task: withTask ? { title: taskTitle || selection.slice(0, 200) } : null,
+          task: withTask
+            ? { title: taskTitle || selection.slice(0, 200) }
+            : null,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -212,10 +218,20 @@ export function StudyReader({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+    <div
+      className={cn(
+        "grid gap-6 lg:items-start",
+        // Focus Mode drops the chapter rail and lets the text run wide. Same
+        // component, same state — only the layout changes.
+        focused ? "grid-cols-1" : "lg:grid-cols-[260px_minmax(0,1fr)]",
+      )}
+    >
       <nav
         aria-label="Chapters"
-        className="rounded-[1.5rem] border border-border bg-card p-3 lg:sticky lg:top-20"
+        className={cn(
+          "rounded-[1.5rem] border border-border bg-card p-3 lg:sticky lg:top-20",
+          focused && "hidden",
+        )}
       >
         <p className="px-2 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">
           Chapters
@@ -248,11 +264,38 @@ export function StudyReader({
       </nav>
 
       <div className="min-w-0">
-        <article className="rounded-[1.75rem] border border-border bg-card p-5 sm:p-8">
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-kondo-green">
-            <BookOpen aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5" />
-            {title} · Chapter {chapter.position}
-          </p>
+        <article
+          className={cn(
+            "border border-border bg-card",
+            focused
+              ? "mx-auto max-w-[68ch] rounded-none border-x-0 px-5 py-8 sm:px-8"
+              : "rounded-[1.75rem] p-5 sm:p-8",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-kondo-green">
+              <BookOpen
+                aria-hidden="true"
+                className="mr-1.5 inline h-3.5 w-3.5"
+              />
+              {title} · Chapter {chapter.position}
+            </p>
+            {/* Discreet, and the only chrome Focus Mode leaves behind. */}
+            <button
+              aria-label={focused ? "Leave Focus Mode" : "Enter Focus Mode"}
+              aria-pressed={focused}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              onClick={toggleFocus}
+              title={focused ? "Leave Focus Mode (Esc)" : "Focus Mode"}
+              type="button"
+            >
+              {focused ? (
+                <Minimize2 aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <Maximize2 aria-hidden="true" className="h-4 w-4" />
+              )}
+            </button>
+          </div>
           <h2 className="mt-3 text-balance font-display text-2xl font-black leading-tight tracking-[-0.03em] sm:text-3xl">
             {chapter.title}
           </h2>
@@ -377,7 +420,10 @@ export function StudyReader({
                 className="mt-3 max-h-56 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-4"
               >
                 <p className="text-[11px] font-black uppercase tracking-[0.12em] text-kondo-green">
-                  <Bot aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5" />
+                  <Bot
+                    aria-hidden="true"
+                    className="mr-1.5 inline h-3.5 w-3.5"
+                  />
                   Kondo AI
                 </p>
                 <div className="mt-2 whitespace-pre-wrap text-sm leading-6">
@@ -402,19 +448,31 @@ export function StudyReader({
             <div className="mt-3 flex flex-wrap gap-2">
               {mode === null ? (
                 <>
-                  <Button disabled={saving} onClick={() => save(false)} size="sm">
+                  <Button
+                    disabled={saving}
+                    onClick={() => save(false)}
+                    size="sm"
+                  >
                     {saving ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
-                    Save highlight
+                    Highlight
                   </Button>
-                  <Button onClick={() => setMode("note")} size="sm" variant="secondary">
-                    <NotebookPen className="h-4 w-4" /> Add note
+                  <Button
+                    onClick={() => setMode("note")}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    <NotebookPen className="h-4 w-4" /> Note
                   </Button>
-                  <Button onClick={() => setMode("task")} size="sm" variant="secondary">
-                    <SquareCheckBig className="h-4 w-4" /> Create task
+                  <Button
+                    onClick={() => setMode("task")}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    <SquareCheckBig className="h-4 w-4" /> Task
                   </Button>
                   <Button
                     disabled={assistantReady === false}
@@ -428,7 +486,7 @@ export function StudyReader({
                     variant="secondary"
                   >
                     <Bot className="h-4 w-4" />
-                    Ask Kondo AI
+                    AI
                     {assistantReady === false ? " · off" : null}
                   </Button>
                 </>
@@ -440,7 +498,9 @@ export function StudyReader({
                       key={action.key}
                       onClick={() => ask(action.key)}
                       size="sm"
-                      variant={aiAction === action.key ? "primary" : "secondary"}
+                      variant={
+                        aiAction === action.key ? "primary" : "secondary"
+                      }
                     >
                       {saving && aiAction === action.key ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -473,7 +533,9 @@ export function StudyReader({
                     onClick={() => save(mode === "task")}
                     size="sm"
                   >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
                     {mode === "task" ? "Create task" : "Save note"}
                   </Button>
                   <Button

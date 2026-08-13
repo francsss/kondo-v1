@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ListTodo, Loader2, Plus, X } from "lucide-react";
 import { useState } from "react";
@@ -22,9 +23,12 @@ import { cn } from "@/lib/utils";
 export function WorkspaceCapture({
   courseId,
   courseName,
+  resume = null,
 }: {
   courseId: string;
   courseName: string;
+  /** The book this course is being read from, if one is linked. */
+  resume?: { slug: string; title: string; chapterLabel: string | null } | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -69,13 +73,40 @@ export function WorkspaceCapture({
 
   return (
     <div className="mt-6">
+      {/*
+       * The primary action follows the work. With a book linked it resumes
+       * that book at the saved chapter; without one there is nothing honest to
+       * continue, so `+ Add` becomes the way forward instead of a button that
+       * leads nowhere.
+       */}
+      {resume ? (
+        <Link
+          className="mb-2 flex items-center gap-3 rounded-2xl border border-kondo-green/40 bg-kondo-mint p-3.5 transition active:scale-[0.99] dark:bg-emerald-400/10 motion-reduce:active:scale-100"
+          href={`/student-hub/essentials/read/${resume.slug}`}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-black text-foreground">
+              {resume.title}
+            </span>
+            {resume.chapterLabel ? (
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                {resume.chapterLabel}
+              </span>
+            ) : null}
+          </span>
+          <span className="inline-flex min-h-10 shrink-0 items-center rounded-full bg-kondo-green px-4 text-xs font-black text-white">
+            {resume.chapterLabel ? "Continue reading" : "Start reading"}
+          </span>
+        </Link>
+      ) : null}
+
       <div className="flex items-center gap-2">
         <button
-          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-kondo-green px-6 text-sm font-black text-white transition active:scale-[0.99] motion-reduce:active:scale-100"
+          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-black text-foreground transition active:scale-[0.99] motion-reduce:active:scale-100"
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
-          Continue studying
+          Add to this course
         </button>
         <button
           aria-expanded={open}
