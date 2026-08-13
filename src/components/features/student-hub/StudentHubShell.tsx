@@ -334,7 +334,14 @@ export function StudentHubShell({
         module navigation sits below it instead of being crushed against the
         Kondo mark.
       */}
-      <header className="relative overflow-hidden border-b border-border/60">
+      {/* `data-focus-hide` is how Focus Mode disappears this chrome: a class
+          on <html> hides every marked element, so entering focus is a style
+          change on the same route with the same component tree — no
+          navigation, no refetch, no lost reading position. */}
+      <header
+        className="relative overflow-hidden border-b border-border/60"
+        data-focus-hide=""
+      >
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-gradient-to-br from-kondo-mint/70 via-background to-background dark:from-emerald-400/10 dark:via-background dark:to-background"
@@ -409,7 +416,9 @@ export function StudentHubShell({
           {children}
         </TabPanelTransition>
       </main>
-      <StudentHubMobileNav activeModule={activeModule} />
+      <div data-focus-hide="">
+        <StudentHubMobileNav activeModule={activeModule} />
+      </div>
       <KondoPet enabled={kondoPetEnabled} />
     </div>
   );

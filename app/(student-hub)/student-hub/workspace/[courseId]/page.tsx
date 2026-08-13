@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ListTodo } from "lucide-react";
+import { CourseMaterials } from "@/components/features/student-hub/CourseMaterials";
 import { WorkspaceCapture } from "@/components/features/student-hub/WorkspaceCapture";
 import { requireUser } from "@/lib/server-auth";
 import {
   formatCourseTime,
   getWorkspaceCourse,
 } from "@/lib/study-workspace-today";
+import { listCourseResources } from "@/lib/study-workspace";
 
 export const metadata: Metadata = { title: "Course — Workspace" };
 export const dynamic = "force-dynamic";
@@ -18,8 +20,21 @@ export default async function WorkspaceCoursePage({
   params: Promise<{ courseId: string }>;
 }) {
   const user = await requireUser();
-  const course = await getWorkspaceCourse(user.id, (await params).courseId);
+  const courseId = (await params).courseId;
+  // Course and its materials in parallel: neither waits on the other.
+  const [course, materials] = await Promise.all([
+    getWorkspaceCourse(user.id, courseId),
+    listCourseResources(user.id, courseId),
+  ]);
   if (!course) notFound();
+
+  // The one action worth leading with: resume the book being read for this
+  // course, if there is one. Otherwise the capture control carries the screen.
+  const resume =
+    materials.find((material) => material.progress?.chapter) ??
+    materials.find(
+      (material) => material.format === "DIGITAL" && material.chapterCount,
+    );
 
   const place = [course.room, course.building].filter(Boolean).join(" · ");
 
@@ -48,7 +63,23 @@ export default async function WorkspaceCoursePage({
        * One primary action. Everything a student can add sits behind the
        * compact control below it rather than as five competing buttons.
        */}
-      <WorkspaceCapture courseId={course.id} courseName={course.courseName} />
+      <WorkspaceCapture
+        courseId={course.id}
+        courseName={course.courseName}
+        resume={
+          resume
+            ? {
+                slug: resume.slug,
+                title: resume.title,
+                chapterLabel: resume.progress?.chapter
+                  ? `Chapter ${resume.progress.chapter.position + 1} · ${resume.progress.chapter.title}`
+                  : null,
+              }
+            : null
+        }
+      />
+
+      <CourseMaterials courseId={course.id} materials={materials} />
 
       <section className="mt-8">
         <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">

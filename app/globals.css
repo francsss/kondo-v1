@@ -460,3 +460,24 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Focus Mode.
+ *
+ * A single class on <html> hides Kondo's chrome so the academic content owns
+ * the screen. It is deliberately CSS rather than routing: the student stays on
+ * the same route, in the same component tree, at the same scroll offset and
+ * reading position, so entering and leaving is instant and nothing reloads.
+ *
+ * Native fullscreen is layered on top where the browser supports it, but the
+ * mode works without it — iOS Safari does not offer the Fullscreen API on
+ * iPhone, and Focus Mode must not depend on it.
+ */
+html.kondo-focus [data-focus-hide] {
+  display: none !important;
+}
+
+html.kondo-focus body {
+  /* The app shell reserves room for a bottom bar that is no longer there. */
+  padding-bottom: 0;
+}

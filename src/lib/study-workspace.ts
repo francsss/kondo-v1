@@ -292,3 +292,126 @@ export async function listStudyNotes(userId: string) {
     },
   });
 }
+
+/**
+ * The resources a student has attached to a course.
+ *
+ * `CourseResource` records study context, never ownership, so this joins back
+ * to the library gate: a link to a resource the student no longer owns simply
+ * does not surface. Reading progress rides along, because the only thing
+ * Workspace wants to say about a book is where to resume it.
+ */
+export async function listCourseResources(userId: string, courseId: string) {
+  const links = await prisma.courseResource.findMany({
+    where: { userId, course: { id: courseId, schedule: { ownerId: userId } } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      essential: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          format: true,
+          coverEmoji: true,
+          imageUrl: true,
+          providerName: true,
+          _count: { select: { chapters: true } },
+        },
+      },
+    },
+  });
+  if (!links.length) return [];
+
+  const essentialIds = links.map((link) => link.essential.id);
+  // Two more queries for the whole list rather than two per resource.
+  const [owned, progress] = await Promise.all([
+    prisma.studyEssentialOrder.findMany({
+      where: { userId, status: "PAID", essentialId: { in: essentialIds } },
+      select: { essentialId: true },
+    }),
+    prisma.studyReadingProgress.findMany({
+      where: { userId, essentialId: { in: essentialIds } },
+      select: {
+        essentialId: true,
+        lastReadAt: true,
+        chapter: { select: { id: true, title: true, position: true } },
+      },
+    }),
+  ]);
+  const ownedIds = new Set(owned.map((order) => order.essentialId));
+  const progressByEssential = new Map(
+    progress.map((row) => [row.essentialId, row]),
+  );
+
+  return links
+    .filter((link) => ownedIds.has(link.essential.id))
+    .map((link) => ({
+      linkId: link.id,
+      ...link.essential,
+      chapterCount: link.essential._count.chapters,
+      progress: progressByEssential.get(link.essential.id) ?? null,
+    }));
+}
+
+/**
+ * What the student could attach: everything they own that is not linked yet.
+ * Loaded only when the picker opens, never with the course screen.
+ */
+export async function listLinkableResources(userId: string, courseId: string) {
+  const [library, alreadyLinked] = await Promise.all([
+    listLibrary(userId),
+    prisma.courseResource.findMany({
+      where: { userId, courseId },
+      select: { essentialId: true },
+    }),
+  ]);
+  const linked = new Set(alreadyLinked.map((link) => link.essentialId));
+  return library
+    .filter((entry) => !linked.has(entry.essential.id))
+    .map((entry) => ({
+      id: entry.essential.id,
+      slug: entry.essential.slug,
+      title: entry.essential.title,
+      coverEmoji: entry.essential.coverEmoji,
+      imageUrl: entry.essential.imageUrl,
+      format: entry.essential.format,
+    }));
+}
+
+/** Attach an owned resource to a course the student owns. Idempotent. */
+export async function linkCourseResource(input: {
+  userId: string;
+  courseId: string;
+  essentialId: string;
+}) {
+  const course = await prisma.scheduleCourse.findFirst({
+    where: { id: input.courseId, schedule: { ownerId: input.userId } },
+    select: { id: true },
+  });
+  if (!course) throw new StudyEssentialError("Course not found.", 404);
+  // Linking a resource the student does not own would let Workspace advertise
+  // something the reader will refuse to open.
+  if (!(await ownsEssential(input.userId, input.essentialId))) {
+    throw new StudyEssentialError("This resource is not in your library.", 403);
+  }
+  return prisma.courseResource.upsert({
+    where: {
+      userId_courseId_essentialId: {
+        userId: input.userId,
+        courseId: input.courseId,
+        essentialId: input.essentialId,
+      },
+    },
+    create: input,
+    update: {},
+    select: { id: true },
+  });
+}
+
+export async function unlinkCourseResource(userId: string, linkId: string) {
+  const deleted = await prisma.courseResource.deleteMany({
+    where: { id: linkId, userId },
+  });
+  if (!deleted.count) throw new StudyEssentialError("Link not found.", 404);
+}
