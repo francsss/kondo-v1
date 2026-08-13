@@ -45,6 +45,24 @@ test.describe("mobile search surface", () => {
     const dialog = page.getByRole("dialog", { name: "Search Kondo" });
     await expect(dialog).toBeVisible();
 
+    /*
+     * Settle before measuring.
+     *
+     * The surface scales in, so a box read the instant it becomes visible is a
+     * frame of that animation rather than the surface — 839.46, then 843.09,
+     * then 844. Every assertion below is expressed relative to this
+     * measurement, so catching an early frame made the *expected* value drift
+     * (516, 521, 518 across retries) while the surface itself sat correctly at
+     * its final height the whole time.
+     *
+     * The dialog is `h-[var(--visual-viewport-height,100dvh)]`, so once it has
+     * settled it is exactly the visual viewport.
+     */
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    await expect
+      .poll(async () => Math.round((await dialog.boundingBox())!.height))
+      .toBe(viewportHeight);
+
     const before = await dialog.boundingBox();
     expect(
       await page.evaluate(() => getComputedStyle(document.body).overflow),
