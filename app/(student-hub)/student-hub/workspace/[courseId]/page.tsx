@@ -51,6 +51,9 @@ export default async function WorkspaceCoursePage({
     );
 
   const place = [course.room, course.building].filter(Boolean).join(" · ");
+  // A course the student has not put anything into yet. Worth knowing, because
+  // an empty screen should offer one way in rather than list three absences.
+  const isBlank = !materials.length && !course.tasks.length && !activity.length;
 
   return (
     <div className="mx-auto max-w-[720px] px-4 pb-24 pt-4 sm:px-6 sm:pt-8 lg:px-8">
@@ -98,10 +101,18 @@ export default async function WorkspaceCoursePage({
 
       <CourseMaterials courseId={course.id} materials={materials} />
 
+      {/*
+       * On a course with nothing on it at all, "Open work: nothing open" is a
+       * third consecutive sentence about what the student does not have. The
+       * section earns its place once there is something else on the screen to
+       * contrast with; until then the Planner link alone carries it.
+       */}
       <section className="mt-8">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">
-          Open work
-        </h2>
+        {course.tasks.length || !isBlank ? (
+          <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">
+            Open work
+          </h2>
+        ) : null}
         {course.tasks.length ? (
           <ul className="mt-3 space-y-2">
             {course.tasks.map((task) => (
@@ -130,7 +141,7 @@ export default async function WorkspaceCoursePage({
               </li>
             ))}
           </ul>
-        ) : (
+        ) : isBlank ? null : (
           <p className="mt-3 text-sm text-muted-foreground">
             Nothing open for this course.
           </p>
