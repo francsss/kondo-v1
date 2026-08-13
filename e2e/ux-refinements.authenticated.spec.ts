@@ -117,7 +117,20 @@ test.describe("premium UX refinements", () => {
     const mobileBounds = await post.boundingBox();
     expect(mobileBounds).not.toBeNull();
     expect(mobileBounds!.x).toBeLessThanOrEqual(13);
-    expect(mobileBounds!.width).toBeGreaterThanOrEqual(360);
+    /*
+     * The card fills the phone, minus the page gutter — and the page is
+     * narrower than the viewport.
+     *
+     * `html` sets `scrollbar-gutter: stable`, which reserves the scrollbar
+     * track on every route so the header cannot jump sideways between a short
+     * page and a scrolling one. On a classic-scrollbar platform that costs
+     * ~15px, so a 390px viewport lays out at ~375px, and `px-3` on the feed
+     * container takes 12px from each side. Asking for 360px here required the
+     * gutter not to exist, which is why this failed everywhere it was
+     * reserved. What matters to a reader is that the card still spans the
+     * page rather than sitting in a narrow column.
+     */
+    expect(mobileBounds!.width).toBeGreaterThanOrEqual(345);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
