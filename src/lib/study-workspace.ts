@@ -1,4 +1,5 @@
-import type { Prisma } from "@prisma/client";
+import type { MediaPurpose, Prisma } from "@prisma/client";
+import { attachMediaAsset } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 import { StudyEssentialError } from "@/lib/study-essentials";
 
@@ -416,34 +417,206 @@ export async function unlinkCourseResource(userId: string, linkId: string) {
   if (!deleted.count) throw new StudyEssentialError("Link not found.", 404);
 }
 
+export type CourseActivityEntry = {
+  id: string;
+  createdAt: Date;
+  /** What the entry is, which decides its icon and how it opens. */
+  kind: "NOTE" | "PHOTO" | "DOCUMENT" | "VOICE" | "HIGHLIGHT";
+  /** The line the student reads in the list. */
+  title: string;
+  /** Where it came from: a book and chapter, or nothing for a class capture. */
+  source: string | null;
+  /** Set when the entry has a file behind it, served by `/api/media/[id]`. */
+  mediaId: string | null;
+  /** Set when this entry raised a planner task. */
+  hasTask: boolean;
+};
+
+export type CourseActivityDay = {
+  /** `YYYY-MM-DD`, so the key is stable and the client does no parsing. */
+  key: string;
+  date: Date;
+  entries: CourseActivityEntry[];
+};
+
+const CAPTURE_FALLBACK_TITLE: Record<string, string> = {
+  PHOTO: "Photo",
+  DOCUMENT: "Document",
+  VOICE: "Voice note",
+  NOTE: "Note",
+};
+
 /**
- * The last few notes and highlights a student made in this course's materials.
+ * Everything the student has recorded for one course, newest first, grouped by
+ * the day it happened.
  *
- * Deliberately three: the brief asks for a small Recent section, not an
- * activity feed. Scoped through `CourseResource`, so a course with no linked
- * material has no recent activity rather than the student's whole history.
+ * Two sources meet here and neither is copied. Notes and highlights belong to
+ * the books linked to this course (`StudyNote`, reached through
+ * `CourseResource`); photos, handouts, voice notes and typed lines belong to
+ * the class itself (`CourseCapture`). A student thinks of both as "what I did
+ * in this class", so they are merged and then cut by day — which is what makes
+ * a run of captures read as one session instead of a flat feed.
  */
-export async function listCourseRecentNotes(userId: string, courseId: string) {
+export async function listCourseActivity(
+  userId: string,
+  courseId: string,
+  limit = 24,
+): Promise<CourseActivityDay[]> {
   const links = await prisma.courseResource.findMany({
-    where: { userId, courseId },
+    where: { userId, course: { id: courseId, schedule: { ownerId: userId } } },
     select: { essentialId: true },
   });
-  if (!links.length) return [];
-  return prisma.studyNote.findMany({
-    where: {
-      userId,
-      essentialId: { in: links.map((link) => link.essentialId) },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 3,
-    select: {
-      id: true,
-      body: true,
-      highlight: true,
-      createdAt: true,
-      taskId: true,
-      essential: { select: { title: true, slug: true } },
-      chapter: { select: { title: true } },
-    },
+
+  const [notes, captures] = await Promise.all([
+    links.length
+      ? prisma.studyNote.findMany({
+          where: {
+            userId,
+            essentialId: { in: links.map((link) => link.essentialId) },
+          },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          select: {
+            id: true,
+            body: true,
+            highlight: true,
+            createdAt: true,
+            taskId: true,
+            essential: { select: { title: true } },
+            chapter: { select: { title: true } },
+          },
+        })
+      : Promise.resolve([]),
+    prisma.courseCapture.findMany({
+      // Ownership through the schedule, not from the URL — the same rule the
+      // rest of Workspace follows.
+      where: {
+        userId,
+        course: { id: courseId, schedule: { ownerId: userId } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        kind: true,
+        body: true,
+        createdAt: true,
+        media: { select: { id: true, status: true } },
+      },
+    }),
+  ]);
+
+  const entries: CourseActivityEntry[] = [
+    ...notes.map((note) => ({
+      id: `note-${note.id}`,
+      createdAt: note.createdAt,
+      kind: (note.body?.trim() ? "NOTE" : "HIGHLIGHT") as "NOTE" | "HIGHLIGHT",
+      title: note.body?.trim() || note.highlight?.trim() || "Highlight",
+      source: [note.essential.title, note.chapter?.title]
+        .filter(Boolean)
+        .join(" · "),
+      mediaId: null,
+      hasTask: Boolean(note.taskId),
+    })),
+    ...captures.map((capture) => ({
+      id: `capture-${capture.id}`,
+      createdAt: capture.createdAt,
+      kind: capture.kind,
+      title: capture.body?.trim() || CAPTURE_FALLBACK_TITLE[capture.kind],
+      source: null,
+      // A file that never finished validating must not be offered for
+      // playback or download.
+      mediaId: capture.media?.status === "ACTIVE" ? capture.media.id : null,
+      hasTask: false,
+    })),
+  ]
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+    .slice(0, limit);
+
+  const days: CourseActivityDay[] = [];
+  for (const entry of entries) {
+    const key = dayKey(entry.createdAt);
+    const current = days.at(-1);
+    if (current?.key === key) {
+      current.entries.push(entry);
+      continue;
+    }
+    days.push({ key, date: entry.createdAt, entries: [entry] });
+  }
+  return days;
+}
+
+/** Local calendar day of a timestamp, as `YYYY-MM-DD`. */
+function dayKey(value: Date) {
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+/**
+ * Record one capture against a course.
+ *
+ * Media is optional and already uploaded by the time this runs: the browser
+ * goes through `/api/media/uploads`, which validates the bytes, and only the
+ * resulting asset id arrives here. `attachMediaAsset` then binds it to this
+ * row, which is what stops an asset being claimed twice.
+ */
+export async function createCourseCapture(input: {
+  userId: string;
+  courseId: string;
+  kind: "NOTE" | "PHOTO" | "DOCUMENT" | "VOICE";
+  body?: string | null;
+  mediaId?: string | null;
+}) {
+  const course = await prisma.scheduleCourse.findFirst({
+    where: { id: input.courseId, schedule: { ownerId: input.userId } },
+    select: { id: true },
   });
+  if (!course) throw new StudyEssentialError("Course not found.", 404);
+
+  const body = input.body?.trim() || null;
+  if (!body && !input.mediaId) {
+    throw new StudyEssentialError("Nothing to save.", 422);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const capture = await tx.courseCapture.create({
+      data: {
+        userId: input.userId,
+        courseId: input.courseId,
+        kind: input.kind,
+        body,
+        mediaId: input.mediaId ?? null,
+      },
+      select: { id: true, kind: true, body: true, createdAt: true },
+    });
+    if (input.mediaId) {
+      await attachMediaAsset(tx, {
+        ownerId: input.userId,
+        assetId: input.mediaId,
+        purpose: CAPTURE_PURPOSE[input.kind],
+        attachmentType: "COURSE_CAPTURE",
+        attachmentId: capture.id,
+      });
+    }
+    return capture;
+  });
+}
+
+const CAPTURE_PURPOSE = {
+  PHOTO: "COURSE_CAPTURE_IMAGE",
+  DOCUMENT: "COURSE_CAPTURE_DOCUMENT",
+  VOICE: "COURSE_CAPTURE_AUDIO",
+  // A typed line carries no file, so this is never reached; it exists so the
+  // map stays total and the kind cannot silently fall through.
+  NOTE: "COURSE_CAPTURE_IMAGE",
+} as const satisfies Record<string, MediaPurpose>;
+
+export async function deleteCourseCapture(userId: string, captureId: string) {
+  const deleted = await prisma.courseCapture.deleteMany({
+    where: { id: captureId, userId },
+  });
+  if (!deleted.count) throw new StudyEssentialError("Capture not found.", 404);
 }

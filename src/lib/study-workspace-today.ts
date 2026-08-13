@@ -129,8 +129,45 @@ export async function getWorkspaceToday(userId: string, now = new Date()) {
     today: todayCourses,
     current: (current as WorkspaceCourse | null) ?? null,
     next: (next as WorkspaceCourse | null) ?? null,
+    justEnded: findJustEnded(
+      todayCourses,
+      clock,
+      (current as WorkspaceCourse | null) ?? null,
+    ),
     courseCount: schedule.courses.length,
   };
+}
+
+/** How long after a class Workspace still offers to review it. */
+export const REVIEW_WINDOW_MINUTES = 180;
+
+/**
+ * The class that has just finished, if there is one.
+ *
+ * The minutes right after a lecture are when a student still remembers what
+ * they did not follow, so Workspace offers that class back instead of jumping
+ * straight to what is next. It expires: past the window the offer stops being
+ * a prompt and becomes a stale banner, so it disappears rather than lingering.
+ */
+function findJustEnded(
+  courses: WorkspaceCourse[],
+  clock: { minutes: number } | null,
+  current: WorkspaceCourse | null,
+) {
+  if (!clock) return null;
+  let best: { course: WorkspaceCourse; endedMinutesAgo: number } | null = null;
+  for (const course of courses) {
+    if (course.id === current?.id) continue;
+    const remaining = minutesUntil(course.endTime, clock.minutes);
+    if (remaining === null || remaining > 0) continue;
+    const endedMinutesAgo = -remaining;
+    if (endedMinutesAgo > REVIEW_WINDOW_MINUTES) continue;
+    // The most recently finished one — anything earlier has had its moment.
+    if (!best || endedMinutesAgo < best.endedMinutesAgo) {
+      best = { course, endedMinutesAgo };
+    }
+  }
+  return best;
 }
 
 export async function getWorkspaceCourse(userId: string, courseId: string) {

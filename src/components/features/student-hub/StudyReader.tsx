@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { STUDY_ASSISTANT_ACTIONS } from "@/lib/study-assistant-actions";
 import { useFocusMode } from "@/lib/use-focus-mode";
+import { useScrollRetreat } from "@/lib/use-scroll-retreat";
 import { cn } from "@/lib/utils";
 
 type Chapter = { id: string; position: number; title: string; body: string };
@@ -60,6 +61,7 @@ export function StudyReader({
   );
   const [notes, setNotes] = useState(initialNotes);
   const { focused, toggle: toggleFocus } = useFocusMode();
+  const retreated = useScrollRetreat();
   const [selection, setSelection] = useState("");
   const [draft, setDraft] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -272,7 +274,19 @@ export function StudyReader({
               : "rounded-[1.75rem] p-5 sm:p-8",
           )}
         >
-          <div className="flex items-start justify-between gap-3">
+          {/*
+           * The reader's controls retreat while the student is scrolling
+           * forward and come back the moment they scroll up. Visibility only —
+           * the row keeps its space, so the chapter text never jumps under the
+           * line being read.
+           */}
+          <div
+            aria-hidden={retreated}
+            className={cn(
+              "flex items-start justify-between gap-3 transition-opacity duration-200",
+              retreated && "pointer-events-none opacity-0",
+            )}
+          >
             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-kondo-green">
               <BookOpen
                 aria-hidden="true"
@@ -299,7 +313,13 @@ export function StudyReader({
           <h2 className="mt-3 text-balance font-display text-2xl font-black leading-tight tracking-[-0.03em] sm:text-3xl">
             {chapter.title}
           </h2>
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p
+            aria-hidden={retreated}
+            className={cn(
+              "mt-4 text-xs text-muted-foreground transition-opacity duration-200",
+              retreated && "opacity-0",
+            )}
+          >
             Select any passage to highlight it, write a note, or raise a task.
           </p>
           <div
