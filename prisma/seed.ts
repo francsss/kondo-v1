@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
+import {
+  CITY_COORDINATES,
+  UNIVERSITY_COORDINATES,
+} from "../src/lib/place-coordinates";
 import { PrismaClient } from "@prisma/client";
 import sharp from "sharp";
 import chinaHigherEducation from "./reference-data/china-higher-education-2026.json";
@@ -127,10 +131,22 @@ async function main() {
     countries.map((item) => [item.code, item]),
   );
 
+  /*
+   * Coordinates for a seeded place, from the same reference the app uses.
+   *
+   * The migration that carries these values runs before any seed does, so on a
+   * fresh database — CI, a new environment — it updates nothing and the rows
+   * arrive here with null coordinates and Nearby shows no distance. Setting
+   * them at creation is what makes a fresh database behave like a real one.
+   */
+  const cityPoint = (name: string) => CITY_COORDINATES[name] ?? {};
+  const universityPoint = (name: string) => UNIVERSITY_COORDINATES[name] ?? {};
+
   const beijing = await prisma.city.create({
     data: {
       slug: "beijing",
       name: "Beijing",
+      ...cityPoint("Beijing"),
       province: "Beijing",
       countryId: country.CN.id,
       isActive: true,
@@ -141,6 +157,7 @@ async function main() {
     data: {
       slug: "shanghai",
       name: "Shanghai",
+      ...cityPoint("Shanghai"),
       province: "Shanghai",
       countryId: country.CN.id,
       isActive: true,
@@ -151,6 +168,7 @@ async function main() {
     data: {
       slug: "wuhan",
       name: "Wuhan",
+      ...cityPoint("Wuhan"),
       province: "Hubei",
       countryId: country.CN.id,
       isActive: true,
@@ -161,6 +179,7 @@ async function main() {
     data: {
       slug: "hangzhou",
       name: "Hangzhou",
+      ...cityPoint("Hangzhou"),
       province: "Zhejiang",
       countryId: country.CN.id,
       isActive: true,
@@ -172,6 +191,7 @@ async function main() {
     data: {
       slug: "tsinghua-university",
       name: "Tsinghua University",
+      ...universityPoint("Tsinghua University"),
       shortName: "THU",
       countryId: country.CN.id,
       cityId: beijing.id,
@@ -182,6 +202,7 @@ async function main() {
     data: {
       slug: "peking-university",
       name: "Peking University",
+      ...universityPoint("Peking University"),
       shortName: "PKU",
       countryId: country.CN.id,
       cityId: beijing.id,
@@ -192,6 +213,7 @@ async function main() {
     data: {
       slug: "wuhan-university",
       name: "Wuhan University",
+      ...universityPoint("Wuhan University"),
       shortName: "WHU",
       countryId: country.CN.id,
       cityId: wuhan.id,
@@ -202,6 +224,7 @@ async function main() {
     data: {
       slug: "zhejiang-university",
       name: "Zhejiang University",
+      ...universityPoint("Zhejiang University"),
       shortName: "ZJU",
       countryId: country.CN.id,
       cityId: hangzhou.id,
@@ -214,6 +237,7 @@ async function main() {
       id: city.id,
       slug: city.slug,
       name: city.name,
+      ...cityPoint(city.name),
       province: city.province,
       countryId: country.CN.id,
       isActive: true,
@@ -244,6 +268,7 @@ async function main() {
         id: university.id,
         slug: university.slug,
         name: university.name,
+        ...universityPoint(university.name),
         shortName: university.nativeName,
         countryId: country.CN.id,
         cityId,
