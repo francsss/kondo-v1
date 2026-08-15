@@ -14,11 +14,13 @@ vi.mock("@/lib/prisma", () => ({
 
 import { getNearbyStudents, NEARBY_PAGE_SIZE } from "@/lib/nearby-students";
 
+// Tsinghua's published location; candidates sit at Peking's, ~2 km away.
 const viewer = {
   id: "viewer-1",
   cityId: "city-jiaxing",
   universityId: "uni-jiaxing",
   degree: "Computer Science",
+  point: { latitude: 40.0, longitude: 116.3264 },
 };
 
 function candidate(overrides: Partial<Record<string, unknown>> = {}) {
@@ -34,7 +36,13 @@ function candidate(overrides: Partial<Record<string, unknown>> = {}) {
     lastActiveAt: new Date("2026-08-01T00:00:00Z"),
     locationAudience: "MEMBERS",
     educationAudience: "MEMBERS",
-    university: { name: "Zhejiang University", shortName: "Zhejiang" },
+    university: {
+      name: "Peking University",
+      shortName: "PKU",
+      latitude: 39.999,
+      longitude: 116.3059,
+    },
+    city: { latitude: 39.9042, longitude: 116.4074 },
     communityMemberships: [],
     ...overrides,
   };
@@ -76,15 +84,46 @@ describe("Nearby ranking", () => {
     expect(students[1]?.reason).toBe("Same field of study");
   });
 
-  it("never repeats the proximity as the relevance reason", async () => {
+  it("never repeats the leading label in the relevance reason", async () => {
+    /*
+     * The row shows `distance ?? proximity` first, then the reason. The
+     * invariant is that the two never say the same thing — not that any
+     * particular reason is suppressed.
+     */
     mocks.findManyUsers.mockResolvedValue([
-      candidate({ id: "classmate", universityId: "uni-jiaxing" }),
+      // Same campus, so a distance is available and leads the line.
+      candidate({
+        id: "classmate",
+        universityId: "uni-jiaxing",
+        university: {
+          name: "Tsinghua University",
+          shortName: "THU",
+          latitude: 40.0,
+          longitude: 116.3264,
+        },
+      }),
+      // Same campus but location private, so "Same campus" leads instead.
+      candidate({
+        id: "private-classmate",
+        universityId: "uni-jiaxing",
+        locationAudience: "PRIVATE",
+      }),
     ]);
 
     const { students } = await getNearbyStudents({ viewer, filter: "ALL" });
 
-    expect(students[0]?.proximity).toBe("Same campus");
-    expect(students[0]?.reason).not.toBe("Same university");
+    for (const student of students) {
+      const leading = student.distance ?? student.proximity;
+      expect(student.reason).not.toBe(leading);
+    }
+
+    const withDistance = students.find((s) => s.id === "classmate");
+    const withoutDistance = students.find((s) => s.id === "private-classmate");
+    // A distance frees the reason to carry the university instead.
+    expect(withDistance?.distance).toBe("< 1 km away");
+    expect(withDistance?.reason).toBe("Same university");
+    // Without one, "Same campus" leads and the reason must not echo it.
+    expect(withoutDistance?.proximity).toBeNull();
   });
 
   it("is deterministic when scores tie", async () => {
@@ -134,24 +173,68 @@ describe("Nearby privacy", () => {
       "lastName",
       "avatarMediaId",
       "headline",
+      "distance",
       "proximity",
       "reason",
     ]);
   });
 
-  it("reports no distance in metres or kilometres", async () => {
+  it("reports a rounded kilometre distance, never a precise one", async () => {
+    mocks.findManyUsers.mockResolvedValue([candidate({ id: "b" })]);
+    const { students } = await getNearbyStudents({ viewer, filter: "ALL" });
+
+    // Tsinghua to Peking is roughly two kilometres.
+    expect(students[0]?.distance).toBe("2 km away");
+    // No decimals, and no metre-level precision that would locate a person.
+    expect(students[0]?.distance).not.toMatch(/\./);
+    expect(students[0]?.distance).not.toMatch(/\bm\b/);
+  });
+
+  it("calls anything under a kilometre away rather than naming metres", async () => {
     mocks.findManyUsers.mockResolvedValue([
-      candidate({ id: "a", universityId: "uni-jiaxing" }),
-      candidate({ id: "b" }),
+      candidate({
+        id: "same-campus",
+        universityId: "uni-jiaxing",
+        university: {
+          name: "Tsinghua University",
+          shortName: "THU",
+          latitude: 40.0,
+          longitude: 116.3264,
+        },
+      }),
     ]);
     const { students } = await getNearbyStudents({ viewer, filter: "ALL" });
 
-    for (const student of students) {
-      expect(student.proximity).toMatch(/^Same (campus|city)$/);
-      expect(`${student.proximity} ${student.reason}`).not.toMatch(
-        /\d+\s*(m|km|meters|metres|kilometers)\b/i,
-      );
-    }
+    expect(students[0]?.distance).toBe("< 1 km away");
+  });
+
+  it("shows no distance when the places have no coordinates", async () => {
+    mocks.findManyUsers.mockResolvedValue([
+      candidate({
+        id: "unmapped",
+        university: {
+          name: "Somewhere",
+          shortName: null,
+          latitude: null,
+          longitude: null,
+        },
+        city: { latitude: null, longitude: null },
+      }),
+    ]);
+    const { students } = await getNearbyStudents({ viewer, filter: "ALL" });
+
+    expect(students[0]?.distance).toBeNull();
+    expect(students[0]?.proximity).toBe("Same city");
+  });
+
+  it("gives no distance to a student who keeps their location private", async () => {
+    mocks.findManyUsers.mockResolvedValue([
+      candidate({ id: "private", locationAudience: "PRIVATE" }),
+    ]);
+    const { students } = await getNearbyStudents({ viewer, filter: "ALL" });
+
+    expect(students[0]?.distance).toBeNull();
+    expect(students[0]?.proximity).toBeNull();
   });
 
   it("hides education and location for students who made them private", async () => {

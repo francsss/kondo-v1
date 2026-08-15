@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   findProfile: vi.fn(),
   getCurrentUser: vi.fn(),
   getPremiumAccess: vi.fn(),
+  // The route now resolves the viewer's own campus/city to measure distance.
+  findUniversity: vi.fn(),
+  findCity: vi.fn(),
 }));
 
 vi.mock("@/lib/server-auth", () => ({
@@ -22,6 +25,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findMany: mocks.findMany },
     meetDiscoveryProfile: { findUnique: mocks.findProfile },
+    university: { findUnique: mocks.findUniversity },
+    city: { findUnique: mocks.findCity },
   },
 }));
 
@@ -129,6 +134,10 @@ describe("Meet discovery API", () => {
       featureKeys: [],
     });
     mocks.findMany.mockResolvedValue([]);
+    // Unmapped places by default, so distance is absent unless a test says
+    // otherwise and the existing area wording still applies.
+    mocks.findUniversity.mockResolvedValue(null);
+    mocks.findCity.mockResolvedValue(null);
   });
 
   afterEach(() => {

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, MessageCircle } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { Avatar } from "@/components/ui/Avatar";
+import {
+  StudentRow,
+  StudentRowSkeleton,
+} from "@/components/features/community/StudentRow";
 import { Button } from "@/components/ui/Button";
 import type { NearbyFilter, NearbyStudent } from "@/lib/nearby-students";
 
@@ -26,95 +28,19 @@ const FILTERS: Array<{ value: NearbyFilter; label: string }> = [
 
 type Status = "loading" | "ready" | "error";
 
-function SkeletonRow() {
-  /*
-   * Matched to the real row's geometry — 40px avatar, three text lines at the
-   * same rhythm — so the list does not shift when the data lands.
-   */
+/**
+ * Nearby's context line: how far away, then one reason they are relevant.
+ *
+ * The distance leads because it is the question the page answers. The
+ * proximity label only stands in when no distance could be computed — an
+ * unmapped place, or a student who keeps their location private — so the line
+ * never says "3 km away · Same city" and never repeats itself.
+ */
+function nearbyContext(student: NearbyStudent) {
   return (
-    <li className="flex items-center gap-3 px-1 py-3">
-      <span className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
-      <span className="min-w-0 flex-1">
-        <span className="block h-3.5 w-28 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
-        <span className="mt-2 block h-3 w-44 max-w-full animate-pulse rounded-full bg-muted/70 motion-reduce:animate-none" />
-        <span className="mt-1.5 block h-3 w-24 animate-pulse rounded-full bg-muted/50 motion-reduce:animate-none" />
-      </span>
-    </li>
-  );
-}
-
-function StudentRow({ student }: { student: NearbyStudent }) {
-  const name = `${student.firstName} ${student.lastName}`.trim();
-  const href = `/profile/${student.username ?? student.id}`;
-  // Proximity and reason are separate facts; the ranking guarantees they never
-  // say the same thing twice.
-  const context = [student.proximity, student.reason]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <li className="border-b border-border/60 last:border-b-0">
-      <div className="group flex items-center gap-3 py-2.5 pl-1 pr-1">
-        {/*
-         * The whole row is the link, via a stretched overlay, so the touch
-         * target is the full width without nesting the message button inside
-         * an anchor. The message button sits above it in the stacking order.
-         */}
-        <Link
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl py-1.5 transition active:scale-[0.99] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          href={href}
-        >
-          <Avatar
-            className="h-10 w-10"
-            firstName={student.firstName}
-            lastName={student.lastName}
-            mediaId={student.avatarMediaId}
-            seed={student.id}
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-black tracking-[-0.01em] text-foreground">
-              {name}
-            </span>
-            {student.headline ? (
-              <span className="mt-0.5 block truncate text-xs font-bold text-muted-foreground">
-                {student.headline}
-              </span>
-            ) : null}
-            {context ? (
-              /*
-               * The one line allowed to wrap. "Same campus · 4 communities in
-               * common" does not fit 390px and truncating it cut the number
-               * off mid-word, which is the part worth reading.
-               */
-              <span className="mt-0.5 block text-xs font-bold leading-4 text-kondo-green">
-                {context}
-              </span>
-            ) : null}
-          </span>
-          <ChevronRight
-            aria-hidden="true"
-            className="h-4 w-4 shrink-0 text-muted-foreground/70 transition group-hover:text-foreground sm:hidden"
-          />
-        </Link>
-        {/*
-         * Messaging is the existing flow, reached with the existing route.
-         * Kondo has no separate connection graph, so there is no "Connect"
-         * action to offer beyond this one.
-         */}
-        <Button
-          aria-label={`Message ${name}`}
-          asChild
-          className="hidden shrink-0 sm:inline-flex"
-          size="sm"
-          variant="secondary"
-        >
-          <Link href={`/messages/new?recipient=${student.id}`}>
-            <MessageCircle aria-hidden="true" className="h-4 w-4" />
-            Message
-          </Link>
-        </Button>
-      </div>
-    </li>
+    [student.distance ?? student.proximity, student.reason]
+      .filter(Boolean)
+      .join(" · ") || null
   );
 }
 
@@ -307,7 +233,7 @@ export function NearbyStudents({
       {status === "loading" ? (
         <ul className="mt-2">
           {Array.from({ length: 6 }).map((_, index) => (
-            <SkeletonRow key={index} />
+            <StudentRowSkeleton key={index} />
           ))}
         </ul>
       ) : null}
@@ -330,7 +256,10 @@ export function NearbyStudents({
         <>
           <ul aria-label="Students near you" className="mt-2">
             {students.map((student) => (
-              <StudentRow key={student.id} student={student} />
+              <StudentRow
+                key={student.id}
+                student={{ ...student, context: nearbyContext(student) }}
+              />
             ))}
           </ul>
           {nextCursor ? (

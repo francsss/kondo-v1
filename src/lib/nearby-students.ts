@@ -1,19 +1,27 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  distanceLabel,
+  studentDistanceKilometres,
+  studyPoint,
+} from "@/lib/student-distance";
 
 /**
  * Nearby: the students around you who are worth knowing.
  *
  * Two facts about this codebase shape everything below.
  *
- * First, Kondo stores no coordinates for people. `User` carries a city, a
- * university and a country; the latitude/longitude columns in the schema
- * belong to `HousingListing`. The map this feature replaced produced its
- * "Around 500 m" labels by hashing a profile ID into a scattered point near a
- * campus and measuring the distance to that invention. Nothing here reports a
- * distance in metres or kilometres, because there is no honest one to report.
- * Proximity is expressed with the real relationships that do exist: the same
- * campus, or the same city.
+ * First, Kondo stores no coordinates for people, and still does not. Distance
+ * is measured between the places two students study — the campus where the
+ * university's location is known, otherwise the centre of their city — using
+ * the coordinates added to `City` and `University`. Those are published
+ * locations of institutions, not positions of people, and only the rounded
+ * label ever leaves the server.
+ *
+ * The map this replaced produced its "Around 500 m" labels by hashing a
+ * profile ID into a scattered point near a campus and measuring to that
+ * invention. Nothing here is derived from a profile ID; a place without
+ * coordinates yields no distance rather than a fabricated one.
  *
  * Second, discovery used to run through `MeetDiscoveryProfile`, which matches
  * on gender preference and an age range. Nearby is student discovery, not
@@ -52,6 +60,11 @@ export type NearbyStudent = {
   avatarMediaId: string | null;
   /** "Computer Science · Jiaxing University", already assembled and trimmed. */
   headline: string | null;
+  /**
+   * "3 km away" | "< 1 km away" | null when location is private or the places
+   * involved have no coordinates.
+   */
+  distance: string | null;
   /** "Same campus" | "Same city" | null when location is private. */
   proximity: string | null;
   /** One reason, never a list. */
@@ -79,9 +92,14 @@ function relevanceReason(input: {
   sharedCommunities: number;
   sameField: boolean;
   sameCity: boolean;
-  proximity: string | null;
+  /**
+   * The label the row will actually show first — a distance when one could be
+   * computed, otherwise the proximity. Compared against so the reason never
+   * repeats the words already on screen.
+   */
+  displayed: string | null;
 }) {
-  if (input.sameUniversity && input.proximity !== "Same campus") {
+  if (input.sameUniversity && input.displayed !== "Same campus") {
     return "Same university";
   }
   if (input.sharedCommunities === 1) return "1 community in common";
@@ -89,8 +107,40 @@ function relevanceReason(input: {
     return `${input.sharedCommunities} communities in common`;
   }
   if (input.sameField) return "Same field of study";
-  if (input.sameCity && input.proximity !== "Same city") return "Same city";
+  if (input.sameCity && input.displayed !== "Same city") return "Same city";
   return null;
+}
+
+/**
+ * Where the viewer studies, read once per request.
+ *
+ * Kept here rather than in `getCurrentUser` so the coordinate lookup only
+ * happens on the surfaces that actually measure distance.
+ */
+export async function getViewerStudyPoint(viewer: {
+  cityId: string | null;
+  universityId: string | null;
+}) {
+  const [university, city] = await Promise.all([
+    viewer.universityId
+      ? prisma.university.findUnique({
+          where: { id: viewer.universityId },
+          select: { latitude: true, longitude: true },
+        })
+      : null,
+    viewer.cityId
+      ? prisma.city.findUnique({
+          where: { id: viewer.cityId },
+          select: { latitude: true, longitude: true },
+        })
+      : null,
+  ]);
+  return studyPoint({
+    universityLatitude: university?.latitude,
+    universityLongitude: university?.longitude,
+    cityLatitude: city?.latitude,
+    cityLongitude: city?.longitude,
+  });
 }
 
 export async function getNearbyStudents(input: {
@@ -99,6 +149,8 @@ export async function getNearbyStudents(input: {
     cityId: string | null;
     universityId: string | null;
     degree: string | null;
+    /** Where the viewer studies, for the distance calculation. */
+    point?: { latitude: number; longitude: number } | null;
   };
   filter: NearbyFilter;
   cursor?: string | null;
@@ -157,7 +209,17 @@ export async function getNearbyStudents(input: {
       lastActiveAt: true,
       locationAudience: true,
       educationAudience: true,
-      university: { select: { name: true, shortName: true } },
+      university: {
+        select: {
+          name: true,
+          shortName: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
+      // Coordinates of the places, never of the person. They stay on the
+      // server: only the rounded label below is returned.
+      city: { select: { latitude: true, longitude: true } },
       // Bounded by the viewer's own memberships, so this cannot fan out.
       communityMemberships: viewerCommunityIds.length
         ? {
@@ -209,6 +271,25 @@ export async function getNearbyStudents(input: {
             ? "Same city"
             : null;
 
+      /*
+       * Distance between the two study points, rounded to whole kilometres.
+       * A student who has made their location private gets no distance, for
+       * the same reason they get no proximity label.
+       */
+      const distance = showsLocation
+        ? distanceLabel(
+            studentDistanceKilometres(
+              viewer.point ?? null,
+              studyPoint({
+                universityLatitude: candidate.university?.latitude,
+                universityLongitude: candidate.university?.longitude,
+                cityLatitude: candidate.city?.latitude,
+                cityLongitude: candidate.city?.longitude,
+              }),
+            ),
+          )
+        : null;
+
       const score =
         (sameUniversity ? SCORE.sameUniversity : 0) +
         (sameField ? SCORE.sameField : 0) +
@@ -226,13 +307,14 @@ export async function getNearbyStudents(input: {
           lastName: candidate.lastName,
           avatarMediaId: candidate.avatarMediaId,
           headline,
+          distance,
           proximity,
           reason: relevanceReason({
             sameUniversity,
             sharedCommunities,
             sameField,
             sameCity,
-            proximity,
+            displayed: distance ?? proximity,
           }),
         } satisfies NearbyStudent,
       };

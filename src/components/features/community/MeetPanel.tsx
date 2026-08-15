@@ -15,8 +15,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CallRoomOverlay } from "@/components/features/calls/CallRoomOverlay";
 import { MeetDiscoveryCarousel } from "@/components/features/community/MeetDiscoveryCarousel";
+import { LookingForResults } from "@/components/features/community/LookingForResults";
 import {
-  MeetDiscoveryMap,
   type MeetDiscoveryProfile,
   type MeetMapViewer,
 } from "@/components/features/community/MeetDiscoveryMap";
@@ -36,7 +36,6 @@ import {
 import { countrySelectOptions } from "@/lib/countries";
 import {
   DEFAULT_MEET_NEARBY_RADIUS_METERS,
-  meetMapSearchQueries,
   type MeetNearbyRadiusMeters,
 } from "@/lib/meet-map";
 import type { PremiumAccess } from "@/lib/premium";
@@ -53,7 +52,6 @@ const POLL_INTERVAL_MS = 2_500;
 const AVAILABILITY_WINDOW_MS = 20_000;
 
 export function MeetPanel({
-  viewer,
   initialGender,
   initialNearbyEnabled,
   initialIntents,
@@ -155,20 +153,8 @@ export function MeetPanel({
   const discoveryUniversity = universityOptions.find(
     (university) => university.id === profile?.discoveryUniversityId,
   );
-  const otherCity = cityOptions.find((city) => city.id === otherCityId);
   const discoveryCityName = discoveryCity?.name ?? cityName;
   const discoveryUniversityName = discoveryUniversity?.name ?? universityName;
-  const otherCityName = otherCity?.name ?? null;
-  const activeMapCityName =
-    distanceRange === "OTHER_CITY" ? otherCityName : discoveryCityName;
-  const activeMapUniversityName =
-    distanceRange === "OTHER_CITY" ? null : discoveryUniversityName;
-  const activeMapCityNativeName =
-    distanceRange === "OTHER_CITY"
-      ? otherCity?.nativeName
-      : discoveryCity?.nativeName;
-  const activeMapUniversityNativeName =
-    distanceRange === "OTHER_CITY" ? null : discoveryUniversity?.nativeName;
   const profileIsComplete = Boolean(
     profile?.completedAt &&
     profile.discoveryCityId &&
@@ -820,31 +806,31 @@ export function MeetPanel({
               </div>
             </Card>
 
-            <MeetDiscoveryMap
-              areaLabel={
-                mode === "NEARBY"
-                  ? `Around ${
-                      activeMapUniversityName ??
-                      activeMapCityName ??
-                      "your study area"
-                    }`
-                  : "Your discovery constellation"
-              }
-              key={`${mode}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
-              mapQueries={meetMapSearchQueries({
-                universityName: activeMapUniversityName,
-                universityNativeName: activeMapUniversityNativeName,
-                cityName: activeMapCityName,
-                cityNativeName: activeMapCityNativeName,
-              })}
-              mode={mode}
-              onPremiumRequest={setPremiumReason}
-              premiumFeatures={premiumAccess.featureKeys}
-              profiles={profiles}
-              radiusMeters={nearbyRadiusMeters}
-              showEmptyState={discoveryStarted}
-              viewer={viewer}
-            />
+            {/*
+             * A list, not a map. Looking For asks who matches what you are
+             * here for; the map answered that with scattered markers drawn
+             * from points Kondo never stored. `StudentRow` is the same row
+             * Nearby uses, so the two surfaces read as one product.
+             */}
+            <div className="min-w-0">
+              <h3 className="text-lg font-black tracking-[-0.03em]">
+                People matching what you want
+              </h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {discoveryStarted
+                  ? "Based on the reasons you chose."
+                  : "Choose your reasons, then explore."}
+              </p>
+              {discoveryStarted || discovering ? (
+                <LookingForResults
+                  error={error}
+                  loading={discovering}
+                  onRetry={discoverPeople}
+                  profiles={profiles}
+                  selectedIntents={intents}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
       )}

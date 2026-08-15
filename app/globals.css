@@ -512,3 +512,21 @@ html.kondo-focus-form body {
     display: none !important;
   }
 }
+
+/*
+ * The entrance used when a journey stage becomes visible on the landing page.
+ * Short and small on purpose: it should read as the panel settling into place,
+ * not as an animation the reader has to wait through. Only ever applied via
+ * `motion-safe:`, so a reduced-motion reader gets the panel immediately.
+ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

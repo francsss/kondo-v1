@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Kondo owl avatar">
+  <circle cx="48" cy="48" r="48" fill="#4C1D95"/>
+  <circle cx="48" cy="48" r="34" fill="#6D28D9" opacity=".55"/>
+  <!-- tufts -->
+  <path d="M28 30 24 14l16 8z" fill="#8B5CF6"/>
+  <path d="M68 30 72 14l-16 8z" fill="#8B5CF6"/>
+  <!-- body -->
+  <path d="M48 22c16 0 27 12 27 26S64 76 48 76 21 62 21 48s11-26 27-26z" fill="#8B5CF6"/>
+  <!-- chest -->
+  <path d="M48 50c8 0 15 6 17 14-4 8-10 12-17 12s-13-4-17-12c2-8 9-14 17-14z" fill="#C4B5FD" opacity=".55"/>
+  <!-- eye discs -->
+  <circle cx="37" cy="43" r="12" fill="#F5F3FF"/>
+  <circle cx="59" cy="43" r="12" fill="#F5F3FF"/>
+  <circle cx="37" cy="43" r="6.4" fill="#312E81"/>
+  <circle cx="59" cy="43" r="6.4" fill="#312E81"/>
+  <circle cx="38.8" cy="41" r="2.2" fill="#FFFFFF"/>
+  <circle cx="60.8" cy="41" r="2.2" fill="#FFFFFF"/>
+  <!-- beak -->
+  <path d="M48 48l6 9h-12z" fill="#F59E0B"/>
+</svg>

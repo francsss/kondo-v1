@@ -358,8 +358,14 @@ test.describe("premium UX refinements", () => {
     await expect(list.or(empty).or(noLocation).first()).toBeVisible();
 
     if (await list.isVisible()) {
-      // Nothing may claim a distance Kondo cannot know.
-      await expect(list).not.toContainText(/\d+\s*(m|km)\b/);
+      /*
+       * Distance is now shown, computed between the two students' campuses.
+       * It must be whole kilometres: a decimal, or a figure in metres, would
+       * imply a precision Kondo does not have and should not publish.
+       */
+      await expect(list).toContainText(/(< 1|\d+) km away/);
+      await expect(list).not.toContainText(/\d+\.\d+\s*km/);
+      await expect(list).not.toContainText(/\d+\s*m away/);
       await expect(
         page.getByRole("switch", {
           name: /Visible to others|Hidden from others/,
