@@ -680,7 +680,16 @@ export function AppShell({
       </aside>
 
       <div className="lg:pl-[248px]">
-        <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        {/*
+         * Hidden on a phone while a focused form is open: the form draws its
+         * own compact header with the organization, the task and Back, so the
+         * full app bar is competing for the top of a small screen. Desktop keeps
+         * it — there is room, and it is not in the way there.
+         */}
+        <header
+          className="sticky top-0 z-30 h-16 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8"
+          data-form-hide-mobile
+        >
           <div className="mx-auto flex h-full max-w-[1440px] items-center gap-3">
             <div className="flex h-10 shrink-0 items-center lg:hidden">
               <Button
@@ -892,6 +901,7 @@ export function AppShell({
         <nav
           aria-label={`${organizationWorkspace.publicName} workspace navigation`}
           className="fixed inset-x-3 bottom-3 z-40 grid auto-cols-fr grid-flow-col rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
+          data-form-hide
         >
           {workspacePrimary.map((item) => {
             const Icon = WORKSPACE_MOBILE_ICONS[item.icon];
@@ -928,6 +938,7 @@ export function AppShell({
         <nav
           aria-label="Mobile quick navigation"
           className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
+          data-form-hide
         >
           {mobileNavigation.map(
             ({ href, icon: Icon, label, aliases }, index) => {

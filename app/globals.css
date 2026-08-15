@@ -481,3 +481,34 @@ html.kondo-focus body {
   /* The app shell reserves room for a bottom bar that is no longer there. */
   padding-bottom: 0;
 }
+
+/*
+ * Focused form flows.
+ *
+ * While a creation or edit flow is open, the app's own navigation stands down
+ * so the form owns the screen. On a phone the workspace bar sat across the
+ * bottom directly over the Continue and Publish buttons; this is what gets it
+ * out of the way, using the same marker mechanism as Focus Mode in the reader
+ * rather than inventing a second one.
+ *
+ * Context is not removed with it — the form draws its own header naming the
+ * organization and the task, and its own Back control.
+ */
+html.kondo-focus-form [data-form-hide] {
+  display: none !important;
+}
+
+html.kondo-focus-form body {
+  /* The shell reserves room for a bottom bar that is no longer there. */
+  padding-bottom: 0;
+}
+
+/*
+ * The global bar steps aside on a phone while a focused form is open. Desktop
+ * keeps it: there the header is beside the form, not on top of it.
+ */
+@media (max-width: 1023px) {
+  html.kondo-focus-form [data-form-hide-mobile] {
+    display: none !important;
+  }
+}
