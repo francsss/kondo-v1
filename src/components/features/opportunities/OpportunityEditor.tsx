@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
+import { FormResult, type FormResultState } from "@/components/ui/FormResult";
 import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadMediaFile } from "@/lib/client-media";
@@ -203,6 +205,9 @@ export function OpportunityEditor({
   const pendingRef = useRef(false);
   const draftKey = `kondo:opportunity-draft:${organization.id}:${initial?.id ?? "new"}`;
   const [step, setStep] = useState(0);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Set once the flow finishes; the outcome replaces the form.
+  const [result, setResult] = useState<FormResultState | null>(null);
   const [state, setState] = useState<EditorState>({ ...EMPTY, ...initial });
   const [cover, setCover] = useState<File | null>(null);
   const [coverAlt, setCoverAlt] = useState(initial?.title ?? "");
@@ -212,6 +217,15 @@ export function OpportunityEditor({
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [restored, setRestored] = useState(false);
+  /*
+   * Dirty means "differs from what was loaded", so an untouched form never
+   * nags, and a finished one is never dirty because the work is saved by then.
+   */
+  const pristine = useMemo(
+    () => JSON.stringify({ ...EMPTY, ...initial }),
+    [initial],
+  );
+  const isDirty = !result && JSON.stringify(state) !== pristine;
   const isScholarship = state.type === "SCHOLARSHIP";
   const isJob = [
     "INTERNSHIP",
@@ -268,6 +282,12 @@ export function OpportunityEditor({
   );
 
   function update<K extends keyof EditorState>(key: K, value: EditorState[K]) {
+    setFieldErrors((current) => {
+      if (!current[key as string]) return current;
+      const next = { ...current };
+      delete next[key as string];
+      return next;
+    });
     setState((current) => ({ ...current, [key]: value }));
     setError("");
   }
@@ -387,7 +407,65 @@ export function OpportunityEditor({
     };
   }
 
+  /*
+   * Checked when the person tries to leave a step, never on arrival, and the
+   * first offending field is focused so nobody hunts for it. Same behaviour as
+   * the catalog forms — this editor previously had none.
+   */
+  function validateStep(index: number) {
+    const next: Record<string, string> = {};
+    if (index === 0) {
+      /*
+       * These are the server's own minimums, applied where the field is —
+       * not returned as a schema error after the last step, naming a field
+       * the owner can no longer see. Kept in step with
+       * `opportunityInputSchema` in src/features/opportunities/schemas.
+       */
+      if (state.title.trim().length < 6)
+        next.title = "Enter a title of at least 6 characters.";
+      if (state.shortDescription.trim().length < 20)
+        next.shortDescription =
+          "Add a summary of at least 20 characters — this is the card text.";
+      if (state.description.trim().length < 50)
+        next.description =
+          "Describe the opportunity in at least 50 characters.";
+    }
+    if (index === 2) {
+      if (
+        state.applicationMethod === "EXTERNAL_URL" &&
+        !state.externalApplicationUrl.trim()
+      )
+        next.externalApplicationUrl = "Add the link applicants should open.";
+      if (state.applicationMethod === "EMAIL" && !state.applicationEmail.trim())
+        next.applicationEmail = "Add the address applications should go to.";
+      if (
+        state.applicationOpenAt &&
+        state.applicationDeadline &&
+        state.applicationDeadline < state.applicationOpenAt
+      )
+        next.applicationDeadline = "The deadline is before the opening date.";
+    }
+    setFieldErrors(next);
+    const first = Object.keys(next)[0];
+    if (first) {
+      const node = document.querySelector<HTMLElement>(
+        `[data-field="${first}"]`,
+      );
+      node?.scrollIntoView({ block: "center" });
+      node?.focus({ preventScroll: true });
+    }
+    return !first;
+  }
+
   async function save(submitForReview: boolean) {
+    if (submitForReview) {
+      for (const index of [0, 2]) {
+        if (!validateStep(index)) {
+          setStep(index);
+          return;
+        }
+      }
+    }
     if (pendingRef.current) return;
     if (submitForReview && !state.accuracyConfirmed) {
       setError("Confirm that the published information is accurate.");
@@ -461,7 +539,14 @@ export function OpportunityEditor({
         }
       }
       window.localStorage.removeItem(draftKey);
-      router.push(`/organizations/${organization.slug}/opportunities`);
+      setResult({
+        // Submitting produces a record awaiting review, not a public one.
+        kind: submitForReview ? "review" : "draft",
+        noun: "Opportunity",
+        title: state.title,
+        backHref: `/organizations/${organization.slug}/opportunities`,
+        backLabel: "Back to opportunities",
+      });
       router.refresh();
     } catch (caught) {
       setError(
@@ -492,6 +577,18 @@ export function OpportunityEditor({
     if (!coverAlt) setCoverAlt(state.title);
   }
 
+  if (result) {
+    return (
+      <FocusedFormShell
+        backHref={`/organizations/${organization.slug}/opportunities`}
+        context={organization.name}
+        title={initial ? "Edit opportunity" : "New opportunity"}
+      >
+        <FormResult state={result} />
+      </FocusedFormShell>
+    );
+  }
+
   return (
     /*
      * The same focused environment the catalog forms use: while this is open
@@ -504,6 +601,7 @@ export function OpportunityEditor({
       step={`Step ${step + 1} of ${STEPS.length}`}
       title={initial ? "Edit opportunity" : "New opportunity"}
     >
+      <UnsavedChangesGuard isDirty={isDirty} />
       <ol className="mt-7 grid grid-cols-3 gap-2" aria-label="Progress">
         {STEPS.map((label, index) => (
           <li key={label}>
@@ -556,21 +654,39 @@ export function OpportunityEditor({
               Title
               <input
                 className={`${fieldClass} mt-2`}
+                data-field="title"
                 maxLength={180}
                 onChange={(event) => update("title", event.target.value)}
                 value={state.title}
               />
+              {fieldErrors.title ? (
+                <span
+                  className="mt-1.5 block text-xs font-bold text-destructive"
+                  role="alert"
+                >
+                  {fieldErrors.title}
+                </span>
+              ) : null}
             </label>
             <label className="block text-sm font-bold">
               Short summary
               <textarea
                 className={`${textareaClass} mt-2 min-h-24`}
+                data-field="shortDescription"
                 maxLength={400}
                 onChange={(event) =>
                   update("shortDescription", event.target.value)
                 }
                 value={state.shortDescription}
               />
+              {fieldErrors.shortDescription ? (
+                <span
+                  className="mt-1.5 block text-xs font-bold text-destructive"
+                  role="alert"
+                >
+                  {fieldErrors.shortDescription}
+                </span>
+              ) : null}
               <span className="mt-1 block text-right text-xs font-normal text-muted-foreground">
                 {state.shortDescription.length}/400
               </span>
@@ -579,10 +695,19 @@ export function OpportunityEditor({
               Detailed description
               <textarea
                 className={`${textareaClass} mt-2 min-h-48`}
+                data-field="description"
                 maxLength={20_000}
                 onChange={(event) => update("description", event.target.value)}
                 value={state.description}
               />
+              {fieldErrors.description ? (
+                <span
+                  className="mt-1.5 block text-xs font-bold text-destructive"
+                  role="alert"
+                >
+                  {fieldErrors.description}
+                </span>
+              ) : null}
             </label>
           </div>
         ) : null}
@@ -977,12 +1102,21 @@ export function OpportunityEditor({
                 Application URL
                 <input
                   className={`${fieldClass} mt-2`}
+                  data-field="externalApplicationUrl"
                   onChange={(event) =>
                     update("externalApplicationUrl", event.target.value)
                   }
                   placeholder="https://"
                   value={state.externalApplicationUrl}
                 />
+                {fieldErrors.externalApplicationUrl ? (
+                  <span
+                    className="mt-1.5 block text-xs font-bold text-destructive"
+                    role="alert"
+                  >
+                    {fieldErrors.externalApplicationUrl}
+                  </span>
+                ) : null}
               </label>
             ) : null}
             {state.applicationMethod === "EMAIL" ? (
@@ -1183,6 +1317,7 @@ export function OpportunityEditor({
             <Button
               disabled={pending}
               onClick={() =>
+                validateStep(step) &&
                 setStep((current) => Math.min(STEPS.length - 1, current + 1))
               }
             >
