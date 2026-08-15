@@ -1,6 +1,11 @@
 /**
  * Fill in coordinates for the cities and universities Kondo knows about.
  *
+ * The initial data ships in a migration, so a deployment does not depend on
+ * anyone remembering to run this. It stays for the case the migration cannot
+ * cover: adding entries to `place-coordinates.ts` later and filling them in
+ * without writing another migration.
+ *
  * Idempotent and non-destructive: it only writes rows whose coordinates are
  * still null, so re-running it never disturbs a value someone has corrected,
  * and a place missing from the reference list is left alone rather than
