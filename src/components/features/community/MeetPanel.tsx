@@ -549,9 +549,19 @@ export function MeetPanel({
         aria-label="Meet modes"
         className="subnav-row mx-auto mb-7 max-w-5xl border-b border-border"
       >
+        {/*
+         * Nearby is not a Meet mode any more. It lives at Community → Nearby
+         * as a list of students, because the map here plotted positions Kondo
+         * has never stored: markers were a hash of the profile ID scattered
+         * around a campus anchor. Meet keeps what is genuinely its own — a
+         * random call, and matching on what people are looking for.
+         *
+         * The `NEARBY` branches further down this file are now unreachable
+         * rather than deleted; untangling them from the surrounding JSX is a
+         * separate change from this one, and Meet works as it did.
+         */}
         {[
           { value: "RANDOM" as const, label: "Random", icon: Radio },
-          { value: "NEARBY" as const, label: "Nearby", icon: MapPin },
           {
             value: "LOOKING_FOR" as const,
             label: "Looking For",
