@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { useKeyboardAwareFocus } from "@/lib/use-keyboard-aware-focus";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,11 +54,24 @@ export function FocusedFormShell({
     return () => root.classList.remove(FOCUS_CLASS);
   }, []);
 
+  // A field low in the form must not end up behind the keyboard.
+  useKeyboardAwareFocus();
+
   return (
     <div
+      /*
+       * The bottom padding grows by exactly the height the keyboard takes.
+       *
+       * Scrolling a field into view can only go as far as the document allows,
+       * so the last fields in a form stayed under the keys however hard the
+       * browser tried — there was simply no runway beneath them. The extra
+       * space is the difference between the layout and visual viewports, which
+       * is zero when no keyboard is up, so nothing changes otherwise.
+       */
       className={cn(
         "mx-auto w-full max-w-[720px] px-4 pt-4 sm:px-6 sm:pt-6",
         actions ? "pb-40" : "pb-24",
+        "pb-[calc(theme(spacing.40)+100dvh-var(--visual-viewport-height,100dvh))]",
       )}
     >
       <header className="flex items-start gap-3">
@@ -96,10 +110,24 @@ export function FocusedFormShell({
        * form it belongs to.
        */}
       {actions ? (
+        /*
+         * Lifted above the software keyboard.
+         *
+         * A `fixed bottom-0` bar sits at the bottom of the *layout* viewport,
+         * which the keyboard covers — measured with a keyboard up, the actions
+         * were at y=775 behind keys that started at y=508. The visual viewport
+         * is the part still visible, so translating by the difference between
+         * the two puts the bar exactly on top of the keyboard instead of under
+         * it. `MobileViewportStabilizer` already publishes both numbers and
+         * keeps them fresh; with no keyboard the difference is zero and nothing
+         * moves.
+         */
         <div
           className={cn(
             "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-xl",
             "px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6",
+            "translate-y-[calc(var(--visual-viewport-height,100dvh)+var(--visual-viewport-offset-top,0px)-100dvh)]",
+            "transition-transform duration-150 motion-reduce:transition-none",
           )}
         >
           <div className="mx-auto flex max-w-[720px] items-center gap-3">
