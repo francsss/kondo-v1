@@ -5,6 +5,7 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   Field,
   FormSection,
@@ -90,6 +91,8 @@ export function CatalogEditor({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // An object URL so the chosen image is previewed without a round trip.
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  // null while idle; 0-100 while an image is actually being sent.
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const initialized = useRef(false);
   const pendingRef = useRef(false);
   const draftKey = `kondo:catalog:${organization.id}:${kind}:${initial?.id ?? "new"}`;
@@ -214,7 +217,9 @@ export function CatalogEditor({
       if (saved.version) setVersion(saved.version);
       if (cover) {
         setStatus("Uploading image…");
+        setUploadProgress(0);
         const mediaId = await uploadMediaFile(cover, {
+          onProgress: setUploadProgress,
           purpose:
             kind === "product"
               ? "ORGANIZATION_PRODUCT_IMAGE"
@@ -273,6 +278,7 @@ export function CatalogEditor({
     } finally {
       pendingRef.current = false;
       setPending(false);
+      setUploadProgress(null);
     }
   }
 
@@ -475,18 +481,20 @@ export function CatalogEditor({
               onChange={(event) => update("category", event.target.value)}
               value={state.category}
             />
-            <SelectField
+            {/*
+             * Up to 500 cities arrive here. A native select makes finding one
+             * a scroll; this is type-to-filter, which is the only reason to
+             * reach for a search UI — short lists keep the plain select.
+             */}
+            <SearchableSelect
+              clearLabel="Available beyond one city"
               label="City"
-              onChange={(event) => update("cityId", event.target.value)}
-              value={state.cityId}
-            >
-              <option value="">Available beyond one city</option>
-              {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
-                </option>
-              ))}
-            </SelectField>
+              onSelect={(id) => update("cityId", id)}
+              options={cities.map((city) => ({ id: city.id, name: city.name }))}
+              placeholder="Available beyond one city"
+              searchPlaceholder="Search cities"
+              selected={state.cityId}
+            />
           </div>
 
           <Field hint="JPG, PNG or WebP · maximum 8 MB." label="Cover image">
@@ -496,12 +504,31 @@ export function CatalogEditor({
              */}
             <label className="flex min-h-32 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/25 text-sm font-bold transition hover:border-kondo-green">
               {coverPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  alt=""
-                  className="h-32 w-full object-cover"
-                  src={coverPreview}
-                />
+                <span className="relative block h-32 w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt=""
+                    className="h-32 w-full object-cover"
+                    src={coverPreview}
+                  />
+                  {/*
+                   * Progress is drawn over the preview rather than beside it,
+                   * so nothing is added to the layout while a file uploads.
+                   */}
+                  {uploadProgress !== null ? (
+                    <span className="absolute inset-x-0 bottom-0 block bg-overlay/60 px-3 py-2">
+                      <span className="block text-[11px] font-black text-white">
+                        Uploading {Math.round(uploadProgress)}%
+                      </span>
+                      <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-white/30">
+                        <span
+                          className="block h-full rounded-full bg-white transition-[width] duration-200 motion-reduce:transition-none"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </span>
+                    </span>
+                  ) : null}
+                </span>
               ) : (
                 <>
                   <ImagePlus aria-hidden="true" className="h-5 w-5" />

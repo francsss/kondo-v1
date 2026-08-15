@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
 import { cn } from "@/lib/utils";
 
 export type SearchableSelectOption = {
@@ -78,8 +79,9 @@ export function SearchableSelect({
 
   return (
     <div className="relative" ref={rootRef}>
+      {/* Same label treatment as the rest of the Kondo form primitives. */}
       <span
-        className="mb-2 flex items-center gap-2 text-sm font-bold text-kondo-ink dark:text-white"
+        className="mb-2 flex items-center gap-2 text-sm font-black text-foreground"
         id={`${id}-label`}
       >
         {icon ? (
@@ -95,9 +97,11 @@ export function SearchableSelect({
         aria-haspopup="listbox"
         aria-labelledby={`${id}-label`}
         className={cn(
-          "flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 text-left text-sm shadow-sm outline-none transition",
-          "kondo-field hover:border-kondo-green/50",
-          open && "border-kondo-green",
+          // The shared control shell, so a searchable select is the same
+          // object as every other field rather than a taller cousin.
+          KONDO_CONTROL_CLASS,
+          "flex items-center gap-3 text-left",
+          open && "border-kondo-green/55",
           disabled && "cursor-not-allowed opacity-55",
         )}
         disabled={disabled}

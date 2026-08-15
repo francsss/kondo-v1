@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
 import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadMediaFile } from "@/lib/client-media";
 
 type ReferenceOption = { id: string; name: string };
@@ -205,6 +206,8 @@ export function OpportunityEditor({
   const [state, setState] = useState<EditorState>({ ...EMPTY, ...initial });
   const [cover, setCover] = useState<File | null>(null);
   const [coverAlt, setCoverAlt] = useState(initial?.title ?? "");
+  // null while idle; 0-100 while an image is actually being sent.
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -413,7 +416,9 @@ export function OpportunityEditor({
       }
       if (cover) {
         setStatus("Uploading cover…");
+        setUploadProgress(0);
         const mediaId = await uploadMediaFile(cover, {
+          onProgress: setUploadProgress,
           purpose: "OPPORTUNITY_COVER_IMAGE",
           altText: coverAlt.trim() || state.title,
         });
@@ -468,6 +473,7 @@ export function OpportunityEditor({
     } finally {
       pendingRef.current = false;
       setPending(false);
+      setUploadProgress(null);
     }
   }
 
@@ -585,36 +591,35 @@ export function OpportunityEditor({
           <div className="space-y-5">
             <h2 className="text-lg font-black">Location and audience</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-bold">
-                Country
-                <select
-                  className={`${fieldClass} mt-2`}
-                  onChange={(event) => update("countryId", event.target.value)}
-                  value={state.countryId}
-                >
-                  <option value="">Not specified</option>
-                  {countries.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-bold">
-                City
-                <select
-                  className={`${fieldClass} mt-2`}
-                  onChange={(event) => update("cityId", event.target.value)}
-                  value={state.cityId}
-                >
-                  <option value="">Not specified</option>
-                  {availableCities.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {/*
+               * Every ISO country now reaches this list, and the city list is
+               * long too. Type-to-filter beats scrolling a native select of
+               * 242 options; the short lists nearby stay plain selects.
+               */}
+              <SearchableSelect
+                clearLabel="Not specified"
+                label="Country"
+                onSelect={(id) => update("countryId", id)}
+                options={countries.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                }))}
+                placeholder="Not specified"
+                searchPlaceholder="Search countries"
+                selected={state.countryId}
+              />
+              <SearchableSelect
+                clearLabel="Not specified"
+                label="City"
+                onSelect={(id) => update("cityId", id)}
+                options={availableCities.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                }))}
+                placeholder="Not specified"
+                searchPlaceholder="Search cities"
+                selected={state.cityId}
+              />
               <label className="text-sm font-bold">
                 University
                 <select
@@ -1086,6 +1091,19 @@ export function OpportunityEditor({
                   type="file"
                 />
               </label>
+              {uploadProgress !== null ? (
+                <span className="mt-3 block">
+                  <span className="block text-[11px] font-black text-muted-foreground">
+                    Uploading {Math.round(uploadProgress)}%
+                  </span>
+                  <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <span
+                      className="block h-full rounded-full bg-kondo-green transition-[width] duration-200 motion-reduce:transition-none"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </span>
+                </span>
+              ) : null}
               {cover ? (
                 <input
                   aria-label="Cover image description"
