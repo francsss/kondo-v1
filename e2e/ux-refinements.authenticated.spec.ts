@@ -210,7 +210,7 @@ test.describe("premium UX refinements", () => {
     }
   });
 
-  test("keeps instant video exclusive to Random and uses a privacy-first map for Nearby", async ({
+  test("keeps instant video exclusive to Random and drops the Nearby map mode", async ({
     page,
   }) => {
     await page.addInitScript({
@@ -317,54 +317,54 @@ test.describe("premium UX refinements", () => {
         .click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
     }
-    await page.getByRole("button", { name: "Nearby" }).click();
-
+    /*
+     * Nearby is no longer a Meet mode, so the switcher must not offer it. It
+     * moved to Community → Nearby as a list, because the map here plotted
+     * positions Kondo has never stored.
+     */
     await expect(
-      page.getByRole("heading", {
-        name: "Discover your Kondo neighborhood",
+      page.getByRole("navigation", { name: "Meet modes" }).getByRole("button", {
+        name: "Nearby",
       }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Start Random Matching" }),
-    ).toHaveCount(0);
-
-    await expect(page.getByText("Approximate discovery enabled")).toBeVisible();
-    await page.getByRole("button", { name: "5 km" }).click();
-    await page.getByRole("button", { name: "Explore people" }).click();
-    const discoveryMap = page.getByRole("region", {
-      name: "Nearby discovery map",
-    });
-    await expect(
-      discoveryMap.getByText("Approximate areas · never exact"),
-    ).toBeVisible();
-    await expect(discoveryMap).toHaveAttribute("data-map-provider", "google");
-    const mapStatus = await discoveryMap.getAttribute("data-map-status");
-    expect(["ready", "unavailable", "unconfigured"]).toContain(mapStatus);
-    if (mapStatus !== "ready") {
-      await expect(discoveryMap.getByRole("alert")).toContainText(
-        "Real map unavailable",
-      );
-      await expect(discoveryMap.getByRole("alert")).toContainText(
-        "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
-      );
-      return;
-    }
-    await expect(
-      discoveryMap.getByRole("button", { name: /^Preview / }),
     ).not.toHaveCount(0);
-    const visibleMapMarker = discoveryMap
-      .getByRole("button", { name: /approximate area$/ })
-      .first();
-    await expect(visibleMapMarker).toBeVisible();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 
-    await visibleMapMarker.click({ force: true });
+  test("shows Nearby as a list of students with no map", async ({ page }) => {
+    await page.goto("/communities?tab=nearby");
+
     await expect(
-      discoveryMap.getByRole("button", { name: "Full profile" }),
+      page.getByRole("heading", { name: "Nearby", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await discoveryMap.getByRole("button", { name: "Full profile" }).click();
-    await expect(page.getByRole("dialog")).toContainText("Meet Premium");
+    // The map is gone, in every form it used to take.
+    await expect(
+      page.getByRole("region", { name: "Nearby discovery map" }),
+    ).toHaveCount(0);
+    await expect(page.locator("[data-map-provider]")).toHaveCount(0);
+    await expect(page.locator("canvas")).toHaveCount(0);
+
+    /*
+     * Either the list or one of its honest fallbacks, depending on what the
+     * seeded account has: students, nobody nearby yet, or no study city set.
+     */
+    const list = page.getByRole("list", { name: "Students near you" });
+    const empty = page.getByText("No students nearby yet.");
+    const noLocation = page.getByRole("heading", {
+      name: "Find students near you",
+    });
+    await expect(list.or(empty).or(noLocation).first()).toBeVisible();
+
+    if (await list.isVisible()) {
+      // Nothing may claim a distance Kondo cannot know.
+      await expect(list).not.toContainText(/\d+\s*(m|km)\b/);
+      await expect(
+        page.getByRole("switch", {
+          name: /Visible to others|Hidden from others/,
+        }),
+      ).toHaveCount(1);
+    }
   });
 });
