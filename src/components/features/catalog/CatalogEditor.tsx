@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { FormResult, type FormResultState } from "@/components/ui/FormResult";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
 import {
+  CheckboxField,
   Field,
   FormSection,
   SelectField,
@@ -93,6 +97,9 @@ export function CatalogEditor({
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   // null while idle; 0-100 while an image is actually being sent.
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  // Set once the form has finished; the shell then shows the outcome instead
+  // of dropping the owner back on a list with no confirmation.
+  const [result, setResult] = useState<FormResultState | null>(null);
   const initialized = useRef(false);
   const pendingRef = useRef(false);
   const draftKey = `kondo:catalog:${organization.id}:${kind}:${initial?.id ?? "new"}`;
@@ -146,6 +153,19 @@ export function CatalogEditor({
     [kind, state, version],
   );
   const draftSignature = JSON.stringify({ ...payload, version: 0 });
+  /*
+   * Dirty means "differs from what was loaded", so an untouched form never
+   * nags. A finished form is never dirty — the work is saved by then.
+   */
+  const pristineSignature = useMemo(
+    () => JSON.stringify({ ...payload, version: 0 }),
+    // Only the values loaded into the form; recomputing on every keystroke
+    // would make the form permanently pristine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const isDirty =
+    !result && (draftSignature !== pristineSignature || Boolean(cover));
 
   // Existing drafts autosave after a calm pause. New records stay local until
   // the user explicitly creates the first server draft, avoiding duplicate
@@ -264,8 +284,25 @@ export function CatalogEditor({
       }
       window.localStorage.removeItem(draftKey);
       setStatus(submit ? "Submitted" : "Saved");
-      if (submit || !initial) {
-        router.push(`/organizations/${organization.slug}/catalog`);
+      if (submit) {
+        // Submitting creates a PENDING_REVIEW record, so it is reported as
+        // exactly that. Only something genuinely public is called published.
+        setResult({
+          kind: "review",
+          noun: kind === "product" ? "Product" : "Service",
+          title: state.title,
+          backHref: `/organizations/${organization.slug}/catalog`,
+          backLabel: `Back to ${endpointName}`,
+        });
+        router.refresh();
+      } else if (!initial) {
+        setResult({
+          kind: "draft",
+          noun: kind === "product" ? "Product" : "Service",
+          title: state.title,
+          backHref: `/organizations/${organization.slug}/catalog`,
+          backLabel: `Back to ${endpointName}`,
+        });
         router.refresh();
       }
     } catch (caught) {
@@ -300,6 +337,19 @@ export function CatalogEditor({
       const body = await response.json().catch(() => null);
       if (!response.ok)
         throw new Error(body?.error ?? "The status could not be changed.");
+      if (action === "PUBLISH") {
+        setResult({
+          kind: "published",
+          noun: kind === "product" ? "Product" : "Service",
+          title: state.title,
+          viewHref: `/organizations/${organization.slug}`,
+          viewLabel: "View public page",
+          backHref: `/organizations/${organization.slug}/catalog`,
+          backLabel: `Back to ${endpointName}`,
+        });
+        router.refresh();
+        return;
+      }
       router.push(`/organizations/${organization.slug}/catalog`);
       router.refresh();
     } catch (caught) {
@@ -347,9 +397,21 @@ export function CatalogEditor({
   function validateStep(index: number) {
     const next: Record<string, string> = {};
     if (index === 0) {
-      if (!state.title.trim()) next.title = `Enter a ${kind} name.`;
-      if (!state.shortDescription.trim())
-        next.shortDescription = "Add a short description.";
+      /*
+       * These thresholds are the server's publish rules, checked here rather
+       * than only there. Submitting used to fail at the last step with
+       * "Complete the short description, description before submitting" —
+       * a message about fields two screens back, with no way to reach them.
+       * Kept in step with `assertPublishReady` in src/lib/organization-catalog.
+       */
+      if (state.title.trim().length < 3)
+        next.title = `Enter a ${kind} name of at least 3 characters.`;
+      if (state.shortDescription.trim().length < 20)
+        next.shortDescription =
+          "Add a short description of at least 20 characters — this is the card text.";
+      if (state.description.trim().length < 40)
+        next.description = `Describe the ${kind} in at least 40 characters.`;
+      if (state.category.trim().length < 2) next.category = "Add a category.";
     }
     if (index === 1) {
       if (needsAmount && !(Number(state.price) > 0))
@@ -383,6 +445,18 @@ export function CatalogEditor({
     await save(true);
   }
 
+  if (result) {
+    return (
+      <FocusedFormShell
+        backHref={`/organizations/${organization.slug}/catalog`}
+        context={organization.name}
+        title={initial ? `Edit ${kind}` : `New ${kind}`}
+      >
+        <FormResult state={result} />
+      </FocusedFormShell>
+    );
+  }
+
   return (
     <FocusedFormShell
       actions={
@@ -392,19 +466,29 @@ export function CatalogEditor({
            * quiet one and shrinks to its label; the primary action keeps its
            * full size and never wraps off the edge.
            */}
-          <Button
-            className="shrink-0 px-3"
-            disabled={pending}
-            onClick={() =>
-              step === 0
-                ? router.push(`/organizations/${organization.slug}/catalog`)
-                : setStep((value) => value - 1)
-            }
-            type="button"
-            variant="ghost"
-          >
-            {step === 0 ? "Cancel" : "Back"}
-          </Button>
+          {step === 0 ? (
+            /*
+             * A link, not a button: `UnsavedChangesGuard` intercepts anchor
+             * clicks, so leaving this way asks before discarding work. Moving
+             * between steps is not a navigation and stays a button.
+             */
+            <Link
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-black text-muted-foreground transition hover:text-foreground"
+              href={`/organizations/${organization.slug}/catalog`}
+            >
+              Cancel
+            </Link>
+          ) : (
+            <Button
+              className="shrink-0 px-3"
+              disabled={pending}
+              onClick={() => setStep((value) => value - 1)}
+              type="button"
+              variant="ghost"
+            >
+              Back
+            </Button>
+          )}
           <Button
             className="ml-auto shrink-0 px-3"
             disabled={pending}
@@ -438,6 +522,7 @@ export function CatalogEditor({
       step={`Step ${step + 1} of ${STEPS.length}`}
       title={initial ? `Edit ${kind}` : `New ${kind}`}
     >
+      <UnsavedChangesGuard isDirty={isDirty} />
       <p aria-live="polite" className="sr-only">
         {status}
       </p>
@@ -467,6 +552,8 @@ export function CatalogEditor({
             value={state.shortDescription}
           />
           <TextAreaField
+            data-field="description"
+            error={fieldErrors.description}
             hint={`Tell students what this ${kind} includes.`}
             label="Full description"
             maxLength={10000}
@@ -476,6 +563,8 @@ export function CatalogEditor({
           />
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField
+              data-field="category"
+              error={fieldErrors.category}
               label="Category"
               maxLength={100}
               onChange={(event) => update("category", event.target.value)}
@@ -682,20 +771,13 @@ export function CatalogEditor({
                 {organization.name} · submitted for review before it goes public
               </p>
             </div>
-            <label className="flex items-start gap-3 rounded-2xl border border-border p-4 text-sm font-semibold">
-              <input
-                checked={state.accuracyConfirmed}
-                className="mt-1 h-4 w-4 accent-kondo-green"
-                onChange={(event) =>
-                  update("accuracyConfirmed", event.target.checked)
-                }
-                type="checkbox"
-              />
-              <span>
-                I confirm the description, price, availability and external
-                claims are accurate and authorized by this organization.
-              </span>
-            </label>
+            <CheckboxField
+              checked={state.accuracyConfirmed}
+              label="I confirm the description, price, availability and external claims are accurate and authorized by this organization."
+              onChange={(event) =>
+                update("accuracyConfirmed", event.target.checked)
+              }
+            />
           </FormSection>
 
           {initial && (pendingReview || published) && canPublish ? (

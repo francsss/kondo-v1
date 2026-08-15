@@ -244,3 +244,180 @@ export function FormSection({
     </section>
   );
 }
+
+/**
+ * A checkbox that is a real target, not a 16px square with text beside it.
+ *
+ * The whole row is the label, so the touch area is the row — the confirmation
+ * checkboxes on the publishing forms were previously a bare input that a thumb
+ * had to find exactly.
+ */
+export function CheckboxField({
+  label,
+  hint,
+  className,
+  ...props
+}: {
+  label: ReactNode;
+  hint?: string;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const id = useId();
+  return (
+    <div className={cn("block", className)}>
+      <label
+        className="flex min-h-12 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm font-semibold text-foreground transition hover:border-kondo-green/40"
+        htmlFor={id}
+      >
+        <input
+          className="mt-0.5 h-4 w-4 shrink-0 accent-kondo-green"
+          id={id}
+          type="checkbox"
+          {...props}
+        />
+        <span className="min-w-0 flex-1 leading-6">
+          {label}
+          {hint ? (
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              {hint}
+            </span>
+          ) : null}
+        </span>
+      </label>
+    </div>
+  );
+}
+
+/**
+ * One choice from a few. A radio group rather than a select, because for three
+ * or four options a list you can see beats a menu you have to open — and unlike
+ * a select it says what the alternatives are without being touched.
+ */
+export function RadioGroupField<T extends string>({
+  label,
+  hint,
+  error,
+  options,
+  value,
+  onValueChange,
+  columns = 1,
+}: {
+  label: string;
+  hint?: string;
+  error?: string;
+  options: ReadonlyArray<{ value: T; label: string; hint?: string }>;
+  value: T;
+  onValueChange: (value: T) => void;
+  columns?: 1 | 2;
+}) {
+  const name = useId();
+  return (
+    <fieldset>
+      <legend className="text-sm font-black text-foreground">{label}</legend>
+      {hint ? (
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{hint}</p>
+      ) : null}
+      <div
+        className={cn(
+          "mt-2 grid gap-2",
+          columns === 2 ? "sm:grid-cols-2" : undefined,
+        )}
+      >
+        {options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <label
+              className={cn(
+                "flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-bold transition",
+                selected
+                  ? "border-kondo-green bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+                  : "border-border bg-card text-foreground hover:border-kondo-green/40",
+              )}
+              key={option.value}
+            >
+              <input
+                checked={selected}
+                className="h-4 w-4 shrink-0 accent-kondo-green"
+                name={name}
+                onChange={() => onValueChange(option.value)}
+                type="radio"
+                value={option.value}
+              />
+              <span className="min-w-0 flex-1">
+                {option.label}
+                {option.hint ? (
+                  <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                    {option.hint}
+                  </span>
+                ) : null}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {error ? (
+        <p className="mt-1.5 text-xs font-bold text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
+/** An on/off setting. The control is the row, so the whole thing is tappable. */
+export function SwitchField({
+  label,
+  hint,
+  checked,
+  onCheckedChange,
+  disabled,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  return (
+    <label
+      className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 transition hover:border-kondo-green/40"
+      htmlFor={id}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-black text-foreground">
+          {label}
+        </span>
+        {hint ? (
+          <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+            {hint}
+          </span>
+        ) : null}
+      </span>
+      <span
+        className={cn(
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+          checked ? "bg-kondo-green" : "bg-muted",
+          disabled && "opacity-60",
+        )}
+      >
+        <input
+          aria-label={label}
+          checked={checked}
+          className="peer sr-only"
+          disabled={disabled}
+          id={id}
+          onChange={(event) => onCheckedChange(event.target.checked)}
+          role="switch"
+          type="checkbox"
+        />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform motion-reduce:transition-none",
+            checked ? "translate-x-5" : "translate-x-0",
+          )}
+        />
+      </span>
+    </label>
+  );
+}
