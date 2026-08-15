@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Kondo panda avatar">
+  <circle cx="48" cy="48" r="48" fill="#334155"/>
+  <circle cx="48" cy="48" r="34" fill="#475569" opacity=".55"/>
+  <!-- ears -->
+  <circle cx="26" cy="26" r="11" fill="#111827"/>
+  <circle cx="70" cy="26" r="11" fill="#111827"/>
+  <!-- head -->
+  <circle cx="48" cy="50" r="30" fill="#F8FAFC"/>
+  <!-- eye patches -->
+  <ellipse cx="37" cy="45" rx="9.5" ry="11.5" fill="#111827" transform="rotate(-12 37 45)"/>
+  <ellipse cx="59" cy="45" rx="9.5" ry="11.5" fill="#111827" transform="rotate(12 59 45)"/>
+  <circle cx="37.5" cy="46" r="4.2" fill="#F8FAFC"/>
+  <circle cx="58.5" cy="46" r="4.2" fill="#F8FAFC"/>
+  <circle cx="37.5" cy="46" r="2.2" fill="#111827"/>
+  <circle cx="58.5" cy="46" r="2.2" fill="#111827"/>
+  <!-- muzzle -->
+  <ellipse cx="48" cy="62" rx="12" ry="9" fill="#E2E8F0"/>
+  <path d="M48 57c3 0 5 1.6 5 3.4S50.6 64 48 64s-5-1.4-5-3.6S45 57 48 57z" fill="#111827"/>
+  <path d="M48 64v3.5" stroke="#111827" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M48 67.5c-2.4 2.6-6 2.2-7.4.2M48 67.5c2.4 2.6 6 2.2 7.4.2" stroke="#111827" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+</svg>

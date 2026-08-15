@@ -1189,6 +1189,9 @@ model City {
   slug                  String                   @unique
   name                  String
   province              String?
+  /// Published city-centre coordinates. Never a person's position.
+  latitude              Decimal?                 @db.Decimal(9, 6)
+  longitude             Decimal?                 @db.Decimal(9, 6)
   countryId             String
   country               Country                  @relation(fields: [countryId], references: [id], onDelete: Restrict)
   isActive              Boolean                  @default(true)
@@ -1216,6 +1219,7 @@ model City {
   @@unique([countryId, name])
   @@index([countryId])
   @@index([countryId, isActive, name])
+  @@index([latitude, longitude])
 }
 
 model University {
@@ -1223,6 +1227,9 @@ model University {
   slug                  String                          @unique
   name                  String
   shortName             String?
+  /// Published campus coordinates. Never a person's position.
+  latitude              Decimal?                        @db.Decimal(9, 6)
+  longitude             Decimal?                        @db.Decimal(9, 6)
   countryId             String
   country               Country                         @relation(fields: [countryId], references: [id], onDelete: Restrict)
   cityId                String
@@ -1252,6 +1259,7 @@ model University {
   @@index([countryId])
   @@index([cityId])
   @@index([cityId, isActive, verified, name])
+  @@index([latitude, longitude])
 }
 
 model UserJourneyDetail {

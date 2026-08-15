@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { logServerEvent } from "@/lib/logger";
 import {
   getNearbyStudents,
+  getViewerStudyPoint,
   NEARBY_PAGE_SIZE,
   type NearbyFilter,
 } from "@/lib/nearby-students";
@@ -34,12 +35,14 @@ export async function GET(request: NextRequest) {
   const cursor = url.searchParams.get("cursor");
 
   try {
+    const point = await getViewerStudyPoint(user);
     const result = await getNearbyStudents({
       viewer: {
         id: user.id,
         cityId: user.cityId,
         universityId: user.universityId,
         degree: user.degree,
+        point,
       },
       filter,
       cursor,

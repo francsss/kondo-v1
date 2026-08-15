@@ -15,6 +15,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { hasTrustedOrigin, internalApiError, jsonError } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
+import {
+  distanceLabel,
+  studentDistanceKilometres,
+  studyPoint,
+} from "@/lib/student-distance";
 
 function allowsGender(
   preference: "ALL" | "MALE" | "FEMALE",
@@ -251,8 +256,18 @@ export async function POST(request: NextRequest) {
         officialOrganizationName: true,
         officialVerifiedAt: true,
         country: { select: { name: true, emoji: true } },
-        city: { select: { name: true } },
-        university: { select: { id: true, name: true, shortName: true } },
+        // Coordinates of the places, never of the person: they are used to
+        // compute the label below and never leave the server.
+        city: { select: { name: true, latitude: true, longitude: true } },
+        university: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            latitude: true,
+            longitude: true,
+          },
+        },
         meetDiscoveryProfile: {
           include: {
             discoveryCity: { select: { name: true } },
@@ -264,6 +279,33 @@ export async function POST(request: NextRequest) {
       },
       orderBy: [{ lastActiveAt: "desc" }, { createdAt: "desc" }],
       take: access.active ? 60 : 30,
+    });
+
+    /*
+     * Where the viewer studies, for the distance on each row. Looking For
+     * answers "who matches what I want" — but how far away they are is still
+     * the second thing anyone asks, and it is the same honest calculation
+     * Nearby uses: campus to campus, city to city, never person to person.
+     */
+    const [viewerUniversity, viewerCity] = await Promise.all([
+      targetUniversityId
+        ? prisma.university.findUnique({
+            where: { id: targetUniversityId },
+            select: { latitude: true, longitude: true },
+          })
+        : null,
+      targetCityId
+        ? prisma.city.findUnique({
+            where: { id: targetCityId },
+            select: { latitude: true, longitude: true },
+          })
+        : null,
+    ]);
+    const viewerPoint = studyPoint({
+      universityLatitude: viewerUniversity?.latitude,
+      universityLongitude: viewerUniversity?.longitude,
+      cityLatitude: viewerCity?.latitude,
+      cityLongitude: viewerCity?.longitude,
     });
 
     const profiles = candidates
@@ -334,22 +376,30 @@ export async function POST(request: NextRequest) {
         const candidateCityId = discovery.discoveryCityId ?? candidate.cityId;
         const candidateUniversityId =
           discovery.discoveryUniversityId ?? candidate.universityId;
-        const distanceLabel =
-          parsed.data.mode !== "NEARBY"
-            ? candidateUniversityId === targetUniversityId && university
-              ? `Near ${university}`
-              : candidateCityId === targetCityId
-                ? `Around ${city ?? "your study city"}`
-                : null
-            : parsed.data.distanceRange === "KM_5" && university
-              ? `Near ${university}`
-              : parsed.data.distanceRange === "KM_10" && university
-                ? `Around the ${university} study area`
-                : parsed.data.distanceRange === "KM_20"
-                  ? `Within the ${city ?? "selected city"} student area`
-                  : parsed.data.distanceRange === "OTHER_CITY"
-                    ? `Around ${city ?? "the selected city"}`
-                    : `Around ${city ?? "your study city"}`;
+        /*
+         * A real distance where both places are mapped, otherwise the area
+         * wording this endpoint already used. Nothing is invented: an unmapped
+         * place yields no kilometres rather than a plausible-looking number.
+         */
+        const distance = canShowLocation
+          ? distanceLabel(
+              studentDistanceKilometres(
+                viewerPoint,
+                studyPoint({
+                  universityLatitude: candidate.university?.latitude,
+                  universityLongitude: candidate.university?.longitude,
+                  cityLatitude: candidate.city?.latitude,
+                  cityLongitude: candidate.city?.longitude,
+                }),
+              ),
+            )
+          : null;
+        const areaLabel =
+          candidateUniversityId === targetUniversityId && university
+            ? `Near ${university}`
+            : candidateCityId === targetCityId
+              ? `Around ${city ?? "your study city"}`
+              : null;
 
         return {
           id: candidate.id,
@@ -362,7 +412,7 @@ export async function POST(request: NextRequest) {
             candidate.profileAudience === "PUBLIC" ? candidate.gender : null,
           age: discovery.showAge ? ageFromBirthYear(discovery.birthYear) : null,
           lastActiveAt: candidate.lastActiveAt?.toISOString() ?? null,
-          distanceLabel,
+          distanceLabel: distance ?? areaLabel,
           location: canShowLocation
             ? {
                 city: parsed.data.mode === "NEARBY" ? "Approximate area" : city,

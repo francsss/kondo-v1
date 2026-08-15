@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Kondo tiger avatar">
+  <circle cx="48" cy="48" r="48" fill="#B45309"/>
+  <circle cx="48" cy="48" r="34" fill="#D97706" opacity=".55"/>
+  <!-- ears -->
+  <circle cx="25" cy="28" r="10" fill="#F59E0B"/>
+  <circle cx="71" cy="28" r="10" fill="#F59E0B"/>
+  <circle cx="25" cy="28" r="4.6" fill="#7C2D12"/>
+  <circle cx="71" cy="28" r="4.6" fill="#7C2D12"/>
+  <!-- head -->
+  <path d="M48 20c17 0 28 12 28 27S65 78 48 78 20 62 20 47 31 20 48 20z" fill="#F59E0B"/>
+  <!-- stripes -->
+  <path d="M48 20v9M34 24l3 8M62 24l-3 8M22 42l9 3M74 42l-9 3M23 56l8 2M73 56l-8 2" stroke="#7C2D12" stroke-width="3.4" stroke-linecap="round"/>
+  <!-- muzzle -->
+  <ellipse cx="48" cy="60" rx="15" ry="11" fill="#FEF3C7"/>
+  <!-- eyes -->
+  <circle cx="38" cy="45" r="5" fill="#1F2937"/>
+  <circle cx="58" cy="45" r="5" fill="#1F2937"/>
+  <circle cx="39.6" cy="43.4" r="1.7" fill="#FFFFFF"/>
+  <circle cx="59.6" cy="43.4" r="1.7" fill="#FFFFFF"/>
+  <!-- nose and mouth -->
+  <path d="M48 54c2.8 0 4.6 1.5 4.6 3.2S50.6 60 48 60s-4.6-1.2-4.6-2.8S45.2 54 48 54z" fill="#7C2D12"/>
+  <path d="M48 60v3.4" stroke="#7C2D12" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M48 63.4c-2.2 2.4-5.4 2-6.6.2M48 63.4c2.2 2.4 5.4 2 6.6.2" stroke="#7C2D12" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+</svg>

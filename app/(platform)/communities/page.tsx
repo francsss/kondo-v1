@@ -18,7 +18,7 @@ import { getCommunityDirectory } from "@/lib/platform-queries";
 import { getPremiumAccess } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
 import { NearbyStudents } from "@/components/features/community/NearbyStudents";
-import { getNearbyStudents } from "@/lib/nearby-students";
+import { getNearbyStudents, getViewerStudyPoint } from "@/lib/nearby-students";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Communities" };
@@ -136,15 +136,18 @@ export default async function CommunitiesPage({
         })
       : Promise.resolve(null),
     tab === "nearby"
-      ? getNearbyStudents({
-          viewer: {
-            id: user.id,
-            cityId: user.cityId,
-            universityId: user.universityId,
-            degree: user.degree,
-          },
-          filter: "ALL",
-        })
+      ? getViewerStudyPoint(user).then((point) =>
+          getNearbyStudents({
+            viewer: {
+              id: user.id,
+              cityId: user.cityId,
+              universityId: user.universityId,
+              degree: user.degree,
+              point,
+            },
+            filter: "ALL",
+          }),
+        )
       : Promise.resolve({ students: [], nextCursor: null }),
     tab === "meet"
       ? getPremiumAccess(user.id)
