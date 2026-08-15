@@ -327,9 +327,14 @@ function pageTextFromItems(items: Array<Record<string, unknown>>) {
 
 async function extractEmbeddedPdfText(bytes: Uint8Array) {
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  /*
+   * `isEvalSupported: false` used to be set here. pdfjs 6 removed the option
+   * along with the thing it guarded: there is no `eval` and no `new Function`
+   * left anywhere in the library or its worker, so the hardening it bought is
+   * now unconditional rather than lost.
+   */
   const loadingTask = getDocument({
     data: Uint8Array.from(bytes),
-    isEvalSupported: false,
     useSystemFonts: true,
     disableFontFace: true,
   });
@@ -363,7 +368,14 @@ async function extractEmbeddedPdfText(bytes: Uint8Array) {
     }
     return { pageCount: document.numPages, text: pages.join("\n\n") };
   } finally {
-    await document.destroy();
+    /*
+     * The loading task owns teardown, not the document. `PDFDocumentProxy`
+     * carried a `destroy()` in pdfjs 5 and dropped it in 6, so this line threw
+     * a TypeError from a `finally` — which discarded the extracted text and
+     * quietly demoted every text PDF to the much slower OCR path. The task's
+     * `destroy()` exists in both majors.
+     */
+    await loadingTask.destroy();
   }
 }
 
@@ -371,8 +383,8 @@ async function extractScannedPdfText(bytes: Uint8Array) {
   const { pdf } = await import("pdf-to-img");
   const document = await pdf(Buffer.from(bytes), {
     scale: 2.8,
+    // See the note above: `isEvalSupported` no longer exists in pdfjs 6.
     docInitParams: {
-      isEvalSupported: false,
       useSystemFonts: true,
       disableFontFace: true,
     },
