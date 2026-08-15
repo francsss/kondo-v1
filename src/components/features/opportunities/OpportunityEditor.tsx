@@ -12,6 +12,8 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
 import { uploadMediaFile } from "@/lib/client-media";
 
 type ReferenceOption = { id: string; name: string };
@@ -69,14 +71,16 @@ type InitialOpportunity = Partial<EditorState> & {
   coverMediaId?: string | null;
 };
 
-const STEPS = [
-  "Basics",
-  "Location",
-  "Eligibility",
-  "Benefits",
-  "Application",
-  "Review",
-] as const;
+/*
+ * Three steps, not six.
+ *
+ * Publishing an opportunity was six screens — Basics, Location, Eligibility,
+ * Benefits, Application, Review — several of which held two or three fields.
+ * That is more Continue presses than thinking. Grouped by the question being
+ * answered: what is it and where, who it is for and what they get, and how to
+ * apply.
+ */
+const STEPS = ["What & where", "Who & what they get", "How to apply"] as const;
 
 const TYPES = [
   ["SCHOLARSHIP", "Scholarship"],
@@ -145,9 +149,16 @@ const EMPTY: EditorState = {
   accuracyConfirmed: false,
 };
 
-const fieldClass =
-  "h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm text-foreground outline-none transition focus:border-kondo-green focus:ring-4 focus:ring-kondo-green/10";
-const textareaClass = `${fieldClass} h-auto min-h-28 py-3 leading-6`;
+/*
+ * The same field the rest of Kondo now uses.
+ *
+ * These were a local variation with a 4px focus ring — a heavy green halo that
+ * did not match anything else and read as an error state. The shared shell
+ * keeps the border at 1px in every state and draws focus inset, so nothing
+ * moves and the treatment is identical across every Kondo form.
+ */
+const fieldClass = KONDO_CONTROL_CLASS;
+const textareaClass = `${fieldClass} min-h-28 py-3 leading-7`;
 
 function lines(value: string) {
   return value
@@ -476,21 +487,18 @@ export function OpportunityEditor({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-24 pt-7 sm:px-6 lg:pt-10">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-        {organization.name}
-      </p>
-      <h1 className="mt-2 text-3xl font-black tracking-[-0.04em]">
-        {initial ? "Edit opportunity" : "Create an opportunity"}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        A guided, saveable workflow for accurate and trustworthy listings.
-      </p>
-
-      <ol
-        className="mt-7 grid grid-cols-3 gap-2 sm:grid-cols-6"
-        aria-label="Progress"
-      >
+    /*
+     * The same focused environment the catalog forms use: while this is open
+     * the workspace bottom bar stands down so it cannot sit over the actions,
+     * and the header keeps the organization and the task in view.
+     */
+    <FocusedFormShell
+      backHref={`/organizations/${organization.slug}/opportunities`}
+      context={organization.name}
+      step={`Step ${step + 1} of ${STEPS.length}`}
+      title={initial ? "Edit opportunity" : "New opportunity"}
+    >
+      <ol className="mt-7 grid grid-cols-3 gap-2" aria-label="Progress">
         {STEPS.map((label, index) => (
           <li key={label}>
             <button
@@ -573,7 +581,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 1 ? (
+        {step === 0 ? (
           <div className="space-y-5">
             <h2 className="text-lg font-black">Location and audience</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -673,7 +681,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 2 ? (
+        {step === 1 ? (
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-black">Eligibility</h2>
@@ -712,7 +720,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 3 ? (
+        {step === 1 ? (
           <div className="space-y-5">
             <h2 className="text-lg font-black">Benefits and requirements</h2>
             {isScholarship ? (
@@ -905,7 +913,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 4 ? (
+        {step === 2 ? (
           <div className="space-y-5">
             <h2 className="text-lg font-black">Dates and application method</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1012,7 +1020,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 5 ? (
+        {step === 2 ? (
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-black">Review and presentation</h2>
@@ -1166,6 +1174,6 @@ export function OpportunityEditor({
           )}
         </div>
       </div>
-    </div>
+    </FocusedFormShell>
   );
 }
