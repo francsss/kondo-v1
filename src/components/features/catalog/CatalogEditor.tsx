@@ -384,6 +384,17 @@ export function CatalogEditor({
     if (!coverAlt) setCoverAlt(state.title);
   }
 
+  /*
+   * Only ever a `blob:` URL minted by `URL.createObjectURL` above — but the
+   * chain starts at `event.target.files`, so a taint analyser reasonably
+   * follows browser-supplied text all the way to an `img src`. The invariant
+   * is cheaper to assert than to argue, and a preview that somehow was not a
+   * blob URL is one this form should decline to render anyway.
+   */
+  const coverPreviewSrc = coverPreview?.startsWith("blob:")
+    ? coverPreview
+    : undefined;
+
   const published = initial?.status === "PUBLISHED";
   const pendingReview = initial?.status === "PENDING_REVIEW";
   const needsAmount =
@@ -592,13 +603,13 @@ export function CatalogEditor({
              * so choosing an image never pushes the rest of the form down.
              */}
             <label className="flex min-h-32 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/25 text-sm font-bold transition hover:border-kondo-green">
-              {coverPreview ? (
+              {coverPreviewSrc ? (
                 <span className="relative block h-32 w-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     alt=""
                     className="h-32 w-full object-cover"
-                    src={coverPreview}
+                    src={coverPreviewSrc}
                   />
                   {/*
                    * Progress is drawn over the preview rather than beside it,
