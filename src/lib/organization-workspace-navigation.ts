@@ -125,20 +125,22 @@ export function organizationWorkspaceNavigation(input: {
     primaryOnMobile: true,
   });
 
+  /*
+   * One entry for the profile, not two.
+   *
+   * "Profile" and "Public profile" sat side by side as separate destinations
+   * while describing one thing — the organization's identity and how it
+   * appears publicly. Nobody could tell from the labels which one held the
+   * field they wanted. Profile is now the single home; publication and the
+   * link out to the live page are reached from inside it, and
+   * `/public-profile` stays a working route rather than being deleted.
+   */
   if (permitted(membership, "ORGANIZATION_VIEW_DASHBOARD")) {
     push({
       key: "profile",
       segment: "profile",
       label: "Profile",
       icon: "profile",
-      state: "enabled",
-      primaryOnMobile: false,
-    });
-    push({
-      key: "public-profile",
-      segment: "public-profile",
-      label: "Public profile",
-      icon: "public-profile",
       state: "enabled",
       primaryOnMobile: false,
     });

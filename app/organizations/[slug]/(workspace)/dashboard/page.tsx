@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import { OrganizationVisibilityPanel } from "@/components/organizations/OrganizationVisibilityPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { hasOrganizationPermission } from "@/lib/organization-authorization";
@@ -14,6 +15,7 @@ import { opportunitySetupState } from "@/lib/organization-workspace-navigation";
 import { listOrganizationActivity } from "@/lib/organization-workspaces";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { captureServerProductEvent } from "@/lib/product-analytics-server";
+import { getOrganizationPublicationReadiness } from "@/lib/organization-publication";
 import { requireUser } from "@/lib/server-auth";
 
 export default async function OrganizationDashboardPage({
@@ -29,6 +31,7 @@ export default async function OrganizationDashboardPage({
     1,
   );
   const { organization, membership, counts, completeness } = workspace;
+  const readiness = await getOrganizationPublicationReadiness(organization.id);
   await captureServerProductEvent({
     distinctId: user.id,
     event: PRODUCT_EVENTS.ORGANIZATION_WORKSPACE_OPENED,
@@ -110,6 +113,24 @@ export default async function OrganizationDashboardPage({
 
   return (
     <div className="grid gap-6">
+      {/*
+       * First thing in the workspace, because it answers the question an owner
+       * cannot otherwise answer without making a second account: can anyone
+       * actually find us?
+       */}
+      <OrganizationVisibilityPanel
+        state={{
+          slug: organization.slug,
+          publicProfileStatus: organization.publicProfileStatus,
+          missing: readiness.missingRequirements,
+          blocking: readiness.blockingReasons,
+          canPublish: hasOrganizationPermission(
+            { role: membership.storedRole, status: membership.status },
+            "ORGANIZATION_MANAGE_PUBLICATION",
+          ),
+        }}
+      />
+
       <section className="grid gap-5 rounded-4xl bg-gradient-to-br from-kondo-forest via-kondo-green to-emerald-600 p-6 text-white shadow-lift sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">
