@@ -212,7 +212,6 @@ export default async function CommunitiesPage({
               initialCityId={user.cityId}
               initialIntents={user.meetIntents}
               initialLanguages={user.languages}
-              initialNearbyEnabled={user.nearbyDiscoveryEnabled}
               initialProfile={meetProfile}
               initialUniversityId={user.universityId}
               premiumAccess={premiumAccess}
@@ -220,12 +219,6 @@ export default async function CommunitiesPage({
               universityName={
                 user.university?.shortName ?? user.university?.name ?? null
               }
-              viewer={{
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                avatarMediaId: user.avatarMediaId,
-              }}
             />
           </section>
         ) : null}

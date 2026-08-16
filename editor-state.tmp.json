@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "kondo_session",
+      "value": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJjbXN2eXFhYmcwMDAxbDd1YnNjZGZtbzlwIiwiZW1haWwiOiJlZGl0b3JAa29uZG8udGVzdCIsInJvbGUiOiJBRE1JTiIsInNlc3Npb25JZCI6IkJXWGlaR05OUHdqbEhLS3RyYU5qVzZuTkVxTXlGcmZnMmhXYXFnSW5QZ1UiLCJpYXQiOjE3ODY4OTc4MzYsImV4cCI6MTc4NzUwMjYzNn0.OWEPcES4QKIZc8tymJ4KdzVWP8vuGUrf5e_kGn3ETUg",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1787502636.540045,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}
