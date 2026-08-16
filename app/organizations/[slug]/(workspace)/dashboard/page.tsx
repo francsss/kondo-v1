@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock3,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Users } from "lucide-react";
 import { OrganizationVisibilityPanel } from "@/components/organizations/OrganizationVisibilityPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -128,38 +122,14 @@ export default async function OrganizationDashboardPage({
             { role: membership.storedRole, status: membership.status },
             "ORGANIZATION_MANAGE_PUBLICATION",
           ),
+          progress: {
+            completed: completeness.completed,
+            total: completeness.total,
+          },
         }}
       />
 
-      <section className="grid gap-5 rounded-4xl bg-gradient-to-br from-kondo-forest via-kondo-green to-emerald-600 p-6 text-white shadow-lift sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">
-            Welcome to your workspace
-          </p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-            Build trust around {organization.publicName}
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
-            Complete the professional identity, invite the right people and
-            prepare the organization for Kondo verification.
-          </p>
-        </div>
-        <Button
-          asChild
-          className="self-end bg-white text-kondo-forest hover:bg-white/90"
-        >
-          <Link href={`/organizations/${slug}/profile`}>
-            Continue setup <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          icon={CheckCircle2}
-          label="Profile complete"
-          value={`${completeness.percentage}%`}
-        />
+      <section className="grid gap-4 sm:grid-cols-2">
         <Metric
           icon={Users}
           label="Active teammates"
@@ -169,13 +139,6 @@ export default async function OrganizationDashboardPage({
           icon={Clock3}
           label="Pending invitations"
           value={String(counts.pendingInvitations)}
-        />
-        <Metric
-          icon={ShieldCheck}
-          label="Verification"
-          value={organization.verificationStatus
-            .replaceAll("_", " ")
-            .toLowerCase()}
         />
       </section>
 
