@@ -516,6 +516,16 @@ enum PeerOfferStatus {
   REMOVED
 }
 
+/// Whether Kondo is willing to stand behind a guide, which is a separate
+/// question from whether it is visible. `published` controls visibility;
+/// this controls the trust treatment a reader sees.
+enum GuideContentStatus {
+  DRAFT
+  NEEDS_REVIEW
+  VERIFIED
+  ARCHIVED
+}
+
 enum GuideCategory {
   BEFORE_DEPARTURE
   ARRIVAL
@@ -1059,6 +1069,7 @@ model User {
   listingFavorites                    ListingFavorite[]
   guideProgress                       GuideProgress[]
   createdGuides                       Guide[]                               @relation("GuideAuthor")
+  verifiedGuides                      Guide[]                               @relation("GuideVerifier")
   createdCityHubs                     CityHub[]                             @relation("CityHubAuthor")
   updatedCityHubs                     CityHub[]                             @relation("CityHubEditor")
   questions                           Question[]
@@ -1146,6 +1157,7 @@ model Country {
   organizations                    Organization[]
   housingListings                  HousingListing[]
   organizationVerificationRequests OrganizationVerificationRequest[]
+  guides                           Guide[]
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
   opportunities                    Opportunity[]
@@ -1210,6 +1222,7 @@ model City {
   storyLinks            StoryEntityLink[]
   organizations         Organization[]
   userTargetPreferences UserTargetCity[]
+  guides                Guide[]
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
   opportunities         Opportunity[]
@@ -1251,6 +1264,7 @@ model University {
   housingRequests       HousingRequest[]
   roommateProfiles      RoommateProfile[]
   userTargetPreferences UserTargetUniversity[]
+  guides                Guide[]
   createdAt             DateTime                        @default(now())
   updatedAt             DateTime                        @updatedAt
   opportunities         Opportunity[]
@@ -2688,6 +2702,20 @@ model Guide {
   estimatedMinutes Int
   published        Boolean                  @default(false)
   featured         Boolean                  @default(false)
+  /// Defaults to NEEDS_REVIEW: a guide is not verified because someone wrote it.
+  contentStatus    GuideContentStatus       @default(NEEDS_REVIEW)
+  lastVerifiedAt   DateTime?
+  lastVerifiedById String?
+  lastVerifiedBy   User?                    @relation("GuideVerifier", fields: [lastVerifiedById], references: [id], onDelete: SetNull)
+  reviewDueAt      DateTime?
+  /// Optional targeting. Null means the guide applies China-wide.
+  countryId        String?
+  country          Country?                 @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId           String?
+  city             City?                    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  universityId     String?
+  university       University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  sources          GuideSource[]
   createdById      String
   createdBy        User                     @relation("GuideAuthor", fields: [createdById], references: [id], onDelete: Restrict)
   steps            GuideStep[]
@@ -2698,6 +2726,28 @@ model Guide {
 
   @@index([published, category])
   @@index([featured, publishedAt])
+  @@index([contentStatus, published])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([universityId])
+}
+
+/// A citation for a guide. Rows rather than a JSON blob so sources can be
+/// listed, counted and checked.
+model GuideSource {
+  id           String   @id @default(cuid())
+  guideId      String
+  guide        Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  title        String   @db.VarChar(300)
+  url          String   @db.VarChar(2048)
+  organization String?  @db.VarChar(200)
+  /// An official primary source, as opposed to commentary about one.
+  isOfficial   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([guideId, sortOrder])
 }
 
 model GuideStep {

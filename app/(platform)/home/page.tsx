@@ -15,6 +15,8 @@ import { getHomeActivityStream } from "@/lib/home-activity";
 import { requireUser } from "@/lib/server-auth";
 import { getStoryFeed } from "@/lib/stories";
 import { getNavigatorActions } from "@/lib/navigator";
+import { GuideNextStepCard } from "@/components/features/guides/GuideNextStepCard";
+import { getGuideNextStep, guideCategoryPriority } from "@/lib/guide-journey";
 import { LocalRecommendationsRail } from "@/components/features/home/LocalRecommendationsRail";
 import { HomeFeedReveal } from "@/components/features/home/HomeFeedReveal";
 import { recommendLocalResources } from "@/lib/local-recommendations";
@@ -49,15 +51,24 @@ export default async function HomePage() {
     // Personalized to this member only, and never cached across members.
     recommendLocalResources({ userId: user.id, limit: 6 }),
   ]);
-  const guidePriority =
-    user.studentJourney === "INCOMING_STUDENT" ||
-    user.studentJourney === "ADMITTED_STUDENT" ||
-    user.studentJourney === "PROSPECTIVE_STUDENT"
-      ? ["BEFORE_DEPARTURE", "ARRIVAL", "RESIDENCY"]
-      : user.studentJourney === "ALUMNI" ||
-          user.studentJourney === "PROFESSIONAL"
-        ? ["MONEY", "UNIVERSITY"]
-        : ["UNIVERSITY", "DAILY_LIFE"];
+  /*
+   * Guide order follows the precise Journey stage, not the legacy
+   * `studentJourney` bucket this used to read. The two are not equivalent:
+   * ADMITTED and PREPARING_ARRIVAL both fell into the same legacy bucket, and
+   * they want different things first — what to pack versus how to get from the
+   * airport. The stage already exists and is already loaded here.
+   */
+  const guidePriority = guideCategoryPriority(navigator.journey.stage ?? null);
+  /*
+   * Runs after the batch above because it needs the Journey stage that batch
+   * resolves. Passing null to keep it inside the parallel fetch would have
+   * silently turned the personalization off — one small indexed query is the
+   * cheaper trade.
+   */
+  const guideNextStep = await getGuideNextStep({
+    userId: user.id,
+    stage: navigator.journey.stage ?? null,
+  });
   const firstGuide = [...guides].sort((left, right) => {
     const leftRank = guidePriority.indexOf(left.category);
     const rightRank = guidePriority.indexOf(right.category);
@@ -342,6 +353,17 @@ export default async function HomePage() {
           </Card>
         </aside>
       </div>
+
+      {/*
+       * Only when there is genuinely something unfinished. An empty slot is
+       * better than a card inventing a task, and the Navigator below already
+       * covers the case where nothing is outstanding.
+       */}
+      {guideNextStep ? (
+        <section className="mt-12">
+          <GuideNextStepCard step={guideNextStep} />
+        </section>
+      ) : null}
 
       <JourneyNavigator
         initialActions={navigator.actions}

@@ -73,8 +73,18 @@ export const publishedAnswerWhere = {
   question: publishedQuestionWhere,
 } satisfies Prisma.AnswerWhereInput;
 
+/*
+ * A guide is readable when it is published *and* its content status allows it.
+ *
+ * Publication and verification answer different questions — visible, versus
+ * vouched for — but DRAFT and ARCHIVED must never reach a reader through any
+ * route. Enforcing that here rather than at each call site means search, the
+ * Student Hub, the platform lists and the visibility checks all inherit it,
+ * and a new query cannot forget.
+ */
 export const publishedGuideWhere = {
   published: true,
+  contentStatus: { in: ["VERIFIED", "NEEDS_REVIEW"] },
 } satisfies Prisma.GuideWhereInput;
 
 export const publishedGuideStepWhere = {
