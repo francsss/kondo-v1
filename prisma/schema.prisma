@@ -1017,6 +1017,8 @@ model User {
   courseResources                     CourseResource[]
   courseCaptures                      CourseCapture[]
   studyReadingProgress                StudyReadingProgress[]
+  studyEntitlements                   StudyEntitlement[]
+  studyBookmarks                      StudyBookmark[]
   createdOrganizationProducts         OrganizationProduct[]                 @relation("OrganizationProductCreator")
   createdOrganizationServices         OrganizationService[]                 @relation("OrganizationServiceCreator")
   savedOrganizationProducts           OrganizationProductSaved[]
@@ -4362,6 +4364,42 @@ enum StudyEssentialOrderStatus {
   PAID
   FAILED
   CANCELLED
+  REFUNDED
+}
+
+/// How a purchased essential actually reaches the reader.
+///
+/// TEXT is what the catalogue has today: chapters stored as rows and rendered
+/// by Kondo's own reader. EPUB adds a private file streamed under a short-lived
+/// signed URL. The rest are declared now because a licensed publisher may not
+/// hand over a file at all — some deliver through their own reader, an access
+/// code, or a DRM system — and discovering that later should not require
+/// rebuilding orders and entitlements around it.
+enum StudyEssentialDelivery {
+  TEXT
+  EPUB
+  PDF
+  EXTERNAL
+  DRM
+}
+
+/// Why someone may open a book.
+///
+/// PURCHASE is an order that was actually paid. The others exist because not
+/// every entitlement is bought: a pilot title is granted to everyone, a
+/// publisher may supply review copies, and support occasionally has to restore
+/// access. Recording which is which keeps "who paid" answerable later.
+enum StudyEntitlementSource {
+  PURCHASE
+  PILOT
+  GRANT
+  PARTNER
+}
+
+enum StudyEntitlementStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
 }
 
 /// SIMULATED is the only provider wired for the MVP. The real providers are
@@ -4395,6 +4433,36 @@ model StudyEssential {
   highlights       String[]
   sortOrder        Int                     @default(0)
   publishedAt      DateTime?
+
+  // --- Book metadata -------------------------------------------------------
+  // Absent until now because the catalogue described study aids rather than
+  // books. A textbook without an author is not a catalogue entry anyone can
+  // trust, and a Chinese-language title needs to say so before it is bought.
+  author           String?                 @db.VarChar(200)
+  subtitle         String?                 @db.VarChar(300)
+  publisher        String?                 @db.VarChar(200)
+  isbn             String?                 @db.VarChar(20)
+  /// BCP-47, e.g. "en" or "zh-Hans". Null when it does not apply.
+  language         String?                 @db.VarChar(20)
+
+  // --- Delivery ------------------------------------------------------------
+  deliveryType     StudyEssentialDelivery  @default(TEXT)
+  /// Private object key in Kondo's own storage. Never a public URL, and never
+  /// sent to a browser — access is granted per request as a short-lived signed
+  /// read after the entitlement has been checked.
+  assetKey         String?                 @db.VarChar(500)
+  assetContentType String?                 @db.VarChar(120)
+  assetBytes       Int?
+
+  // --- Rights --------------------------------------------------------------
+  // Per title, because a licence that permits reading may still forbid machine
+  // processing, copying, download or print. Defaults are the conservative
+  // answer: a new title grants nothing until someone says otherwise.
+  aiAllowed        Boolean                 @default(false)
+  copyAllowed      Boolean                 @default(false)
+  downloadAllowed  Boolean                 @default(false)
+  printAllowed     Boolean                 @default(false)
+
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   orders           StudyEssentialOrder[]
@@ -4402,10 +4470,45 @@ model StudyEssential {
   notes            StudyNote[]
   readingProgress  StudyReadingProgress[]
   courseLinks      CourseResource[]
+  entitlements     StudyEntitlement[]
+  bookmarks        StudyBookmark[]
 
   @@index([status, sortOrder])
   @@index([status, format])
   @@index([status, source])
+  @@index([status, deliveryType])
+}
+
+/// The right to open a title.
+///
+/// Ownership used to be inferred from a PAID order. That answered "did money
+/// arrive" but not "may this person read this", and it had no uniqueness
+/// guarantee — two callbacks for one payment would have produced two paid
+/// orders and no way to notice. This makes the grant explicit and singular:
+/// one active row per member per title, created inside the same transaction
+/// that marks an order paid.
+model StudyEntitlement {
+  id          String                 @id @default(cuid())
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  essentialId String
+  essential   StudyEssential         @relation(fields: [essentialId], references: [id], onDelete: Cascade)
+  source      StudyEntitlementSource @default(PURCHASE)
+  status      StudyEntitlementStatus @default(ACTIVE)
+  /// Set for PURCHASE. Null for a pilot or a granted copy, which had no order.
+  orderId     String?                @unique
+  order       StudyEssentialOrder?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  grantedAt   DateTime               @default(now())
+  /// Null means perpetual. A rental or a term licence sets it.
+  expiresAt   DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  /// The idempotency guarantee. A duplicate payment notification cannot grant
+  /// a second entitlement, because there is only one row to grant.
+  @@unique([userId, essentialId])
+  @@index([userId, status])
+  @@index([essentialId, status])
 }
 
 model StudyEssentialOrder {
@@ -4424,12 +4527,19 @@ model StudyEssentialOrder {
   currency         String                        @db.Char(3)
   status           StudyEssentialOrderStatus     @default(PENDING)
   paymentProvider  StudyEssentialPaymentProvider @default(SIMULATED)
-  paymentReference String?                       @db.VarChar(120)
+  /// The provider's own identifier for the payment — Alipay's `trade_no`.
+  /// Unique so a replayed notification cannot be attached to a second order.
+  paymentReference String?                       @unique @db.VarChar(120)
+  /// Whatever the provider needs echoed back, and enough of its notification
+  /// to reconcile a disputed payment later. Never card or credential data.
+  providerPayload  Json?
   placedAt         DateTime                      @default(now())
   paidAt           DateTime?
+  entitlement      StudyEntitlement?
 
   @@index([userId, placedAt])
   @@index([essentialId, status])
+  @@index([status, placedAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -4466,10 +4576,39 @@ model StudyReadingProgress {
   essential   StudyEssential         @relation(fields: [essentialId], references: [id], onDelete: Cascade)
   chapterId   String?
   chapter     StudyEssentialChapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  /// Where the reader actually stopped, as the format's own stable locator —
+  /// an EPUB CFI for an EPUB. A page number would be meaningless here: EPUB
+  /// text reflows, so changing the font size renumbers every page, and the
+  /// chapter id alone only resolves to the top of a chapter.
+  locator     String?                @db.VarChar(600)
+  /// Whole percent through the title, for "36% completed". Derived, and only
+  /// ever a display value — resuming uses the locator.
+  percentage  Int?
   lastReadAt  DateTime               @default(now())
 
   @@unique([userId, essentialId])
   @@index([userId, lastReadAt])
+}
+
+/// A place a reader marked to come back to.
+///
+/// Deliberately not the existing `Bookmark`, which records "this member saved
+/// this guide" as a target type and id. A reading bookmark is a position
+/// inside one title, so it needs the locator that model has no room for.
+model StudyBookmark {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  essentialId String
+  essential   StudyEssential @relation(fields: [essentialId], references: [id], onDelete: Cascade)
+  locator     String         @db.VarChar(600)
+  /// What the reader saw there, so the list is readable without opening each.
+  label       String?        @db.VarChar(300)
+  createdAt   DateTime       @default(now())
+
+  /// The same spot cannot be bookmarked twice by the same reader.
+  @@unique([userId, essentialId, locator])
+  @@index([userId, essentialId, createdAt])
 }
 
 /// A resource the student has attached to one of their courses.
@@ -4536,6 +4675,12 @@ model StudyNote {
   highlight   String?                @db.VarChar(2000)
   /// What the student wrote about it. A highlight alone is a valid note.
   body        String?                @db.Text
+  /// The format's stable range for the selection — an EPUB CFI range. Null on
+  /// a TEXT title, where the chapter and the verbatim passage already locate
+  /// it. Storing DOM coordinates instead would break on the next font change.
+  locator     String?                @db.VarChar(600)
+  /// Highlight colour, when the reader chose one.
+  color       String?                @db.VarChar(20)
   /// Set when this note raised a task. The task stays owned by the planner.
   taskId      String?
   task        AcademicTask?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
