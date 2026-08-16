@@ -231,11 +231,21 @@ function WorkspaceHero({
                 </>
               ) : null}
             </p>
+            {/*
+             * Publication status lives in one place — the panel on the
+             * dashboard — not here as well. This header used to carry a raw
+             * verification state ("Not Submitted"), a second publication
+             * string, and a role, so an owner read three statuses about two
+             * concepts and one of them in database wording. Verification is
+             * about trust, publication is about being findable, and pairing
+             * them here taught owners they had to be verified to be public.
+             * A verified organization still gets its badge, because that is
+             * an achievement rather than a warning.
+             */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <StatusPill status={organization.verificationStatus} />
-              <span className="inline-flex rounded-full bg-muted px-3 py-1.5 text-xs font-black capitalize text-muted-foreground">
-                Public profile {humanize(organization.publicProfileStatus)}
-              </span>
+              {organization.verificationStatus === "VERIFIED" ? (
+                <StatusPill status={organization.verificationStatus} />
+              ) : null}
               <span className="inline-flex rounded-full bg-secondary px-3 py-1.5 text-xs font-black capitalize text-secondary-foreground">
                 Your role: {role.toLowerCase()}
               </span>
