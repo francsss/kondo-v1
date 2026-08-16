@@ -8,6 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import sharp from "sharp";
 import chinaHigherEducation from "./reference-data/china-higher-education-2026.json";
 import { COUNTRIES } from "../src/lib/countries";
+import { loadGuideContentPack } from "../src/lib/guide-content-pack-loader";
 import { assertDestructiveSeedAllowed } from "../src/lib/seed-safety";
 import { getObjectStorage } from "../src/lib/storage";
 
@@ -1049,6 +1050,22 @@ async function main() {
       },
     }),
   );
+  /*
+   * The real library, not just the four demo guides above.
+   *
+   * The content pack ships through a migration, and that migration cannot run
+   * here: on a fresh database it executes before this seed, finds no admin to
+   * attribute the guides to, returns early, and is recorded as applied. Every
+   * fresh environment therefore came up with no Kondo Guide at all. Loading it
+   * from the same pack module closes that hole, and because the loader is
+   * guarded on slug, a database that did get the migration is untouched.
+   *
+   * It also archives the three demo guides created just above, which the pack
+   * supersedes — archived rather than deleted, since deletion would cascade
+   * into students' checklist progress.
+   */
+  const packResult = await loadGuideContentPack(prisma, admin.id);
+
   const firstGuideSteps = await prisma.guideStep.findMany({
     where: { guideId: guides[0].id },
     orderBy: { order: "asc" },
@@ -1228,7 +1245,7 @@ async function main() {
   }
 
   console.log(
-    `Seeded Kondo with ${users.length} users, ${communities.length} communities, ${listings.length} listings, ${guides.length} guides, and 1 conversation.`,
+    `Seeded Kondo with ${users.length} users, ${communities.length} communities, ${listings.length} listings, ${guides.length} demo guides plus ${packResult.created} from the content pack (${packResult.archived} superseded archived), and 1 conversation.`,
   );
 }
 
