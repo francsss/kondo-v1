@@ -383,6 +383,134 @@ async function main() {
     ),
   );
   const [admin, moderator, ama, kwame, chidi, wambui] = users;
+
+  /*
+   * One member per Journey group, so every version of Home can actually be
+   * opened. Without these, every seeded account inferred the same group and
+   * the two other layouts — the pre-arrival one and the career one — were
+   * unreachable outside production. The stages are the ones that read
+   * differently: someone still preparing has no city and an intake ahead of
+   * them; someone job-seeking has graduated and is looking outward.
+   */
+  await Promise.all(
+    (
+      [
+        {
+          email: "prospective@example.com",
+          firstName: "Nadia",
+          lastName: "Haddad",
+          username: "nadia-h",
+          countryId: country.CM.id,
+          gender: "FEMALE" as const,
+          degree: "Civil Engineering",
+          studyLevel: "MASTERS" as const,
+          languages: ["English", "French", "Arabic"],
+          journey: {
+            group: "PREPARING_FOR_CHINA" as const,
+            stage: "PREPARING_APPLICATION" as const,
+            legacy: "PROSPECTIVE_STUDENT" as const,
+            applicationStage: "PREPARING_APPLICATION" as const,
+          },
+          // Not in China yet, so no city or university is set.
+          cityId: null,
+          universityId: null,
+          expectedIntake: new Date("2026-09-01"),
+        },
+        {
+          email: "admitted@example.com",
+          firstName: "Tenzin",
+          lastName: "Dorji",
+          username: "tenzin-d",
+          countryId: country.KE.id,
+          gender: "MALE" as const,
+          degree: "Data Science",
+          studyLevel: "MASTERS" as const,
+          languages: ["English"],
+          journey: {
+            group: "PREPARING_FOR_CHINA" as const,
+            stage: "PREPARING_ARRIVAL" as const,
+            legacy: "ADMITTED_STUDENT" as const,
+            applicationStage: null,
+          },
+          cityId: null,
+          universityId: null,
+          expectedIntake: new Date("2026-03-01"),
+        },
+        {
+          email: "jobseeker@example.com",
+          firstName: "Ifeoma",
+          lastName: "Eze",
+          username: "ifeoma-e",
+          countryId: country.NG.id,
+          gender: "FEMALE" as const,
+          degree: "Supply Chain Management",
+          studyLevel: "MASTERS" as const,
+          languages: ["English", "Igbo"],
+          journey: {
+            group: "CAREER_ALUMNI_AND_ENTREPRENEURSHIP" as const,
+            stage: "JOB_SEEKING" as const,
+            legacy: "PROFESSIONAL" as const,
+            applicationStage: null,
+          },
+          cityId: hangzhou.id,
+          universityId: zhejiang.id,
+          expectedIntake: null,
+        },
+        {
+          email: "alumni@example.com",
+          firstName: "Samuel",
+          lastName: "Otieno",
+          username: "samuel-o",
+          countryId: country.KE.id,
+          gender: "MALE" as const,
+          degree: "Mechanical Engineering",
+          studyLevel: "DOCTORATE" as const,
+          languages: ["English", "Swahili"],
+          journey: {
+            group: "CAREER_ALUMNI_AND_ENTREPRENEURSHIP" as const,
+            stage: "ALUMNI" as const,
+            legacy: "ALUMNI" as const,
+            applicationStage: null,
+          },
+          cityId: beijing.id,
+          universityId: tsinghua.id,
+          expectedIntake: null,
+        },
+      ] as const
+    ).map((data) =>
+      prisma.user.create({
+        data: {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          username: data.username,
+          role: "MEMBER",
+          gender: data.gender,
+          countryId: data.countryId,
+          cityId: data.cityId,
+          universityId: data.universityId,
+          degree: data.degree,
+          studyLevel: data.studyLevel,
+          languages: [...data.languages],
+          studentJourney: data.journey.legacy,
+          passwordHash,
+          status: "ACTIVE",
+          bio: `${data.degree} · ${data.journey.stage.toLowerCase().replaceAll("_", " ")}.`,
+          onboardingCompletedAt: new Date(),
+          lastActiveAt: new Date(),
+          journeyDetail: {
+            create: {
+              journeyGroup: data.journey.group,
+              journeyStage: data.journey.stage,
+              journeyUpdatedAt: new Date(),
+              applicationStage: data.journey.applicationStage,
+              expectedIntake: data.expectedIntake,
+            },
+          },
+        },
+      }),
+    ),
+  );
   await prisma.meetDiscoveryProfile.createMany({
     data: users.map((user) => ({
       userId: user.id,
