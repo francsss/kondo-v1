@@ -3,6 +3,7 @@ import {
   evaluateNavigatorRules,
   NAVIGATOR_ACTION_KEYS,
 } from "@/features/navigator/registry";
+import { getGuideNextStep } from "@/lib/guide-journey";
 import { getUserJourney } from "@/lib/journey-service";
 import { publicHousingListingWhere } from "@/lib/housing-visibility";
 import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
@@ -100,9 +101,27 @@ export async function getNavigatorActions(userId: string) {
       opportunityProfile.skills.length),
   );
   const byKey = new Map(states.map((state) => [state.actionKey, state]));
+  /*
+   * Resolved after the batch because it needs the stage that batch produces.
+   * Reuses the same function Home uses for its next-step card, so the two
+   * surfaces can never disagree about which step comes next.
+   */
+  const guideNextStep = await getGuideNextStep({
+    userId,
+    stage: journey.stage,
+  });
   const actions = evaluateNavigatorRules({
     group: journey.group,
     stage: journey.stage,
+    guideNextStep: guideNextStep
+      ? {
+          guideTitle: guideNextStep.guideTitle,
+          stepTitle: guideNextStep.stepTitle,
+          completed: guideNextStep.completed,
+          total: guideNextStep.total,
+          href: guideNextStep.href,
+        }
+      : null,
     profileComplete,
     communityMembershipCount,
     publicCommunityCount,

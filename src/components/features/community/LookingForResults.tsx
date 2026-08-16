@@ -4,7 +4,7 @@ import {
   StudentRow,
   StudentRowSkeleton,
 } from "@/components/features/community/StudentRow";
-import type { MeetDiscoveryProfile } from "@/components/features/community/MeetDiscoveryMap";
+import type { MeetDiscoveryProfile } from "@/features/meet/types";
 
 /**
  * Looking For results, as a list.
