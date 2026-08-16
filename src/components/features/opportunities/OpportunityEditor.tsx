@@ -85,14 +85,31 @@ type InitialOpportunity = Partial<EditorState> & {
  */
 const STEPS = ["What & where", "Who & what they get", "How to apply"] as const;
 
+/**
+ * The types this editor offers, each with the activity area it needs.
+ *
+ * Kept in step with `organizationCapability` in src/lib/opportunity-types.ts,
+ * which is what the server actually enforces. Offering a type the
+ * organization has not enabled meant writing a whole opportunity and being
+ * refused at the end with "this organization has not enabled the activity
+ * area for this opportunity type" — true, but not something anyone could act
+ * on.
+ */
 const TYPES = [
-  ["SCHOLARSHIP", "Scholarship"],
-  ["INTERNSHIP", "Internship"],
-  ["FULL_TIME_JOB", "Job"],
-  ["RESEARCH_OPPORTUNITY", "Research"],
-  ["VOLUNTEERING", "Volunteering"],
-  ["EXCHANGE_PROGRAM", "Program"],
+  ["SCHOLARSHIP", "Scholarship", "SCHOLARSHIPS"],
+  ["INTERNSHIP", "Internship", "INTERNSHIPS_JOBS"],
+  ["FULL_TIME_JOB", "Job", "INTERNSHIPS_JOBS"],
+  ["RESEARCH_OPPORTUNITY", "Research", "INTERNSHIPS_JOBS"],
+  ["VOLUNTEERING", "Volunteering", "INTERNSHIPS_JOBS"],
+  ["EXCHANGE_PROGRAM", "Program", "EVENTS"],
 ] as const;
+
+/** Human wording for an activity area, for the note under the type picker. */
+const CAPABILITY_LABELS: Record<string, string> = {
+  SCHOLARSHIPS: "Scholarships",
+  INTERNSHIPS_JOBS: "Internships & jobs",
+  EVENTS: "Events & programmes",
+};
 
 const DOCUMENTS = [
   "CV",
@@ -177,8 +194,20 @@ function csv(value: string) {
     .filter(Boolean);
 }
 
+/**
+ * A money field in minor units, or null when the publisher left it alone.
+ *
+ * The empty check has to come first. `Number("")` is `0`, which is finite and
+ * not negative, so an untouched salary box used to serialise as `0` — a stated
+ * compensation of nothing. The schema then required a currency for it, the
+ * currency was only sent when an amount had been typed, and every job or
+ * internship without a salary became unpublishable with an error naming a
+ * field the publisher had never filled in and could not empty.
+ */
 function minor(value: string) {
-  const amount = Number(value);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const amount = Number(trimmed);
   return Number.isFinite(amount) && amount >= 0
     ? Math.round(amount * 100)
     : null;
@@ -194,21 +223,63 @@ export function OpportunityEditor({
   cities,
   universities,
   initial,
+  enabledCapabilities,
 }: {
   organization: { id: string; slug: string; name: string };
   countries: ReferenceOption[];
   cities: (ReferenceOption & { countryId: string })[];
   universities: (ReferenceOption & { cityId: string | null })[];
   initial?: InitialOpportunity | null;
+  /**
+   * Activity areas the organization has turned on. Undefined means "not
+   * supplied" — every type stays available, which keeps existing callers
+   * (the edit route) working exactly as before.
+   */
+  enabledCapabilities?: readonly string[];
 }) {
   const router = useRouter();
+  /*
+   * Only the types this organization can actually publish. The server checks
+   * the same thing; showing the rest would invite work that ends in a refusal.
+   */
+  const availableTypes = useMemo(
+    () =>
+      enabledCapabilities
+        ? TYPES.filter(([, , capability]) =>
+            enabledCapabilities.includes(capability),
+          )
+        : TYPES.slice(),
+    [enabledCapabilities],
+  );
+  const missingCapabilities = useMemo(() => {
+    if (!enabledCapabilities) return [];
+    const missing = TYPES.filter(
+      ([, , capability]) => !enabledCapabilities.includes(capability),
+    ).map(([, , capability]) => CAPABILITY_LABELS[capability] ?? capability);
+    return [...new Set(missing)];
+  }, [enabledCapabilities]);
   const pendingRef = useRef(false);
   const draftKey = `kondo:opportunity-draft:${organization.id}:${initial?.id ?? "new"}`;
   const [step, setStep] = useState(0);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // Set once the flow finishes; the outcome replaces the form.
   const [result, setResult] = useState<FormResultState | null>(null);
-  const [state, setState] = useState<EditorState>({ ...EMPTY, ...initial });
+  const [state, setState] = useState<EditorState>(() => {
+    const base = { ...EMPTY, ...initial };
+    /*
+     * A new opportunity defaults to Scholarship, which is wrong for an
+     * organization that has not enabled scholarships — it would preselect the
+     * one type they cannot publish. An existing opportunity keeps its own type.
+     */
+    if (!initial && enabledCapabilities) {
+      const [firstAvailable] =
+        TYPES.filter(([, , capability]) =>
+          enabledCapabilities.includes(capability),
+        )[0] ?? [];
+      if (firstAvailable) base.type = firstAvailable;
+    }
+    return base;
+  });
   const [cover, setCover] = useState<File | null>(null);
   const [coverAlt, setCoverAlt] = useState(initial?.title ?? "");
   // null while idle; 0-100 while an image is actually being sent.
@@ -635,7 +706,7 @@ export function OpportunityEditor({
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
-              {TYPES.map(([value, label]) => (
+              {availableTypes.map(([value, label]) => (
                 <button
                   className={`rounded-2xl border p-3 text-left text-sm font-bold transition ${
                     state.type === value
@@ -650,6 +721,24 @@ export function OpportunityEditor({
                 </button>
               ))}
             </div>
+            {/*
+             * Says what is not on offer and where to change it, instead of
+             * letting the publisher find out from a refusal at the end.
+             */}
+            {missingCapabilities.length ? (
+              <p className="text-xs leading-6 text-muted-foreground">
+                {availableTypes.length
+                  ? `Also want to post ${missingCapabilities.join(" or ").toLowerCase()}? Turn the area on in `
+                  : `${organization.name} has no opportunity areas turned on yet. Choose one in `}
+                <a
+                  className="font-black text-kondo-green underline underline-offset-2"
+                  href={`/organizations/${organization.slug}/settings`}
+                >
+                  organization settings
+                </a>
+                .
+              </p>
+            ) : null}
             <label className="block text-sm font-bold">
               Title
               <input

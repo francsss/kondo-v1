@@ -26,6 +26,14 @@ export default async function NewOrganizationOpportunityPage({
       id: true,
       slug: true,
       publicName: true,
+      // The activity areas this organization has turned on. Without them the
+      // editor offered every opportunity type and the server rejected the
+      // ones the organization had not enabled, after the publisher had
+      // already written the whole thing.
+      capabilities: {
+        where: { status: "ENABLED" },
+        select: { key: true },
+      },
       memberships: {
         where: { userId: user.id, status: "ACTIVE" },
         select: { role: true, status: true },
@@ -68,6 +76,7 @@ export default async function NewOrganizationOpportunityPage({
     <OpportunityEditor
       cities={cities}
       countries={countries}
+      enabledCapabilities={organization.capabilities.map(({ key }) => key)}
       organization={{
         id: organization.id,
         slug: organization.slug,
