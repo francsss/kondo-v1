@@ -232,7 +232,10 @@ export const NAVIGATOR_RULES: readonly NavigatorRule[] = [
         reason: next
           ? `${next.completed} of ${next.total} steps done in this guide.`
           : "A guide for your stage is waiting.",
-        href: next?.href ?? "/student-hub/guide",
+        // `/student-hub/guide` has only a `[slug]` route, so the bare path is
+        // a 404. The library lives at `/guides`, which is where someone with
+        // no resolved next step should land.
+        href: next?.href ?? "/guides",
         label: next?.completed ? "Continue guide" : "Start guide",
         priority: "RECOMMENDED",
       };

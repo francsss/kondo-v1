@@ -27,6 +27,26 @@ export const STUDY_ASSISTANT_ACTIONS = [
     label: "Turn into notes",
     hint: "Structured study notes you can keep.",
   },
+  /*
+   * Added for the book reader. A student reading a textbook in a second
+   * language asks different things of a passage than one revising their own
+   * course notes: what does this actually say, and why does it matter.
+   */
+  {
+    key: "translate",
+    label: "Translate",
+    hint: "The passage in your own language, kept faithful.",
+  },
+  {
+    key: "simplify",
+    label: "Explain simply",
+    hint: "The same meaning in the plainest words possible.",
+  },
+  {
+    key: "significance",
+    label: "Why does this matter?",
+    hint: "What the passage is doing in the wider argument.",
+  },
 ] as const;
 
 export type StudyAssistantAction =
