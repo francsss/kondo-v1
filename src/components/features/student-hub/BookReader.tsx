@@ -8,10 +8,12 @@ import {
   BookmarkCheck,
   Highlighter,
   List,
+  ListChecks,
   Loader2,
   Sparkles,
   StickyNote,
   Type,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { captureProductEvent } from "@/lib/product-analytics-client";
@@ -19,6 +21,9 @@ import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 import type { ReaderTheme } from "@/lib/reader-theme";
 import { READER_THEMES, readerThemeStyles } from "@/lib/reader-theme";
+import { useImmersiveChrome } from "@/lib/use-focus-mode";
+import type { TocEntry } from "@/lib/reader-chapters";
+import { chapterIndex, documentPath } from "@/lib/reader-chapters";
 
 /**
  * The EPUB reader.
@@ -44,6 +49,9 @@ type Note = {
   highlight: string | null;
   body: string | null;
   color: string | null;
+  chapterLabel?: string | null;
+  taskId?: string | null;
+  task?: { title: string; status: string } | null;
 };
 
 type BookmarkRow = { id: string; locator: string; label: string | null };
@@ -81,17 +89,24 @@ type EpubRendition = {
   destroy?: () => void;
 };
 
-type TocItem = { label?: string; href?: string };
+type TocItem = TocEntry;
 
 export function BookReader({
   slug,
   title,
   aiAllowed,
+  initialLocator = null,
 }: {
   slug: string;
   title: string;
   aiAllowed: boolean;
+  /** Where to open, when something linked here at a particular passage. */
+  initialLocator?: string | null;
 }) {
+  // The book owns the screen. Kondo's own navigation sits exactly where this
+  // reader's controls are, so it steps aside for as long as a book is open.
+  useImmersiveChrome();
+
   const viewerRef = useRef<HTMLDivElement>(null);
   // epub.js instances are not React state: they are imperative objects with
   // their own lifecycle, and putting them in state would re-render the reader
@@ -99,6 +114,21 @@ export function BookReader({
   const bookRef = useRef<unknown>(null);
   const renditionRef = useRef<EpubRendition | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  // Built once from the table of contents and read on every page turn, so
+  // naming the current chapter costs nothing per relocation.
+  const chapterIndexRef = useRef<Map<string, string>>(new Map());
+  /*
+   * Whether the location index exists yet.
+   *
+   * This has to be tracked rather than inferred, because epub.js does not
+   * fail when asked how far through a book a position is before it has
+   * indexed one — `percentageFromCfi` returns 0. Zero and "not known yet"
+   * are indistinguishable from the outside, and the first relocation after
+   * opening a book always arrives during that window, so every reopen was
+   * writing 0 over whatever progress had been made. My Books then reported a
+   * half-read book as "Not started".
+   */
+  const locationsReadyRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -114,6 +144,7 @@ export function BookReader({
   // A bottom sheet rather than window.prompt: a native prompt cannot be styled,
   // cannot show the passage being annotated, and on iOS steals the page.
   const [noteDraft, setNoteDraft] = useState<Selection | null>(null);
+  const [taskDraft, setTaskDraft] = useState<Selection | null>(null);
   const [theme, setTheme] = useState<ReaderTheme>("light");
   const [fontSize, setFontSize] = useState(100);
 
@@ -126,14 +157,20 @@ export function BookReader({
    * mid-chapter does not lose the last page.
    */
   const scheduleSave = useCallback(
-    (cfi: string, percent: number) => {
+    (cfi: string, percent: number | null) => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(() => {
         void fetch(`/api/study/books/${slug}/reading`, {
           method: "PUT",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locator: cfi, percentage: percent }),
+          // `percentage` is omitted, not zeroed, when the location index is
+          // still building. Sending a zero here would tell the server someone
+          // who is halfway through a book has not started it.
+          body: JSON.stringify({
+            locator: cfi,
+            ...(percent === null ? {} : { percentage: percent }),
+          }),
           keepalive: true,
         }).catch(() => null);
         // The slug and the percentage only — never the locator, which is a
@@ -215,37 +252,71 @@ export function BookReader({
          * book someone owns is a far worse outcome than one that opens it at
          * the beginning.
          */
-        const saved = state?.progress?.locator ?? undefined;
+        const saved =
+          initialLocator ?? state?.progress?.locator ?? undefined;
         try {
           await rendition.display(saved);
         } catch {
-          if (saved) await rendition.display();
+          // A requested locator that will not resolve falls back to the saved
+          // position before it falls back to the beginning, so a stale link
+          // still lands somewhere the member recognises.
+          try {
+            const fallback = state?.progress?.locator ?? undefined;
+            await rendition.display(
+              fallback && fallback !== saved ? fallback : undefined,
+            );
+          } catch {
+            await rendition.display();
+          }
         }
 
         const navigation = await book.loaded.navigation;
         if (!cancelled) {
+          const items = (navigation.toc ?? []) as TocItem[];
           setToc(
-            ((navigation.toc ?? []) as TocItem[]).map((item) => ({
+            items.map((item) => ({
               label: String(item.label ?? "").trim(),
               href: String(item.href ?? ""),
             })),
           );
+          chapterIndexRef.current = chapterIndex(items);
+          // The first relocation usually fires before the navigation resolves,
+          // so the opening chapter would otherwise stay unnamed until the
+          // reader turned a page.
+          // Same narrowing as elsewhere: the published type describes the
+          // pre-render location, which has no `start`.
+          const openedAt = (
+            rendition.currentLocation() as EpubLocation | undefined
+          )?.start?.href;
+          if (openedAt) {
+            setChapter(
+              chapterIndexRef.current.get(documentPath(openedAt)) ?? null,
+            );
+          }
         }
 
         // Locations make a percentage meaningful. Generated after first paint
         // so opening the book is not blocked on indexing it.
         void book.locations.generate(1600).then(() => {
           if (cancelled) return;
+          locationsReadyRef.current = true;
           // epub.js types `currentLocation()` as the promise-free variant even
           // though the rendered one carries `start`; narrowed here rather than
           // trusted so a missing shape cannot throw during indexing.
           const current = rendition.currentLocation() as
-            { start?: { cfi?: string } } | undefined;
+            | { start?: { cfi?: string } }
+            | undefined;
           const cfi = current?.start?.cfi;
           if (cfi) {
-            setPercentage(
-              Math.round(book.locations.percentageFromCfi(cfi) * 100),
+            const percent = Math.round(
+              book.locations.percentageFromCfi(cfi) * 100,
             );
+            setPercentage(percent);
+            // Now that the answer is known, write it: the relocations that
+            // happened while indexing deliberately left the stored percentage
+            // untouched, so without this a reader who opens a book and does
+            // not turn a page keeps yesterday's figure.
+            scheduleSave(cfi, percent);
           }
         });
 
@@ -253,18 +324,27 @@ export function BookReader({
           if (cancelled) return;
           const cfi = location?.start?.cfi;
           if (!cfi) return;
-          let percent = 0;
-          try {
-            percent = Math.round(book.locations.percentageFromCfi(cfi) * 100);
-          } catch {
-            // Locations may not be generated yet; the position still saves.
+          // Null, not zero, while the index is still being built: "unknown"
+          // and "at the very beginning" are different answers, and only one of
+          // them should be written down.
+          let percent: number | null = null;
+          if (locationsReadyRef.current) {
+            try {
+              const value = Math.round(
+                book.locations.percentageFromCfi(cfi) * 100,
+              );
+              if (Number.isFinite(value)) percent = value;
+            } catch {
+              // An unindexable locator still deserves to have its position
+              // saved; only the percentage is unknown.
+            }
           }
           setCurrentCfi(cfi);
-          setPercentage(Number.isFinite(percent) ? percent : 0);
+          if (percent !== null) setPercentage(percent);
+          const href = location?.start?.href;
           setChapter(
-            (
-              book.navigation?.get?.(location?.start?.href ?? "")?.label ?? ""
-            ).trim() || null,
+            (href ? chapterIndexRef.current.get(documentPath(href)) : null) ??
+              null,
           );
           scheduleSave(cfi, percent);
         }) as (...args: never[]) => void);
@@ -345,6 +425,7 @@ export function BookReader({
   async function saveAnnotation(
     body: string | null,
     target: Selection | null = selection,
+    task: { title: string; dueAt?: string | null } | null = null,
   ) {
     if (!target) return;
     const response = await fetch(`/api/study/books/${slug}/annotations`, {
@@ -357,15 +438,21 @@ export function BookReader({
         selectedText: target.text,
         body,
         color: "#cfef5d",
+        // Where in the book this was, in words. The CFI says where precisely;
+        // this is what the member reads back on the notes page.
+        chapterLabel: chapter,
+        task,
       }),
     });
     if (!response.ok) return;
     const { note } = await response.json();
     setNotes((current) => [note, ...current]);
     captureProductEvent(
-      body
-        ? PRODUCT_EVENTS.BOOK_NOTE_CREATED
-        : PRODUCT_EVENTS.BOOK_HIGHLIGHT_CREATED,
+      task
+        ? PRODUCT_EVENTS.BOOK_TASK_CREATED
+        : body
+          ? PRODUCT_EVENTS.BOOK_NOTE_CREATED
+          : PRODUCT_EVENTS.BOOK_HIGHLIGHT_CREATED,
       { slug },
     );
     try {
@@ -508,17 +595,35 @@ export function BookReader({
             setNoteDraft(selection);
             setSelection(null);
           }}
+          onTask={() => {
+            setTaskDraft(selection);
+            setSelection(null);
+          }}
         />
       ) : null}
 
       {noteDraft ? (
         <NoteSheet
+          chapter={chapter}
           onCancel={() => setNoteDraft(null)}
           onSave={(body) => {
             void saveAnnotation(body, noteDraft);
             setNoteDraft(null);
           }}
           passage={noteDraft.text}
+        />
+      ) : null}
+
+      {taskDraft ? (
+        <TaskSheet
+          bookTitle={title}
+          chapter={chapter}
+          onCancel={() => setTaskDraft(null)}
+          onSave={(task) => {
+            void saveAnnotation(null, taskDraft, task);
+            setTaskDraft(null);
+          }}
+          passage={taskDraft.text}
         />
       ) : null}
 
@@ -592,18 +697,150 @@ export function BookReader({
  */
 function NoteSheet({
   passage,
+  chapter,
   onSave,
   onCancel,
 }: {
   passage: string;
+  chapter: string | null;
   onSave: (body: string) => void;
   onCancel: () => void;
 }) {
   const [body, setBody] = useState("");
 
   return (
+    <Sheet label="Add a note" onCancel={onCancel} title="Add a note">
+      {chapter ? (
+        <p className="mt-1 text-xs font-bold text-muted-foreground">
+          {chapter}
+        </p>
+      ) : null}
+      <blockquote className="mt-2 max-h-24 overflow-y-auto border-l-2 border-kondo-green pl-3 text-sm leading-6 text-muted-foreground">
+        {passage}
+      </blockquote>
+      <textarea
+        aria-label="Your note"
+        autoFocus
+        className="mt-3 h-28 w-full resize-none rounded-2xl border border-border bg-background p-3 text-sm outline-none focus:border-kondo-green"
+        maxLength={4000}
+        onChange={(event) => setBody(event.target.value)}
+        placeholder="What do you want to remember about this?"
+        value={body}
+      />
+      <div className="mt-3 flex gap-2">
+        <Button fullWidth onClick={onCancel} variant="secondary">
+          Cancel
+        </Button>
+        <Button
+          disabled={!body.trim()}
+          fullWidth
+          onClick={() => onSave(body.trim())}
+        >
+          Save note
+        </Button>
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * Raising a task from a passage.
+ *
+ * What this produces is an ordinary planner task — the same kind the planner's
+ * own form makes, appearing in Tasks alongside coursework, with no separate
+ * "book tasks" list anywhere. The passage and the chapter travel into its
+ * description, so the task still means something when it is read a week later
+ * in the planner with the book closed.
+ *
+ * The title is prefilled from the chapter rather than left blank: a member
+ * marking a paragraph to come back to should be one tap from a usable task.
+ */
+function TaskSheet({
+  passage,
+  chapter,
+  bookTitle,
+  onSave,
+  onCancel,
+}: {
+  passage: string;
+  chapter: string | null;
+  bookTitle: string;
+  onSave: (task: { title: string; dueAt: string | null }) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState(
+    `Re-read ${chapter?.trim() || bookTitle}`.slice(0, 200),
+  );
+  const [dueAt, setDueAt] = useState("");
+
+  return (
+    <Sheet label="Add a task" onCancel={onCancel} title="Add a task">
+      <p className="mt-1 text-xs font-bold text-muted-foreground">
+        Goes to your planner{chapter ? ` · ${chapter}` : ""}
+      </p>
+      <blockquote className="mt-2 max-h-20 overflow-y-auto border-l-2 border-kondo-green pl-3 text-sm leading-6 text-muted-foreground">
+        {passage}
+      </blockquote>
+      <input
+        aria-label="Task"
+        autoFocus
+        className="mt-3 w-full rounded-2xl border border-border bg-background p-3 text-sm outline-none focus:border-kondo-green"
+        maxLength={200}
+        onChange={(event) => setTitle(event.target.value)}
+        placeholder="What do you need to do?"
+        value={title}
+      />
+      <label className="mt-3 block">
+        <span className="text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
+          Due (optional)
+        </span>
+        <input
+          aria-label="Due date"
+          className="mt-1 w-full rounded-2xl border border-border bg-background p-3 text-sm outline-none focus:border-kondo-green"
+          onChange={(event) => setDueAt(event.target.value)}
+          type="date"
+          value={dueAt}
+        />
+      </label>
+      <div className="mt-3 flex gap-2">
+        <Button fullWidth onClick={onCancel} variant="secondary">
+          Cancel
+        </Button>
+        <Button
+          disabled={!title.trim()}
+          fullWidth
+          onClick={() =>
+            onSave({ title: title.trim(), dueAt: dueAt || null })
+          }
+        >
+          Add to planner
+        </Button>
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * The bottom sheet both drafts share.
+ *
+ * A native `prompt()` cannot show the passage being annotated, cannot be
+ * styled, and on iOS takes over the page — so this is a real sheet, with the
+ * bottom safe area cleared so its buttons are not under a home indicator.
+ */
+function Sheet({
+  label,
+  title,
+  children,
+  onCancel,
+}: {
+  label: string;
+  title: string;
+  children: React.ReactNode;
+  onCancel: () => void;
+}) {
+  return (
     <div
-      aria-label="Add a note"
+      aria-label={label}
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-end bg-black/40"
       onClick={onCancel}
@@ -613,84 +850,97 @@ function NoteSheet({
       role="dialog"
     >
       <div
-        className="w-full rounded-t-3xl border-t border-border bg-card p-4"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-t-3xl border-t border-border bg-card p-4"
         onClick={(event) => event.stopPropagation()}
         style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
       >
         <p className="text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
-          Add a note
+          {title}
         </p>
-        <blockquote className="mt-2 max-h-24 overflow-y-auto border-l-2 border-kondo-green pl-3 text-sm leading-6 text-muted-foreground">
-          {passage}
-        </blockquote>
-        <textarea
-          aria-label="Your note"
-          autoFocus
-          className="mt-3 h-28 w-full resize-none rounded-2xl border border-border bg-background p-3 text-sm outline-none focus:border-kondo-green"
-          maxLength={4000}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder="What do you want to remember about this?"
-          value={body}
-        />
-        <div className="mt-3 flex gap-2">
-          <Button fullWidth onClick={onCancel} variant="secondary">
-            Cancel
-          </Button>
-          <Button
-            disabled={!body.trim()}
-            fullWidth
-            onClick={() => onSave(body.trim())}
-          >
-            Save note
-          </Button>
-        </div>
+        {children}
       </div>
     </div>
   );
 }
 
-/** The three things you can do with a selection, and nothing else. */
+/**
+ * The four things you can do with a selection, and nothing else.
+ *
+ * Highlight, Note, Task, AI — one row, no submenus. What AI can be asked is
+ * deliberately not here: the four question types live on the Ask surface,
+ * behind the AI action, so selecting a sentence does not present eight choices
+ * at once on a phone.
+ *
+ * The whole row has to fit across a phone, and "fit" cannot depend on how wide
+ * a particular font renders four words. The actions share the width equally
+ * and their labels truncate, so the row is exactly as wide as the toolbar at
+ * any font, any text size and in any language — the icons stay legible even
+ * where a label cannot. Sizing to the content instead put "AI" and the
+ * dismiss off the right-hand edge under the production font, where nobody
+ * would have found them.
+ */
 function SelectionBar({
   aiAllowed,
   onHighlight,
   onNote,
+  onTask,
   onAsk,
   onDismiss,
 }: {
   aiAllowed: boolean;
   onHighlight: () => void;
   onNote: () => void;
+  onTask: () => void;
   onAsk: () => void;
   onDismiss: () => void;
 }) {
   return (
     <div
-      className="pointer-events-auto absolute inset-x-3 bottom-24 z-50 flex items-center justify-center gap-1 rounded-2xl border border-border bg-card p-1.5 shadow-lift"
+      className="pointer-events-auto absolute inset-x-3 bottom-24 z-50 flex items-center gap-0.5 rounded-2xl border border-border bg-card p-1.5 shadow-lift"
       role="toolbar"
       aria-label="Selection actions"
     >
-      <Button onClick={onHighlight} size="sm" variant="ghost">
-        <Highlighter className="h-4 w-4" /> Highlight
-      </Button>
-      <Button onClick={onNote} size="sm" variant="ghost">
-        <StickyNote className="h-4 w-4" /> Note
-      </Button>
+      <SelectionAction icon={Highlighter} label="Highlight" onClick={onHighlight} />
+      <SelectionAction icon={StickyNote} label="Note" onClick={onNote} />
+      <SelectionAction icon={ListChecks} label="Task" onClick={onTask} />
       {/* Absent, not disabled, when the licence forbids it — a greyed button
           invites a question the reader cannot resolve. */}
       {aiAllowed ? (
-        <Button onClick={onAsk} size="sm" variant="ghost">
-          <Sparkles className="h-4 w-4" /> Ask AI
-        </Button>
+        <SelectionAction icon={Sparkles} label="AI" onClick={onAsk} />
       ) : null}
-      <Button
+      <button
         aria-label="Dismiss"
+        className="grid h-9 w-8 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
         onClick={onDismiss}
-        size="sm"
-        variant="ghost"
+        type="button"
       >
-        ✕
-      </Button>
+        <X aria-hidden="true" className="h-4 w-4" />
+      </button>
     </div>
+  );
+}
+
+function SelectionAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Highlighter;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      // `min-w-0` is what actually lets this shrink: a flex item defaults to
+      // its content's minimum width, which is how a row of four labelled
+      // actions ends up wider than the phone it is on.
+      className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-1.5 text-xs font-bold transition hover:bg-muted active:scale-[0.98] motion-reduce:transform-none"
+      onClick={onClick}
+      type="button"
+    >
+      <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
@@ -775,6 +1025,12 @@ function ReaderPanel({
                   {note.highlight && note.body ? (
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                       {note.body}
+                    </span>
+                  ) : null}
+                  {note.task ? (
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-kondo-green">
+                      <ListChecks className="h-3 w-3" />
+                      {note.task.title}
                     </span>
                   ) : null}
                 </button>

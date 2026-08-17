@@ -17,7 +17,9 @@ const progressSchema = z.object({
   // A CFI is long but bounded; the column is 600 and this refuses anything
   // that would be truncated into a locator that no longer resolves.
   locator: z.string().trim().min(1).max(600),
-  percentage: z.number().finite(),
+  // Optional on purpose. The reader knows where it is before it knows how far
+  // through that is, and a position worth saving should not wait on an index.
+  percentage: z.number().finite().optional().nullable(),
 });
 
 type Context = { params: Promise<{ slug: string }> };

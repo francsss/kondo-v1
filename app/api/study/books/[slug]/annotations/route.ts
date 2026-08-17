@@ -19,6 +19,16 @@ const schema = z.discriminatedUnion("kind", [
     selectedText: z.string().trim().max(2000).optional().nullable(),
     body: z.string().trim().max(4000).optional().nullable(),
     color: z.string().trim().max(20).optional().nullable(),
+    chapterLabel: z.string().trim().max(300).optional().nullable(),
+    // Present only when the member chose Task. The task itself is created by
+    // the planner's own model; this is the request to raise one.
+    task: z
+      .object({
+        title: z.string().trim().min(1).max(200),
+        dueAt: z.string().trim().min(1).optional().nullable(),
+      })
+      .optional()
+      .nullable(),
   }),
   z.object({
     kind: z.literal("bookmark"),
@@ -52,6 +62,13 @@ export async function POST(request: NextRequest, { params }: Context) {
       return Response.json({ bookmark }, { status: 201 });
     }
 
+    const dueAt = parsed.data.task?.dueAt
+      ? new Date(parsed.data.task.dueAt)
+      : null;
+    if (dueAt && Number.isNaN(dueAt.getTime())) {
+      return jsonError("That due date could not be read.");
+    }
+
     const note = await createAnnotation({
       userId: user.id,
       slug,
@@ -59,6 +76,10 @@ export async function POST(request: NextRequest, { params }: Context) {
       selectedText: parsed.data.selectedText,
       body: parsed.data.body,
       color: parsed.data.color,
+      chapterLabel: parsed.data.chapterLabel,
+      task: parsed.data.task
+        ? { title: parsed.data.task.title, dueAt }
+        : null,
     });
     return Response.json({ note }, { status: 201 });
   } catch (error) {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, BookmarkPlus, Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
@@ -42,11 +42,40 @@ export function AskBookAi({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [question, setQuestion] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  /**
+   * Keep the answer.
+   *
+   * It lands in the same notes list as a hand-written note — same table, same
+   * endpoint, same locator — because an answer worth keeping is a note about
+   * the passage, and a second "saved answers" list is one more place to look.
+   * The passage is stored as the highlight so the note still shows what was
+   * asked about, and the chapter travels with it.
+   */
+  async function saveToNotes() {
+    if (!answer || !cfi) return;
+    const response = await fetch(`/api/study/books/${slug}/annotations`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "annotation",
+        locator: cfi,
+        selectedText: selectedText.slice(0, 2000),
+        body: `Kondo AI: ${answer}`.slice(0, 4000),
+        chapterLabel: chapter,
+        color: "#cfef5d",
+      }),
+    });
+    if (response.ok) setSaved(true);
+  }
 
   async function ask(payload: { action?: string; question?: string }) {
     setPending(true);
     setError("");
     setAnswer("");
+    setSaved(false);
     captureProductEvent(PRODUCT_EVENTS.BOOK_AI_QUESTION_SENT, { slug });
     try {
       const response = await fetch(`/api/study/books/${slug}/ai`, {
@@ -164,9 +193,31 @@ export function AskBookAi({
           <p className="mt-4 text-xs text-muted-foreground">
             Based on the passage you selected{chapter ? ` · ${chapter}` : ""}.
           </p>
-          <Button asChild className="mt-3" size="sm" variant="secondary">
-            <Link href={backHref}>Back to passage</Link>
-          </Button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {/* Only offered when there is a locator to attach it to: a note
+                that cannot be found again in the book is not worth keeping. */}
+            {cfi ? (
+              <Button
+                disabled={saved}
+                onClick={() => void saveToNotes()}
+                size="sm"
+                variant="secondary"
+              >
+                {saved ? (
+                  <>
+                    <Check className="h-4 w-4" /> Saved to Notes
+                  </>
+                ) : (
+                  <>
+                    <BookmarkPlus className="h-4 w-4" /> Save to Notes
+                  </>
+                )}
+              </Button>
+            ) : null}
+            <Button asChild size="sm" variant="secondary">
+              <Link href={backHref}>Back to passage</Link>
+            </Button>
+          </div>
         </Card>
       ) : null}
     </div>

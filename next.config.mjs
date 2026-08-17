@@ -27,10 +27,26 @@ const storageOrigin = configuredStorageOrigin();
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://*.posthog.com https://maps.googleapis.com https://maps.gstatic.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  /*
+   * `blob:` in style-src and font-src is what makes an EPUB render as its
+   * publisher typeset it.
+   *
+   * epub.js unpacks the book in the browser and rewrites every asset a section
+   * links to — stylesheets and embedded fonts included — into blob: URLs
+   * pointing at the bytes it extracted from the archive. Without blob: here,
+   * those requests are refused and the book renders with its own typography
+   * stripped: poems lose their indentation, tables lose their rules, and
+   * anything the publisher expressed in CSS is simply gone.
+   *
+   * It grants close to nothing on top of what is already allowed. A blob: URL
+   * can only be minted by same-origin script that is already executing, and
+   * style-src already permits 'unsafe-inline' while font-src already permits
+   * data:, both of which are strictly broader than this.
+   */
+  "style-src 'self' 'unsafe-inline' blob: https://fonts.googleapis.com",
   `img-src 'self' data: blob: https:${isDevelopment ? " http:" : ""}`,
   `media-src 'self' blob:${storageOrigin ? ` ${storageOrigin}` : ""}`,
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "font-src 'self' data: blob: https://fonts.gstatic.com",
   `connect-src 'self' https: wss:${isDevelopment ? " http: ws:" : ""}`,
   "worker-src 'self' blob:",
   "child-src 'self' blob:",

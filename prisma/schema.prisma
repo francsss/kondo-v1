@@ -4679,6 +4679,10 @@ model StudyNote {
   /// a TEXT title, where the chapter and the verbatim passage already locate
   /// it. Storing DOM coordinates instead would break on the next font change.
   locator     String?                @db.VarChar(600)
+  /// The chapter's own label, recorded when the note was written. An EPUB's
+  /// sections live inside the file rather than in `chapter`, and a CFI is not
+  /// something a student can read back later.
+  chapterLabel String?               @db.VarChar(300)
   /// Highlight colour, when the reader chose one.
   color       String?                @db.VarChar(20)
   /// Set when this note raised a task. The task stays owned by the planner.

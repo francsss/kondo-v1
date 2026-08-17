@@ -17,6 +17,30 @@ const FOCUS_CLASS = "kondo-focus";
  * Focus Mode has to work there too — so a rejected or missing request is
  * ignored rather than treated as a failure.
  */
+/**
+ * Chrome stands down for as long as this component is mounted.
+ *
+ * The reader is not a page with a Focus Mode button on it — it is already the
+ * thing Focus Mode exists to produce. It draws its own header, its own way
+ * back and its own controls across the bottom of the screen, and the hub's
+ * navigation bar and pet sit directly on top of those: on a phone the
+ * Contents, Marks and Aa controls are behind the nav pill and cannot be
+ * tapped at all.
+ *
+ * This reuses Focus Mode's own marker rather than adding a second way to hide
+ * the same elements, and deliberately does not request native fullscreen —
+ * that needs a user gesture, and a reader that opens with a permission-shaped
+ * prompt is worse than one that simply fills the screen.
+ */
+export function useImmersiveChrome(active = true) {
+  useEffect(() => {
+    if (!active) return;
+    const root = document.documentElement;
+    root.classList.add(FOCUS_CLASS);
+    return () => root.classList.remove(FOCUS_CLASS);
+  }, [active]);
+}
+
 export function useFocusMode() {
   const [focused, setFocused] = useState(false);
 
