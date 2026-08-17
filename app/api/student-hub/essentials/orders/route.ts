@@ -7,7 +7,9 @@ import {
   jsonError,
 } from "@/lib/request";
 import { getCurrentUser } from "@/lib/server-auth";
+import { parseAlipayConfig } from "@/lib/payments/alipay-sandbox";
 import {
+  placeAlipayOrder,
   placeSimulatedOrder,
   StudyEssentialError,
 } from "@/lib/study-essentials";
@@ -35,6 +37,28 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    if (parsed.data.paymentProvider === "ALIPAY") {
+      const config = parseAlipayConfig(process.env);
+      if (!config) {
+        return jsonError("Alipay sandbox is not configured.", 503);
+      }
+      const result = await placeAlipayOrder({
+        userId: user.id,
+        slug: parsed.data.slug,
+        quantity: parsed.data.quantity,
+        config,
+        ...getRequestMeta(request),
+      });
+      return Response.json({
+        ok: true,
+        order: {
+          reference: result.order.reference,
+          status: result.order.status,
+        },
+        payment: result.payment,
+      });
+    }
+
     const order = await placeSimulatedOrder({
       userId: user.id,
       slug: parsed.data.slug,

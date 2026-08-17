@@ -13,14 +13,7 @@ type PaymentMethod = {
   available: boolean;
 };
 
-/**
- * The simulated checkout.
- *
- * It collects no card details and takes no money — deliberately, and it says
- * so. The shape is the one a real integration needs (a chosen provider, a
- * quantity, a server-created order settled out of band), so wiring Alipay or
- * WeChat Pay later replaces the payment step rather than this screen.
- */
+/** Checkout keeps provider credentials and payment confirmation server-side. */
 export function StudyEssentialCheckout({
   slug,
   title,
@@ -63,6 +56,22 @@ export function StudyEssentialCheckout({
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         setError(data.error ?? "The demo payment could not be completed.");
+        return;
+      }
+      if (data.payment?.gatewayUrl && data.payment?.params) {
+        const form = document.createElement("form");
+        form.action = data.payment.gatewayUrl;
+        form.method = "POST";
+        for (const [key, value] of Object.entries(data.payment.params)) {
+          if (typeof value !== "string") continue;
+          const field = document.createElement("input");
+          field.type = "hidden";
+          field.name = key;
+          field.value = value;
+          form.appendChild(field);
+        }
+        document.body.appendChild(form);
+        form.submit();
         return;
       }
       router.push(`/student-hub/orders/${data.order.reference}`);
@@ -186,7 +195,9 @@ export function StudyEssentialCheckout({
           {loading ? (
             <>
               <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              Completing demo payment…
+              {provider === "ALIPAY"
+                ? "Opening Alipay sandbox…"
+                : "Completing demo payment…"}
             </>
           ) : (
             <>
@@ -196,8 +207,9 @@ export function StudyEssentialCheckout({
           )}
         </Button>
         <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
-          This is a simulated payment. No money is taken and no card details are
-          collected.
+          {provider === "ALIPAY"
+            ? "Sandbox only. Kondo waits for Alipay's signed server notification before unlocking the book."
+            : "This is a simulated payment. No money is taken and no card details are collected."}
         </p>
       </section>
     </div>

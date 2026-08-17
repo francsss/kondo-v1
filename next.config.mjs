@@ -36,7 +36,7 @@ const contentSecurityPolicy = [
   "child-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://openapi-sandbox.dl.alipaydev.com https://openapi.alipaydev.com",
   "object-src 'none'",
   ...(!isDevelopment && hasSecurePublicOrigin
     ? ["upgrade-insecure-requests"]
