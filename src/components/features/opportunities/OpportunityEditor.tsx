@@ -12,6 +12,11 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
+import { FormResult, type FormResultState } from "@/components/ui/FormResult";
+import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadMediaFile } from "@/lib/client-media";
 
 type ReferenceOption = { id: string; name: string };
@@ -69,23 +74,42 @@ type InitialOpportunity = Partial<EditorState> & {
   coverMediaId?: string | null;
 };
 
-const STEPS = [
-  "Basics",
-  "Location",
-  "Eligibility",
-  "Benefits",
-  "Application",
-  "Review",
+/*
+ * Three steps, not six.
+ *
+ * Publishing an opportunity was six screens — Basics, Location, Eligibility,
+ * Benefits, Application, Review — several of which held two or three fields.
+ * That is more Continue presses than thinking. Grouped by the question being
+ * answered: what is it and where, who it is for and what they get, and how to
+ * apply.
+ */
+const STEPS = ["What & where", "Who & what they get", "How to apply"] as const;
+
+/**
+ * The types this editor offers, each with the activity area it needs.
+ *
+ * Kept in step with `organizationCapability` in src/lib/opportunity-types.ts,
+ * which is what the server actually enforces. Offering a type the
+ * organization has not enabled meant writing a whole opportunity and being
+ * refused at the end with "this organization has not enabled the activity
+ * area for this opportunity type" — true, but not something anyone could act
+ * on.
+ */
+const TYPES = [
+  ["SCHOLARSHIP", "Scholarship", "SCHOLARSHIPS"],
+  ["INTERNSHIP", "Internship", "INTERNSHIPS_JOBS"],
+  ["FULL_TIME_JOB", "Job", "INTERNSHIPS_JOBS"],
+  ["RESEARCH_OPPORTUNITY", "Research", "INTERNSHIPS_JOBS"],
+  ["VOLUNTEERING", "Volunteering", "INTERNSHIPS_JOBS"],
+  ["EXCHANGE_PROGRAM", "Program", "EVENTS"],
 ] as const;
 
-const TYPES = [
-  ["SCHOLARSHIP", "Scholarship"],
-  ["INTERNSHIP", "Internship"],
-  ["FULL_TIME_JOB", "Job"],
-  ["RESEARCH_OPPORTUNITY", "Research"],
-  ["VOLUNTEERING", "Volunteering"],
-  ["EXCHANGE_PROGRAM", "Program"],
-] as const;
+/** Human wording for an activity area, for the note under the type picker. */
+const CAPABILITY_LABELS: Record<string, string> = {
+  SCHOLARSHIPS: "Scholarships",
+  INTERNSHIPS_JOBS: "Internships & jobs",
+  EVENTS: "Events & programmes",
+};
 
 const DOCUMENTS = [
   "CV",
@@ -145,9 +169,16 @@ const EMPTY: EditorState = {
   accuracyConfirmed: false,
 };
 
-const fieldClass =
-  "h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm text-foreground outline-none transition focus:border-kondo-green focus:ring-4 focus:ring-kondo-green/10";
-const textareaClass = `${fieldClass} h-auto min-h-28 py-3 leading-6`;
+/*
+ * The same field the rest of Kondo now uses.
+ *
+ * These were a local variation with a 4px focus ring — a heavy green halo that
+ * did not match anything else and read as an error state. The shared shell
+ * keeps the border at 1px in every state and draws focus inset, so nothing
+ * moves and the treatment is identical across every Kondo form.
+ */
+const fieldClass = KONDO_CONTROL_CLASS;
+const textareaClass = `${fieldClass} min-h-28 py-3 leading-7`;
 
 function lines(value: string) {
   return value
@@ -163,8 +194,20 @@ function csv(value: string) {
     .filter(Boolean);
 }
 
+/**
+ * A money field in minor units, or null when the publisher left it alone.
+ *
+ * The empty check has to come first. `Number("")` is `0`, which is finite and
+ * not negative, so an untouched salary box used to serialise as `0` — a stated
+ * compensation of nothing. The schema then required a currency for it, the
+ * currency was only sent when an amount had been typed, and every job or
+ * internship without a salary became unpublishable with an error naming a
+ * field the publisher had never filled in and could not empty.
+ */
 function minor(value: string) {
-  const amount = Number(value);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const amount = Number(trimmed);
   return Number.isFinite(amount) && amount >= 0
     ? Math.round(amount * 100)
     : null;
@@ -180,24 +223,80 @@ export function OpportunityEditor({
   cities,
   universities,
   initial,
+  enabledCapabilities,
 }: {
   organization: { id: string; slug: string; name: string };
   countries: ReferenceOption[];
   cities: (ReferenceOption & { countryId: string })[];
   universities: (ReferenceOption & { cityId: string | null })[];
   initial?: InitialOpportunity | null;
+  /**
+   * Activity areas the organization has turned on. Undefined means "not
+   * supplied" — every type stays available, which keeps existing callers
+   * (the edit route) working exactly as before.
+   */
+  enabledCapabilities?: readonly string[];
 }) {
   const router = useRouter();
+  /*
+   * Only the types this organization can actually publish. The server checks
+   * the same thing; showing the rest would invite work that ends in a refusal.
+   */
+  const availableTypes = useMemo(
+    () =>
+      enabledCapabilities
+        ? TYPES.filter(([, , capability]) =>
+            enabledCapabilities.includes(capability),
+          )
+        : TYPES.slice(),
+    [enabledCapabilities],
+  );
+  const missingCapabilities = useMemo(() => {
+    if (!enabledCapabilities) return [];
+    const missing = TYPES.filter(
+      ([, , capability]) => !enabledCapabilities.includes(capability),
+    ).map(([, , capability]) => CAPABILITY_LABELS[capability] ?? capability);
+    return [...new Set(missing)];
+  }, [enabledCapabilities]);
   const pendingRef = useRef(false);
   const draftKey = `kondo:opportunity-draft:${organization.id}:${initial?.id ?? "new"}`;
   const [step, setStep] = useState(0);
-  const [state, setState] = useState<EditorState>({ ...EMPTY, ...initial });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Set once the flow finishes; the outcome replaces the form.
+  const [result, setResult] = useState<FormResultState | null>(null);
+  const [state, setState] = useState<EditorState>(() => {
+    const base = { ...EMPTY, ...initial };
+    /*
+     * A new opportunity defaults to Scholarship, which is wrong for an
+     * organization that has not enabled scholarships — it would preselect the
+     * one type they cannot publish. An existing opportunity keeps its own type.
+     */
+    if (!initial && enabledCapabilities) {
+      const [firstAvailable] =
+        TYPES.filter(([, , capability]) =>
+          enabledCapabilities.includes(capability),
+        )[0] ?? [];
+      if (firstAvailable) base.type = firstAvailable;
+    }
+    return base;
+  });
   const [cover, setCover] = useState<File | null>(null);
   const [coverAlt, setCoverAlt] = useState(initial?.title ?? "");
+  // null while idle; 0-100 while an image is actually being sent.
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [restored, setRestored] = useState(false);
+  /*
+   * Dirty means "differs from what was loaded", so an untouched form never
+   * nags, and a finished one is never dirty because the work is saved by then.
+   */
+  const pristine = useMemo(
+    () => JSON.stringify({ ...EMPTY, ...initial }),
+    [initial],
+  );
+  const isDirty = !result && JSON.stringify(state) !== pristine;
   const isScholarship = state.type === "SCHOLARSHIP";
   const isJob = [
     "INTERNSHIP",
@@ -254,6 +353,12 @@ export function OpportunityEditor({
   );
 
   function update<K extends keyof EditorState>(key: K, value: EditorState[K]) {
+    setFieldErrors((current) => {
+      if (!current[key as string]) return current;
+      const next = { ...current };
+      delete next[key as string];
+      return next;
+    });
     setState((current) => ({ ...current, [key]: value }));
     setError("");
   }
@@ -373,7 +478,65 @@ export function OpportunityEditor({
     };
   }
 
+  /*
+   * Checked when the person tries to leave a step, never on arrival, and the
+   * first offending field is focused so nobody hunts for it. Same behaviour as
+   * the catalog forms — this editor previously had none.
+   */
+  function validateStep(index: number) {
+    const next: Record<string, string> = {};
+    if (index === 0) {
+      /*
+       * These are the server's own minimums, applied where the field is —
+       * not returned as a schema error after the last step, naming a field
+       * the owner can no longer see. Kept in step with
+       * `opportunityInputSchema` in src/features/opportunities/schemas.
+       */
+      if (state.title.trim().length < 6)
+        next.title = "Enter a title of at least 6 characters.";
+      if (state.shortDescription.trim().length < 20)
+        next.shortDescription =
+          "Add a summary of at least 20 characters — this is the card text.";
+      if (state.description.trim().length < 50)
+        next.description =
+          "Describe the opportunity in at least 50 characters.";
+    }
+    if (index === 2) {
+      if (
+        state.applicationMethod === "EXTERNAL_URL" &&
+        !state.externalApplicationUrl.trim()
+      )
+        next.externalApplicationUrl = "Add the link applicants should open.";
+      if (state.applicationMethod === "EMAIL" && !state.applicationEmail.trim())
+        next.applicationEmail = "Add the address applications should go to.";
+      if (
+        state.applicationOpenAt &&
+        state.applicationDeadline &&
+        state.applicationDeadline < state.applicationOpenAt
+      )
+        next.applicationDeadline = "The deadline is before the opening date.";
+    }
+    setFieldErrors(next);
+    const first = Object.keys(next)[0];
+    if (first) {
+      const node = document.querySelector<HTMLElement>(
+        `[data-field="${first}"]`,
+      );
+      node?.scrollIntoView({ block: "center" });
+      node?.focus({ preventScroll: true });
+    }
+    return !first;
+  }
+
   async function save(submitForReview: boolean) {
+    if (submitForReview) {
+      for (const index of [0, 2]) {
+        if (!validateStep(index)) {
+          setStep(index);
+          return;
+        }
+      }
+    }
     if (pendingRef.current) return;
     if (submitForReview && !state.accuracyConfirmed) {
       setError("Confirm that the published information is accurate.");
@@ -402,7 +565,9 @@ export function OpportunityEditor({
       }
       if (cover) {
         setStatus("Uploading cover…");
+        setUploadProgress(0);
         const mediaId = await uploadMediaFile(cover, {
+          onProgress: setUploadProgress,
           purpose: "OPPORTUNITY_COVER_IMAGE",
           altText: coverAlt.trim() || state.title,
         });
@@ -445,7 +610,14 @@ export function OpportunityEditor({
         }
       }
       window.localStorage.removeItem(draftKey);
-      router.push(`/organizations/${organization.slug}/opportunities`);
+      setResult({
+        // Submitting produces a record awaiting review, not a public one.
+        kind: submitForReview ? "review" : "draft",
+        noun: "Opportunity",
+        title: state.title,
+        backHref: `/organizations/${organization.slug}/opportunities`,
+        backLabel: "Back to opportunities",
+      });
       router.refresh();
     } catch (caught) {
       setError(
@@ -457,6 +629,7 @@ export function OpportunityEditor({
     } finally {
       pendingRef.current = false;
       setPending(false);
+      setUploadProgress(null);
     }
   }
 
@@ -475,22 +648,32 @@ export function OpportunityEditor({
     if (!coverAlt) setCoverAlt(state.title);
   }
 
-  return (
-    <div className="mx-auto max-w-4xl px-4 pb-24 pt-7 sm:px-6 lg:pt-10">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-kondo-green">
-        {organization.name}
-      </p>
-      <h1 className="mt-2 text-3xl font-black tracking-[-0.04em]">
-        {initial ? "Edit opportunity" : "Create an opportunity"}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        A guided, saveable workflow for accurate and trustworthy listings.
-      </p>
-
-      <ol
-        className="mt-7 grid grid-cols-3 gap-2 sm:grid-cols-6"
-        aria-label="Progress"
+  if (result) {
+    return (
+      <FocusedFormShell
+        backHref={`/organizations/${organization.slug}/opportunities`}
+        context={organization.name}
+        title={initial ? "Edit opportunity" : "New opportunity"}
       >
+        <FormResult state={result} />
+      </FocusedFormShell>
+    );
+  }
+
+  return (
+    /*
+     * The same focused environment the catalog forms use: while this is open
+     * the workspace bottom bar stands down so it cannot sit over the actions,
+     * and the header keeps the organization and the task in view.
+     */
+    <FocusedFormShell
+      backHref={`/organizations/${organization.slug}/opportunities`}
+      context={organization.name}
+      step={`Step ${step + 1} of ${STEPS.length}`}
+      title={initial ? "Edit opportunity" : "New opportunity"}
+    >
+      <UnsavedChangesGuard isDirty={isDirty} />
+      <ol className="mt-7 grid grid-cols-3 gap-2" aria-label="Progress">
         {STEPS.map((label, index) => (
           <li key={label}>
             <button
@@ -523,7 +706,7 @@ export function OpportunityEditor({
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
-              {TYPES.map(([value, label]) => (
+              {availableTypes.map(([value, label]) => (
                 <button
                   className={`rounded-2xl border p-3 text-left text-sm font-bold transition ${
                     state.type === value
@@ -538,25 +721,61 @@ export function OpportunityEditor({
                 </button>
               ))}
             </div>
+            {/*
+             * Says what is not on offer and where to change it, instead of
+             * letting the publisher find out from a refusal at the end.
+             */}
+            {missingCapabilities.length ? (
+              <p className="text-xs leading-6 text-muted-foreground">
+                {availableTypes.length
+                  ? `Also want to post ${missingCapabilities.join(" or ").toLowerCase()}? Turn the area on in `
+                  : `${organization.name} has no opportunity areas turned on yet. Choose one in `}
+                <a
+                  className="font-black text-kondo-green underline underline-offset-2"
+                  href={`/organizations/${organization.slug}/settings`}
+                >
+                  organization settings
+                </a>
+                .
+              </p>
+            ) : null}
             <label className="block text-sm font-bold">
               Title
               <input
                 className={`${fieldClass} mt-2`}
+                data-field="title"
                 maxLength={180}
                 onChange={(event) => update("title", event.target.value)}
                 value={state.title}
               />
+              {fieldErrors.title ? (
+                <span
+                  className="mt-1.5 block text-xs font-bold text-destructive"
+                  role="alert"
+                >
+                  {fieldErrors.title}
+                </span>
+              ) : null}
             </label>
             <label className="block text-sm font-bold">
               Short summary
               <textarea
                 className={`${textareaClass} mt-2 min-h-24`}
+                data-field="shortDescription"
                 maxLength={400}
                 onChange={(event) =>
                   update("shortDescription", event.target.value)
                 }
                 value={state.shortDescription}
               />
+              {fieldErrors.shortDescription ? (
+                <span
+                  className="mt-1.5 block text-xs font-bold text-destructive"
+                  role="alert"
+                >
+                  {fieldErrors.shortDescription}
+                </span>
+              ) : null}
               <span className="mt-1 block text-right text-xs font-normal text-muted-foreground">
                 {state.shortDescription.length}/400
               </span>
@@ -565,48 +784,56 @@ export function OpportunityEditor({
               Detailed description
               <textarea
                 className={`${textareaClass} mt-2 min-h-48`}
+                data-field="description"
                 maxLength={20_000}
                 onChange={(event) => update("description", event.target.value)}
                 value={state.description}
               />
+              {fieldErrors.description ? (
+                <span
+                  className="mt-1.5 block text-xs font-bold text-destructive"
+                  role="alert"
+                >
+                  {fieldErrors.description}
+                </span>
+              ) : null}
             </label>
           </div>
         ) : null}
 
-        {step === 1 ? (
+        {step === 0 ? (
           <div className="space-y-5">
             <h2 className="text-lg font-black">Location and audience</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-bold">
-                Country
-                <select
-                  className={`${fieldClass} mt-2`}
-                  onChange={(event) => update("countryId", event.target.value)}
-                  value={state.countryId}
-                >
-                  <option value="">Not specified</option>
-                  {countries.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-bold">
-                City
-                <select
-                  className={`${fieldClass} mt-2`}
-                  onChange={(event) => update("cityId", event.target.value)}
-                  value={state.cityId}
-                >
-                  <option value="">Not specified</option>
-                  {availableCities.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {/*
+               * Every ISO country now reaches this list, and the city list is
+               * long too. Type-to-filter beats scrolling a native select of
+               * 242 options; the short lists nearby stay plain selects.
+               */}
+              <SearchableSelect
+                clearLabel="Not specified"
+                label="Country"
+                onSelect={(id) => update("countryId", id)}
+                options={countries.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                }))}
+                placeholder="Not specified"
+                searchPlaceholder="Search countries"
+                selected={state.countryId}
+              />
+              <SearchableSelect
+                clearLabel="Not specified"
+                label="City"
+                onSelect={(id) => update("cityId", id)}
+                options={availableCities.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                }))}
+                placeholder="Not specified"
+                searchPlaceholder="Search cities"
+                selected={state.cityId}
+              />
               <label className="text-sm font-bold">
                 University
                 <select
@@ -673,7 +900,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 2 ? (
+        {step === 1 ? (
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-black">Eligibility</h2>
@@ -712,7 +939,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 3 ? (
+        {step === 1 ? (
           <div className="space-y-5">
             <h2 className="text-lg font-black">Benefits and requirements</h2>
             {isScholarship ? (
@@ -905,7 +1132,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 4 ? (
+        {step === 2 ? (
           <div className="space-y-5">
             <h2 className="text-lg font-black">Dates and application method</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -964,12 +1191,21 @@ export function OpportunityEditor({
                 Application URL
                 <input
                   className={`${fieldClass} mt-2`}
+                  data-field="externalApplicationUrl"
                   onChange={(event) =>
                     update("externalApplicationUrl", event.target.value)
                   }
                   placeholder="https://"
                   value={state.externalApplicationUrl}
                 />
+                {fieldErrors.externalApplicationUrl ? (
+                  <span
+                    className="mt-1.5 block text-xs font-bold text-destructive"
+                    role="alert"
+                  >
+                    {fieldErrors.externalApplicationUrl}
+                  </span>
+                ) : null}
               </label>
             ) : null}
             {state.applicationMethod === "EMAIL" ? (
@@ -1012,7 +1248,7 @@ export function OpportunityEditor({
           </div>
         ) : null}
 
-        {step === 5 ? (
+        {step === 2 ? (
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-black">Review and presentation</h2>
@@ -1078,6 +1314,19 @@ export function OpportunityEditor({
                   type="file"
                 />
               </label>
+              {uploadProgress !== null ? (
+                <span className="mt-3 block">
+                  <span className="block text-[11px] font-black text-muted-foreground">
+                    Uploading {Math.round(uploadProgress)}%
+                  </span>
+                  <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <span
+                      className="block h-full rounded-full bg-kondo-green transition-[width] duration-200 motion-reduce:transition-none"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </span>
+                </span>
+              ) : null}
               {cover ? (
                 <input
                   aria-label="Cover image description"
@@ -1157,6 +1406,7 @@ export function OpportunityEditor({
             <Button
               disabled={pending}
               onClick={() =>
+                validateStep(step) &&
                 setStep((current) => Math.min(STEPS.length - 1, current + 1))
               }
             >
@@ -1166,6 +1416,6 @@ export function OpportunityEditor({
           )}
         </div>
       </div>
-    </div>
+    </FocusedFormShell>
   );
 }

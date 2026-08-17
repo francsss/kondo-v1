@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
-import type { MeetDiscoveryProfile } from "@/components/features/community/MeetDiscoveryMap";
+import type { MeetDiscoveryProfile } from "@/features/meet/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { MEET_PREMIUM_FEATURES } from "@/features/meet/config";
 import { cn } from "@/lib/utils";

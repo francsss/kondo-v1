@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIntro";
@@ -15,9 +16,20 @@ import { getHomeActivityStream } from "@/lib/home-activity";
 import { requireUser } from "@/lib/server-auth";
 import { getStoryFeed } from "@/lib/stories";
 import { getNavigatorActions } from "@/lib/navigator";
+import { GuideNextStepCard } from "@/components/features/guides/GuideNextStepCard";
+import { OpportunityRails } from "@/components/features/opportunities/OpportunityRails";
+import { getGuideNextStep, guideCategoryPriority } from "@/lib/guide-journey";
 import { LocalRecommendationsRail } from "@/components/features/home/LocalRecommendationsRail";
 import { HomeFeedReveal } from "@/components/features/home/HomeFeedReveal";
+import {
+  feedLeadsHome,
+  homeSectionOrder,
+  showsLocalPresence,
+  type HomeSection,
+} from "@/lib/home-layout";
+import { journeyStageLabel } from "@/lib/journey";
 import { recommendLocalResources } from "@/lib/local-recommendations";
+import { getStudentHubOpportunityRails } from "@/lib/opportunity-recommendations";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -41,6 +53,7 @@ export default async function HomePage() {
     stories,
     navigator,
     nearYou,
+    opportunityRails,
   ] = await Promise.all([
     getHomeData(user.id),
     getHomeActivityStream(user),
@@ -48,16 +61,48 @@ export default async function HomePage() {
     getNavigatorActions(user.id),
     // Personalized to this member only, and never cached across members.
     recommendLocalResources({ userId: user.id, limit: 6 }),
+    getStudentHubOpportunityRails(user.id),
   ]);
-  const guidePriority =
-    user.studentJourney === "INCOMING_STUDENT" ||
-    user.studentJourney === "ADMITTED_STUDENT" ||
-    user.studentJourney === "PROSPECTIVE_STUDENT"
-      ? ["BEFORE_DEPARTURE", "ARRIVAL", "RESIDENCY"]
-      : user.studentJourney === "ALUMNI" ||
-          user.studentJourney === "PROFESSIONAL"
-        ? ["MONEY", "UNIVERSITY"]
-        : ["UNIVERSITY", "DAILY_LIFE"];
+  /*
+   * Home renders one order per Journey group rather than one order for
+   * everybody. See `home-layout` for why each group leads with something
+   * different; the short version is that the old fixed order assumed every
+   * member was already living in China.
+   */
+  const sectionOrder = homeSectionOrder(navigator.journey.group);
+  const leadsWithFeed = feedLeadsHome(navigator.journey.group);
+  const localPresence = showsLocalPresence(navigator.journey.group);
+  /*
+   * Only from a date the member actually gave us. An intake in the past is
+   * treated as absent rather than shown as a negative countdown — the member
+   * has either arrived or moved their plans, and Kondo does not know which.
+   */
+  const intake = user.journeyDetail?.expectedIntake ?? user.arrivalDate ?? null;
+  const daysToIntake =
+    !localPresence && intake
+      ? Math.ceil((intake.getTime() - now.getTime()) / 86_400_000)
+      : null;
+  // One rail, not the Student Hub's full set — Home points at opportunities,
+  // it does not replace the page built for browsing them.
+  const opportunityRail = opportunityRails[0] ?? null;
+  /*
+   * Guide order follows the precise Journey stage, not the legacy
+   * `studentJourney` bucket this used to read. The two are not equivalent:
+   * ADMITTED and PREPARING_ARRIVAL both fell into the same legacy bucket, and
+   * they want different things first — what to pack versus how to get from the
+   * airport. The stage already exists and is already loaded here.
+   */
+  const guidePriority = guideCategoryPriority(navigator.journey.stage ?? null);
+  /*
+   * Runs after the batch above because it needs the Journey stage that batch
+   * resolves. Passing null to keep it inside the parallel fetch would have
+   * silently turned the personalization off — one small indexed query is the
+   * cheaper trade.
+   */
+  const guideNextStep = await getGuideNextStep({
+    userId: user.id,
+    stage: navigator.journey.stage ?? null,
+  });
   const firstGuide = [...guides].sort((left, right) => {
     const leftRank = guidePriority.indexOf(left.category);
     const rightRank = guidePriority.indexOf(right.category);
@@ -123,6 +168,294 @@ export default async function HomePage() {
     </Card>
   ) : null;
 
+  const feedSection = (
+    <div
+      className={`${
+        // Sits directly under the greeting when it leads; otherwise it is one
+        // more section down the page and needs the same gap as the rest.
+        leadsWithFeed ? "mt-6" : "mt-12"
+      } grid gap-6 xl:grid-cols-[minmax(0,760px)_minmax(300px,320px)] xl:justify-center`}
+      key="FEED"
+    >
+      <div className="min-w-0 space-y-3.5 sm:space-y-4">
+        <Card className="flex items-center gap-3 border-border/80 p-3.5 shadow-sm sm:p-4">
+          <Avatar
+            firstName={user.firstName}
+            lastName={user.lastName}
+            mediaId={user.avatarMediaId}
+            seed={user.id}
+          />
+          <PostComposer
+            communities={composerCommunities}
+            triggerLabel="Share something with your community…"
+            triggerVariant="composer"
+          />
+        </Card>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-kondo-ink dark:text-white">
+              For you
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Fresh from your communities
+            </p>
+          </div>
+          <div className="flex rounded-full bg-slate-100 p-1 text-xs font-bold dark:bg-white/5">
+            <span className="rounded-full bg-white px-3 py-1.5 text-kondo-ink shadow-sm dark:bg-white/10 dark:text-white">
+              Relevant
+            </span>
+            <span className="px-3 py-1.5 text-muted-foreground">Latest</span>
+          </div>
+        </div>
+
+        {posts.length ? (
+          <>
+            {posts.slice(0, 2).map((post, index) => (
+              <HomeFeedReveal delay={index * 0.035} key={post.id}>
+                <FeedPost currentUserId={user.id} immersive post={post} />
+              </HomeFeedReveal>
+            ))}
+            <HomeFeedReveal>
+              <StoryPreviewRail
+                compact
+                entryPoint="home"
+                eyebrow="Student Stories"
+                immersive
+                stories={stories}
+                title="Student life, as it really feels."
+              />
+            </HomeFeedReveal>
+            {journeyCard ? (
+              <HomeFeedReveal>{journeyCard}</HomeFeedReveal>
+            ) : null}
+            {posts.slice(2).map((post) => (
+              <HomeFeedReveal key={post.id}>
+                <FeedPost currentUserId={user.id} immersive post={post} />
+              </HomeFeedReveal>
+            ))}
+          </>
+        ) : (
+          <>
+            <HomeFeedReveal>
+              <Card className="py-14 text-center">
+                <p className="text-3xl">🌱</p>
+                <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
+                  Your feed is ready to grow
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                  Join a few communities and the conversations that matter to
+                  you will appear here.
+                </p>
+                <Button asChild className="mt-5" variant="soft">
+                  <Link href="/communities">Explore communities</Link>
+                </Button>
+              </Card>
+            </HomeFeedReveal>
+            <HomeFeedReveal>
+              <StoryPreviewRail
+                compact
+                entryPoint="home"
+                eyebrow="Student Stories"
+                immersive
+                stories={stories}
+                title="Student life, as it really feels."
+              />
+            </HomeFeedReveal>
+            {journeyCard ? (
+              <HomeFeedReveal>{journeyCard}</HomeFeedReveal>
+            ) : null}
+          </>
+        )}
+      </div>
+
+      <aside className="space-y-5 xl:space-y-6">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+                {localPresence ? "Your corner of China" : "Where you’re headed"}
+              </p>
+              <h2 className="mt-1 flex items-center gap-1.5 font-black text-kondo-ink dark:text-white">
+                <MapPin
+                  aria-hidden="true"
+                  className="h-4 w-4 text-kondo-green"
+                />{" "}
+                {localPresence
+                  ? (user.city?.name ?? "Location not set")
+                  : journeyStageLabel(navigator.journey.stage)}
+              </h2>
+            </div>
+            <span className="text-3xl" aria-label="China">
+              🇨🇳
+            </span>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {/*
+             * Before arrival, the clock in China is context rather than
+             * "your" time, and a countdown to the intake is the number that
+             * actually governs the next few months. It is only shown when
+             * the member has given a date; nothing here is invented.
+             */}
+            <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
+              <p className="text-xs text-muted-foreground">
+                {localPresence ? "Local time" : "Time in China"}
+              </p>
+              <p className="mt-1 font-black text-kondo-ink dark:text-white">
+                {chinaTime}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
+              <p className="text-xs text-muted-foreground">
+                {daysToIntake === null || daysToIntake < 0
+                  ? "Time zone"
+                  : "Until intake"}
+              </p>
+              <p className="mt-1 font-black text-kondo-ink dark:text-white">
+                {daysToIntake === null || daysToIntake < 0
+                  ? "China · UTC+8"
+                  : `${daysToIntake} day${daysToIntake === 1 ? "" : "s"}`}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="font-black text-kondo-ink dark:text-white">
+              Upcoming near you
+            </h2>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/communities?type=events">View all</Link>
+            </Button>
+          </div>
+          <div className="mt-3 space-y-1">
+            {upcomingEvents.length ? (
+              upcomingEvents.map((event) => (
+                <Link
+                  className="flex gap-3 rounded-2xl p-2.5 transition hover:bg-slate-50 dark:hover:bg-white/5"
+                  href={`/communities/${event.community.slug}?post=${event.id}`}
+                  key={event.id}
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-orange-100 text-center text-[10px] font-black leading-3 text-orange-700 dark:bg-orange-400/10 dark:text-orange-300">
+                    {event.eventAt
+                      ?.toLocaleDateString("en", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                      .toUpperCase()}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold text-kondo-ink dark:text-white">
+                      {event.title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {event.eventLocation ?? event.community.name}
+                    </span>
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <p className="py-5 text-center text-sm text-muted-foreground">
+                No events this week.
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="font-black text-kondo-ink dark:text-white">
+              Communities to know
+            </h2>
+            <Button asChild size="icon" variant="ghost">
+              <Link aria-label="See all communities" href="/communities">
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="mt-4 space-y-3">
+            {communities.slice(0, 4).map((community) => (
+              <Link
+                className="flex items-center gap-3"
+                href={`/communities/${community.slug}`}
+                key={community.id}
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-kondo-mint text-lg dark:bg-emerald-400/10">
+                  {community.icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-kondo-ink dark:text-white">
+                    {community.name}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {community._count.members.toLocaleString()} members
+                  </span>
+                </span>
+                <span className="text-xs font-black text-kondo-green">
+                  {community.members.length ? "Joined" : "Join"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </aside>
+    </div>
+  );
+
+  const sections: Record<HomeSection, ReactNode> = {
+    FEED: feedSection,
+    /*
+     * Only when there is genuinely something unfinished. An empty slot is
+     * better than a card inventing a task, and the Navigator already covers
+     * the case where nothing is outstanding.
+     */
+    GUIDE_NEXT_STEP: guideNextStep ? (
+      <section className="mt-12" key="GUIDE_NEXT_STEP">
+        <GuideNextStepCard step={guideNextStep} />
+      </section>
+    ) : null,
+    NAVIGATOR: (
+      <JourneyNavigator
+        initialActions={navigator.actions}
+        initialJourney={navigator.journey}
+        key="NAVIGATOR"
+      />
+    ),
+    LOCAL_RECOMMENDATIONS: (
+      <LocalRecommendationsRail items={nearYou.items} key="LOCAL" />
+    ),
+    OPPORTUNITIES: opportunityRail ? (
+      <div className="mt-2" key="OPPORTUNITIES">
+        <OpportunityRails rails={[opportunityRail]} />
+      </div>
+    ) : null,
+    MARKETPLACE: listings.length ? (
+      <section className="mt-12" key="MARKETPLACE">
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-kondo-ink dark:text-white">
+              Fresh in the marketplace
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Useful things from students near you
+            </p>
+          </div>
+          <Button asChild variant="ghost">
+            <Link href="/marketplace">
+              See everything <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {listings.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} />
+          ))}
+        </div>
+      </section>
+    ) : null,
+  };
+
   return (
     <div className="mx-auto max-w-[1480px] px-3 pb-28 pt-6 sm:px-5 lg:px-6 lg:pb-16 lg:pt-8 xl:px-7">
       <HomeActivityIntro
@@ -132,248 +465,7 @@ export default async function HomePage() {
         firstName={user.firstName}
         generatedAt={new Date().toISOString()}
       />
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,760px)_minmax(300px,320px)] xl:justify-center">
-        <div className="min-w-0 space-y-3.5 sm:space-y-4">
-          <Card className="flex items-center gap-3 border-border/80 p-3.5 shadow-sm sm:p-4">
-            <Avatar
-              firstName={user.firstName}
-              lastName={user.lastName}
-              mediaId={user.avatarMediaId}
-              seed={user.id}
-            />
-            <PostComposer
-              communities={composerCommunities}
-              triggerLabel="Share something with your community…"
-              triggerVariant="composer"
-            />
-          </Card>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black tracking-tight text-kondo-ink dark:text-white">
-                For you
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Fresh from your communities
-              </p>
-            </div>
-            <div className="flex rounded-full bg-slate-100 p-1 text-xs font-bold dark:bg-white/5">
-              <span className="rounded-full bg-white px-3 py-1.5 text-kondo-ink shadow-sm dark:bg-white/10 dark:text-white">
-                Relevant
-              </span>
-              <span className="px-3 py-1.5 text-muted-foreground">Latest</span>
-            </div>
-          </div>
-
-          {posts.length ? (
-            <>
-              {posts.slice(0, 2).map((post, index) => (
-                <HomeFeedReveal delay={index * 0.035} key={post.id}>
-                  <FeedPost currentUserId={user.id} immersive post={post} />
-                </HomeFeedReveal>
-              ))}
-              <HomeFeedReveal>
-                <StoryPreviewRail
-                  compact
-                  entryPoint="home"
-                  eyebrow="Student Stories"
-                  immersive
-                  stories={stories}
-                  title="Student life, as it really feels."
-                />
-              </HomeFeedReveal>
-              {journeyCard ? (
-                <HomeFeedReveal>{journeyCard}</HomeFeedReveal>
-              ) : null}
-              {posts.slice(2).map((post) => (
-                <HomeFeedReveal key={post.id}>
-                  <FeedPost currentUserId={user.id} immersive post={post} />
-                </HomeFeedReveal>
-              ))}
-            </>
-          ) : (
-            <>
-              <HomeFeedReveal>
-                <Card className="py-14 text-center">
-                  <p className="text-3xl">🌱</p>
-                  <h2 className="mt-3 font-black text-kondo-ink dark:text-white">
-                    Your feed is ready to grow
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                    Join a few communities and the conversations that matter to
-                    you will appear here.
-                  </p>
-                  <Button asChild className="mt-5" variant="soft">
-                    <Link href="/communities">Explore communities</Link>
-                  </Button>
-                </Card>
-              </HomeFeedReveal>
-              <HomeFeedReveal>
-                <StoryPreviewRail
-                  compact
-                  entryPoint="home"
-                  eyebrow="Student Stories"
-                  immersive
-                  stories={stories}
-                  title="Student life, as it really feels."
-                />
-              </HomeFeedReveal>
-              {journeyCard ? (
-                <HomeFeedReveal>{journeyCard}</HomeFeedReveal>
-              ) : null}
-            </>
-          )}
-        </div>
-
-        <aside className="space-y-5 xl:space-y-6">
-          <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-                  Your corner of China
-                </p>
-                <h2 className="mt-1 flex items-center gap-1.5 font-black text-kondo-ink dark:text-white">
-                  <MapPin
-                    aria-hidden="true"
-                    className="h-4 w-4 text-kondo-green"
-                  />{" "}
-                  {user.city?.name ?? "Location not set"}
-                </h2>
-              </div>
-              <span className="text-3xl" aria-label="China">
-                🇨🇳
-              </span>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
-                <p className="text-xs text-muted-foreground">Local time</p>
-                <p className="mt-1 font-black text-kondo-ink dark:text-white">
-                  {chinaTime}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-kondo-cloud p-3 dark:bg-white/5">
-                <p className="text-xs text-muted-foreground">Time zone</p>
-                <p className="mt-1 font-black text-kondo-ink dark:text-white">
-                  China · UTC+8
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center justify-between">
-              <h2 className="font-black text-kondo-ink dark:text-white">
-                Upcoming near you
-              </h2>
-              <Button asChild size="sm" variant="ghost">
-                <Link href="/communities?type=events">View all</Link>
-              </Button>
-            </div>
-            <div className="mt-3 space-y-1">
-              {upcomingEvents.length ? (
-                upcomingEvents.map((event) => (
-                  <Link
-                    className="flex gap-3 rounded-2xl p-2.5 transition hover:bg-slate-50 dark:hover:bg-white/5"
-                    href={`/communities/${event.community.slug}?post=${event.id}`}
-                    key={event.id}
-                  >
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-orange-100 text-center text-[10px] font-black leading-3 text-orange-700 dark:bg-orange-400/10 dark:text-orange-300">
-                      {event.eventAt
-                        ?.toLocaleDateString("en", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                        .toUpperCase()}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold text-kondo-ink dark:text-white">
-                        {event.title}
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                        {event.eventLocation ?? event.community.name}
-                      </span>
-                    </span>
-                  </Link>
-                ))
-              ) : (
-                <p className="py-5 text-center text-sm text-muted-foreground">
-                  No events this week.
-                </p>
-              )}
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center justify-between">
-              <h2 className="font-black text-kondo-ink dark:text-white">
-                Communities to know
-              </h2>
-              <Button asChild size="icon" variant="ghost">
-                <Link aria-label="See all communities" href="/communities">
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className="mt-4 space-y-3">
-              {communities.slice(0, 4).map((community) => (
-                <Link
-                  className="flex items-center gap-3"
-                  href={`/communities/${community.slug}`}
-                  key={community.id}
-                >
-                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-kondo-mint text-lg dark:bg-emerald-400/10">
-                    {community.icon}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-kondo-ink dark:text-white">
-                      {community.name}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {community._count.members.toLocaleString()} members
-                    </span>
-                  </span>
-                  <span className="text-xs font-black text-kondo-green">
-                    {community.members.length ? "Joined" : "Join"}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </Card>
-        </aside>
-      </div>
-
-      <JourneyNavigator
-        initialActions={navigator.actions}
-        initialJourney={navigator.journey}
-      />
-
-      <LocalRecommendationsRail items={nearYou.items} />
-
-      {listings.length ? (
-        <section className="mt-12">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-kondo-ink dark:text-white">
-                Fresh in the marketplace
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Useful things from students near you
-              </p>
-            </div>
-            <Button asChild variant="ghost">
-              <Link href="/marketplace">
-                See everything <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {sectionOrder.map((key) => sections[key])}
     </div>
   );
 }

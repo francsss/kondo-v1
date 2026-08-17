@@ -2,15 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ImagePlus,
-  Loader2,
-} from "lucide-react";
+import { ImagePlus, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { FormResult, type FormResultState } from "@/components/ui/FormResult";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { UnsavedChangesGuard } from "@/components/forms/UnsavedChangesGuard";
+import {
+  CheckboxField,
+  Field,
+  FormSection,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/components/ui/Form";
 import { uploadMediaFile } from "@/lib/client-media";
 
 type Kind = "product" | "service";
@@ -48,7 +54,15 @@ const empty: EditorState = {
   accuracyConfirmed: false,
 };
 
-const STEPS = ["Basics", "Pricing", "Contact", "Media & review"];
+/*
+ * Two steps, not four.
+ *
+ * The old flow split Basics / Pricing / Contact / Media across four screens,
+ * which meant four Continues and a step holding a single select. Grouped by
+ * what the person is actually deciding, it is: what is this, and what does it
+ * cost and how do people reach you.
+ */
+const STEPS = ["What it is", "Price & publication"];
 
 export function CatalogEditor({
   kind,
@@ -78,6 +92,14 @@ export function CatalogEditor({
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState(initial ? "Saved" : "Draft not saved");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // An object URL so the chosen image is previewed without a round trip.
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  // null while idle; 0-100 while an image is actually being sent.
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  // Set once the form has finished; the shell then shows the outcome instead
+  // of dropping the owner back on a list with no confirmation.
+  const [result, setResult] = useState<FormResultState | null>(null);
   const initialized = useRef(false);
   const pendingRef = useRef(false);
   const draftKey = `kondo:catalog:${organization.id}:${kind}:${initial?.id ?? "new"}`;
@@ -131,6 +153,19 @@ export function CatalogEditor({
     [kind, state, version],
   );
   const draftSignature = JSON.stringify({ ...payload, version: 0 });
+  /*
+   * Dirty means "differs from what was loaded", so an untouched form never
+   * nags. A finished form is never dirty — the work is saved by then.
+   */
+  const pristineSignature = useMemo(
+    () => JSON.stringify({ ...payload, version: 0 }),
+    // Only the values loaded into the form; recomputing on every keystroke
+    // would make the form permanently pristine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const isDirty =
+    !result && (draftSignature !== pristineSignature || Boolean(cover));
 
   // Existing drafts autosave after a calm pause. New records stay local until
   // the user explicitly creates the first server draft, avoiding duplicate
@@ -148,8 +183,21 @@ export function CatalogEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftSignature]);
 
+  useEffect(
+    () => () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    },
+    [coverPreview],
+  );
+
   function update<K extends keyof EditorState>(key: K, value: EditorState[K]) {
     setState((current) => ({ ...current, [key]: value }));
+    setFieldErrors((current) => {
+      if (!current[key as string]) return current;
+      const next = { ...current };
+      delete next[key as string];
+      return next;
+    });
   }
 
   async function save(submit = false, quiet = false) {
@@ -189,7 +237,9 @@ export function CatalogEditor({
       if (saved.version) setVersion(saved.version);
       if (cover) {
         setStatus("Uploading image…");
+        setUploadProgress(0);
         const mediaId = await uploadMediaFile(cover, {
+          onProgress: setUploadProgress,
           purpose:
             kind === "product"
               ? "ORGANIZATION_PRODUCT_IMAGE"
@@ -234,8 +284,25 @@ export function CatalogEditor({
       }
       window.localStorage.removeItem(draftKey);
       setStatus(submit ? "Submitted" : "Saved");
-      if (submit || !initial) {
-        router.push(`/organizations/${organization.slug}/catalog`);
+      if (submit) {
+        // Submitting creates a PENDING_REVIEW record, so it is reported as
+        // exactly that. Only something genuinely public is called published.
+        setResult({
+          kind: "review",
+          noun: kind === "product" ? "Product" : "Service",
+          title: state.title,
+          backHref: `/organizations/${organization.slug}/catalog`,
+          backLabel: `Back to ${endpointName}`,
+        });
+        router.refresh();
+      } else if (!initial) {
+        setResult({
+          kind: "draft",
+          noun: kind === "product" ? "Product" : "Service",
+          title: state.title,
+          backHref: `/organizations/${organization.slug}/catalog`,
+          backLabel: `Back to ${endpointName}`,
+        });
         router.refresh();
       }
     } catch (caught) {
@@ -248,6 +315,7 @@ export function CatalogEditor({
     } finally {
       pendingRef.current = false;
       setPending(false);
+      setUploadProgress(null);
     }
   }
 
@@ -269,6 +337,19 @@ export function CatalogEditor({
       const body = await response.json().catch(() => null);
       if (!response.ok)
         throw new Error(body?.error ?? "The status could not be changed.");
+      if (action === "PUBLISH") {
+        setResult({
+          kind: "published",
+          noun: kind === "product" ? "Product" : "Service",
+          title: state.title,
+          viewHref: `/organizations/${organization.slug}`,
+          viewLabel: "View public page",
+          backHref: `/organizations/${organization.slug}/catalog`,
+          backLabel: `Back to ${endpointName}`,
+        });
+        router.refresh();
+        return;
+      }
       router.push(`/organizations/${organization.slug}/catalog`);
       router.refresh();
     } catch (caught) {
@@ -295,395 +376,459 @@ export function CatalogEditor({
       return;
     }
     setCover(file);
+    setCoverPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
+    setError("");
     if (!coverAlt) setCoverAlt(state.title);
   }
 
+  /*
+   * Only ever a `blob:` URL minted by `URL.createObjectURL` above — but the
+   * chain starts at `event.target.files`, so a taint analyser reasonably
+   * follows browser-supplied text all the way to an `img src`. The invariant
+   * is cheaper to assert than to argue, and a preview that somehow was not a
+   * blob URL is one this form should decline to render anyway.
+   */
+  const coverPreviewSrc = coverPreview?.startsWith("blob:")
+    ? coverPreview
+    : undefined;
+
   const published = initial?.status === "PUBLISHED";
   const pendingReview = initial?.status === "PENDING_REVIEW";
+  const needsAmount =
+    state.priceType === "FIXED" || state.priceType === "STARTING_AT";
+
+  /*
+   * Validation only speaks when the person has had their turn. Nothing is red
+   * on arrival; a step is checked when they try to leave it, and the first
+   * offending field is focused so they are not hunting for it.
+   */
+  function validateStep(index: number) {
+    const next: Record<string, string> = {};
+    if (index === 0) {
+      /*
+       * These thresholds are the server's publish rules, checked here rather
+       * than only there. Submitting used to fail at the last step with
+       * "Complete the short description, description before submitting" —
+       * a message about fields two screens back, with no way to reach them.
+       * Kept in step with `assertPublishReady` in src/lib/organization-catalog.
+       */
+      if (state.title.trim().length < 3)
+        next.title = `Enter a ${kind} name of at least 3 characters.`;
+      if (state.shortDescription.trim().length < 20)
+        next.shortDescription =
+          "Add a short description of at least 20 characters — this is the card text.";
+      if (state.description.trim().length < 40)
+        next.description = `Describe the ${kind} in at least 40 characters.`;
+      if (state.category.trim().length < 2) next.category = "Add a category.";
+    }
+    if (index === 1) {
+      if (needsAmount && !(Number(state.price) > 0))
+        next.price = "Price must be greater than 0.";
+      if (state.contactMethod === "EXTERNAL_URL" && !state.externalUrl.trim())
+        next.externalUrl = "Add the link people should open.";
+    }
+    setFieldErrors(next);
+    const first = Object.keys(next)[0];
+    if (first) {
+      const node = document.querySelector<HTMLElement>(
+        `[data-field="${first}"]`,
+      );
+      node?.scrollIntoView({ block: "center", behavior: "smooth" });
+      node?.focus({ preventScroll: true });
+    }
+    return !first;
+  }
+
+  function goNext() {
+    if (!validateStep(step)) return;
+    setStep((value) => Math.min(STEPS.length - 1, value + 1));
+  }
+
+  async function submit() {
+    if (!validateStep(0)) {
+      setStep(0);
+      return;
+    }
+    if (!validateStep(1)) return;
+    await save(true);
+  }
+
+  if (result) {
+    return (
+      <FocusedFormShell
+        backHref={`/organizations/${organization.slug}/catalog`}
+        context={organization.name}
+        title={initial ? `Edit ${kind}` : `New ${kind}`}
+      >
+        <FormResult state={result} />
+      </FocusedFormShell>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-24 pt-7 sm:px-6 lg:pt-10">
-      <Link
-        className="inline-flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground"
-        href={`/organizations/${organization.slug}/catalog`}
-      >
-        <ChevronLeft className="h-4 w-4" /> Catalog
-      </Link>
-      <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
-        {organization.name}
-      </p>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="mt-1 text-3xl font-black tracking-[-0.04em]">
-            {initial ? `Edit ${kind}` : `Create a ${kind}`}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Guided publishing with real pricing, safe links and a professional
-            inquiry context.
-          </p>
-        </div>
-        <span
-          aria-live="polite"
-          className="text-xs font-bold text-muted-foreground"
-        >
-          {status}
-        </span>
-      </div>
-
-      <ol
-        aria-label="Creation progress"
-        className="mt-7 grid grid-cols-4 gap-2"
-      >
-        {STEPS.map((label, index) => (
-          <li key={label}>
-            <button
-              aria-current={step === index ? "step" : undefined}
-              className={`min-h-11 w-full rounded-xl px-2 text-[11px] font-bold transition ${step === index ? "bg-kondo-green text-white" : index < step ? "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200" : "bg-muted text-muted-foreground"}`}
-              onClick={() => setStep(index)}
+    <FocusedFormShell
+      actions={
+        <>
+          {/*
+           * Three controls have to fit a 360px phone. Cancel/Back is the
+           * quiet one and shrinks to its label; the primary action keeps its
+           * full size and never wraps off the edge.
+           */}
+          {step === 0 ? (
+            /*
+             * A link, not a button: `UnsavedChangesGuard` intercepts anchor
+             * clicks, so leaving this way asks before discarding work. Moving
+             * between steps is not a navigation and stays a button.
+             */
+            <Link
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-black text-muted-foreground transition hover:text-foreground"
+              href={`/organizations/${organization.slug}/catalog`}
+            >
+              Cancel
+            </Link>
+          ) : (
+            <Button
+              className="shrink-0 px-3"
+              disabled={pending}
+              onClick={() => setStep((value) => value - 1)}
+              type="button"
+              variant="ghost"
+            >
+              Back
+            </Button>
+          )}
+          <Button
+            className="ml-auto shrink-0 px-3"
+            disabled={pending}
+            onClick={() => void save(false)}
+            type="button"
+            variant="secondary"
+          >
+            Save draft
+          </Button>
+          {step < STEPS.length - 1 ? (
+            <Button className="shrink-0" onClick={goNext} type="button">
+              Continue
+            </Button>
+          ) : (
+            <Button
+              className="shrink-0"
+              disabled={pending}
+              onClick={() => void submit()}
               type="button"
             >
-              {index < step ? <Check className="mx-auto h-4 w-4" /> : label}
-            </button>
-          </li>
-        ))}
-      </ol>
-
-      <section className="mt-5 rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-7">
-        {step === 0 ? (
-          <div className="grid gap-5">
-            <Field label="Title">
-              <input
-                autoFocus
-                className="input"
-                maxLength={180}
-                onChange={(event) => update("title", event.target.value)}
-                value={state.title}
-              />
-            </Field>
-            <Field
-              hint="Shown on compact cards. Keep it factual."
-              label="Short description"
-            >
-              <textarea
-                className="input min-h-24 py-3"
-                maxLength={400}
-                onChange={(event) =>
-                  update("shortDescription", event.target.value)
-                }
-                value={state.shortDescription}
-              />
-            </Field>
-            <Field label="Full description">
-              <textarea
-                className="input min-h-44 py-3"
-                maxLength={10000}
-                onChange={(event) => update("description", event.target.value)}
-                value={state.description}
-              />
-            </Field>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Category">
-                <input
-                  className="input"
-                  maxLength={100}
-                  onChange={(event) => update("category", event.target.value)}
-                  value={state.category}
-                />
-              </Field>
-              <Field label="City">
-                <select
-                  className="input"
-                  onChange={(event) => update("cityId", event.target.value)}
-                  value={state.cityId}
-                >
-                  <option value="">Available beyond one city</option>
-                  {cities.map((city) => (
-                    <option key={city.id} value={city.id}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-          </div>
-        ) : null}
-        {step === 1 ? (
-          <div className="grid gap-5">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Pricing">
-                <select
-                  className="input"
-                  onChange={(event) =>
-                    update(
-                      "priceType",
-                      event.target.value as EditorState["priceType"],
-                    )
-                  }
-                  value={state.priceType}
-                >
-                  <option value="CONTACT">Contact for price</option>
-                  <option value="FREE">Free</option>
-                  <option value="FIXED">Fixed price</option>
-                  <option value="STARTING_AT">Starting at</option>
-                </select>
-              </Field>
-              {state.priceType === "FIXED" ||
-              state.priceType === "STARTING_AT" ? (
-                <Field label="Real amount">
-                  <div className="flex gap-2">
-                    <input
-                      className="input"
-                      min="0"
-                      onChange={(event) => update("price", event.target.value)}
-                      step="0.01"
-                      type="number"
-                      value={state.price}
-                    />
-                    <input
-                      aria-label="Currency"
-                      className="input w-24 uppercase"
-                      maxLength={3}
-                      onChange={(event) =>
-                        update("currency", event.target.value.toUpperCase())
-                      }
-                      value={state.currency}
-                    />
-                  </div>
-                </Field>
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
               ) : null}
-            </div>
-            <Field label="Availability">
-              <input
-                className="input"
-                maxLength={180}
-                onChange={(event) =>
-                  update("availabilityLabel", event.target.value)
-                }
-                placeholder={
-                  kind === "product"
-                    ? "Available to order"
-                    : "Weekdays by appointment"
-                }
-                value={state.availabilityLabel}
-              />
-            </Field>
-            {kind === "service" ? (
-              <Field label="Delivery mode">
-                <input
-                  className="input"
-                  maxLength={160}
-                  onChange={(event) =>
-                    update("deliveryMode", event.target.value)
-                  }
-                  placeholder="Online, in person, or hybrid"
-                  value={state.deliveryMode}
-                />
-              </Field>
-            ) : null}
-            <Field label="Public location">
-              <input
-                className="input"
-                maxLength={200}
-                onChange={(event) =>
-                  update("locationLabel", event.target.value)
-                }
-                placeholder="Citywide, campus, or district"
-                value={state.locationLabel}
-              />
-            </Field>
+              Submit
+            </Button>
+          )}
+        </>
+      }
+      backHref={`/organizations/${organization.slug}/catalog`}
+      context={organization.name}
+      step={`Step ${step + 1} of ${STEPS.length}`}
+      title={initial ? `Edit ${kind}` : `New ${kind}`}
+    >
+      <UnsavedChangesGuard isDirty={isDirty} />
+      <p aria-live="polite" className="sr-only">
+        {status}
+      </p>
+
+      {step === 0 ? (
+        <FormSection>
+          <TextField
+            autoFocus
+            data-field="title"
+            error={fieldErrors.title}
+            label="Name"
+            maxLength={180}
+            onChange={(event) => update("title", event.target.value)}
+            placeholder={
+              kind === "product" ? "Jollof spice mix" : "Visa photo session"
+            }
+            value={state.title}
+          />
+          <TextAreaField
+            data-field="shortDescription"
+            error={fieldErrors.shortDescription}
+            hint="One or two lines. This is what people see on the card."
+            label="Short description"
+            maxLength={400}
+            onChange={(event) => update("shortDescription", event.target.value)}
+            rows={3}
+            value={state.shortDescription}
+          />
+          <TextAreaField
+            data-field="description"
+            error={fieldErrors.description}
+            hint={`Tell students what this ${kind} includes.`}
+            label="Full description"
+            maxLength={10000}
+            onChange={(event) => update("description", event.target.value)}
+            rows={7}
+            value={state.description}
+          />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              data-field="category"
+              error={fieldErrors.category}
+              label="Category"
+              maxLength={100}
+              onChange={(event) => update("category", event.target.value)}
+              value={state.category}
+            />
+            {/*
+             * Up to 500 cities arrive here. A native select makes finding one
+             * a scroll; this is type-to-filter, which is the only reason to
+             * reach for a search UI — short lists keep the plain select.
+             */}
+            <SearchableSelect
+              clearLabel="Available beyond one city"
+              label="City"
+              onSelect={(id) => update("cityId", id)}
+              options={cities.map((city) => ({ id: city.id, name: city.name }))}
+              placeholder="Available beyond one city"
+              searchPlaceholder="Search cities"
+              selected={state.cityId}
+            />
           </div>
-        ) : null}
-        {step === 2 ? (
-          <div className="grid gap-5">
-            <Field label="Contact method">
-              <select
-                className="input"
+
+          <Field hint="JPG, PNG or WebP · maximum 8 MB." label="Cover image">
+            {/*
+             * The preview replaces the drop zone in place and is fixed height,
+             * so choosing an image never pushes the rest of the form down.
+             */}
+            <label className="flex min-h-32 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/25 text-sm font-bold transition hover:border-kondo-green">
+              {coverPreviewSrc ? (
+                <span className="relative block h-32 w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt=""
+                    className="h-32 w-full object-cover"
+                    src={coverPreviewSrc}
+                  />
+                  {/*
+                   * Progress is drawn over the preview rather than beside it,
+                   * so nothing is added to the layout while a file uploads.
+                   */}
+                  {uploadProgress !== null ? (
+                    <span className="absolute inset-x-0 bottom-0 block bg-overlay/60 px-3 py-2">
+                      <span className="block text-[11px] font-black text-white">
+                        Uploading {Math.round(uploadProgress)}%
+                      </span>
+                      <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-white/30">
+                        <span
+                          className="block h-full rounded-full bg-white transition-[width] duration-200 motion-reduce:transition-none"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </span>
+                    </span>
+                  ) : null}
+                </span>
+              ) : (
+                <>
+                  <ImagePlus aria-hidden="true" className="h-5 w-5" />
+                  {initial?.coverMediaId ? "Replace image" : "Choose an image"}
+                </>
+              )}
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={chooseCover}
+                type="file"
+              />
+            </label>
+          </Field>
+          {cover ? (
+            <TextField
+              hint="Describes the image for people using a screen reader."
+              label="Image description"
+              maxLength={240}
+              onChange={(event) => setCoverAlt(event.target.value)}
+              value={coverAlt}
+            />
+          ) : null}
+        </FormSection>
+      ) : null}
+
+      {step === 1 ? (
+        <div className="grid gap-8">
+          <FormSection title="Price">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SelectField
+                label="Pricing"
                 onChange={(event) =>
                   update(
-                    "contactMethod",
-                    event.target.value as EditorState["contactMethod"],
+                    "priceType",
+                    event.target.value as EditorState["priceType"],
                   )
                 }
-                value={state.contactMethod}
+                value={state.priceType}
               >
-                <option value="KONDO_MESSAGE">Kondo Messages</option>
-                <option value="PUBLIC_CONTACT">
-                  Organization public contact
-                </option>
-                <option value="EXTERNAL_URL">Official external page</option>
-              </select>
-            </Field>
-            {state.contactMethod === "EXTERNAL_URL" ? (
-              <Field
-                hint="Only http and https links are accepted. Kondo may block an unsafe link."
-                label="Official external URL"
-              >
-                <input
-                  className="input"
-                  inputMode="url"
-                  onChange={(event) =>
-                    update("externalUrl", event.target.value)
-                  }
-                  placeholder="https://"
-                  value={state.externalUrl}
-                />
-              </Field>
-            ) : null}
-            <div className="rounded-2xl bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">
-              Kondo facilitates discovery and professional inquiries. Checkout,
-              delivery, ratings and payment claims are not part of this catalog.
+                <option value="CONTACT">Contact for price</option>
+                <option value="FREE">Free</option>
+                <option value="FIXED">Fixed price</option>
+                <option value="STARTING_AT">Starting at</option>
+              </SelectField>
+              {/* Only asked when the pricing choice actually needs a number. */}
+              {needsAmount ? (
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <TextField
+                    data-field="price"
+                    error={fieldErrors.price}
+                    inputMode="decimal"
+                    label="Amount"
+                    min="0"
+                    onChange={(event) => update("price", event.target.value)}
+                    step="0.01"
+                    type="number"
+                    value={state.price}
+                  />
+                  <TextField
+                    className="w-24 uppercase"
+                    label="Currency"
+                    maxLength={3}
+                    onChange={(event) =>
+                      update("currency", event.target.value.toUpperCase())
+                    }
+                    value={state.currency}
+                  />
+                </div>
+              ) : null}
             </div>
-          </div>
-        ) : null}
-        {step === 3 ? (
-          <div className="grid gap-5">
-            <Field hint="JPG, PNG or WebP · maximum 8 MB." label="Cover image">
-              <label className="flex min-h-28 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/25 text-sm font-bold hover:border-kondo-green">
-                <ImagePlus className="h-5 w-5" />
-                {cover
-                  ? cover.name
-                  : initial?.coverMediaId
-                    ? "Replace current image"
-                    : "Choose an image"}
-                <input
-                  accept="image/jpeg,image/png,image/webp"
-                  className="sr-only"
-                  onChange={chooseCover}
-                  type="file"
-                />
-              </label>
-            </Field>
-            <Field label="Image description">
-              <input
-                className="input"
-                maxLength={240}
-                onChange={(event) => setCoverAlt(event.target.value)}
-                value={coverAlt}
+            <TextField
+              label="Availability"
+              maxLength={180}
+              onChange={(event) =>
+                update("availabilityLabel", event.target.value)
+              }
+              placeholder={
+                kind === "product"
+                  ? "Available to order"
+                  : "Weekdays by appointment"
+              }
+              value={state.availabilityLabel}
+            />
+            {kind === "service" ? (
+              <TextField
+                label="Delivery mode"
+                maxLength={160}
+                onChange={(event) => update("deliveryMode", event.target.value)}
+                placeholder="Online, in person, or hybrid"
+                value={state.deliveryMode}
               />
-            </Field>
-            <label className="flex items-start gap-3 rounded-2xl border border-border p-4 text-sm font-semibold">
-              <input
-                checked={state.accuracyConfirmed}
-                className="mt-1 h-4 w-4 accent-kondo-green"
-                onChange={(event) =>
-                  update("accuracyConfirmed", event.target.checked)
-                }
-                type="checkbox"
+            ) : null}
+            <TextField
+              label="Public location"
+              maxLength={200}
+              onChange={(event) => update("locationLabel", event.target.value)}
+              placeholder="Citywide, campus, or district"
+              value={state.locationLabel}
+            />
+          </FormSection>
+
+          <FormSection title="How people reach you">
+            <SelectField
+              label="Contact method"
+              onChange={(event) =>
+                update(
+                  "contactMethod",
+                  event.target.value as EditorState["contactMethod"],
+                )
+              }
+              value={state.contactMethod}
+            >
+              <option value="KONDO_MESSAGE">Kondo Messages</option>
+              <option value="PUBLIC_CONTACT">
+                Organization public contact
+              </option>
+              <option value="EXTERNAL_URL">Official external page</option>
+            </SelectField>
+            {state.contactMethod === "EXTERNAL_URL" ? (
+              <TextField
+                data-field="externalUrl"
+                error={fieldErrors.externalUrl}
+                hint="http and https only. Kondo may block an unsafe link."
+                inputMode="url"
+                label="Official external URL"
+                onChange={(event) => update("externalUrl", event.target.value)}
+                placeholder="https://"
+                value={state.externalUrl}
               />
-              <span>
-                I confirm the description, price, availability and external
-                claims are accurate and authorized by this organization.
-              </span>
-            </label>
-            <div className="rounded-3xl border border-border bg-muted/30 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-kondo-green">
-                Preview
-              </p>
-              <h2 className="mt-2 line-clamp-2 text-xl font-black">
+            ) : null}
+          </FormSection>
+
+          <FormSection title="Review">
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <p className="truncate text-base font-black text-foreground">
                 {state.title || `Untitled ${kind}`}
-              </h2>
-              <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+              </p>
+              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                 {state.shortDescription ||
                   "Your short description will appear here."}
               </p>
-              <p className="mt-4 text-sm font-black">
+              <p className="mt-3 text-sm font-black text-foreground">
                 {state.priceType === "FREE"
                   ? "Free"
                   : state.priceType === "CONTACT"
                     ? "Contact for price"
                     : `${state.priceType === "STARTING_AT" ? "From " : ""}${state.currency} ${state.price || "0"}`}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {organization.name} · submitted for review before it goes public
+              </p>
             </div>
-          </div>
-        ) : null}
+            <CheckboxField
+              checked={state.accuracyConfirmed}
+              label="I confirm the description, price, availability and external claims are accurate and authorized by this organization."
+              onChange={(event) =>
+                update("accuracyConfirmed", event.target.checked)
+              }
+            />
+          </FormSection>
 
-        {error ? (
-          <p
-            className="mt-5 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-400/10 dark:text-red-200"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
-          <Button
-            disabled={step === 0 || pending}
-            onClick={() => setStep((value) => Math.max(0, value - 1))}
-            type="button"
-            variant="ghost"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back
-          </Button>
-          <div className="flex flex-wrap gap-2">
-            {initial && pendingReview && canPublish ? (
-              <Button
-                disabled={pending}
-                onClick={() => void transition("PUBLISH")}
-                type="button"
-              >
-                Publish
-              </Button>
-            ) : null}
-            {initial && published && canPublish ? (
-              <Button
-                disabled={pending}
-                onClick={() => void transition("PAUSE")}
-                type="button"
-                variant="secondary"
-              >
-                Pause
-              </Button>
-            ) : null}
-            <Button
-              disabled={pending}
-              onClick={() => void save(false)}
-              type="button"
-              variant="secondary"
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{" "}
-              Save draft
-            </Button>
-            {step < STEPS.length - 1 ? (
-              <Button
-                onClick={() =>
-                  setStep((value) => Math.min(STEPS.length - 1, value + 1))
-                }
-                type="button"
-              >
-                Continue <ChevronRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                disabled={pending}
-                onClick={() => void save(true)}
-                type="button"
-              >
-                Submit for review
-              </Button>
-            )}
-          </div>
+          {initial && (pendingReview || published) && canPublish ? (
+            <div className="flex flex-wrap gap-2">
+              {pendingReview ? (
+                <Button
+                  disabled={pending}
+                  onClick={() => void transition("PUBLISH")}
+                  type="button"
+                >
+                  Publish now
+                </Button>
+              ) : null}
+              {published ? (
+                <Button
+                  disabled={pending}
+                  onClick={() => void transition("PAUSE")}
+                  type="button"
+                  variant="secondary"
+                >
+                  Pause
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      </section>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-black">{label}</span>
-      {hint ? (
-        <span className="ml-2 text-xs text-muted-foreground">{hint}</span>
       ) : null}
-      <div className="mt-2">{children}</div>
-    </label>
+
+      {/*
+       * A failed save keeps every field exactly as typed and says what the
+       * server said, rather than resetting the form or showing a shrug.
+       */}
+      {error ? (
+        <p
+          className="mt-6 rounded-2xl border border-destructive/40 bg-destructive/5 p-3 text-sm font-bold text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+    </FocusedFormShell>
   );
 }

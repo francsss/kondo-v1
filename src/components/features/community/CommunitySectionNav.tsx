@@ -1,11 +1,11 @@
 "use client";
 
-import { Compass, Sparkles, Users, Video } from "lucide-react";
+import { Compass, MapPin, Sparkles, Users, Video } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
-type CommunityTab = "my" | "discover" | "meet";
+type CommunityTab = "my" | "discover" | "nearby" | "meet";
 const SEEN_EVENT = "kondo:meet-seen";
 
 function subscribe(callback: () => void) {
@@ -51,6 +51,12 @@ export function CommunitySectionNav({
       href: "/communities?tab=discover",
     },
     {
+      value: "nearby" as const,
+      label: "Nearby",
+      icon: MapPin,
+      href: "/communities?tab=nearby",
+    },
+    {
       value: "meet" as const,
       label: "Meet",
       icon: Video,
@@ -58,10 +64,16 @@ export function CommunitySectionNav({
     },
   ];
 
+  /*
+   * A fourth tab does not fit four equal columns on a 390px phone — the labels
+   * truncated to "My Co…" and "Disco…", and Meet lost its label entirely.
+   * `subnav-row` is the pattern already used for Meet's own modes: every tab
+   * keeps its full label and the row scrolls if it has to.
+   */
   return (
     <nav
       aria-label="Community sections"
-      className="mt-8 grid w-full grid-cols-3 border-b border-border"
+      className="subnav-row mt-8 border-b border-border"
     >
       {tabs.map(({ value, label, icon: Icon, href }) => (
         <Link

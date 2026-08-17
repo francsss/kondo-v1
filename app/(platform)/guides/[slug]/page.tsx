@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Clock3 } from "lucide-react";
 import { BookmarkButton } from "@/components/features/bookmarks/BookmarkButton";
+import { GuideTrustPanel } from "@/components/features/guides/GuideTrustPanel";
+import { guideTrust } from "@/lib/guide-trust";
 import { GuideChecklist } from "@/components/features/guides/GuideChecklist";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { publishedGuideWhere } from "@/lib/content-visibility";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +29,7 @@ export async function GuideDetailContent({
           progress: { where: { userId: user.id }, select: { id: true } },
         },
       },
+      sources: { orderBy: { sortOrder: "asc" } },
     },
   });
   if (!guide) notFound();
@@ -116,23 +118,25 @@ export async function GuideDetailContent({
             completed: step.progress.length > 0,
           }))}
         />
+        {/*
+         * This replaces a fixed note that told every reader "Kondo dates every
+         * guide" and showed `updatedAt` — the timestamp of the last edit, which
+         * says nothing about whether anyone checked the content. The panel says
+         * what is actually known: the review status, the review date if there
+         * is one, and the sources if any were recorded.
+         */}
         <aside>
-          <Card className="sticky top-24">
-            <p className="text-xs font-black uppercase tracking-wider text-kondo-green">
-              A quick note
-            </p>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Local processes can change. Kondo dates every guide and encourages
-              you to verify official requirements with your university.
-            </p>
-            <p className="mt-4 text-xs font-semibold text-muted-foreground">
-              Updated{" "}
-              {guide.updatedAt.toLocaleDateString("en", {
-                month: "long",
-                year: "numeric",
+          <div className="sticky top-24">
+            <GuideTrustPanel
+              sources={guide.sources}
+              trust={guideTrust({
+                contentStatus: guide.contentStatus,
+                lastVerifiedAt: guide.lastVerifiedAt,
+                reviewDueAt: guide.reviewDueAt,
+                sourceCount: guide.sources.length,
               })}
-            </p>
-          </Card>
+            />
+          </div>
         </aside>
       </div>
     </div>

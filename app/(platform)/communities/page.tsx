@@ -17,11 +17,13 @@ import {
 import { getCommunityDirectory } from "@/lib/platform-queries";
 import { getPremiumAccess } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
+import { NearbyStudents } from "@/components/features/community/NearbyStudents";
+import { getNearbyStudents, getViewerStudyPoint } from "@/lib/nearby-students";
 import { requireUser } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Communities" };
 
-type MainTab = "my" | "discover" | "meet";
+type MainTab = "my" | "discover" | "nearby" | "meet";
 type Scope = "managed" | "joined";
 type Sort = "recommended" | "popular" | "recent";
 
@@ -60,7 +62,9 @@ export default async function CommunitiesPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const tab: MainTab = ["my", "discover", "meet"].includes(params.tab ?? "")
+  const tab: MainTab = ["my", "discover", "nearby", "meet"].includes(
+    params.tab ?? "",
+  )
     ? (params.tab as MainTab)
     : "my";
   const scope: Scope = params.scope === "joined" ? "joined" : "managed";
@@ -81,6 +85,7 @@ export default async function CommunitiesPage({
     result,
     joinedSummary,
     meetProfile,
+    nearby,
     premiumAccess,
   ] = await Promise.all([
     prisma.country.findMany({
@@ -103,7 +108,7 @@ export default async function CommunitiesPage({
       },
       orderBy: { name: "asc" },
     }),
-    tab === "meet"
+    tab === "meet" || tab === "nearby"
       ? Promise.resolve(null)
       : getCommunityDirectory(user.id, {
           page: Number(params.page ?? 1),
@@ -130,6 +135,20 @@ export default async function CommunitiesPage({
           where: { userId: user.id },
         })
       : Promise.resolve(null),
+    tab === "nearby"
+      ? getViewerStudyPoint(user).then((point) =>
+          getNearbyStudents({
+            viewer: {
+              id: user.id,
+              cityId: user.cityId,
+              universityId: user.universityId,
+              degree: user.degree,
+              point,
+            },
+            filter: "ALL",
+          }),
+        )
+      : Promise.resolve({ students: [], nextCursor: null }),
     tab === "meet"
       ? getPremiumAccess(user.id)
       : Promise.resolve({
@@ -169,7 +188,20 @@ export default async function CommunitiesPage({
 
       <CommunitySectionNav activeTab={tab} userId={user.id} />
 
-      <TabPanelTransition index={tab === "my" ? 0 : tab === "discover" ? 1 : 2}>
+      <TabPanelTransition
+        index={
+          tab === "my" ? 0 : tab === "discover" ? 1 : tab === "nearby" ? 2 : 3
+        }
+      >
+        {tab === "nearby" ? (
+          <NearbyStudents
+            hasStudyLocation={Boolean(user.cityId || user.universityId)}
+            initialCursor={nearby.nextCursor}
+            initialDiscoverable={user.nearbyDiscoveryEnabled}
+            initialStudents={nearby.students}
+          />
+        ) : null}
+
         {tab === "meet" ? (
           <section className="mt-8">
             <MeetPanel
@@ -180,7 +212,6 @@ export default async function CommunitiesPage({
               initialCityId={user.cityId}
               initialIntents={user.meetIntents}
               initialLanguages={user.languages}
-              initialNearbyEnabled={user.nearbyDiscoveryEnabled}
               initialProfile={meetProfile}
               initialUniversityId={user.universityId}
               premiumAccess={premiumAccess}
@@ -188,12 +219,6 @@ export default async function CommunitiesPage({
               universityName={
                 user.university?.shortName ?? user.university?.name ?? null
               }
-              viewer={{
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                avatarMediaId: user.avatarMediaId,
-              }}
             />
           </section>
         ) : null}
@@ -283,7 +308,7 @@ export default async function CommunitiesPage({
           </nav>
         ) : null}
 
-        {tab !== "meet" ? (
+        {tab !== "meet" && tab !== "nearby" ? (
           <>
             <Card className="mt-6">
               <form

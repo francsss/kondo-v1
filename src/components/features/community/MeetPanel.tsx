@@ -3,7 +3,6 @@
 import {
   Compass,
   LoaderCircle,
-  MapPin,
   Radio,
   Settings2,
   ShieldCheck,
@@ -15,11 +14,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CallRoomOverlay } from "@/components/features/calls/CallRoomOverlay";
 import { MeetDiscoveryCarousel } from "@/components/features/community/MeetDiscoveryCarousel";
-import {
-  MeetDiscoveryMap,
-  type MeetDiscoveryProfile,
-  type MeetMapViewer,
-} from "@/components/features/community/MeetDiscoveryMap";
+import { LookingForResults } from "@/components/features/community/LookingForResults";
 import {
   MeetDiscoveryProfileForm,
   type MeetProfileData,
@@ -28,17 +23,9 @@ import { MeetPremiumGate } from "@/components/features/community/MeetPremiumGate
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import {
-  MEET_INTENTS,
-  MEET_NEARBY_RADIUS_OPTIONS,
-  MEET_PREMIUM_FEATURES,
-} from "@/features/meet/config";
+import { MEET_INTENTS } from "@/features/meet/config";
+import type { MeetDiscoveryProfile } from "@/features/meet/types";
 import { countrySelectOptions } from "@/lib/countries";
-import {
-  DEFAULT_MEET_NEARBY_RADIUS_METERS,
-  meetMapSearchQueries,
-  type MeetNearbyRadiusMeters,
-} from "@/lib/meet-map";
 import type { PremiumAccess } from "@/lib/premium";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -46,16 +33,21 @@ import { cn } from "@/lib/utils";
 
 type Gender = "MALE" | "FEMALE";
 type GenderPreference = "ALL" | Gender;
-type MeetMode = "RANDOM" | "NEARBY" | "LOOKING_FOR";
+
+/**
+ * Meet has two modes. Nearby was a third until it moved to Community → Nearby
+ * as a list of students, because the map here plotted positions Kondo has
+ * never stored. What remains is genuinely Meet's own: a random call, and
+ * matching on what people are looking for.
+ */
+type MeetMode = "RANDOM" | "LOOKING_FOR";
 
 const countryOptions = countrySelectOptions();
 const POLL_INTERVAL_MS = 2_500;
 const AVAILABILITY_WINDOW_MS = 20_000;
 
 export function MeetPanel({
-  viewer,
   initialGender,
-  initialNearbyEnabled,
   initialIntents,
   initialLanguages,
   initialProfile,
@@ -68,9 +60,7 @@ export function MeetPanel({
   initialCityId,
   initialUniversityId,
 }: {
-  viewer: MeetMapViewer;
   initialGender: Gender | null;
-  initialNearbyEnabled: boolean;
   initialIntents: string[];
   initialLanguages: string[];
   initialProfile: MeetProfileData | null;
@@ -111,9 +101,6 @@ export function MeetPanel({
   );
   const [countryPreferenceCode, setCountryPreferenceCode] = useState("");
   const [mode, setMode] = useState<MeetMode>("RANDOM");
-  const [nearbyEnabled, setNearbyEnabled] = useState(
-    initialProfile?.nearbyVisibility ?? initialNearbyEnabled,
-  );
   const [intents, setIntents] = useState<string[]>(
     initialProfile?.lookingFor.length
       ? initialProfile.lookingFor
@@ -121,16 +108,15 @@ export function MeetPanel({
         ? initialIntents
         : MEET_INTENTS.map(([value]) => value),
   );
+  // OTHER_CITY was reachable only from the Nearby radius controls, so a saved
+  // profile carrying it falls back to the city the student actually studies in.
   const [distanceRange, setDistanceRange] = useState<
-    "KM_5" | "KM_10" | "KM_20" | "CITY" | "OTHER_CITY"
+    "KM_5" | "KM_10" | "KM_20" | "CITY"
   >(
     initialProfile?.distanceRange === "OTHER_CITY"
       ? "CITY"
       : (initialProfile?.distanceRange ?? "CITY"),
   );
-  const [nearbyRadiusMeters, setNearbyRadiusMeters] =
-    useState<MeetNearbyRadiusMeters>(DEFAULT_MEET_NEARBY_RADIUS_METERS);
-  const [otherCityId, setOtherCityId] = useState("");
   const [matching, setMatching] = useState(false);
   const [discovering, setDiscovering] = useState(false);
   const [discoveryStarted, setDiscoveryStarted] = useState(false);
@@ -149,26 +135,6 @@ export function MeetPanel({
   const startedAtRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
   const skipNextAutoRefreshRef = useRef(false);
-  const discoveryCity = cityOptions.find(
-    (city) => city.id === profile?.discoveryCityId,
-  );
-  const discoveryUniversity = universityOptions.find(
-    (university) => university.id === profile?.discoveryUniversityId,
-  );
-  const otherCity = cityOptions.find((city) => city.id === otherCityId);
-  const discoveryCityName = discoveryCity?.name ?? cityName;
-  const discoveryUniversityName = discoveryUniversity?.name ?? universityName;
-  const otherCityName = otherCity?.name ?? null;
-  const activeMapCityName =
-    distanceRange === "OTHER_CITY" ? otherCityName : discoveryCityName;
-  const activeMapUniversityName =
-    distanceRange === "OTHER_CITY" ? null : discoveryUniversityName;
-  const activeMapCityNativeName =
-    distanceRange === "OTHER_CITY"
-      ? otherCity?.nativeName
-      : discoveryCity?.nativeName;
-  const activeMapUniversityNativeName =
-    distanceRange === "OTHER_CITY" ? null : discoveryUniversity?.nativeName;
   const profileIsComplete = Boolean(
     profile?.completedAt &&
     profile.discoveryCityId &&
@@ -193,9 +159,7 @@ export function MeetPanel({
         genderPreference,
         countryPreferenceCode: "",
         intents,
-        distanceRange: distanceRange === "OTHER_CITY" ? "CITY" : distanceRange,
-        nearbyRadiusMeters,
-        otherCityId: null,
+        distanceRange,
       }),
     })
       .then(async (response) => {
@@ -216,7 +180,6 @@ export function MeetPanel({
     distanceRange,
     genderPreference,
     intents,
-    nearbyRadiusMeters,
     profileIsComplete,
   ]);
 
@@ -345,16 +308,8 @@ export function MeetPanel({
   }
 
   async function discoverPeople() {
-    if (mode === "NEARBY" && !nearbyEnabled) {
-      setError("Enable approximate nearby discovery to continue.");
-      return;
-    }
-    if (mode === "LOOKING_FOR" && !intents.length) {
+    if (!intents.length) {
       setError("Choose at least one reason for meeting.");
-      return;
-    }
-    if (mode === "NEARBY" && distanceRange === "OTHER_CITY" && !otherCityId) {
-      setError("Choose another city before exploring.");
       return;
     }
     if (discovering) return;
@@ -366,13 +321,11 @@ export function MeetPanel({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode,
+          mode: "LOOKING_FOR",
           genderPreference,
           countryPreferenceCode,
           intents,
-          distanceRange: distanceRange === "OTHER_CITY" ? "OTHER_CITY" : "KM_5",
-          nearbyRadiusMeters,
-          otherCityId: distanceRange === "OTHER_CITY" ? otherCityId : null,
+          distanceRange: "KM_5",
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -405,7 +358,6 @@ export function MeetPanel({
       skipNextAutoRefreshRef.current = false;
       return;
     }
-    if (distanceRange === "OTHER_CITY" && !otherCityId) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setDiscovering(true);
@@ -416,13 +368,11 @@ export function MeetPanel({
         signal: controller.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode,
+          mode: "LOOKING_FOR",
           genderPreference,
           countryPreferenceCode,
           intents,
-          distanceRange: distanceRange === "OTHER_CITY" ? "OTHER_CITY" : "KM_5",
-          nearbyRadiusMeters,
-          otherCityId: distanceRange === "OTHER_CITY" ? otherCityId : null,
+          distanceRange: "KM_5",
         }),
       })
         .then(async (response) => {
@@ -458,12 +408,9 @@ export function MeetPanel({
     countryPreferenceCode,
     discoveryIntentKey,
     discoveryStarted,
-    distanceRange,
     genderPreference,
     intents,
     mode,
-    nearbyRadiusMeters,
-    otherCityId,
   ]);
 
   function selectMode(nextMode: MeetMode) {
@@ -481,14 +428,12 @@ export function MeetPanel({
     setProfile(nextProfile);
     setGender(nextProfile.gender);
     setGenderPreference(nextProfile.interestedIn);
-    setNearbyEnabled(nextProfile.nearbyVisibility);
     setIntents(nextProfile.lookingFor);
     setDistanceRange(
       nextProfile.distanceRange === "OTHER_CITY"
         ? "CITY"
         : nextProfile.distanceRange,
     );
-    setOtherCityId("");
     setEditingProfile(false);
     setDiscoveryStarted(false);
     setProfiles([]);
@@ -551,7 +496,6 @@ export function MeetPanel({
       >
         {[
           { value: "RANDOM" as const, label: "Random", icon: Radio },
-          { value: "NEARBY" as const, label: "Nearby", icon: MapPin },
           {
             value: "LOOKING_FOR" as const,
             label: "Looking For",
@@ -599,83 +543,49 @@ export function MeetPanel({
           <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr]">
             <Card className="h-fit p-6 sm:p-7">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-kondo-mint text-kondo-green dark:bg-emerald-400/10">
-                {mode === "NEARBY" ? (
-                  <MapPin className="h-5 w-5" />
-                ) : (
-                  <Compass className="h-5 w-5" />
-                )}
+                <Compass className="h-5 w-5" />
               </span>
               <h2 className="mt-5 text-2xl font-black tracking-tight">
-                {mode === "NEARBY"
-                  ? "Discover your Kondo neighborhood"
-                  : "Find people on your wavelength"}
+                Find people on your wavelength
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {mode === "NEARBY"
-                  ? `Explore members who opted in around ${
-                      discoveryUniversityName ??
-                      discoveryCityName ??
-                      "your study area"
-                    }. Markers use privacy-safe approximate areas and never represent exact positions.`
-                  : "Choose what brings you here, then explore compatible profiles without starting an automatic call."}
+                Choose what brings you here, then explore compatible profiles
+                without starting an automatic call.
               </p>
 
               <div className="mt-6 space-y-5">
-                {mode === "NEARBY" ? (
-                  <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/40 p-4">
-                    <span>
-                      <span className="flex items-center gap-2 text-sm font-black">
-                        <span
+                <fieldset>
+                  <legend className="mb-2 text-sm font-bold text-foreground">
+                    I’m looking for
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MEET_INTENTS.map(([value, label]) => {
+                      const selected = intents.includes(value);
+                      return (
+                        <button
+                          aria-pressed={selected}
                           className={cn(
-                            "h-2.5 w-2.5 rounded-full",
-                            nearbyEnabled
-                              ? "bg-kondo-green"
-                              : "bg-muted-foreground/40",
+                            "rounded-2xl border p-3 text-left text-xs transition active:scale-[0.98]",
+                            selected
+                              ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
+                              : "border-border font-bold text-muted-foreground hover:border-kondo-green/40 hover:bg-muted/60",
                           )}
-                        />
-                        Approximate discovery{" "}
-                        {nearbyEnabled ? "enabled" : "disabled"}
-                      </span>
-                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                        Manage this preference in Discovery Settings. Your exact
-                        position is never requested or shared.
-                      </span>
-                    </span>
-                  </div>
-                ) : (
-                  <fieldset>
-                    <legend className="mb-2 text-sm font-bold text-foreground">
-                      I’m looking for
-                    </legend>
-                    <div className="grid grid-cols-2 gap-2">
-                      {MEET_INTENTS.map(([value, label]) => {
-                        const selected = intents.includes(value);
-                        return (
-                          <button
-                            aria-pressed={selected}
-                            className={cn(
-                              "rounded-2xl border p-3 text-left text-xs transition active:scale-[0.98]",
+                          key={value}
+                          onClick={() =>
+                            setIntents((current) =>
                               selected
-                                ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                                : "border-border font-bold text-muted-foreground hover:border-kondo-green/40 hover:bg-muted/60",
-                            )}
-                            key={value}
-                            onClick={() =>
-                              setIntents((current) =>
-                                selected
-                                  ? current.filter((item) => item !== value)
-                                  : [...current, value],
-                              )
-                            }
-                            type="button"
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                )}
+                                ? current.filter((item) => item !== value)
+                                : [...current, value],
+                            )
+                          }
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-bold text-foreground">
@@ -705,80 +615,6 @@ export function MeetPanel({
                   searchPlaceholder="Search country or region…"
                   selected={countryPreferenceCode}
                 />
-
-                {mode === "NEARBY" ? (
-                  <fieldset>
-                    <legend className="mb-2 text-sm font-bold text-foreground">
-                      Nearby radius
-                    </legend>
-                    <div className="grid grid-cols-3 gap-2">
-                      {MEET_NEARBY_RADIUS_OPTIONS.map((option) => (
-                        <button
-                          aria-pressed={
-                            nearbyRadiusMeters === option.value &&
-                            distanceRange !== "OTHER_CITY"
-                          }
-                          className={cn(
-                            "rounded-2xl border px-3 py-3 text-center text-xs transition active:scale-[0.98]",
-                            nearbyRadiusMeters === option.value &&
-                              distanceRange !== "OTHER_CITY"
-                              ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                              : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
-                          )}
-                          key={option.value}
-                          onClick={() => {
-                            setNearbyRadiusMeters(option.value);
-                            setDistanceRange("KM_5");
-                            setOtherCityId("");
-                          }}
-                          type="button"
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-                      Only privacy-safe approximate markers inside this radius
-                      are displayed.
-                    </p>
-                    <button
-                      aria-pressed={distanceRange === "OTHER_CITY"}
-                      className={cn(
-                        "mt-3 w-full rounded-2xl border px-3 py-3 text-left text-xs transition",
-                        distanceRange === "OTHER_CITY"
-                          ? "border-kondo-green bg-kondo-mint font-black text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200"
-                          : "border-border font-bold text-muted-foreground hover:border-kondo-green/40",
-                      )}
-                      onClick={() => {
-                        if (
-                          !premiumAccess.featureKeys.includes(
-                            MEET_PREMIUM_FEATURES.OTHER_CITY,
-                          )
-                        ) {
-                          setPremiumReason(
-                            "Meet Premium unlocks discovery in another study city.",
-                          );
-                          return;
-                        }
-                        setDistanceRange("OTHER_CITY");
-                      }}
-                      type="button"
-                    >
-                      Explore another city
-                    </button>
-                  </fieldset>
-                ) : null}
-
-                {mode === "NEARBY" && distanceRange === "OTHER_CITY" ? (
-                  <SearchableSelect
-                    label="Another city"
-                    onSelect={setOtherCityId}
-                    options={cityOptions}
-                    placeholder="Choose a study city"
-                    searchPlaceholder="Search cities"
-                    selected={otherCityId}
-                  />
-                ) : null}
 
                 {error ? (
                   <p
@@ -810,31 +646,31 @@ export function MeetPanel({
               </div>
             </Card>
 
-            <MeetDiscoveryMap
-              areaLabel={
-                mode === "NEARBY"
-                  ? `Around ${
-                      activeMapUniversityName ??
-                      activeMapCityName ??
-                      "your study area"
-                    }`
-                  : "Your discovery constellation"
-              }
-              key={`${mode}:${activeMapCityName ?? ""}:${activeMapUniversityName ?? ""}`}
-              mapQueries={meetMapSearchQueries({
-                universityName: activeMapUniversityName,
-                universityNativeName: activeMapUniversityNativeName,
-                cityName: activeMapCityName,
-                cityNativeName: activeMapCityNativeName,
-              })}
-              mode={mode}
-              onPremiumRequest={setPremiumReason}
-              premiumFeatures={premiumAccess.featureKeys}
-              profiles={profiles}
-              radiusMeters={nearbyRadiusMeters}
-              showEmptyState={discoveryStarted}
-              viewer={viewer}
-            />
+            {/*
+             * A list, not a map. Looking For asks who matches what you are
+             * here for; the map answered that with scattered markers drawn
+             * from points Kondo never stored. `StudentRow` is the same row
+             * Nearby uses, so the two surfaces read as one product.
+             */}
+            <div className="min-w-0">
+              <h3 className="text-lg font-black tracking-[-0.03em]">
+                People matching what you want
+              </h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {discoveryStarted
+                  ? "Based on the reasons you chose."
+                  : "Choose your reasons, then explore."}
+              </p>
+              {discoveryStarted || discovering ? (
+                <LookingForResults
+                  error={error}
+                  loading={discovering}
+                  onRetry={discoverPeople}
+                  profiles={profiles}
+                  selectedIntents={intents}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
       )}

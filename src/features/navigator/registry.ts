@@ -17,6 +17,18 @@ export type NavigatorContext = {
   professionalProfileComplete: boolean;
   activeApplicationActionCount: number;
   scheduleCount: number;
+  /**
+   * The most useful unfinished guide step for this member, already resolved by
+   * `getGuideNextStep`. Null when every relevant guide is finished — which is
+   * the case the Navigator must not paper over with a generic "read the guide".
+   */
+  guideNextStep: {
+    guideTitle: string;
+    stepTitle: string | null;
+    completed: number;
+    total: number;
+    href: string;
+  } | null;
 };
 
 export type NavigatorAction = {
@@ -28,10 +40,33 @@ export type NavigatorAction = {
   priority: NavigatorPriority;
 };
 
-type NavigatorRule = {
-  action: NavigatorAction;
-  when: (context: NavigatorContext) => boolean;
-};
+/**
+ * A rule's action may be a function of the context.
+ *
+ * Almost every action is a fixed link to a section, so the plain object form
+ * stays. The Guide is the exception: "continue the checklist" is only useful if
+ * it opens the specific guide and names the specific step, which is not
+ * knowable until the member's progress has been read.
+ */
+type NavigatorRule =
+  | { action: NavigatorAction; when: (context: NavigatorContext) => boolean }
+  | {
+      /** Declared separately, because a computed action has no literal key. */
+      key: string;
+      action: (context: NavigatorContext) => NavigatorAction;
+      when: (context: NavigatorContext) => boolean;
+    };
+
+function ruleKey(rule: NavigatorRule) {
+  return "key" in rule ? rule.key : rule.action.key;
+}
+
+function resolveAction(
+  rule: NavigatorRule,
+  context: NavigatorContext,
+): NavigatorAction {
+  return typeof rule.action === "function" ? rule.action(context) : rule.action;
+}
 
 const preparing = (context: NavigatorContext) =>
   context.group === "PREPARING_FOR_CHINA";
@@ -174,15 +209,46 @@ export const NAVIGATOR_RULES: readonly NavigatorRule[] = [
     },
     when: (context) => career(context) && context.jobCount > 0,
   },
-] as const;
+  /*
+   * The Guide was the one part of Kondo the Navigator never pointed at, which
+   * left two checklists side by side that did not know about each other: the
+   * Navigator told you to sort your housing, and the Guide held the steps for
+   * doing it.
+   *
+   * This action names the actual next step and links to the actual guide, so
+   * it is a continuation rather than a suggestion to go and look. It appears
+   * only when a real unfinished step exists — when everything relevant is
+   * done, the Navigator says nothing rather than inventing a task.
+   */
+  {
+    key: "continue-guide",
+    action: (context) => {
+      const next = context.guideNextStep;
+      return {
+        key: "continue-guide",
+        title: next?.stepTitle
+          ? `Next in ${next.guideTitle}: ${next.stepTitle}`
+          : "Continue your Kondo Guide",
+        reason: next
+          ? `${next.completed} of ${next.total} steps done in this guide.`
+          : "A guide for your stage is waiting.",
+        // `/student-hub/guide` has only a `[slug]` route, so the bare path is
+        // a 404. The library lives at `/guides`, which is where someone with
+        // no resolved next step should land.
+        href: next?.href ?? "/guides",
+        label: next?.completed ? "Continue guide" : "Start guide",
+        priority: "RECOMMENDED",
+      };
+    },
+    when: (context) => context.guideNextStep !== null,
+  },
+] as const satisfies readonly NavigatorRule[];
 
-export const NAVIGATOR_ACTION_KEYS = NAVIGATOR_RULES.map(
-  ({ action }) => action.key,
-);
+export const NAVIGATOR_ACTION_KEYS = NAVIGATOR_RULES.map(ruleKey);
 
 export function evaluateNavigatorRules(context: NavigatorContext) {
   return NAVIGATOR_RULES.filter((rule) => rule.when(context))
-    .map(({ action }) => action)
+    .map((rule) => resolveAction(rule, context))
     .sort((left, right) =>
       left.priority === right.priority
         ? 0

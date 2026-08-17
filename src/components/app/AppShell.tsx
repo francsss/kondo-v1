@@ -10,6 +10,7 @@ import {
   Bookmark,
   Building2,
   Clapperboard,
+  Loader2,
   ClipboardList,
   Compass,
   Globe2,
@@ -38,6 +39,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ProductAnalyticsIdentity } from "@/components/analytics/ProductAnalytics";
 import { PresenceHeartbeat } from "@/components/app/PresenceHeartbeat";
+import { SessionFreshnessGuard } from "@/components/app/SessionFreshnessGuard";
 import { ExploreMenu } from "@/components/features/explore/ExploreMenu";
 import { KondoPet } from "@/components/features/feedback/KondoPet";
 import { NotificationExperience } from "@/components/features/notifications/NotificationExperience";
@@ -61,7 +63,7 @@ import {
   MESSAGE_COUNT_EVENT,
   NOTIFICATION_COUNT_EVENT,
 } from "@/lib/notification-client";
-import { resetProductAnalytics } from "@/lib/product-analytics-client";
+import { useSignOut } from "@/lib/use-sign-out";
 import { LAST_MAIN_PATH_KEY } from "@/lib/space-exit";
 import { cn } from "@/lib/utils";
 
@@ -305,6 +307,54 @@ function ThemePreferenceSync({
   return null;
 }
 
+/**
+ * Sign out, wherever it appears in the shell.
+ *
+ * It answers immediately — the label changes on the same tap that starts the
+ * request — and it says so when it fails. The previous version did neither:
+ * a failed sign-out left the row looking untouched, which is indistinguishable
+ * from a dead button.
+ */
+function SignOutButton({
+  onSignOut,
+  pending,
+  error,
+}: {
+  onSignOut: () => void;
+  pending: boolean;
+  error: string;
+}) {
+  return (
+    <div>
+      <button
+        aria-busy={pending}
+        className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-70"
+        disabled={pending}
+        onClick={onSignOut}
+        type="button"
+      >
+        {pending ? (
+          <Loader2
+            aria-hidden="true"
+            className="h-5 w-5 animate-spin motion-reduce:animate-none"
+          />
+        ) : (
+          <LogOut aria-hidden="true" className="h-5 w-5" />
+        )}
+        {pending ? "Signing out…" : "Sign out"}
+      </button>
+      {error ? (
+        <p
+          className="px-3.5 pb-1 text-xs font-bold text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function NavLink({
   href,
   icon: Icon,
@@ -484,38 +534,26 @@ export function AppShell({
     return () => window.removeEventListener(MESSAGE_COUNT_EVENT, updateCount);
   }, []);
 
+  // Sign-out lives in one hook shared with the settings screen, so the menus
+  // and that page cannot drift apart again.
+  const {
+    signOut,
+    pending: signOutPending,
+    error: signOutError,
+  } = useSignOut();
+
   async function logout() {
-    if ("serviceWorker" in navigator) {
-      const registration = await navigator.serviceWorker
-        .getRegistration("/")
-        .catch(() => undefined);
-      const subscription = await registration?.pushManager
-        .getSubscription()
-        .catch(() => null);
-      if (subscription) {
-        await fetch("/api/notifications/push", {
-          method: "DELETE",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
-        }).catch(() => null);
-        await subscription.unsubscribe().catch(() => false);
-      }
-    }
-    const response = await fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => null);
-    if (response?.ok) {
-      resetProductAnalytics();
-      window.location.assign("/login");
-    }
+    // Close the drawer as the action starts: leaving it open over a redirect
+    // reads as nothing having happened.
+    setMenuOpen(false);
+    await signOut();
   }
 
   if (usesImmersiveAppShell(pathname)) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
+        <SessionFreshnessGuard />
         <PresenceHeartbeat />
         <NotificationExperience
           hapticsEnabled={user.preference?.notificationHaptics ?? true}
@@ -532,6 +570,7 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <ThemePreferenceSync preference={user.preference?.theme ?? "SYSTEM"} />
+      <SessionFreshnessGuard />
       <PresenceHeartbeat />
       <NotificationExperience
         hapticsEnabled={user.preference?.notificationHaptics ?? true}
@@ -631,19 +670,26 @@ export function AppShell({
                 pathname={pathname}
               />
             ) : null}
-            <button
-              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              onClick={logout}
-              type="button"
-            >
-              <LogOut className="h-5 w-5" /> Sign out
-            </button>
+            <SignOutButton
+              error={signOutError}
+              onSignOut={logout}
+              pending={signOutPending}
+            />
           </div>
         </div>
       </aside>
 
       <div className="lg:pl-[248px]">
-        <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        {/*
+         * Hidden on a phone while a focused form is open: the form draws its
+         * own compact header with the organization, the task and Back, so the
+         * full app bar is competing for the top of a small screen. Desktop keeps
+         * it — there is room, and it is not in the way there.
+         */}
+        <header
+          className="sticky top-0 z-30 h-16 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8"
+          data-form-hide-mobile
+        >
           <div className="mx-auto flex h-full max-w-[1440px] items-center gap-3">
             <div className="flex h-10 shrink-0 items-center lg:hidden">
               <Button
@@ -841,13 +887,11 @@ export function AppShell({
                   onNavigate={() => setMenuOpen(false)}
                 />
               ) : null}
-              <button
-                className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                onClick={logout}
-                type="button"
-              >
-                <LogOut className="h-5 w-5" /> Sign out
-              </button>
+              <SignOutButton
+                error={signOutError}
+                onSignOut={logout}
+                pending={signOutPending}
+              />
             </div>
           </nav>
         </aside>
@@ -857,6 +901,7 @@ export function AppShell({
         <nav
           aria-label={`${organizationWorkspace.publicName} workspace navigation`}
           className="fixed inset-x-3 bottom-3 z-40 grid auto-cols-fr grid-flow-col rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
+          data-form-hide
         >
           {workspacePrimary.map((item) => {
             const Icon = WORKSPACE_MOBILE_ICONS[item.icon];
@@ -893,6 +938,7 @@ export function AppShell({
         <nav
           aria-label="Mobile quick navigation"
           className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-3xl border border-border bg-card/95 p-1.5 text-card-foreground shadow-[0_16px_50px_rgba(16,24,40,0.2)] backdrop-blur-xl lg:hidden"
+          data-form-hide
         >
           {mobileNavigation.map(
             ({ href, icon: Icon, label, aliases }, index) => {

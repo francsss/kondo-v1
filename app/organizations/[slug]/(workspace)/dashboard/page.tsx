@@ -1,11 +1,6 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock3,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Users } from "lucide-react";
+import { OrganizationVisibilityPanel } from "@/components/organizations/OrganizationVisibilityPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { hasOrganizationPermission } from "@/lib/organization-authorization";
@@ -14,6 +9,7 @@ import { opportunitySetupState } from "@/lib/organization-workspace-navigation";
 import { listOrganizationActivity } from "@/lib/organization-workspaces";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { captureServerProductEvent } from "@/lib/product-analytics-server";
+import { getOrganizationPublicationReadiness } from "@/lib/organization-publication";
 import { requireUser } from "@/lib/server-auth";
 
 export default async function OrganizationDashboardPage({
@@ -29,6 +25,7 @@ export default async function OrganizationDashboardPage({
     1,
   );
   const { organization, membership, counts, completeness } = workspace;
+  const readiness = await getOrganizationPublicationReadiness(organization.id);
   await captureServerProductEvent({
     distinctId: user.id,
     event: PRODUCT_EVENTS.ORGANIZATION_WORKSPACE_OPENED,
@@ -110,35 +107,29 @@ export default async function OrganizationDashboardPage({
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-5 rounded-4xl bg-gradient-to-br from-kondo-forest via-kondo-green to-emerald-600 p-6 text-white shadow-lift sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">
-            Welcome to your workspace
-          </p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-            Build trust around {organization.publicName}
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
-            Complete the professional identity, invite the right people and
-            prepare the organization for Kondo verification.
-          </p>
-        </div>
-        <Button
-          asChild
-          className="self-end bg-white text-kondo-forest hover:bg-white/90"
-        >
-          <Link href={`/organizations/${slug}/profile`}>
-            Continue setup <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      </section>
+      {/*
+       * First thing in the workspace, because it answers the question an owner
+       * cannot otherwise answer without making a second account: can anyone
+       * actually find us?
+       */}
+      <OrganizationVisibilityPanel
+        state={{
+          slug: organization.slug,
+          publicProfileStatus: organization.publicProfileStatus,
+          missing: readiness.missingRequirements,
+          blocking: readiness.blockingReasons,
+          canPublish: hasOrganizationPermission(
+            { role: membership.storedRole, status: membership.status },
+            "ORGANIZATION_MANAGE_PUBLICATION",
+          ),
+          progress: {
+            completed: completeness.completed,
+            total: completeness.total,
+          },
+        }}
+      />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          icon={CheckCircle2}
-          label="Profile complete"
-          value={`${completeness.percentage}%`}
-        />
+      <section className="grid gap-4 sm:grid-cols-2">
         <Metric
           icon={Users}
           label="Active teammates"
@@ -148,13 +139,6 @@ export default async function OrganizationDashboardPage({
           icon={Clock3}
           label="Pending invitations"
           value={String(counts.pendingInvitations)}
-        />
-        <Metric
-          icon={ShieldCheck}
-          label="Verification"
-          value={organization.verificationStatus
-            .replaceAll("_", " ")
-            .toLowerCase()}
         />
       </section>
 

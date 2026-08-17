@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { KondoLogo } from "@/components/KondoLogo";
+import { JourneyShowcase } from "@/components/marketing/JourneyShowcase";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Button } from "@/components/ui/Button";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -123,7 +124,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="noise relative px-5 pb-16 pt-24 sm:px-8 sm:pb-28 sm:pt-44">
+      <section className="noise relative px-5 pb-20 pt-28 sm:px-8 sm:pb-32 sm:pt-48">
         <div
           aria-hidden="true"
           className="absolute left-[8%] top-28 h-72 w-72 rounded-full bg-kondo-lime/30 blur-3xl dark:bg-lime-600/10"
@@ -142,25 +143,30 @@ export default function LandingPage() {
             <br />
             <span className="text-kondo-green">Find your way.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:mt-7 sm:text-lg">
+          <p className="mx-auto mt-6 max-w-xl text-balance text-base leading-8 text-muted-foreground sm:mt-8 sm:text-lg">
             The digital ecosystem for international students in China — before,
             during and after your studies.
           </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-9 sm:flex-row">
+          {/*
+           * One obvious next step. "See the journey" is deliberately quiet: it
+           * scrolls, it does not compete, and the page still makes sense to
+           * someone who ignores it entirely.
+           */}
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row">
             <Button asChild size="lg">
               <Link
                 data-product-event={PRODUCT_EVENTS.JOIN_CLICKED}
                 data-product-source="landing_hero"
                 href="/register"
               >
-                Create your free account <ArrowRight className="h-4 w-4" />
+                Join Kondo <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="secondary">
-              <a href="#inside">See what’s inside</a>
+            <Button asChild size="lg" variant="ghost">
+              <a href="#journey">See the journey</a>
             </Button>
           </div>
-          <p className="mt-5 text-xs font-semibold text-muted-foreground">
+          <p className="mt-6 text-xs font-semibold text-muted-foreground">
             Free for students · No payments · Privacy by design
           </p>
 
@@ -300,25 +306,44 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y border-border bg-card py-8 text-card-foreground">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-5 text-center sm:flex-row sm:text-left">
-          <p className="text-sm font-bold text-muted-foreground">
-            Made for international students, wherever you are from
+      {/*
+       * The strip that stood here counted "+ 200 countries and regions", which
+       * is not a number Kondo can stand behind. What is true is who it is
+       * built for, so that is what it says now.
+       */}
+      <section className="border-y border-border bg-card py-10 text-card-foreground sm:py-12">
+        <div className="mx-auto max-w-3xl px-5 text-center sm:px-8">
+          <p className="text-balance text-lg font-black tracking-[-0.03em] sm:text-2xl">
+            Built for international students in China, wherever they came from.
           </p>
-          <div className="flex flex-wrap justify-center gap-5 text-xl grayscale-[0.2]">
-            <span>🇵🇰</span>
-            <span>🇳🇬</span>
-            <span>🇰🇿</span>
-            <span>🇮🇩</span>
-            <span>🇨🇲</span>
-            <span>🇫🇷</span>
-            <span>🇮🇳</span>
-            <span>🇷🇼</span>
-            <span className="text-xs font-black text-kondo-green">
-              + 200 countries and regions
-            </span>
-          </div>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            Kondo is free for students, takes no payment in the marketplace, and
+            keeps your profile private by default.
+          </p>
         </div>
+      </section>
+
+      <section
+        className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32"
+        id="journey"
+      >
+        <Reveal className="max-w-3xl">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
+            The whole way through
+          </p>
+          <h2 className="mt-4 text-balance text-4xl font-black tracking-[-0.05em] sm:text-6xl">
+            One app for the years,
+            <br />
+            not just the arrival.
+          </h2>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
+            Studying abroad is three different problems in a row. Kondo is built
+            around that arc rather than around a feature list.
+          </p>
+        </Reveal>
+        <Reveal className="mt-14">
+          <JourneyShowcase />
+        </Reveal>
       </section>
 
       <section

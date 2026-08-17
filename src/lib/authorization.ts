@@ -44,6 +44,14 @@ export const ADMIN_PERMISSIONS = [
   "HOUSING_PUBLISHERS_RESTRICT",
   "GUIDE_CMS_VIEW",
   "GUIDE_CMS_MANAGE",
+  /*
+   * Marking a guide VERIFIED is deliberately its own permission, held by named
+   * editors rather than every admin. Writing a guide and vouching for it are
+   * different acts: verification asserts that someone opened the cited source
+   * and confirmed the steps still match. GUIDE_CMS_MANAGE lets an admin write
+   * and publish; only this lets them claim Kondo checked it.
+   */
+  "GUIDE_CONTENT_VERIFY",
   "CITY_CMS_VIEW",
   "CITY_CMS_MANAGE",
   "STORY_CMS_VIEW",

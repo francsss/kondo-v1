@@ -30,7 +30,24 @@ const INSTRUCTIONS: Record<StudyAssistantAction, string> = {
   quiz: "Write five revision questions that test understanding of the passage, ordered from recall to application. Number them. Do not include the answers.",
   notes:
     "Rewrite the passage as study notes: a one-line summary, then short bullet points grouped under two or three headings. Keep it to what the passage actually says.",
+  translate:
+    "Translate the passage into the reader's language, stated in the context if given, otherwise English. Keep the author's register and do not smooth away difficulty. Note any phrase that does not translate cleanly in one short line afterwards.",
+  simplify:
+    "Restate the passage in the plainest words that keep its meaning. Short sentences. Assume the reader is competent but reading in a second language. Do not add explanation the passage does not support.",
+  significance:
+    "Explain what this passage is doing in the wider argument or narrative: what it establishes, what it depends on, and what it sets up. Two short paragraphs. If the passage alone does not show this, say so.",
 };
+
+/**
+ * The model, in one place and configurable.
+ *
+ * Scattering a model id through call sites means every future migration is a
+ * search-and-replace across the codebase, and the environment can no longer
+ * pin a different model per deployment.
+ */
+export function assistantModel() {
+  return process.env.ANTHROPIC_MODEL?.trim() || "claude-opus-5";
+}
 
 const SYSTEM_PROMPT = `You are Kondo's study assistant. You help international students studying in China understand material from their own library.
 
@@ -79,7 +96,7 @@ export async function askStudyAssistant(input: {
   try {
     const response = await client.messages.create(
       {
-        model: "claude-opus-5",
+        model: assistantModel(),
         max_tokens: 2048,
         system: SYSTEM_PROMPT,
         thinking: { type: "adaptive" },

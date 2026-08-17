@@ -1,17 +1,17 @@
 import { NextRequest } from "next/server";
-import {
-  parseAlipayConfig,
-  verifyAlipayNotification,
-} from "@/lib/payments/alipay-sandbox";
-import { settleAlipayOrder } from "@/lib/study-essentials";
+import { logServerEvent } from "@/lib/logger";
+import { getPaymentProvider } from "@/lib/payments/registry";
+import { settleVerifiedPayment } from "@/lib/payments/settlement";
+
+export const dynamic = "force-dynamic";
 
 const MAX_NOTIFICATION_BYTES = 64 * 1024;
 const FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
 
-function providerResponse(body: "success" | "failure", status = 200) {
+function providerResponse(body: string, status = 200) {
   return new Response(body, {
     status,
-    headers: { "content-type": "text/plain; charset=utf-8" },
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
 }
 
@@ -45,28 +45,41 @@ async function readNotificationBody(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const config = parseAlipayConfig(process.env);
-  if (!config) return providerResponse("failure", 503);
-
   const contentType = request.headers.get("content-type")?.split(";", 1)[0];
   if (contentType?.trim().toLowerCase() !== FORM_CONTENT_TYPE) {
     return providerResponse("failure", 415);
   }
 
-  const body = await readNotificationBody(request).catch(() => undefined);
-  if (body === null) return providerResponse("failure", 413);
-  if (!body) return providerResponse("failure", 400);
+  const rawBody = await readNotificationBody(request).catch(() => undefined);
+  if (rawBody === null) return providerResponse("failure", 413);
+  if (!rawBody) return providerResponse("failure", 400);
 
-  const params = Object.fromEntries(new URLSearchParams(body));
-  const notification = verifyAlipayNotification(params, config);
-  if (!notification.verified) return providerResponse("failure", 400);
-
+  const provider = getPaymentProvider("ALIPAY");
+  let verdict;
   try {
-    const settlement = await settleAlipayOrder(notification);
-    return settlement.accepted
-      ? providerResponse("success")
-      : providerResponse("failure", 400);
-  } catch {
-    return providerResponse("failure", 500);
+    verdict = await provider.verifyNotification(rawBody);
+  } catch (error) {
+    logServerEvent("payments.notification.error", {
+      message: error instanceof Error ? error.message : "unknown",
+    });
+    return providerResponse("failure", 503);
   }
+
+  if (!verdict.verified) {
+    logServerEvent("payments.notification.rejected", {
+      reason: verdict.reason,
+    });
+    return providerResponse("failure", 400);
+  }
+
+  const outcome = await settleVerifiedPayment(verdict);
+  if (!outcome.settled) {
+    if (outcome.status >= 500) return providerResponse("failure", 500);
+    logServerEvent("payments.notification.unsettled", {
+      reference: verdict.reference,
+      reason: outcome.reason,
+    });
+  }
+
+  return providerResponse(provider.notificationAcknowledgement());
 }

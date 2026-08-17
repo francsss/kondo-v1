@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AdminNav } from "@/components/features/admin/AdminNav";
 import { GuideEditForm } from "@/components/features/admin/GuideEditForm";
+import { GuideReviewPanel } from "@/components/features/admin/GuideReviewPanel";
 import { GuidePublishActions } from "@/components/features/admin/GuidePublishActions";
 import { GuideStepManager } from "@/components/features/admin/GuideStepManager";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getAdminGuide } from "@/lib/guides";
+import { hasAdminPermission } from "@/lib/authorization";
 import { requireAdminPermission } from "@/lib/server-auth";
 
 export const metadata: Metadata = { title: "Admin guide review" };
@@ -55,6 +57,16 @@ export default async function AdminGuideDetailPage({
           }}
         />
         <GuideStepManager guideId={guide.id} steps={guide.steps} />
+        <GuideReviewPanel
+          canVerify={hasAdminPermission(user.role, "GUIDE_CONTENT_VERIFY")}
+          guideId={guide.id}
+          initial={{
+            contentStatus: guide.contentStatus,
+            lastVerifiedAt: guide.lastVerifiedAt?.toISOString() ?? null,
+            reviewDueAt: guide.reviewDueAt?.toISOString() ?? null,
+            sources: guide.sources,
+          }}
+        />
       </div>
     </div>
   );

@@ -31,6 +31,15 @@ export function getAlipayOrderPresentation(
       shouldPoll: false,
     };
   }
+  if (status === "REFUNDED") {
+    return {
+      title: "Payment refunded",
+      description:
+        "This payment was refunded. Contact support if the refund is not visible in Alipay.",
+      statusLabel: "Refunded",
+      shouldPoll: false,
+    };
+  }
   if (status === "FAILED") {
     return {
       title: "Payment failed",

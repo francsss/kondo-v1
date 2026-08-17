@@ -159,8 +159,19 @@ describe("protected mutation targets", () => {
 
       expect(response.status).toBe(404);
       expect(mocks.guideProgressUpsert).not.toHaveBeenCalled();
+      /*
+       * The guard is now the shared readable-guide filter, so progress cannot
+       * be recorded against a draft or an archived guide either — not just an
+       * unpublished one.
+       */
       expect(mocks.guideStepFindFirst).toHaveBeenCalledWith({
-        where: { id: "step-1", guide: { published: true } },
+        where: {
+          id: "step-1",
+          guide: {
+            published: true,
+            contentStatus: { in: ["VERIFIED", "NEEDS_REVIEW"] },
+          },
+        },
         select: { id: true },
       });
     },

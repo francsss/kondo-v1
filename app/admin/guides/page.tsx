@@ -1,3 +1,4 @@
+import type { GuideContentStatus } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -15,13 +16,43 @@ function one(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function href(input: { q?: string; published?: string }, page: number) {
+function href(
+  input: { q?: string; published?: string; status?: string },
+  page: number,
+) {
   const params = new URLSearchParams();
   if (input.q) params.set("q", input.q);
   if (input.published) params.set("published", input.published);
+  if (input.status) params.set("status", input.status);
   if (page > 1) params.set("page", String(page));
   return `/admin/guides?${params.toString()}`;
 }
+
+/** How each trust state reads at a glance in the list. */
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  DRAFT: {
+    label: "DRAFT CONTENT",
+    className:
+      "bg-slate-100 text-muted-foreground dark:bg-white/10 dark:text-muted-foreground",
+  },
+  NEEDS_REVIEW: {
+    label: "NEEDS REVIEW",
+    className:
+      "bg-amber-100 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300",
+  },
+  VERIFIED: {
+    label: "VERIFIED",
+    className:
+      "bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-200",
+  },
+  ARCHIVED: {
+    label: "ARCHIVED",
+    className:
+      "bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300",
+  },
+};
+
+const STATUS_VALUES = ["DRAFT", "NEEDS_REVIEW", "VERIFIED", "ARCHIVED"];
 
 export default async function AdminGuidesPage({
   searchParams,
@@ -38,12 +69,21 @@ export default async function AdminGuidesPage({
       : publishedParam === "false"
         ? false
         : undefined;
+  const statusParam = one(params.status);
+  const contentStatus = STATUS_VALUES.includes(statusParam ?? "")
+    ? (statusParam as GuideContentStatus)
+    : undefined;
   const result = await listAdminGuides(user, {
     page: Number(one(params.page) ?? 1),
     query,
     published,
+    contentStatus,
   });
-  const linkInput = { q: query, published: publishedParam };
+  const linkInput = {
+    q: query,
+    published: publishedParam,
+    status: contentStatus,
+  };
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
@@ -54,7 +94,7 @@ export default async function AdminGuidesPage({
       />
       <AdminNav currentPath="/admin/guides" role={user.role} />
       <Card className="mt-7">
-        <form className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_200px_auto]">
+        <form className="grid gap-3 lg:grid-cols-[minmax(200px,1fr)_180px_180px_auto]">
           <input
             className="h-11 rounded-2xl border border-slate-200 bg-transparent px-4 text-sm dark:border-white/10"
             defaultValue={query}
@@ -69,6 +109,17 @@ export default async function AdminGuidesPage({
             <option value="">All guides</option>
             <option value="true">Published</option>
             <option value="false">Draft</option>
+          </select>
+          <select
+            className="h-11 rounded-2xl border border-slate-200 bg-transparent px-3 text-sm dark:border-white/10"
+            defaultValue={contentStatus ?? ""}
+            name="status"
+          >
+            <option value="">Any review state</option>
+            <option value="NEEDS_REVIEW">Needs review</option>
+            <option value="VERIFIED">Verified</option>
+            <option value="DRAFT">Draft content</option>
+            <option value="ARCHIVED">Archived</option>
           </select>
           <Button type="submit">
             <Search className="h-4 w-4" /> Filter
@@ -93,16 +144,31 @@ export default async function AdminGuidesPage({
                   >
                     {guide.published ? "PUBLISHED" : "DRAFT"}
                   </span>
+                  <span
+                    className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                      STATUS_BADGE[guide.contentStatus]?.className ?? ""
+                    }`}
+                  >
+                    {STATUS_BADGE[guide.contentStatus]?.label ??
+                      guide.contentStatus}
+                  </span>
                   {guide.featured ? (
                     <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
                       FEATURED
+                    </span>
+                  ) : null}
+                  {guide.reviewOverdue ? (
+                    <span className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-black text-red-700 dark:bg-red-400/10 dark:text-red-300">
+                      REVIEW OVERDUE
                     </span>
                   ) : null}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {guide.category.replaceAll("_", " ")} · {guide._count.steps}{" "}
                   step
-                  {guide._count.steps === 1 ? "" : "s"}
+                  {guide._count.steps === 1 ? "" : "s"} · {guide._count.sources}{" "}
+                  source
+                  {guide._count.sources === 1 ? "" : "s"}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">

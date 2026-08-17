@@ -3,11 +3,11 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  settleAlipayOrder: vi.fn(),
+  settleVerifiedPayment: vi.fn(),
 }));
 
-vi.mock("@/lib/study-essentials", () => ({
-  settleAlipayOrder: mocks.settleAlipayOrder,
+vi.mock("@/lib/payments/settlement", () => ({
+  settleVerifiedPayment: mocks.settleVerifiedPayment,
 }));
 
 import { POST } from "../../app/api/payments/alipay/notify/route";
@@ -74,9 +74,10 @@ describe("Alipay notification route", () => {
       "ALIPAY_RETURN_URL",
       "https://example.test/books/payment/success",
     );
-    mocks.settleAlipayOrder.mockResolvedValue({
-      accepted: true,
-      outcome: "MARK_PAID",
+    mocks.settleVerifiedPayment.mockResolvedValue({
+      settled: true,
+      alreadySettled: false,
+      orderId: "order-1",
     });
   });
 
@@ -90,13 +91,13 @@ describe("Alipay notification route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("success");
-    expect(mocks.settleAlipayOrder).toHaveBeenCalledWith(
+    expect(mocks.settleVerifiedPayment).toHaveBeenCalledWith(
       expect.objectContaining({
         verified: true,
-        paid: true,
-        outTradeNo: "KS-1234",
-        totalAmount: "9.90",
-        tradeNo: "sandbox-trade-456",
+        status: "PAID",
+        reference: "KS-1234",
+        amountMinor: 990,
+        providerReference: "sandbox-trade-456",
       }),
     );
   });
@@ -112,7 +113,7 @@ describe("Alipay notification route", () => {
 
     expect(response.status).toBe(415);
     expect(await response.text()).toBe("failure");
-    expect(mocks.settleAlipayOrder).not.toHaveBeenCalled();
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
   });
 
   it("rejects an oversized notification before parsing or settlement", async () => {
@@ -129,7 +130,7 @@ describe("Alipay notification route", () => {
 
     expect(response.status).toBe(413);
     expect(await response.text()).toBe("failure");
-    expect(mocks.settleAlipayOrder).not.toHaveBeenCalled();
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
   });
 
   it("rejects a chunked notification that exceeds the actual body limit", async () => {
@@ -143,7 +144,48 @@ describe("Alipay notification route", () => {
 
     expect(response.status).toBe(413);
     expect(await response.text()).toBe("failure");
-    expect(mocks.settleAlipayOrder).not.toHaveBeenCalled();
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
+  });
+
+  it("requires notifications to declare RSA2", async () => {
+    const signed = notification();
+    const withoutSignType = (await signed.text()).replace(
+      /&sign_type=RSA2$/,
+      "",
+    );
+    const response = await POST(
+      new NextRequest(signed.url, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: withoutSignType,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
+  });
+
+  it("rejects a signed notification for another seller", async () => {
+    const response = await POST(notification({ seller_id: "other-seller" }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
+  });
+
+  it("rejects a signed amount with more than two decimal places", async () => {
+    const response = await POST(notification({ total_amount: "9.901" }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown trade status", async () => {
+    const response = await POST(
+      notification({ trade_status: "TRADE_UNKNOWN" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
   });
 
   it("returns failure without touching an order for a bad signature", async () => {
@@ -162,19 +204,33 @@ describe("Alipay notification route", () => {
 
     expect(response.status).toBe(400);
     expect(await response.text()).toBe("failure");
-    expect(mocks.settleAlipayOrder).not.toHaveBeenCalled();
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
   });
 
   it("does not acknowledge a verified notification that fails reconciliation", async () => {
-    mocks.settleAlipayOrder.mockResolvedValue({
-      accepted: false,
-      outcome: "AMOUNT_MISMATCH",
+    mocks.settleVerifiedPayment.mockResolvedValue({
+      settled: false,
+      reason: "AMOUNT_MISMATCH",
+      status: 409,
     });
 
     const response = await POST(notification());
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("success");
+  });
+
+  it("rejects production payment configuration", async () => {
+    vi.stubEnv("ALIPAY_ENV", "production");
+    vi.stubEnv("PAYMENTS_ALLOW_PRODUCTION", "true");
+    vi.stubEnv("ALIPAY_GATEWAY", "https://openapi.alipay.com/gateway.do");
+    vi.stubEnv("ALIPAY_GATEWAY_URL", "https://openapi.alipay.com/gateway.do");
+
+    const response = await POST(notification());
+
+    expect(response.status).toBe(503);
     expect(await response.text()).toBe("failure");
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
   });
 
   it("stays disabled when server credentials are incomplete", async () => {
@@ -184,6 +240,6 @@ describe("Alipay notification route", () => {
 
     expect(response.status).toBe(503);
     expect(await response.text()).toBe("failure");
-    expect(mocks.settleAlipayOrder).not.toHaveBeenCalled();
+    expect(mocks.settleVerifiedPayment).not.toHaveBeenCalled();
   });
 });
