@@ -26,7 +26,10 @@ vi.mock("@/lib/study-essentials", () => ({
 
 import { POST } from "../../app/api/student-hub/essentials/orders/route";
 
-function request(paymentProvider: "SIMULATED" | "ALIPAY") {
+function request(
+  paymentProvider: "SIMULATED" | "ALIPAY",
+  idempotencyKey?: string,
+) {
   return new NextRequest(
     "http://localhost:3000/api/student-hub/essentials/orders",
     {
@@ -35,6 +38,7 @@ function request(paymentProvider: "SIMULATED" | "ALIPAY") {
         "content-type": "application/json",
         host: "localhost:3000",
         origin: "http://localhost:3000",
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
         slug: "hsk-test-book",
@@ -63,8 +67,26 @@ describe("Study Essential order API", () => {
     });
   });
 
-  it("keeps Alipay disabled when sandbox configuration is absent", async () => {
+  it("requires an idempotency key for Alipay orders", async () => {
+    mocks.parseAlipayConfig.mockReturnValue({ appId: "sandbox-app-id" });
+
     const response = await POST(request("ALIPAY"));
+
+    expect(response.status).toBe(400);
+    expect(mocks.placeAlipayOrder).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed Alipay idempotency key", async () => {
+    mocks.parseAlipayConfig.mockReturnValue({ appId: "sandbox-app-id" });
+
+    const response = await POST(request("ALIPAY", "short"));
+
+    expect(response.status).toBe(400);
+    expect(mocks.placeAlipayOrder).not.toHaveBeenCalled();
+  });
+
+  it("keeps Alipay disabled when sandbox configuration is absent", async () => {
+    const response = await POST(request("ALIPAY", "checkout-12345678"));
 
     expect(response.status).toBe(503);
     expect(mocks.placeAlipayOrder).not.toHaveBeenCalled();
@@ -74,7 +96,7 @@ describe("Study Essential order API", () => {
     const config = { appId: "sandbox-app-id" };
     mocks.parseAlipayConfig.mockReturnValue(config);
 
-    const response = await POST(request("ALIPAY"));
+    const response = await POST(request("ALIPAY", "checkout-12345678"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -83,6 +105,7 @@ describe("Study Essential order API", () => {
         userId: "student-1",
         slug: "hsk-test-book",
         quantity: 1,
+        idempotencyKey: "checkout-12345678",
         config,
       }),
     );

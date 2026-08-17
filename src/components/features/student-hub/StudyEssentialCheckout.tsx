@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,10 @@ export function StudyEssentialCheckout({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const idempotency = useRef<{
+    fingerprint: string;
+    key: string;
+  } | null>(null);
 
   const total = unitPriceMinor * quantity;
   const money = (minor: number) =>
@@ -47,10 +51,22 @@ export function StudyEssentialCheckout({
     setLoading(true);
     setError("");
     try {
+      const fingerprint = `${slug}:${quantity}:${provider}`;
+      if (idempotency.current?.fingerprint !== fingerprint) {
+        idempotency.current = {
+          fingerprint,
+          key: `checkout:${crypto.randomUUID()}`,
+        };
+      }
       const response = await fetch("/api/student-hub/essentials/orders", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(provider === "ALIPAY"
+            ? { "Idempotency-Key": idempotency.current.key }
+            : {}),
+        },
         body: JSON.stringify({ slug, quantity, paymentProvider: provider }),
       });
       const data = await response.json().catch(() => ({}));

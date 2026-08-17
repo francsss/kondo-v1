@@ -3,7 +3,8 @@ import {
   sign as signBytes,
   verify as verifyBytes,
 } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import type { StudyEssentialOrderStatus } from "@prisma/client";
+import { describe, expect, it, vi } from "vitest";
 import {
   createAlipayPagePayRequest,
   decideAlipayOrderTransition,
@@ -196,6 +197,20 @@ describe("Alipay sandbox notification verification", () => {
     });
   });
 
+  it("rejects a notification whose sign_type is missing", () => {
+    const config = parseAlipayConfig(completeEnvironment);
+    expect(config).not.toBeNull();
+    if (!config) throw new Error("Expected complete test configuration");
+    const notification = signedNotification(config);
+    delete (notification as Partial<typeof notification>).sign_type;
+
+    expect(verifyAlipayNotification(notification, config)).toEqual({
+      verified: false,
+      paid: false,
+      reason: "MISSING_REQUIRED_FIELD",
+    });
+  });
+
   it("rejects a notification with a bad signature", () => {
     const config = parseAlipayConfig(completeEnvironment);
     expect(config).not.toBeNull();
@@ -325,7 +340,9 @@ describe("Alipay order presentation", () => {
       },
     ],
   ])("presents %s as an explicit order state", (status, expected) => {
-    expect(getAlipayOrderPresentation(status)).toMatchObject(expected);
+    expect(
+      getAlipayOrderPresentation(status as StudyEssentialOrderStatus),
+    ).toMatchObject(expected);
   });
 
   it("uses bounded backoff and stops polling after five minutes", () => {

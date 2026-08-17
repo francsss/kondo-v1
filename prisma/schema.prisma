@@ -4367,9 +4367,11 @@ model StudyEssentialOrder {
   status           StudyEssentialOrderStatus     @default(PENDING)
   paymentProvider  StudyEssentialPaymentProvider @default(SIMULATED)
   paymentReference String?                       @db.VarChar(120)
+  idempotencyKey   String?                       @db.VarChar(128)
   placedAt         DateTime                      @default(now())
   paidAt           DateTime?
 
+  @@unique([userId, paymentProvider, idempotencyKey])
   @@index([userId, placedAt])
   @@index([essentialId, status])
 }

@@ -14,6 +14,8 @@ import {
   StudyEssentialError,
 } from "@/lib/study-essentials";
 
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
+
 const orderSchema = z.object({
   slug: z.string().trim().min(1).max(180),
   quantity: z.number().int().min(1).max(10).default(1),
@@ -38,6 +40,12 @@ export async function POST(request: NextRequest) {
 
   try {
     if (parsed.data.paymentProvider === "ALIPAY") {
+      const idempotencyKey = request.headers.get("idempotency-key")?.trim();
+      if (!idempotencyKey || !IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+        return jsonError(
+          "A valid Idempotency-Key header is required for Alipay checkout.",
+        );
+      }
       const config = parseAlipayConfig(process.env);
       if (!config) {
         return jsonError("Alipay sandbox is not configured.", 503);
@@ -46,6 +54,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         slug: parsed.data.slug,
         quantity: parsed.data.quantity,
+        idempotencyKey,
         config,
         ...getRequestMeta(request),
       });

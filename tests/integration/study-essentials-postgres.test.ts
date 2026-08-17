@@ -200,15 +200,89 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
     ).rejects.toThrow(/only the kondo demo payment/i);
   });
 
+  it("reuses an Alipay order for an identical idempotent retry", async () => {
+    const input = {
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `retry-${suffix}`,
+      config: alipayConfig,
+    };
+    const first = await placeAlipayOrder(input);
+    const retry = await placeAlipayOrder(input);
+
+    expect(retry.order.id).toBe(first.order.id);
+    expect(retry.order.reference).toBe(first.order.reference);
+    expect(retry.payment).toEqual(first.payment);
+    await expect(
+      prisma.studyEssentialOrder.count({
+        where: {
+          userId,
+          paymentProvider: "ALIPAY",
+          idempotencyKey: input.idempotencyKey,
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("collapses concurrent Alipay retries into one order", async () => {
+    const input = {
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `concurrent-${suffix}`,
+      config: alipayConfig,
+    };
+    const [first, second] = await Promise.all([
+      placeAlipayOrder(input),
+      placeAlipayOrder(input),
+    ]);
+
+    expect(second.order.id).toBe(first.order.id);
+    expect(second.payment).toEqual(first.payment);
+    await expect(
+      prisma.studyEssentialOrder.count({
+        where: {
+          userId,
+          paymentProvider: "ALIPAY",
+          idempotencyKey: input.idempotencyKey,
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("rejects reuse of an Alipay idempotency key for a different order", async () => {
+    const idempotencyKey = `conflict-${suffix}`;
+    await placeAlipayOrder({
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey,
+      config: alipayConfig,
+    });
+
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: kondoSlug,
+        quantity: 2,
+        idempotencyKey,
+        config: alipayConfig,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
   it("keeps an Alipay order locked until a matching notification settles it", async () => {
     const { order, payment } = await placeAlipayOrder({
       userId,
       slug: kondoSlug,
       quantity: 1,
+      idempotencyKey: `settle-${suffix}`,
       config: alipayConfig,
     });
     expect(order.status).toBe("PENDING");
-    expect(payment.params.method).toBe("alipay.trade.page.pay");
+    expect(payment).not.toBeNull();
+    expect(payment?.params.method).toBe("alipay.trade.page.pay");
     expect(
       (await listLibrary(userId)).some(
         (entry) => entry.essential.slug === kondoSlug,
@@ -236,6 +310,18 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
       accepted: true,
       outcome: "ALREADY_PAID",
     });
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: kondoSlug,
+        quantity: 1,
+        idempotencyKey: `settle-${suffix}`,
+        config: alipayConfig,
+      }),
+    ).resolves.toMatchObject({
+      order: { id: order.id, status: "PAID" },
+      payment: null,
+    });
   });
 
   it("cancels an Alipay order idempotently after TRADE_CLOSED", async () => {
@@ -243,6 +329,7 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
       userId,
       slug: kondoSlug,
       quantity: 1,
+      idempotencyKey: `closed-${suffix}`,
       config: alipayConfig,
     });
     const notification = {

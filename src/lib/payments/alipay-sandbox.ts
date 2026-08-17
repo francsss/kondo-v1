@@ -182,6 +182,7 @@ export function verifyAlipayNotification(
     "trade_no",
     "trade_status",
     "sign",
+    "sign_type",
   ] as const;
   if (required.some((key) => !input[key])) {
     return {
@@ -190,7 +191,7 @@ export function verifyAlipayNotification(
       reason: "MISSING_REQUIRED_FIELD",
     };
   }
-  if (input.sign_type && input.sign_type !== "RSA2") {
+  if (input.sign_type !== "RSA2") {
     return {
       verified: false,
       paid: false,
