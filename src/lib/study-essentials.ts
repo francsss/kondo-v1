@@ -271,11 +271,11 @@ function paymentForAlipayOrder(
 }
 
 function assertMatchingAlipayRetry(
-  order: { essentialId: string; quantity: number },
-  essentialId: string,
+  order: { essential: { slug: string }; quantity: number },
+  slug: string,
   quantity: number,
 ) {
-  if (order.essentialId !== essentialId || order.quantity !== quantity) {
+  if (order.essential.slug !== slug || order.quantity !== quantity) {
     throw new StudyEssentialError(
       "This Idempotency-Key was already used for a different order.",
       409,
@@ -308,6 +308,24 @@ export async function placeAlipayOrder(input: {
 
   try {
     return await prisma.$transaction(async (tx) => {
+      const existing = await tx.studyEssentialOrder.findUnique({
+        where: {
+          userId_paymentProvider_idempotencyKey: {
+            userId: input.userId,
+            paymentProvider: "ALIPAY",
+            idempotencyKey: input.idempotencyKey,
+          },
+        },
+        include: { essential: { select: { slug: true } } },
+      });
+      if (existing) {
+        assertMatchingAlipayRetry(existing, input.slug, input.quantity);
+        return {
+          order: existing,
+          payment: paymentForAlipayOrder(existing, input.config),
+        };
+      }
+
       const essential = await tx.studyEssential.findFirst({
         where: { slug: input.slug, status: "PUBLISHED" },
       });
@@ -323,23 +341,6 @@ export async function placeAlipayOrder(input: {
         throw new StudyEssentialError(
           "Alipay sandbox checkout currently supports CNY items only.",
         );
-      }
-
-      const existing = await tx.studyEssentialOrder.findUnique({
-        where: {
-          userId_paymentProvider_idempotencyKey: {
-            userId: input.userId,
-            paymentProvider: "ALIPAY",
-            idempotencyKey: input.idempotencyKey,
-          },
-        },
-      });
-      if (existing) {
-        assertMatchingAlipayRetry(existing, essential.id, input.quantity);
-        return {
-          order: existing,
-          payment: paymentForAlipayOrder(existing, input.config),
-        };
       }
 
       const unitPriceMinor = essential.priceMinor ?? 0;
@@ -394,23 +395,18 @@ export async function placeAlipayOrder(input: {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      const [essential, existing] = await Promise.all([
-        prisma.studyEssential.findFirst({
-          where: { slug: input.slug, status: "PUBLISHED" },
-          select: { id: true },
-        }),
-        prisma.studyEssentialOrder.findUnique({
-          where: {
-            userId_paymentProvider_idempotencyKey: {
-              userId: input.userId,
-              paymentProvider: "ALIPAY",
-              idempotencyKey: input.idempotencyKey,
-            },
+      const existing = await prisma.studyEssentialOrder.findUnique({
+        where: {
+          userId_paymentProvider_idempotencyKey: {
+            userId: input.userId,
+            paymentProvider: "ALIPAY",
+            idempotencyKey: input.idempotencyKey,
           },
-        }),
-      ]);
-      if (essential && existing) {
-        assertMatchingAlipayRetry(existing, essential.id, input.quantity);
+        },
+        include: { essential: { select: { slug: true } } },
+      });
+      if (existing) {
+        assertMatchingAlipayRetry(existing, input.slug, input.quantity);
         return {
           order: existing,
           payment: paymentForAlipayOrder(existing, input.config),

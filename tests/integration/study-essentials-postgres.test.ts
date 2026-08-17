@@ -251,6 +251,30 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
     ).resolves.toBe(1);
   });
 
+  it("reuses an Alipay order after its catalogue item is archived", async () => {
+    const input = {
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `archived-${suffix}`,
+      config: alipayConfig,
+    };
+    const first = await placeAlipayOrder(input);
+    await prisma.studyEssential.update({
+      where: { slug: kondoSlug },
+      data: { status: "ARCHIVED" },
+    });
+
+    const retry = await placeAlipayOrder(input);
+    expect(retry.order.id).toBe(first.order.id);
+    expect(retry.payment).toEqual(first.payment);
+
+    await prisma.studyEssential.update({
+      where: { slug: kondoSlug },
+      data: { status: "PUBLISHED" },
+    });
+  });
+
   it("rejects reuse of an Alipay idempotency key for a different order", async () => {
     const idempotencyKey = `conflict-${suffix}`;
     await placeAlipayOrder({
@@ -266,6 +290,15 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
         userId,
         slug: kondoSlug,
         quantity: 2,
+        idempotencyKey,
+        config: alipayConfig,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: `missing-${suffix}`,
+        quantity: 1,
         idempotencyKey,
         config: alipayConfig,
       }),
