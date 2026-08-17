@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findOrder: vi.fn(),
-  updateOrder: vi.fn(),
+  updateManyOrders: vi.fn(),
   upsertEntitlement: vi.fn(),
 }));
 
@@ -24,7 +24,7 @@ vi.mock("@/lib/prisma", () => {
   const client = {
     studyEssentialOrder: {
       findUnique: mocks.findOrder,
-      update: mocks.updateOrder,
+      updateMany: mocks.updateManyOrders,
     },
     studyEntitlement: { upsert: mocks.upsertEntitlement },
   };
@@ -58,6 +58,7 @@ const pendingOrder = {
   userId: "user-1",
   essentialId: "book-1",
   status: "PENDING",
+  paymentProvider: "ALIPAY",
   totalMinor: 990,
   currency: "CNY",
   paymentReference: null,
@@ -66,7 +67,7 @@ const pendingOrder = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.findOrder.mockResolvedValue(pendingOrder);
-  mocks.updateOrder.mockResolvedValue({});
+  mocks.updateManyOrders.mockResolvedValue({ count: 1 });
   mocks.upsertEntitlement.mockResolvedValue({});
 });
 
@@ -74,8 +75,19 @@ describe("settling a verified payment", () => {
   it("marks the order paid and grants access in the same transaction", async () => {
     const result = await settleVerifiedPayment(verdict());
     expect(result).toMatchObject({ settled: true, alreadySettled: false });
-    expect(mocks.updateOrder.mock.calls[0][0].data.status).toBe("PAID");
+    expect(mocks.updateManyOrders.mock.calls[0][0].data.status).toBe("PAID");
     expect(mocks.upsertEntitlement).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to settle an order created for another provider", async () => {
+    mocks.findOrder.mockResolvedValue({
+      ...pendingOrder,
+      paymentProvider: "SIMULATED",
+    });
+    const result = await settleVerifiedPayment(verdict());
+    expect(result).toMatchObject({ settled: false, status: 409 });
+    expect(mocks.updateManyOrders).not.toHaveBeenCalled();
+    expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
   });
 
   it("refuses when the notified amount does not match the order", async () => {
@@ -83,7 +95,7 @@ describe("settling a verified payment", () => {
     // against an expensive order.
     const result = await settleVerifiedPayment(verdict({ amountMinor: 1 }));
     expect(result).toMatchObject({ settled: false });
-    expect(mocks.updateOrder).not.toHaveBeenCalled();
+    expect(mocks.updateManyOrders).not.toHaveBeenCalled();
     expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
   });
 
@@ -93,13 +105,59 @@ describe("settling a verified payment", () => {
     expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
   });
 
-  it("grants nothing for a pending or failed trade status", async () => {
-    for (const status of ["PENDING", "FAILED", "REFUNDED"] as const) {
+  it("grants nothing for pending or refunded trade status", async () => {
+    for (const status of ["PENDING", "REFUNDED"] as const) {
       vi.clearAllMocks();
       const result = await settleVerifiedPayment(verdict({ status }));
       expect(result, status).toMatchObject({ settled: false });
       expect(mocks.upsertEntitlement, status).not.toHaveBeenCalled();
     }
+  });
+
+  it("cancels a pending order after a verified closed trade", async () => {
+    const result = await settleVerifiedPayment(verdict({ status: "FAILED" }));
+    expect(result).toMatchObject({ settled: true, alreadySettled: false });
+    expect(mocks.updateManyOrders).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "CANCELLED" }),
+      }),
+    );
+    expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
+  });
+
+  it("treats a duplicate closed trade as already settled", async () => {
+    mocks.findOrder.mockResolvedValue({
+      ...pendingOrder,
+      status: "CANCELLED",
+      paymentReference: "2026081722001",
+    });
+    const result = await settleVerifiedPayment(verdict({ status: "FAILED" }));
+    expect(result).toMatchObject({ settled: true, alreadySettled: true });
+    expect(mocks.updateManyOrders).not.toHaveBeenCalled();
+    expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
+  });
+
+  it("rejects a paid notification after the order was cancelled", async () => {
+    mocks.findOrder.mockResolvedValue({
+      ...pendingOrder,
+      status: "CANCELLED",
+      paymentReference: "2026081722001",
+    });
+    const result = await settleVerifiedPayment(verdict());
+    expect(result).toMatchObject({ settled: false, status: 409 });
+    expect(mocks.updateManyOrders).not.toHaveBeenCalled();
+    expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
+  });
+
+  it("does not grant access when a closed trade wins a concurrent race", async () => {
+    mocks.updateManyOrders.mockResolvedValue({ count: 0 });
+    mocks.findOrder.mockResolvedValueOnce(pendingOrder).mockResolvedValueOnce({
+      status: "CANCELLED",
+      paymentReference: "2026081722001",
+    });
+    const result = await settleVerifiedPayment(verdict());
+    expect(result).toMatchObject({ settled: false, status: 409 });
+    expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
   });
 
   it("reports a missing order instead of inventing one", async () => {
@@ -109,12 +167,16 @@ describe("settling a verified payment", () => {
     expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
   });
 
-  it("treats a duplicate notification as already settled, not a second sale", async () => {
-    mocks.findOrder.mockResolvedValue({ ...pendingOrder, status: "PAID" });
+  it("treats a matching duplicate notification as already settled", async () => {
+    mocks.findOrder.mockResolvedValue({
+      ...pendingOrder,
+      status: "PAID",
+      paymentReference: "2026081722001",
+    });
     const result = await settleVerifiedPayment(verdict());
     expect(result).toMatchObject({ settled: true, alreadySettled: true });
     // The order is not re-marked...
-    expect(mocks.updateOrder).not.toHaveBeenCalled();
+    expect(mocks.updateManyOrders).not.toHaveBeenCalled();
     // ...but the entitlement is re-asserted, and it is an upsert on a unique
     // pair, so it cannot produce a second grant.
     expect(mocks.upsertEntitlement).toHaveBeenCalledTimes(1);
@@ -123,6 +185,17 @@ describe("settling a verified payment", () => {
       userId: "user-1",
       essentialId: "book-1",
     });
+  });
+
+  it("rejects a duplicate notification with different reconciliation data", async () => {
+    mocks.findOrder.mockResolvedValue({
+      ...pendingOrder,
+      status: "PAID",
+      paymentReference: "different-trade",
+    });
+    const result = await settleVerifiedPayment(verdict());
+    expect(result).toMatchObject({ settled: false, status: 409 });
+    expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
   });
 
   it("never writes credentials or a signature into the stored payload", async () => {
@@ -137,7 +210,7 @@ describe("settling a verified payment", () => {
       }),
     );
     const payload = JSON.stringify(
-      mocks.updateOrder.mock.calls[0][0].data.providerPayload,
+      mocks.updateManyOrders.mock.calls[0][0].data.providerPayload,
     );
     expect(payload).not.toContain("SECRET-SIGNATURE");
     expect(payload).not.toContain("sign_type");

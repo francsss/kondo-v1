@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { StudyEssentialCheckout } from "@/components/features/student-hub/StudyEssentialCheckout";
 import { StudyEssentialCover } from "@/components/features/student-hub/StudyEssentialCover";
+import { parseAlipayConfig } from "@/lib/payments/alipay-sandbox";
 import { requireUser } from "@/lib/server-auth";
 import {
   getStudyEssential,
@@ -32,6 +33,22 @@ export default async function StudyEssentialCheckoutPage({
   if (!isOrderable(essential)) {
     redirect(`/student-hub/essentials/${slug}`);
   }
+  const alipayAvailable = Boolean(
+    parseAlipayConfig(process.env) &&
+    essential.currency === "CNY" &&
+    (essential.priceMinor ?? 0) > 0,
+  );
+  const paymentMethods = STUDY_ESSENTIAL_PAYMENT_METHODS.map((method) =>
+    method.key === "ALIPAY"
+      ? {
+          ...method,
+          available: alipayAvailable,
+          hint: alipayAvailable
+            ? "Sandbox test payment only. No real money moves."
+            : "Sandbox credentials are not configured.",
+        }
+      : method,
+  );
 
   return (
     <div className="mx-auto max-w-[960px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
@@ -68,7 +85,7 @@ export default async function StudyEssentialCheckoutPage({
 
         <StudyEssentialCheckout
           currency={essential.currency}
-          paymentMethods={STUDY_ESSENTIAL_PAYMENT_METHODS}
+          paymentMethods={paymentMethods}
           slug={essential.slug}
           title={essential.title}
           unitPriceMinor={essential.priceMinor ?? 0}

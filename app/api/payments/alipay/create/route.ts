@@ -1,8 +1,12 @@
-import { NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { logServerEvent } from "@/lib/logger";
-import { PaymentConfigurationError } from "@/lib/payments/provider";
+import {
+  PaymentConfigurationError,
+  type PaymentProvider,
+} from "@/lib/payments/provider";
 import {
   assertPaymentsUsable,
   getPaymentProvider,
@@ -19,23 +23,11 @@ import { rateLimit } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/server-auth";
 import { checkEntitlement } from "@/lib/study-entitlements";
 
-/**
- * Start a payment.
- *
- * The browser sends a slug. It does not send a price, and if it did it would
- * be ignored: the amount is read from the catalogue row here, so a member
- * cannot buy a textbook for one cent by editing a request.
- *
- * Nothing is granted by this endpoint. It creates a PENDING order and hands
- * back what the browser needs to reach Alipay; the entitlement waits for the
- * verified notification.
- */
-
 export const dynamic = "force-dynamic";
 
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 const schema = z.object({ slug: z.string().trim().min(1).max(180) });
 
-/** Alipay's `out_trade_no` allows 64 chars; this stays well inside it. */
 function orderReference() {
   return `KB${Date.now().toString(36).toUpperCase()}${randomBytes(4)
     .toString("hex")
@@ -51,24 +43,104 @@ function absoluteUrl(path: string) {
   return `${base}${path}`;
 }
 
+type PaymentOrder = {
+  reference: string;
+  status: string;
+  totalMinor: number;
+  currency: string;
+  placedAt: Date;
+  essential: { slug: string; title: string };
+};
+
+function assertMatchingRetry(order: PaymentOrder, slug: string) {
+  if (order.essential.slug !== slug) {
+    throw new IdempotencyConflictError();
+  }
+}
+
+class IdempotencyConflictError extends Error {}
+
+async function paymentResponse(order: PaymentOrder, provider: PaymentProvider) {
+  if (order.status !== "PENDING") {
+    return Response.json(
+      { reference: order.reference, status: order.status, handoff: null },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+    );
+  }
+
+  const handoff = await provider.createPayment({
+    reference: order.reference,
+    amountMinor: order.totalMinor,
+    currency: order.currency,
+    subject: order.essential.title,
+    returnUrl:
+      process.env.ALIPAY_RETURN_URL?.trim() ||
+      absoluteUrl(`/student-hub/books/payment?reference=${order.reference}`),
+    notifyUrl:
+      process.env.ALIPAY_NOTIFY_URL?.trim() ||
+      absoluteUrl("/api/payments/alipay/notify"),
+    createdAt: order.placedAt,
+  });
+
+  return Response.json(
+    { reference: order.reference, status: order.status, handoff },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+  );
+}
+
+async function findIdempotentOrder(userId: string, idempotencyKey: string) {
+  return prisma.studyEssentialOrder.findUnique({
+    where: {
+      userId_paymentProvider_idempotencyKey: {
+        userId,
+        paymentProvider: "ALIPAY",
+        idempotencyKey,
+      },
+    },
+    select: {
+      reference: true,
+      status: true,
+      totalMinor: true,
+      currency: true,
+      placedAt: true,
+      essential: { select: { slug: true, title: true } },
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
-  if (!hasTrustedOrigin(request))
+  if (!hasTrustedOrigin(request)) {
     return jsonError("Invalid request origin.", 403);
+  }
 
   const user = await getCurrentUser();
   if (!user) return jsonError("Authentication required.", 401);
 
-  // Starting a payment creates a row and calls a gateway, so it is worth
-  // bounding per member as well as per IP.
-  const limit = await rateLimit(`books:pay:${user.id}`, 10, 10 * 60_000);
-  if (!limit.allowed) {
-    return jsonError("Too many payment attempts. Try again shortly.", 429);
-  }
-
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return jsonError("Choose a title to buy.");
 
+  const idempotencyKey = request.headers.get("idempotency-key")?.trim();
+  if (!idempotencyKey || !IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+    return jsonError(
+      "A valid Idempotency-Key header is required for Alipay checkout.",
+    );
+  }
+
+  const provider = getPaymentProvider("ALIPAY");
+
   try {
+    const existing = await findIdempotentOrder(user.id, idempotencyKey);
+    if (existing) {
+      assertMatchingRetry(existing, parsed.data.slug);
+      if (existing.status === "PENDING") assertPaymentsUsable(provider);
+      return paymentResponse(existing, provider);
+    }
+
+    const limit = await rateLimit(`books:pay:${user.id}`, 10, 10 * 60_000);
+    if (!limit.allowed) {
+      return jsonError("Too many payment attempts. Try again shortly.", 429);
+    }
+
     const essential = await prisma.studyEssential.findFirst({
       where: { slug: parsed.data.slug, status: "PUBLISHED" },
       select: {
@@ -92,26 +164,21 @@ export async function POST(request: NextRequest) {
       return jsonError("This title is free — it does not need a payment.", 409);
     }
     if (!isBooksPilotMode()) {
-      // The pilot title is public domain. Selling it outside the pilot would
-      // present a free work as a commercial product.
       return jsonError("Book purchases are not open on this environment.", 409);
     }
 
-    const existing = await checkEntitlement({
+    const entitlement = await checkEntitlement({
       userId: user.id,
       essentialId: essential.id,
     });
-    if (existing.allowed) {
+    if (entitlement.allowed) {
       return jsonError("You already have access to this title.", 409);
     }
 
-    const provider = getPaymentProvider("ALIPAY");
     assertPaymentsUsable(provider);
-
-    const reference = orderReference();
     const order = await prisma.studyEssentialOrder.create({
       data: {
-        reference,
+        reference: orderReference(),
         userId: user.id,
         essentialId: essential.id,
         titleSnapshot: essential.title,
@@ -122,21 +189,16 @@ export async function POST(request: NextRequest) {
         currency: essential.currency,
         status: "PENDING",
         paymentProvider: "ALIPAY",
+        idempotencyKey,
       },
-      select: { id: true, reference: true, totalMinor: true, currency: true },
-    });
-
-    const handoff = await provider.createPayment({
-      reference: order.reference,
-      amountMinor: order.totalMinor,
-      currency: order.currency,
-      subject: essential.title,
-      returnUrl:
-        process.env.ALIPAY_RETURN_URL?.trim() ||
-        absoluteUrl(`/student-hub/books/payment?reference=${order.reference}`),
-      notifyUrl:
-        process.env.ALIPAY_NOTIFY_URL?.trim() ||
-        absoluteUrl("/api/payments/alipay/notify"),
+      select: {
+        reference: true,
+        status: true,
+        totalMinor: true,
+        currency: true,
+        placedAt: true,
+        essential: { select: { slug: true, title: true } },
+      },
     });
 
     logServerEvent("payments.created", {
@@ -144,16 +206,36 @@ export async function POST(request: NextRequest) {
       reference: order.reference,
       ip: requestIp(request),
     });
-
-    return Response.json(
-      { reference: order.reference, handoff },
-      { headers: { "Cache-Control": "private, no-store, max-age=0" } },
-    );
+    return paymentResponse(order, provider);
   } catch (error) {
+    if (error instanceof IdempotencyConflictError) {
+      return jsonError(
+        "This Idempotency-Key was already used for a different order.",
+        409,
+      );
+    }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await findIdempotentOrder(user.id, idempotencyKey);
+      if (existing) {
+        try {
+          assertMatchingRetry(existing, parsed.data.slug);
+          if (existing.status === "PENDING") assertPaymentsUsable(provider);
+          return paymentResponse(existing, provider);
+        } catch (retryError) {
+          if (retryError instanceof IdempotencyConflictError) {
+            return jsonError(
+              "This Idempotency-Key was already used for a different order.",
+              409,
+            );
+          }
+          throw retryError;
+        }
+      }
+    }
     if (error instanceof PaymentConfigurationError) {
-      // Surfaced rather than swallowed: an operator needs to know a payment
-      // could not start because credentials are missing, not see it silently
-      // succeed or fail as a generic error.
       return jsonError(error.message, 503);
     }
     return internalApiError("payments.alipay.create", error);

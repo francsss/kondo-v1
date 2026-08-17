@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Receipt } from "lucide-react";
 import { StudyEssentialCover } from "@/components/features/student-hub/StudyEssentialCover";
+import { getAlipayOrderPresentation } from "@/lib/payments/alipay-order-presentation";
 import { requireUser } from "@/lib/server-auth";
 import { listStudyEssentialOrders } from "@/lib/study-essentials";
 
@@ -30,8 +31,8 @@ export default async function StudyEssentialOrdersPage() {
         Your orders
       </h1>
       <p className="mt-2.5 max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">
-        Every Study Essentials order you have placed. Payments are simulated
-        while the catalogue is in preview, so nothing here has been charged.
+        Every Study Essentials order you have placed, including demo payments
+        and Alipay sandbox transactions. The sandbox never moves real money.
       </p>
 
       {orders.length ? (
@@ -42,6 +43,12 @@ export default async function StudyEssentialOrdersPage() {
               currency: order.currency,
               maximumFractionDigits: order.totalMinor % 100 === 0 ? 0 : 2,
             }).format(order.totalMinor / 100);
+            const statusLabel =
+              order.paymentProvider === "ALIPAY"
+                ? getAlipayOrderPresentation(order.status).statusLabel
+                : order.status === "PAID"
+                  ? "Paid (demo)"
+                  : order.status;
             return (
               <li key={order.id}>
                 <Link
@@ -74,7 +81,7 @@ export default async function StudyEssentialOrdersPage() {
                       {money}
                     </span>
                     <span className="mt-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-kondo-green">
-                      {order.status === "PAID" ? "Paid (demo)" : order.status}
+                      {statusLabel}
                     </span>
                   </span>
                 </Link>

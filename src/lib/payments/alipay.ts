@@ -33,12 +33,17 @@ import {
 
 const WAP_PRODUCT_CODE = "QUICK_WAP_WAY";
 const SIGN_TYPE = "RSA2";
+const SANDBOX_GATEWAY_ORIGINS = new Set([
+  "https://openapi-sandbox.dl.alipaydev.com",
+  "https://openapi.alipaydev.com",
+]);
 
 /** Alipay reports success as either of these. Both mean the money arrived. */
 const PAID_STATUSES = new Set(["TRADE_SUCCESS", "TRADE_FINISHED"]);
 
 type AlipayConfig = {
   appId: string;
+  sellerId: string;
   privateKey: string;
   alipayPublicKey: string;
   gateway: string;
@@ -61,23 +66,41 @@ function normaliseKey(value: string, label: "PRIVATE" | "PUBLIC") {
 
 export function readAlipayConfig(): AlipayConfig | { missing: string[] } {
   const appId = process.env.ALIPAY_APP_ID?.trim() ?? "";
-  const privateKey = process.env.ALIPAY_PRIVATE_KEY?.trim() ?? "";
+  const sellerId = process.env.ALIPAY_SELLER_ID?.trim() ?? "";
+  const privateKey =
+    process.env.ALIPAY_PRIVATE_KEY?.trim() ||
+    process.env.ALIPAY_APPLICATION_PRIVATE_KEY?.trim() ||
+    "";
   const alipayPublicKey = process.env.ALIPAY_PUBLIC_KEY?.trim() ?? "";
   const sandbox = (process.env.ALIPAY_ENV ?? "sandbox").trim() !== "production";
   const gateway =
     process.env.ALIPAY_GATEWAY?.trim() ||
-    (sandbox
-      ? "https://openapi-sandbox.dl.alipaydev.com/gateway.do"
-      : "https://openapi.alipay.com/gateway.do");
+    process.env.ALIPAY_GATEWAY_URL?.trim() ||
+    "https://openapi-sandbox.dl.alipaydev.com/gateway.do";
 
   const missing: string[] = [];
   if (!appId) missing.push("ALIPAY_APP_ID");
+  if (!sellerId) missing.push("ALIPAY_SELLER_ID");
   if (!privateKey) missing.push("ALIPAY_PRIVATE_KEY");
   if (!alipayPublicKey) missing.push("ALIPAY_PUBLIC_KEY");
+  if (!sandbox) missing.push("ALIPAY_ENV");
   if (missing.length) return { missing };
+
+  try {
+    const gatewayUrl = new URL(gateway);
+    if (
+      gatewayUrl.protocol !== "https:" ||
+      !SANDBOX_GATEWAY_ORIGINS.has(gatewayUrl.origin)
+    ) {
+      return { missing: ["ALIPAY_GATEWAY"] };
+    }
+  } catch {
+    return { missing: ["ALIPAY_GATEWAY"] };
+  }
 
   return {
     appId,
+    sellerId,
     privateKey: normaliseKey(privateKey, "PRIVATE"),
     alipayPublicKey: normaliseKey(alipayPublicKey, "PUBLIC"),
     gateway,
@@ -89,9 +112,14 @@ export function readAlipayConfig(): AlipayConfig | { missing: string[] } {
  * The string Alipay signs: parameters sorted by key, empty values dropped,
  * joined with `&`, values raw.
  */
-export function buildSignatureBase(params: Record<string, string>) {
+export function buildSignatureBase(
+  params: Record<string, string>,
+  excludeSignType = false,
+) {
   return Object.keys(params)
-    .filter((key) => key !== "sign" && key !== "sign_type")
+    .filter(
+      (key) => key !== "sign" && (!excludeSignType || key !== "sign_type"),
+    )
     .filter((key) => params[key] !== undefined && params[key] !== "")
     .sort()
     .map((key) => `${key}=${params[key]}`)
@@ -111,7 +139,7 @@ export function verifySignature(
 ) {
   try {
     const verifier = createVerify("RSA-SHA256");
-    verifier.update(buildSignatureBase(params), "utf8");
+    verifier.update(buildSignatureBase(params, true), "utf8");
     return verifier.verify(alipayPublicKey, signature, "base64");
   } catch {
     // A malformed key or signature is a failed verification, never a crash
@@ -174,7 +202,7 @@ export class AlipayProvider implements PaymentProvider {
       format: "JSON",
       charset: "utf-8",
       sign_type: SIGN_TYPE,
-      timestamp: alipayTimestamp(),
+      timestamp: alipayTimestamp(intent.createdAt),
       version: "1.0",
       notify_url: intent.notifyUrl,
       return_url: intent.returnUrl,
@@ -208,12 +236,18 @@ export class AlipayProvider implements PaymentProvider {
 
     const signature = params.sign;
     if (!signature) return { verified: false, reason: "Missing signature." };
+    if (params.sign_type !== SIGN_TYPE) {
+      return { verified: false, reason: "Notification must use RSA2." };
+    }
     if (!verifySignature(params, signature, config.alipayPublicKey)) {
       return { verified: false, reason: "Signature did not verify." };
     }
     // Someone else's valid notification is still not ours.
-    if (params.app_id && params.app_id !== config.appId) {
+    if (params.app_id !== config.appId) {
       return { verified: false, reason: "Notification is for another app." };
+    }
+    if (params.seller_id !== config.sellerId) {
+      return { verified: false, reason: "Notification is for another seller." };
     }
 
     const reference = params.out_trade_no;
@@ -221,12 +255,31 @@ export class AlipayProvider implements PaymentProvider {
       return { verified: false, reason: "Missing merchant order reference." };
     }
 
-    const totalAmount = Number(params.total_amount);
-    if (!Number.isFinite(totalAmount)) {
+    const amountMatch = params.total_amount?.match(/^(\d+)(?:\.(\d{1,2}))?$/);
+    if (!amountMatch) {
       return { verified: false, reason: "Missing or unreadable amount." };
+    }
+    const totalAmountMinor =
+      Number(amountMatch[1]) * 100 +
+      Number((amountMatch[2] ?? "").padEnd(2, "0"));
+    if (!Number.isSafeInteger(totalAmountMinor)) {
+      return {
+        verified: false,
+        reason: "Amount is outside the supported range.",
+      };
+    }
+    if (!params.trade_no) {
+      return { verified: false, reason: "Missing provider trade reference." };
     }
 
     const tradeStatus = params.trade_status ?? "";
+    if (
+      !PAID_STATUSES.has(tradeStatus) &&
+      tradeStatus !== "TRADE_CLOSED" &&
+      tradeStatus !== "WAIT_BUYER_PAY"
+    ) {
+      return { verified: false, reason: "Unknown trade status." };
+    }
     const status = PAID_STATUSES.has(tradeStatus)
       ? ("PAID" as const)
       : tradeStatus === "TRADE_CLOSED"
@@ -236,9 +289,8 @@ export class AlipayProvider implements PaymentProvider {
     return {
       verified: true,
       reference,
-      providerReference: params.trade_no ?? "",
-      // Back to minor units, rounded because yuan arrives as a decimal string.
-      amountMinor: Math.round(totalAmount * 100),
+      providerReference: params.trade_no,
+      amountMinor: totalAmountMinor,
       currency: "CNY",
       status: params.refund_fee ? "REFUNDED" : status,
       raw: params,

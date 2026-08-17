@@ -4530,6 +4530,8 @@ model StudyEssentialOrder {
   /// The provider's own identifier for the payment — Alipay's `trade_no`.
   /// Unique so a replayed notification cannot be attached to a second order.
   paymentReference String?                       @unique @db.VarChar(120)
+  /// A browser-generated retry key, unique per member and payment provider.
+  idempotencyKey   String?                       @db.VarChar(128)
   /// Whatever the provider needs echoed back, and enough of its notification
   /// to reconcile a disputed payment later. Never card or credential data.
   providerPayload  Json?
@@ -4537,6 +4539,7 @@ model StudyEssentialOrder {
   paidAt           DateTime?
   entitlement      StudyEntitlement?
 
+  @@unique([userId, paymentProvider, idempotencyKey])
   @@index([userId, placedAt])
   @@index([essentialId, status])
   @@index([status, placedAt])

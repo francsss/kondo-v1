@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { captureProductEvent } from "@/lib/product-analytics-client";
 import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
@@ -26,18 +27,24 @@ export function BuyBookButton({
   title: string;
   disabled?: boolean;
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const idempotencyKey = useRef<string | null>(null);
 
   async function buy() {
     setPending(true);
     setError("");
     captureProductEvent(PRODUCT_EVENTS.BOOK_PURCHASE_STARTED, { slug });
     try {
+      idempotencyKey.current ??= `book:${crypto.randomUUID()}`;
       const response = await fetch("/api/payments/alipay/create", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey.current,
+        },
         body: JSON.stringify({ slug }),
       });
       const body = await response.json().catch(() => null);
@@ -45,6 +52,10 @@ export function BuyBookButton({
         throw new Error(body?.error ?? "Payment could not be started.");
       }
 
+      if (!body.handoff && body.reference) {
+        router.push(`/student-hub/books/payment?reference=${body.reference}`);
+        return;
+      }
       const handoff = body.handoff;
       if (handoff?.kind === "redirect") {
         window.location.href = handoff.url;

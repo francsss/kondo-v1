@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from "node:crypto";
+import { generateKeyPairSync, sign as signBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   alipayTimestamp,
@@ -36,13 +36,22 @@ describe("alipay signature base", () => {
     );
   });
 
-  it("excludes sign and sign_type, which are never part of what is signed", () => {
+  it("includes sign_type in an outbound request signature", () => {
     const base = buildSignatureBase({
       app_id: "a",
       sign: "should-not-appear",
       sign_type: "RSA2",
     });
-    expect(base).toBe("app_id=a");
+    expect(base).toBe("app_id=a&sign_type=RSA2");
+  });
+
+  it("excludes sign_type only when verifying a notification", () => {
+    expect(
+      buildSignatureBase(
+        { app_id: "a", sign: "should-not-appear", sign_type: "RSA2" },
+        true,
+      ),
+    ).toBe("app_id=a");
   });
 
   it("drops empty values rather than signing empty pairs", () => {
@@ -59,8 +68,12 @@ describe("alipay signature verification", () => {
     sign_type: "RSA2",
   };
 
-  it("accepts a signature it produced itself", () => {
-    const signature = signParams(params, privateKey);
+  it("accepts a notification signature that excludes sign_type", () => {
+    const signature = signBytes(
+      "RSA-SHA256",
+      Buffer.from(buildSignatureBase(params, true), "utf8"),
+      privateKey,
+    ).toString("base64");
     expect(verifySignature(params, signature, publicKey)).toBe(true);
   });
 

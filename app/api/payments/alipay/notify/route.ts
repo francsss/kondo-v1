@@ -3,78 +3,83 @@ import { logServerEvent } from "@/lib/logger";
 import { getPaymentProvider } from "@/lib/payments/registry";
 import { settleVerifiedPayment } from "@/lib/payments/settlement";
 
-/**
- * Alipay's asynchronous notification. This is where a payment actually
- * becomes a book.
- *
- * Public by necessity — Alipay's servers call it, not a signed-in browser —
- * which is why the signature is the only thing that grants authority here.
- * Nothing about the request being well-formed, or coming from a plausible
- * address, is treated as evidence.
- *
- * The reply body matters as much as the work: Alipay retries until it reads
- * the literal string `success`. So a verified-but-unsettleable notification
- * returns a non-success body on purpose, to be retried, while a duplicate of
- * something already settled returns `success` to make the retries stop.
- */
-
 export const dynamic = "force-dynamic";
 
-/** Anything other than the acknowledgement string makes Alipay retry. */
-const RETRY = new Response("failure", {
-  status: 200,
-  headers: { "Content-Type": "text/plain" },
-});
+const MAX_NOTIFICATION_BYTES = 64 * 1024;
+const FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+
+function providerResponse(body: string, status = 200) {
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+async function readNotificationBody(request: NextRequest) {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_NOTIFICATION_BYTES
+  ) {
+    return null;
+  }
+
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0;
+  let body = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_NOTIFICATION_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    body += decoder.decode(value, { stream: true });
+  }
+
+  return body + decoder.decode();
+}
 
 export async function POST(request: NextRequest) {
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0];
+  if (contentType?.trim().toLowerCase() !== FORM_CONTENT_TYPE) {
+    return providerResponse("failure", 415);
+  }
+
+  const rawBody = await readNotificationBody(request).catch(() => undefined);
+  if (rawBody === null) return providerResponse("failure", 413);
+  if (!rawBody) return providerResponse("failure", 400);
+
   const provider = getPaymentProvider("ALIPAY");
-
-  // Read as text, not as a parsed form: the signature covers these exact
-  // decoded values, and re-serialising a parsed body changes them.
-  const rawBody = await request.text().catch(() => "");
-  if (!rawBody) return RETRY;
-
   let verdict;
   try {
     verdict = await provider.verifyNotification(rawBody);
   } catch (error) {
-    // Missing credentials land here. Retrying is right: the payment is real
-    // and the environment is what is broken.
     logServerEvent("payments.notification.error", {
       message: error instanceof Error ? error.message : "unknown",
     });
-    return RETRY;
+    return providerResponse("failure", 503);
   }
 
   if (!verdict.verified) {
-    // Never retried and never acknowledged as success. An unverifiable
-    // notification is not evidence of anything.
     logServerEvent("payments.notification.rejected", {
       reason: verdict.reason,
     });
-    return new Response("failure", {
-      status: 400,
-      headers: { "Content-Type": "text/plain" },
-    });
+    return providerResponse("failure", 400);
   }
 
   const outcome = await settleVerifiedPayment(verdict);
   if (!outcome.settled) {
-    // A 5xx-worthy failure should be retried; a business-level refusal (wrong
-    // amount, unknown order) should not, because retrying cannot fix it.
-    if (outcome.status >= 500) return RETRY;
+    if (outcome.status >= 500) return providerResponse("failure", 500);
     logServerEvent("payments.notification.unsettled", {
       reference: verdict.reference,
       reason: outcome.reason,
     });
-    return new Response(provider.notificationAcknowledgement(), {
-      status: 200,
-      headers: { "Content-Type": "text/plain" },
-    });
   }
 
-  return new Response(provider.notificationAcknowledgement(), {
-    status: 200,
-    headers: { "Content-Type": "text/plain" },
-  });
+  return providerResponse(provider.notificationAcknowledgement());
 }
