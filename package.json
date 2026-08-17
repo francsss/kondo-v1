@@ -37,7 +37,8 @@
     "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts",
     "release:audit": "node scripts/release-audit.mjs",
     "legacy:audit": "tsx scripts/audit-legacy-compatibility.ts",
-    "essentials:seed": "tsx scripts/seed-study-essentials.ts"
+    "essentials:seed": "tsx scripts/seed-study-essentials.ts",
+    "books:import": "tsx scripts/import-book-epub.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -55,6 +56,7 @@
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "epubjs": "^0.3.93",
     "framer-motion": "^12.42.2",
     "jose": "^5.9.6",
     "livekit-client": "^2.20.2",

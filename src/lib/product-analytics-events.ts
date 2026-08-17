@@ -221,6 +221,23 @@ export const PRODUCT_EVENTS = {
   GUIDE_STEP_COMPLETED: "guide_step_completed",
   SEARCH_PERFORMED: "search_performed",
   SESSION_STARTED: "session_started",
+
+  /*
+   * Digital books. Every one of these carries a slug and nothing else — never
+   * a passage a student selected, never a note they wrote, and never an answer
+   * the assistant gave. Those are the student's, and an analytics pipeline is
+   * the wrong place for someone's reading.
+   */
+  BOOK_VIEWED: "book_viewed",
+  BOOK_PURCHASE_STARTED: "book_purchase_started",
+  BOOK_PAYMENT_RETURNED: "book_payment_returned",
+  BOOK_PAYMENT_CONFIRMED: "book_payment_confirmed",
+  BOOK_OPENED: "book_opened",
+  BOOK_PROGRESS_SAVED: "book_progress_saved",
+  BOOK_HIGHLIGHT_CREATED: "book_highlight_created",
+  BOOK_NOTE_CREATED: "book_note_created",
+  BOOK_AI_OPENED: "book_ai_opened",
+  BOOK_AI_QUESTION_SENT: "book_ai_question_sent",
 } as const;
 
 export type ProductEventName =

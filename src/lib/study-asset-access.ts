@@ -101,10 +101,20 @@ export async function createStudyAssetAccess(input: {
   });
 
   if (!target) {
-    throw new StudyEssentialError(
-      "File delivery is not configured on this environment.",
-      503,
-    );
+    /*
+     * The local storage driver issues no signed URLs, so the file is streamed
+     * through Kondo instead. That is not a weaker answer: the streaming route
+     * re-checks the session and the entitlement on every request, where a
+     * signed URL is checked once and then trusted until it expires. It is only
+     * avoided on S3 because proxying whole books through the app is wasteful,
+     * not because it is less safe.
+     */
+    return {
+      url: `/api/study/books/${input.slug}/file`,
+      expiresAt: expiresAt.toISOString(),
+      deliveryType: essential.deliveryType,
+      title: essential.title,
+    };
   }
 
   return {
@@ -112,5 +122,44 @@ export async function createStudyAssetAccess(input: {
     expiresAt: target.expiresAt,
     deliveryType: essential.deliveryType,
     title: essential.title,
+  };
+}
+
+/**
+ * The bytes themselves, for environments without signed URLs.
+ *
+ * Separate from `createStudyAssetAccess` so the entitlement check runs again
+ * here rather than being inherited from whoever produced the URL.
+ */
+export async function readStudyAssetBytes(input: {
+  userId: string;
+  slug: string;
+}) {
+  const essential = await prisma.studyEssential.findUnique({
+    where: { slug: input.slug },
+    select: {
+      id: true,
+      status: true,
+      assetKey: true,
+      assetContentType: true,
+      deliveryType: true,
+    },
+  });
+  if (!essential || essential.status !== "PUBLISHED" || !essential.assetKey) {
+    throw new StudyEssentialError("This title is not available.", 404);
+  }
+
+  const entitlement = await checkEntitlement({
+    userId: input.userId,
+    essentialId: essential.id,
+  });
+  if (!entitlement.allowed) {
+    throw new StudyEssentialError("You do not have access to this title.", 403);
+  }
+
+  const bytes = await getObjectStorage().read(essential.assetKey);
+  return {
+    bytes,
+    contentType: essential.assetContentType ?? "application/epub+zip",
   };
 }
