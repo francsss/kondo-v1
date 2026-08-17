@@ -292,13 +292,8 @@ export async function placeAlipayOrder(input: {
   ipAddress?: string | null;
   userAgent?: string | null;
 }) {
-  if (!Number.isInteger(input.quantity) || input.quantity < 1) {
-    throw new StudyEssentialError("Choose a quantity of at least one.");
-  }
-  if (input.quantity > 10) {
-    throw new StudyEssentialError(
-      "A single sandbox order is limited to ten items.",
-    );
+  if (!Number.isInteger(input.quantity)) {
+    throw new StudyEssentialError("Choose a whole-number quantity.");
   }
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(input.idempotencyKey)) {
     throw new StudyEssentialError(
@@ -324,6 +319,14 @@ export async function placeAlipayOrder(input: {
           order: existing,
           payment: paymentForAlipayOrder(existing, input.config),
         };
+      }
+      if (input.quantity < 1) {
+        throw new StudyEssentialError("Choose a quantity of at least one.");
+      }
+      if (input.quantity > 10) {
+        throw new StudyEssentialError(
+          "A single sandbox order is limited to ten items.",
+        );
       }
 
       const essential = await tx.studyEssential.findFirst({

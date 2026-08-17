@@ -297,6 +297,15 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
     await expect(
       placeAlipayOrder({
         userId,
+        slug: kondoSlug,
+        quantity: 11,
+        idempotencyKey,
+        config: alipayConfig,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      placeAlipayOrder({
+        userId,
         slug: `missing-${suffix}`,
         quantity: 1,
         idempotencyKey,

@@ -29,6 +29,7 @@ import { POST } from "../../app/api/student-hub/essentials/orders/route";
 function request(
   paymentProvider: "SIMULATED" | "ALIPAY",
   idempotencyKey?: string,
+  quantity = 1,
 ) {
   return new NextRequest(
     "http://localhost:3000/api/student-hub/essentials/orders",
@@ -42,7 +43,7 @@ function request(
       },
       body: JSON.stringify({
         slug: "hsk-test-book",
-        quantity: 1,
+        quantity,
         paymentProvider,
       }),
     },
@@ -117,6 +118,21 @@ describe("Study Essential order API", () => {
         params: { app_id: "sandbox-app-id", sign: "signed-request" },
       },
     });
+  });
+
+  it("lets the domain resolve an existing key before quantity limits", async () => {
+    const config = { appId: "sandbox-app-id" };
+    mocks.parseAlipayConfig.mockReturnValue(config);
+
+    const response = await POST(request("ALIPAY", "checkout-12345678", 11));
+
+    expect(mocks.placeAlipayOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quantity: 11,
+        idempotencyKey: "checkout-12345678",
+      }),
+    );
+    expect(response.status).toBe(200);
   });
 
   it("preserves the immediate simulated-payment path", async () => {

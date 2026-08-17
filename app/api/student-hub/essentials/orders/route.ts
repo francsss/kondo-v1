@@ -18,9 +18,7 @@ const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 
 const orderSchema = z.object({
   slug: z.string().trim().min(1).max(180),
-  quantity: z.number().int().min(1).max(10).default(1),
-  // Only SIMULATED is accepted today; the domain rejects the rest with a
-  // readable message so the checkout can explain why.
+  quantity: z.number().int().default(1),
   paymentProvider: z
     .enum(["SIMULATED", "ALIPAY", "WECHAT_PAY", "CARD"])
     .default("SIMULATED"),
