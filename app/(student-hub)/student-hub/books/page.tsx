@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
 import { listEntitledEssentials } from "@/lib/study-entitlements";
 import { BuyBookButton } from "@/components/features/student-hub/BuyBookButton";
+import { BooksPageAnalytics } from "@/components/features/student-hub/BooksPageAnalytics";
 
 export const metadata: Metadata = {
   title: "Books — Student Hub",
@@ -53,6 +54,7 @@ export default async function BooksPage() {
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 pb-28 pt-6 sm:px-6 lg:pb-16">
+      <BooksPageAnalytics ownedCount={owned.length} />
       <PageHeader
         description="Your set texts and course books, readable on your phone with your highlights and notes kept."
         eyebrow="Student Hub"

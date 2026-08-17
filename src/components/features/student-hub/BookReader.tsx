@@ -14,6 +14,8 @@ import {
   Type,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { captureProductEvent } from "@/lib/product-analytics-client";
+import { PRODUCT_EVENTS } from "@/lib/product-analytics-events";
 import { cn } from "@/lib/utils";
 import type { ReaderTheme } from "@/lib/reader-theme";
 import { READER_THEMES, readerThemeStyles } from "@/lib/reader-theme";
@@ -109,6 +111,9 @@ export function BookReader({
   const [notes, setNotes] = useState<Note[]>([]);
   const [bookmarks, setBookmarks] = useState<BookmarkRow[]>([]);
   const [selection, setSelection] = useState<Selection | null>(null);
+  // A bottom sheet rather than window.prompt: a native prompt cannot be styled,
+  // cannot show the passage being annotated, and on iOS steals the page.
+  const [noteDraft, setNoteDraft] = useState<Selection | null>(null);
   const [theme, setTheme] = useState<ReaderTheme>("light");
   const [fontSize, setFontSize] = useState(100);
 
@@ -131,6 +136,12 @@ export function BookReader({
           body: JSON.stringify({ locator: cfi, percentage: percent }),
           keepalive: true,
         }).catch(() => null);
+        // The slug and the percentage only — never the locator, which is a
+        // precise position inside a book someone is reading.
+        captureProductEvent(PRODUCT_EVENTS.BOOK_PROGRESS_SAVED, {
+          slug,
+          percentage: percent,
+        });
       }, 2000);
     },
     [slug],
@@ -287,7 +298,12 @@ export function BookReader({
           }
         }
 
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          // Emitted after the book renders, not when the page mounts, so the
+          // count means "a book was read" rather than "a route was hit".
+          captureProductEvent(PRODUCT_EVENTS.BOOK_OPENED, { slug });
+        }
       } catch (cause) {
         if (!cancelled) {
           setError(
@@ -326,16 +342,19 @@ export function BookReader({
     rendition.themes.select("kondo");
   }, [theme]);
 
-  async function saveAnnotation(body: string | null) {
-    if (!selection) return;
+  async function saveAnnotation(
+    body: string | null,
+    target: Selection | null = selection,
+  ) {
+    if (!target) return;
     const response = await fetch(`/api/study/books/${slug}/annotations`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         kind: "annotation",
-        locator: selection.cfi,
-        selectedText: selection.text,
+        locator: target.cfi,
+        selectedText: target.text,
         body,
         color: "#cfef5d",
       }),
@@ -343,9 +362,15 @@ export function BookReader({
     if (!response.ok) return;
     const { note } = await response.json();
     setNotes((current) => [note, ...current]);
+    captureProductEvent(
+      body
+        ? PRODUCT_EVENTS.BOOK_NOTE_CREATED
+        : PRODUCT_EVENTS.BOOK_HIGHLIGHT_CREATED,
+      { slug },
+    );
     try {
       renditionRef.current?.annotations?.highlight(
-        selection.cfi,
+        target.cfi,
         {},
         undefined,
         undefined,
@@ -474,14 +499,26 @@ export function BookReader({
               cfi: selection.cfi,
               ...(chapter ? { chapter } : {}),
             });
+            captureProductEvent(PRODUCT_EVENTS.BOOK_AI_OPENED, { slug });
             window.location.href = `/student-hub/books/${slug}/ask?${params}`;
           }}
           onDismiss={() => setSelection(null)}
           onHighlight={() => void saveAnnotation(null)}
           onNote={() => {
-            const body = window.prompt("Add a note");
-            if (body?.trim()) void saveAnnotation(body.trim());
+            setNoteDraft(selection);
+            setSelection(null);
           }}
+        />
+      ) : null}
+
+      {noteDraft ? (
+        <NoteSheet
+          onCancel={() => setNoteDraft(null)}
+          onSave={(body) => {
+            void saveAnnotation(body, noteDraft);
+            setNoteDraft(null);
+          }}
+          passage={noteDraft.text}
         />
       ) : null}
 
@@ -503,6 +540,7 @@ export function BookReader({
               void renditionRef.current?.display(locator);
               setPanel("none");
             }}
+            notesHref={`/student-hub/books/${slug}/notes`}
             onTheme={setTheme}
             panel={panel}
             theme={theme}
@@ -540,6 +578,73 @@ export function BookReader({
           </span>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/**
+ * Writing a note about the passage you just selected.
+ *
+ * The passage stays visible above the field, because a note written without
+ * the sentence in front of you is a note about something half-remembered. It
+ * opens focused and closes on Escape, and it clears the bottom safe area so
+ * the save control is not under a home indicator.
+ */
+function NoteSheet({
+  passage,
+  onSave,
+  onCancel,
+}: {
+  passage: string;
+  onSave: (body: string) => void;
+  onCancel: () => void;
+}) {
+  const [body, setBody] = useState("");
+
+  return (
+    <div
+      aria-label="Add a note"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-end bg-black/40"
+      onClick={onCancel}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onCancel();
+      }}
+      role="dialog"
+    >
+      <div
+        className="w-full rounded-t-3xl border-t border-border bg-card p-4"
+        onClick={(event) => event.stopPropagation()}
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      >
+        <p className="text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
+          Add a note
+        </p>
+        <blockquote className="mt-2 max-h-24 overflow-y-auto border-l-2 border-kondo-green pl-3 text-sm leading-6 text-muted-foreground">
+          {passage}
+        </blockquote>
+        <textarea
+          aria-label="Your note"
+          autoFocus
+          className="mt-3 h-28 w-full resize-none rounded-2xl border border-border bg-background p-3 text-sm outline-none focus:border-kondo-green"
+          maxLength={4000}
+          onChange={(event) => setBody(event.target.value)}
+          placeholder="What do you want to remember about this?"
+          value={body}
+        />
+        <div className="mt-3 flex gap-2">
+          <Button fullWidth onClick={onCancel} variant="secondary">
+            Cancel
+          </Button>
+          <Button
+            disabled={!body.trim()}
+            fullWidth
+            onClick={() => onSave(body.trim())}
+          >
+            Save note
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -611,6 +716,7 @@ function ReaderPanel({
   onTheme: (theme: ReaderTheme) => void;
   onFontSize: (size: number) => void;
   onClose: () => void;
+  notesHref: string;
 }) {
   return (
     <div className="mx-3 max-h-[46vh] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-lift">
