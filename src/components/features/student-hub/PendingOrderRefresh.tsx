@@ -18,6 +18,11 @@ export function PendingOrderRefresh() {
         now: () => Date.now(),
         schedule: (callback, delay) => window.setTimeout(callback, delay),
         cancel: (timeout) => window.clearTimeout(timeout),
+        subscribeVisibilityChange: (listener) => {
+          document.addEventListener("visibilitychange", listener);
+          return () =>
+            document.removeEventListener("visibilitychange", listener);
+        },
       }),
     [router],
   );

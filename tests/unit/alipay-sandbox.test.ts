@@ -353,11 +353,59 @@ describe("Alipay order presentation", () => {
     expect(nextPendingOrderPollDelay(10, 5 * 60_000)).toBeNull();
   });
 
+  it("freezes the polling deadline while the page is hidden", () => {
+    let now = 0;
+    let visible = true;
+    let scheduled: (() => void) | undefined;
+    let visibilityListener = () => {};
+    const refresh = vi.fn();
+    const onTimeout = vi.fn();
+    const cancel = vi.fn(() => {
+      scheduled = undefined;
+    });
+    const stop = startPendingOrderPolling({
+      refresh,
+      isVisible: () => visible,
+      onTimeout,
+      now: () => now,
+      schedule: (callback) => {
+        scheduled = callback;
+        return 1;
+      },
+      cancel,
+      subscribeVisibilityChange: (listener) => {
+        visibilityListener = listener;
+        return vi.fn();
+      },
+    });
+
+    now += 2_500;
+    scheduled?.();
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    visible = false;
+    visibilityListener();
+    now += 10 * 60_000;
+    expect(scheduled).toBeUndefined();
+    expect(onTimeout).not.toHaveBeenCalled();
+
+    visible = true;
+    visibilityListener();
+    expect(scheduled).toBeTypeOf("function");
+    now += 5_000;
+    scheduled?.();
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(onTimeout).not.toHaveBeenCalled();
+
+    stop();
+  });
+
   it("refreshes with backoff, pauses while hidden, and can be stopped", () => {
     vi.useFakeTimers();
     const refresh = vi.fn();
     let visible = true;
     let now = 0;
+    let visibilityListener = () => {};
     const onTimeout = vi.fn();
     const stop = startPendingOrderPolling({
       refresh,
@@ -370,14 +418,20 @@ describe("Alipay order presentation", () => {
           callback();
         }, delay),
       cancel: (timeout) => clearTimeout(timeout),
+      subscribeVisibilityChange: (listener) => {
+        visibilityListener = listener;
+        return () => {};
+      },
     });
 
     vi.advanceTimersByTime(2_500);
     expect(refresh).toHaveBeenCalledTimes(1);
     visible = false;
+    visibilityListener();
     vi.advanceTimersByTime(5_000);
     expect(refresh).toHaveBeenCalledTimes(1);
     visible = true;
+    visibilityListener();
     vi.advanceTimersByTime(5 * 60_000);
     expect(onTimeout).toHaveBeenCalledTimes(1);
     const refreshCountAtTimeout = refresh.mock.calls.length;

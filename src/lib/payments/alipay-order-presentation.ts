@@ -77,35 +77,67 @@ type PendingOrderPollingOptions<Timeout> = {
   now: () => number;
   schedule: (callback: () => void, delay: number) => Timeout;
   cancel: (timeout: Timeout) => void;
+  subscribeVisibilityChange: (listener: () => void) => () => void;
 };
 
 export function startPendingOrderPolling<Timeout>(
   options: PendingOrderPollingOptions<Timeout>,
 ) {
-  const startedAt = options.now();
   let attempt = 0;
+  let visibleElapsedMs = 0;
+  let scheduledAt = options.now();
+  let scheduledDelay = 0;
+  let remainingDelay: number | undefined;
   let timeout: Timeout | undefined;
   let stopped = false;
 
-  const scheduleNext = () => {
-    if (stopped) return;
-    const delay = nextPendingOrderPollDelay(attempt, options.now() - startedAt);
+  const cancelScheduled = () => {
+    if (timeout === undefined) return;
+    options.cancel(timeout);
+    timeout = undefined;
+  };
+
+  const scheduleNext = (resumeDelay?: number) => {
+    if (stopped || !options.isVisible()) return;
+    const delay =
+      resumeDelay ?? nextPendingOrderPollDelay(attempt, visibleElapsedMs);
     if (delay === null) {
       options.onTimeout();
       return;
     }
+    scheduledAt = options.now();
+    scheduledDelay = delay;
     timeout = options.schedule(() => {
-      if (options.isVisible()) {
-        options.refresh();
-        attempt += 1;
-      }
+      timeout = undefined;
+      visibleElapsedMs += scheduledDelay;
+      options.refresh();
+      attempt += 1;
       scheduleNext();
     }, delay);
   };
 
+  const unsubscribeVisibilityChange = options.subscribeVisibilityChange(() => {
+    if (stopped) return;
+    if (!options.isVisible()) {
+      if (timeout !== undefined) {
+        const visibleSinceSchedule = Math.max(
+          0,
+          Math.min(scheduledDelay, options.now() - scheduledAt),
+        );
+        visibleElapsedMs += visibleSinceSchedule;
+        remainingDelay = scheduledDelay - visibleSinceSchedule;
+      }
+      cancelScheduled();
+      return;
+    }
+    scheduleNext(remainingDelay);
+    remainingDelay = undefined;
+  });
+
   scheduleNext();
   return () => {
     stopped = true;
-    if (timeout !== undefined) options.cancel(timeout);
+    cancelScheduled();
+    unsubscribeVisibilityChange();
   };
 }
