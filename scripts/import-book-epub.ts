@@ -72,7 +72,11 @@ async function main() {
   // it is when someone is looking at a bucket listing.
   const objectKey = `books/${options.slug}/${basename(options.file)}`;
   const storage = getObjectStorage();
-  await storage.write(objectKey, bytes, "application/epub+zip");
+  // Replacing the file is the point of re-running an import — a corrected
+  // edition, or a re-imported fixture — so this asks for the overwrite.
+  await storage.write(objectKey, bytes, "application/epub+zip", {
+    overwrite: true,
+  });
 
   const essential = await prisma.studyEssential.upsert({
     where: { slug: options.slug },

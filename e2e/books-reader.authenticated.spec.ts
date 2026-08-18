@@ -1,31 +1,49 @@
 import { expect, test, type Page } from "@playwright/test";
+import { FIXTURE_SLUG } from "./books-fixture";
 
 /**
- * The reader, on a phone, against a real EPUB.
+ * The reader, on a phone, against real EPUB files.
  *
- * Every check here exists because the real file broke something the generated
+ * Every check here exists because a real book broke something a hand-written
  * fixture did not. Project Gutenberg's Alice opens on an SVG-only cover page,
  * links three of its own stylesheets, and writes every table-of-contents entry
- * as `document.xhtml#anchor` — and each of those found a separate defect:
- * a cover that rendered nothing measurable, stylesheets refused by CSP, and a
+ * as `document.xhtml#anchor` — and each of those found a separate defect: a
+ * cover that rendered nothing measurable, stylesheets refused by CSP, and a
  * chapter name that never resolved, which in turn left every highlight, note
  * and planner task with no record of where it came from.
  *
- * The book is expected to be present as the free pilot title. Seeding imports
- * it; if it is absent these skip rather than fail, because a missing pilot
- * title is a seeding problem and not a reader regression.
+ * Two books are read here, because the defects divide in two. Most of them are
+ * true of any EPUB — chrome sitting over the controls, a toolbar wider than
+ * the phone, progress erased on reopen — and those run against a fixture this
+ * repository can build, so they are guarded on every CI run. The rest need
+ * that specific Gutenberg file, which is not in git and never will be, and
+ * they say so when it is absent instead of quietly passing.
  */
 
-const SLUG = "alice-in-wonderland";
-const READER = `/student-hub/books/${SLUG}`;
-const CHAPTER = "CHAPTER III. A Caucus-Race and a Long Tale";
+const ALICE = {
+  slug: "alice-in-wonderland",
+  name: "Alice's Adventures in Wonderland",
+  chapter: "CHAPTER III. A Caucus-Race and a Long Tale",
+  inChapter: /Caucus-Race/i,
+};
+
+const FIXTURE = {
+  slug: FIXTURE_SLUG,
+  name: "the Kondo sample book",
+  chapter: "Why positions are not page numbers",
+  inChapter: /reflows/i,
+};
+
+type Title = typeof ALICE;
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-// These do real work in a real reader: unzip a 190KB archive in the browser,
-// render a chapter, index it for percentages. The suite default of 30s is a
-// budget for a page load, not for that.
+// These do real work in a real reader: unzip an archive in the browser, render
+// a chapter, index it for percentages. The suite default of 30s is a budget
+// for a page load, not for that.
 test.describe.configure({ timeout: 120_000 });
+
+const readerFor = (title: Title) => `/student-hub/books/${title.slug}`;
 
 /**
  * The rendered book, whichever frame epub.js is currently using for it.
@@ -36,11 +54,7 @@ test.describe.configure({ timeout: 120_000 });
  * reader that is displaying the chapter perfectly well. Every frame is asked
  * instead, and the one with content answers.
  */
-async function inBook<T>(
-  page: Page,
-  fn: () => T,
-  fallback: T,
-): Promise<T> {
+async function inBook<T>(page: Page, fn: () => T, fallback: T): Promise<T> {
   for (const frame of page.frames()) {
     if (frame === page.mainFrame()) continue;
     try {
@@ -55,60 +69,46 @@ async function inBook<T>(
   return fallback;
 }
 
-async function bookText(page: Page) {
-  return inBook(page, () => document.body?.innerText ?? "", "");
+const bookText = (page: Page) =>
+  inBook(page, () => document.body?.innerText ?? "", "");
+
+/** Skip, with a reason, when this database has no such title. */
+async function requireTitle(page: Page, title: Title) {
+  const response = await page.goto(readerFor(title));
+  test.skip(
+    !response || response.status() >= 400 || !page.url().includes(title.slug),
+    `${title.name} is not in this database.`,
+  );
 }
 
-async function openReader(page: Page, at?: string) {
-  await page.goto(at ? `${READER}?at=${encodeURIComponent(at)}` : READER);
+async function openReader(page: Page, title: Title, at?: string) {
+  await page.goto(
+    at ? `${readerFor(title)}?at=${encodeURIComponent(at)}` : readerFor(title),
+  );
   await page.waitForSelector("iframe", { timeout: 30_000 });
-  // The book is on screen once something in it has been laid out, whether
-  // that is a paragraph of text or the cover image.
+  // The book is on screen once something in it has been laid out, whether that
+  // is a paragraph of text or a cover image.
   await expect
-    .poll(
-      () =>
-        inBook(
-          page,
-          () => Math.round(document.body?.scrollWidth ?? 0),
-          0,
-        ),
-      { timeout: 30_000 },
-    )
+    .poll(() => inBook(page, () => Math.round(document.body?.scrollWidth ?? 0), 0), {
+      timeout: 30_000,
+    })
     .toBeGreaterThan(0);
 }
 
-/** What the server currently thinks this member's position is. */
-async function readingState(page: Page) {
-  return page.evaluate(async () => {
-    const response = await fetch(
-      "/api/study/books/alice-in-wonderland/reading",
-      { credentials: "include" },
-    );
-    return response.ok
-      ? ((await response.json()) as {
-          progress: { locator?: string; percentage?: number } | null;
-          notes: Array<{ locator?: string; chapterLabel?: string }>;
-        })
-      : null;
-  });
-}
-
 /**
- * Open the reader at a known chapter.
+ * Open at a known chapter.
  *
  * Rendering a section is asynchronous and its cost varies with the size of the
  * chunk, so this waits for the text to actually arrive rather than assuming a
  * fixed delay — the difference between a reliable suite and a flaky one.
  */
-async function goToChapter(page: Page) {
-  await openReader(page);
+async function goToChapter(page: Page, title: Title) {
+  await openReader(page, title);
   await page.getByRole("button", { name: /contents/i }).click();
-  await page.getByRole("button", { name: CHAPTER }).click();
+  await page.getByRole("button", { name: title.chapter }).click();
   await expect
-    .poll(() => bookText(page), {
-      timeout: 30_000,
-    })
-    .toMatch(/Caucus-Race/i);
+    .poll(() => bookText(page), { timeout: 30_000 })
+    .toMatch(title.inChapter);
 }
 
 /** Select the first substantial paragraph, the way a reader's finger would. */
@@ -136,251 +136,291 @@ async function selectAPassage(page: Page) {
   return text!;
 }
 
-test.beforeEach(async ({ page }) => {
-  const response = await page.goto(READER);
-  test.skip(
-    !response || response.status() >= 400 || page.url().includes("/books?"),
-    "The pilot title is not in this database.",
-  );
-});
+function readingState(page: Page, title: Title) {
+  return page.evaluate(async (slug) => {
+    const response = await fetch(`/api/study/books/${slug}/reading`, {
+      credentials: "include",
+    });
+    return response.ok
+      ? ((await response.json()) as {
+          progress: { locator?: string; percentage?: number } | null;
+          notes: Array<{
+            locator?: string;
+            chapterLabel?: string;
+            taskId?: string | null;
+          }>;
+        })
+      : null;
+  }, title.slug);
+}
 
-test("opens a real EPUB and renders its cover", async ({ page }) => {
-  await openReader(page);
-
-  // The cover is the first spine item, so this is a question about opening a
-  // book for the first time. A member who is already part-way through it
-  // correctly resumes where they were, and there is no cover to look at.
-  const state = await readingState(page);
-  test.skip(
-    Boolean(state?.progress?.locator),
-    "This member has already started the book, so it resumes past the cover.",
-  );
-
-  // That first item is a cover wrapper containing one SVG image and no text,
-  // so asking whether words appeared would pass on a blank page.
-  const cover = await inBook(
-    page,
-    () => {
-      const node = document.querySelector("svg image, img");
-      if (!node) return null;
-      const box = node.getBoundingClientRect();
-      return { width: Math.round(box.width), height: Math.round(box.height) };
-    },
-    null as { width: number; height: number } | null,
-  );
-  expect(cover?.width ?? 0).toBeGreaterThan(100);
-  expect(cover?.height ?? 0).toBeGreaterThan(100);
-});
-
-test("applies the book's own stylesheets", async ({ page }) => {
-  await openReader(page);
-
-  // epub.js rewrites the book's linked CSS into blob: URLs. If the page's CSP
-  // refuses them the book still renders, stripped of the typography it was
-  // typeset with, and nothing anywhere reports a problem.
-  const loaded = await inBook(
-    page,
-    () =>
-      Array.from(document.styleSheets).some((sheet) => {
-        if (!sheet.href?.startsWith("blob:")) return false;
-        try {
-          return sheet.cssRules.length > 0;
-        } catch {
-          return false;
-        }
-      }),
-    false,
-  );
-  expect(loaded, "the book's linked stylesheets should load").toBe(true);
-});
-
-test("the reader's own controls are not buried under the hub's navigation", async ({
-  page,
-}) => {
-  await openReader(page);
-
-  // The hub's bottom bar and pet sit exactly where the reader's controls are.
-  // A visible-but-unclickable control passes every assertion except this one.
-  const blockedBy = await page.evaluate(() => {
-    const button = Array.from(document.querySelectorAll("button")).find((node) =>
-      /contents/i.test(node.getAttribute("aria-label") ?? ""),
-    );
-    if (!button) return "the Contents control is missing";
-    const box = button.getBoundingClientRect();
-    const top = document.elementFromPoint(
-      box.left + box.width / 2,
-      box.top + box.height / 2,
-    );
-    return button.contains(top) ? null : (top?.tagName ?? "something else");
+/*
+ * True only of the Gutenberg file, which is not in this repository.
+ *
+ * These skip with a reason rather than pass emptily. To run them, import the
+ * EPUB you have obtained from a legitimate source:
+ *
+ *   npm run books:import -- ./alice.epub --slug alice-in-wonderland \
+ *     --title "Alice's Adventures in Wonderland" --author "Lewis Carroll" \
+ *     --ai-allowed --publish
+ */
+test.describe("a book with a cover page and its own typography", () => {
+  test.beforeEach(async ({ page }) => {
+    await requireTitle(page, ALICE);
   });
-  expect(blockedBy).toBeNull();
-});
 
-test("navigates by chapter, and comes back to the same place", async ({
-  page,
-}) => {
-  await openReader(page);
+  test("renders the cover image", async ({ page }) => {
+    // Asked before a reader is mounted, because mounting one saves a position
+    // of its own a couple of seconds later — a check made after opening would
+    // eventually be answering about itself.
+    const state = await readingState(page, ALICE);
+    test.skip(
+      Boolean(state?.progress?.locator),
+      "This member has already started the book, so it resumes past the cover.",
+    );
+    await openReader(page, ALICE);
 
-  await page.getByRole("button", { name: /contents/i }).click();
-  await page.getByRole("button", { name: CHAPTER }).click();
+    // That first item is a cover wrapper holding one SVG image and no text, so
+    // asking whether words appeared would pass on a blank page.
+    const cover = await inBook(
+      page,
+      () => {
+        const node = document.querySelector("svg image, img");
+        if (!node) return null;
+        const box = node.getBoundingClientRect();
+        return { width: Math.round(box.width), height: Math.round(box.height) };
+      },
+      null as { width: number; height: number } | null,
+    );
+    expect(cover?.width ?? 0).toBeGreaterThan(100);
+    expect(cover?.height ?? 0).toBeGreaterThan(100);
+  });
 
-  await expect
-    .poll(() => bookText(page), {
-      timeout: 20_000,
-    })
-    .toMatch(/Caucus-Race/i);
+  test("applies the book's own stylesheets", async ({ page }) => {
+    await openReader(page, ALICE);
 
-  // The reader debounces its writes; wait for the position to actually land.
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(async () => {
-          const response = await fetch(
-            "/api/study/books/alice-in-wonderland/reading",
-            { credentials: "include" },
-          );
-          const body = await response.json();
-          return body.progress?.locator ?? null;
+    // epub.js rewrites the book's linked CSS into blob: URLs. If the page's
+    // CSP refuses them the book still renders, stripped of the typography it
+    // was typeset with, and nothing anywhere reports a problem.
+    const loaded = await inBook(
+      page,
+      () =>
+        Array.from(document.styleSheets).some((sheet) => {
+          if (!sheet.href?.startsWith("blob:")) return false;
+          try {
+            return sheet.cssRules.length > 0;
+          } catch {
+            return false;
+          }
         }),
-      { timeout: 20_000 },
-    )
-    .toBeTruthy();
+      false,
+    );
+    expect(loaded, "the book's linked stylesheets should load").toBe(true);
+  });
 
-  await page.reload();
-  await expect
-    .poll(() => bookText(page), {
-      timeout: 30_000,
-    })
-    .toMatch(/Caucus-Race/i);
+  test("names a chapter whose contents entry carries an anchor", async ({
+    page,
+  }) => {
+    // Gutenberg writes every entry as `document.xhtml#anchor` while the
+    // renderer reports the document. Compared as written they never match, so
+    // the chapter silently had no name — and neither did anything saved in it.
+    await goToChapter(page, ALICE);
+    await expect(page.getByRole("button", { name: /bookmark this page/i })).toBeVisible();
+    await page.getByRole("button", { name: /bookmark this page/i }).click();
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async () => {
+            const response = await fetch(
+              "/api/study/books/alice-in-wonderland/reading",
+              { credentials: "include" },
+            );
+            const body = await response.json();
+            return body.bookmarks?.[0]?.label ?? null;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBe(ALICE.chapter);
+  });
 });
 
-test("reopening a book does not erase how far through it you are", async ({
-  page,
-}) => {
-  await openReader(page);
-  await page.getByRole("button", { name: /contents/i }).click();
-  await page.getByRole("button", { name: CHAPTER }).click();
-
-  const read = async () =>
-    page.evaluate(async () => {
-      const response = await fetch(
-        "/api/study/books/alice-in-wonderland/reading",
-        { credentials: "include" },
-      );
-      return (await response.json()).progress?.percentage ?? 0;
+/*
+ * True of any EPUB, so run against both books.
+ *
+ * These are the regressions the reader shipped with, and none of them needed a
+ * particular file to happen — which is exactly why they need to be guarded on
+ * a file CI always has.
+ */
+for (const title of [FIXTURE, ALICE]) {
+  test.describe(`reading ${title.name}`, () => {
+    test.beforeEach(async ({ page }) => {
+      await requireTitle(page, title);
     });
 
-  await expect.poll(read, { timeout: 20_000 }).toBeGreaterThan(0);
-  const before = await read();
+    test("the reader's own controls are not buried under the hub's navigation", async ({
+      page,
+    }) => {
+      await openReader(page, title);
 
-  // The percentage comes from an index epub.js builds after the book is on
-  // screen. Reopening used to write the zero it answers in the meantime.
-  await page.reload();
-  await expect
-    .poll(() => bookText(page), { timeout: 30_000 })
-    .not.toBe("");
-  await page.waitForTimeout(6000);
-  expect(await read()).toBeGreaterThanOrEqual(before);
-});
+      // The hub's bottom bar and pet sit exactly where the reader's controls
+      // are. A visible-but-unclickable control passes every assertion but this.
+      const blockedBy = await page.evaluate(() => {
+        const button = Array.from(document.querySelectorAll("button")).find(
+          (node) => /contents/i.test(node.getAttribute("aria-label") ?? ""),
+        );
+        if (!button) return "the Contents control is missing";
+        const box = button.getBoundingClientRect();
+        const top = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.top + box.height / 2,
+        );
+        return button.contains(top) ? null : (top?.tagName ?? "something else");
+      });
+      expect(blockedBy).toBeNull();
+    });
 
-test("offers four actions on a selection, all of them on screen", async ({
-  page,
-}) => {
-  await goToChapter(page);
-  await selectAPassage(page);
+    test("navigates by chapter, and comes back to the same place", async ({
+      page,
+    }) => {
+      await goToChapter(page, title);
 
-  const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
-  for (const label of ["Highlight", "Note", "Task", "AI"]) {
-    await expect(
-      toolbar.getByRole("button", { name: new RegExp(`^${label}$`) }),
-    ).toBeVisible();
-  }
+      // The reader debounces its writes; wait for the position to land.
+      await expect
+        .poll(async () => (await readingState(page, title))?.progress?.locator, {
+          timeout: 20_000,
+        })
+        .toBeTruthy();
 
-  // An action past the right-hand edge is an action nobody finds.
-  const overflows = await page.evaluate(() => {
-    const bar = document.querySelector('[aria-label="Selection actions"]');
-    return bar ? bar.scrollWidth > bar.clientWidth + 1 : true;
+      await page.reload();
+      await expect
+        .poll(() => bookText(page), { timeout: 30_000 })
+        .toMatch(title.inChapter);
+    });
+
+    test("reopening does not erase how far through you are", async ({
+      page,
+    }) => {
+      await goToChapter(page, title);
+
+      const percentage = async () =>
+        (await readingState(page, title))?.progress?.percentage ?? 0;
+      await expect.poll(percentage, { timeout: 20_000 }).toBeGreaterThan(0);
+      const before = await percentage();
+
+      // The percentage comes from an index epub.js builds after the book is on
+      // screen, and it answers 0 until that exists. Reopening used to write
+      // that 0 over real progress, so My Books called a half-read book
+      // "Not started".
+      await page.reload();
+      await expect.poll(() => bookText(page), { timeout: 30_000 }).not.toBe("");
+      await page.waitForTimeout(6000);
+      expect(await percentage()).toBeGreaterThanOrEqual(before);
+    });
+
+    test("offers four actions on a selection, all of them on screen", async ({
+      page,
+    }) => {
+      await goToChapter(page, title);
+      await selectAPassage(page);
+
+      const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
+      for (const label of ["Highlight", "Note", "Task", "AI"]) {
+        await expect(
+          toolbar.getByRole("button", { name: new RegExp(`^${label}$`) }),
+        ).toBeVisible();
+      }
+
+      // An action past the right-hand edge is an action nobody finds. Sizing
+      // to content put AI and the dismiss off screen under the production font.
+      const overflows = await page.evaluate(() => {
+        const bar = document.querySelector('[aria-label="Selection actions"]');
+        return bar ? bar.scrollWidth > bar.clientWidth + 1 : true;
+      });
+      expect(overflows, "the whole toolbar should fit across a phone").toBe(
+        false,
+      );
+    });
+
+    test("a highlight records the chapter it came from", async ({ page }) => {
+      await goToChapter(page, title);
+      await selectAPassage(page);
+
+      const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes("/annotations") &&
+            response.request().method() === "POST" &&
+            response.status() === 201,
+        ),
+        toolbar.getByRole("button", { name: /^Highlight$/ }).click(),
+      ]);
+
+      const notes = (await readingState(page, title))?.notes ?? [];
+      // A CFI says where precisely; the chapter is what a student reads back.
+      expect(notes[0]?.locator).toBeTruthy();
+      expect(notes[0]?.chapterLabel).toBe(title.chapter);
+    });
+
+    test("a task raised from a passage lands in the planner", async ({
+      page,
+    }) => {
+      await goToChapter(page, title);
+      await selectAPassage(page);
+
+      const taskTitle = `Revise ${title.slug} ${Date.now()}`;
+      const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
+      await toolbar.getByRole("button", { name: /^Task$/ }).click();
+
+      const sheet = page.getByRole("dialog", { name: /add a task/i });
+      await expect(sheet).toBeVisible();
+      // Prefilled from the chapter, which only works if the chapter resolved.
+      await expect(sheet.getByLabel("Task")).toHaveValue(
+        new RegExp(title.chapter.slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      );
+      await sheet.getByLabel("Task").fill(taskTitle);
+      await Promise.all([
+        page.waitForResponse((response) =>
+          response.url().includes("/annotations"),
+        ),
+        sheet.getByRole("button", { name: /add to planner/i }).click(),
+      ]);
+
+      // The whole point of reusing AcademicTask: it shows up where coursework
+      // does, with no separate list of "book tasks" anywhere. The planner's
+      // tabs are links carrying a `view` parameter.
+      await page.goto("/student-hub/tools?view=tasks");
+      await expect(page.getByText(taskTitle)).toBeVisible({ timeout: 20_000 });
+    });
+
+    test("a note links back into the book at its own passage", async ({
+      page,
+    }) => {
+      await goToChapter(page, title);
+      await selectAPassage(page);
+
+      const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
+      await Promise.all([
+        page.waitForResponse((response) =>
+          response.url().includes("/annotations"),
+        ),
+        toolbar.getByRole("button", { name: /^Highlight$/ }).click(),
+      ]);
+
+      await page.goto(`${readerFor(title)}/notes`);
+      await expect(page.getByText(title.chapter).first()).toBeVisible();
+
+      // `?at=` is how every surface links back into the book. It was generated
+      // in three places and read in none, so all of them opened at the last
+      // saved position instead of the passage that was tapped.
+      await page
+        .getByRole("link", { name: /open in the book/i })
+        .first()
+        .click();
+      await expect
+        .poll(() => bookText(page), { timeout: 30_000 })
+        .toMatch(title.inChapter);
+    });
   });
-  expect(overflows, "the whole toolbar should fit across a phone").toBe(false);
-});
-
-test("a highlight records the chapter it came from", async ({ page }) => {
-  await goToChapter(page);
-  await selectAPassage(page);
-
-  const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/annotations") &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    ),
-    toolbar.getByRole("button", { name: /^Highlight$/ }).click(),
-  ]);
-
-  const notes = await page.evaluate(async () => {
-    const response = await fetch(
-      "/api/study/books/alice-in-wonderland/reading",
-      { credentials: "include" },
-    );
-    return (await response.json()).notes ?? [];
-  });
-  // A CFI says where precisely; the chapter is what a student reads back.
-  expect(notes[0]?.locator).toBeTruthy();
-  expect(notes[0]?.chapterLabel).toContain("Caucus-Race");
-});
-
-test("a task raised from a passage lands in the planner", async ({ page }) => {
-  await goToChapter(page);
-  await selectAPassage(page);
-
-  const title = `Revise the Caucus-Race ${Date.now()}`;
-  const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
-  await toolbar.getByRole("button", { name: /^Task$/ }).click();
-
-  const sheet = page.getByRole("dialog", { name: /add a task/i });
-  await expect(sheet).toBeVisible();
-  // Prefilled from the chapter, which only works if the chapter resolved.
-  await expect(sheet.getByLabel("Task")).toHaveValue(/Caucus-Race/);
-  await sheet.getByLabel("Task").fill(title);
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/annotations") &&
-        response.request().method() === "POST",
-    ),
-    sheet.getByRole("button", { name: /add to planner/i }).click(),
-  ]);
-
-  // The whole point of reusing AcademicTask: it shows up where coursework
-  // does, with no separate list of "book tasks" anywhere.
-  // The planner's tabs are links carrying a `view` parameter, so this is the
-  // same place the Tasks tab goes.
-  await page.goto("/student-hub/tools?view=tasks");
-  await expect(page.getByText(title)).toBeVisible({ timeout: 20_000 });
-});
-
-test("a note links back into the book at its own passage", async ({ page }) => {
-  await goToChapter(page);
-  await selectAPassage(page);
-
-  const toolbar = page.getByRole("toolbar", { name: /selection actions/i });
-  await Promise.all([
-    page.waitForResponse((response) => response.url().includes("/annotations")),
-    toolbar.getByRole("button", { name: /^Highlight$/ }).click(),
-  ]);
-
-  await page.goto(`${READER}/notes`);
-  await expect(page.getByText(CHAPTER).first()).toBeVisible();
-
-  // `?at=` is how every surface links back into the book. It was generated in
-  // three places and read in none, so all of them opened at the last saved
-  // position instead of the passage that was tapped.
-  await page.getByRole("link", { name: /open in the book/i }).first().click();
-  await expect
-    .poll(() => bookText(page), {
-      timeout: 30_000,
-    })
-    .toMatch(/Caucus-Race/i);
-});
+}

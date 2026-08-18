@@ -39,10 +39,22 @@ export interface ObjectStorage {
     expiresAt: Date;
   }): Promise<ReadTarget | null>;
   read(objectKey: string): Promise<Uint8Array>;
+  /**
+   * Put bytes at a key.
+   *
+   * `overwrite` is false by default, and that default is a safety property
+   * rather than a preference: a member's upload is authorized once, for one
+   * key, and a replayed authorization must not be able to land on top of an
+   * object that already exists.
+   *
+   * Server-side importing is the opposite case — replacing a title's file with
+   * a corrected edition is the point — so it asks for the overwrite it wants.
+   */
   write(
     objectKey: string,
     bytes: Uint8Array,
     contentType: string,
+    options?: { overwrite?: boolean },
   ): Promise<void>;
   head(
     objectKey: string,
@@ -113,10 +125,17 @@ class LocalObjectStorage implements ObjectStorage {
     return new Uint8Array(await readFile(localPath(objectKey)));
   }
 
-  async write(objectKey: string, bytes: Uint8Array) {
+  async write(
+    objectKey: string,
+    bytes: Uint8Array,
+    _contentType: string,
+    options?: { overwrite?: boolean },
+  ) {
     const path = localPath(objectKey);
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, bytes, { flag: "wx" });
+    // `wx` fails rather than replaces, which is what an upload wants and what
+    // an import does not: re-running an import used to die on EEXIST.
+    await writeFile(path, bytes, { flag: options?.overwrite ? "w" : "wx" });
   }
 
   async head(objectKey: string) {
@@ -220,6 +239,12 @@ class S3ObjectStorage implements ObjectStorage {
     return new Uint8Array(await response.Body.transformToByteArray());
   }
 
+  /*
+   * S3 replaces whatever is at the key, so `overwrite` has nothing to switch
+   * on here. Worth saying plainly: the no-overwrite guarantee above is a local
+   * one, and enforcing it against a bucket needs a conditional write, which is
+   * a change to the upload path rather than to this import path.
+   */
   async write(objectKey: string, bytes: Uint8Array, contentType: string) {
     await getS3Client().send(
       new PutObjectCommand({
