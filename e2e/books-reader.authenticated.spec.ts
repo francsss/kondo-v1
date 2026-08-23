@@ -111,21 +111,35 @@ async function goToChapter(page: Page, title: Title) {
     .toMatch(title.inChapter);
 }
 
-/** Select the first substantial paragraph, the way a reader's finger would. */
+/**
+ * Select part of a paragraph, the way a reader's finger would.
+ *
+ * The endpoints are inside the text node, which matters more than it looks.
+ * `selectNodeContents` sets them on the element instead, with offsets counting
+ * child nodes rather than characters — and epub.js turns that into a CFI range
+ * of exactly one character. Everything downstream still passes: a note is
+ * saved, with a locator and a chapter. What is lost is the only assertion that
+ * can tell a working highlight from a broken one, because a one-character
+ * range draws a mark zero pixels wide.
+ */
 async function selectAPassage(page: Page) {
   const text = await inBook(
     page,
     () => {
       const paragraph = Array.from(document.querySelectorAll("p")).find(
-        (node) => (node.textContent ?? "").trim().length > 80,
+        (node) => (node.textContent ?? "").trim().length > 120,
       );
       if (!paragraph) return null;
+      const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+      const textNode = walker.nextNode();
+      if (!textNode?.textContent) return null;
       const range = document.createRange();
-      range.selectNodeContents(paragraph);
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, Math.min(80, textNode.textContent.length));
       const selection = window.getSelection();
       selection?.removeAllRanges();
       selection?.addRange(range);
-      return (paragraph.textContent ?? "").trim();
+      return range.toString().trim();
     },
     null as string | null,
   );
@@ -134,6 +148,25 @@ async function selectAPassage(page: Page) {
     page.getByRole("toolbar", { name: /selection actions/i }),
   ).toBeVisible();
   return text!;
+}
+
+/**
+ * The widths of the marks epub.js has drawn over the page.
+ *
+ * They are not in the book's iframe — epub.js renders them into a pane in
+ * Kondo's own document, positioned over it — so looking for them inside the
+ * book finds nothing whether or not highlighting works.
+ */
+function highlightWidths(page: Page) {
+  return page.evaluate(() => {
+    const pane = Array.from(document.querySelectorAll("svg")).find(
+      (svg) => svg.querySelectorAll("rect").length > 0,
+    );
+    if (!pane) return [] as number[];
+    return Array.from(pane.querySelectorAll("rect")).map((rect) =>
+      Math.round(rect.getBoundingClientRect().width),
+    );
+  });
 }
 
 function readingState(page: Page, title: Title) {
@@ -361,6 +394,44 @@ for (const title of [FIXTURE, ALICE]) {
       // A CFI says where precisely; the chapter is what a student reads back.
       expect(notes[0]?.locator).toBeTruthy();
       expect(notes[0]?.chapterLabel).toBe(title.chapter);
+
+      // And it has to be visible. A highlight that saves but draws nothing is
+      // the failure this whole feature exists to avoid, and every other
+      // assertion here passes while it happens.
+      await expect
+        .poll(async () => Math.max(0, ...(await highlightWidths(page))), {
+          timeout: 10_000,
+        })
+        .toBeGreaterThan(20);
+    });
+
+    test("a highlight is still on the page when you come back", async ({
+      page,
+    }) => {
+      await goToChapter(page, title);
+      await selectAPassage(page);
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes("/annotations") &&
+            response.request().method() === "POST",
+        ),
+        page
+          .getByRole("toolbar", { name: /selection actions/i })
+          .getByRole("button", { name: /^Highlight$/ })
+          .click(),
+      ]);
+
+      // Re-applied from the saved locator on open, not kept in the page.
+      await page.reload();
+      await expect
+        .poll(() => bookText(page), { timeout: 30_000 })
+        .toMatch(title.inChapter);
+      await expect
+        .poll(async () => Math.max(0, ...(await highlightWidths(page))), {
+          timeout: 20_000,
+        })
+        .toBeGreaterThan(20);
     });
 
     test("a task raised from a passage lands in the planner", async ({
