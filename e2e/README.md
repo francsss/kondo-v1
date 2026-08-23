@@ -47,3 +47,31 @@ Prefer `getByRole`/`getByPlaceholder`/`getByText` over CSS selectors, and
 avoid `exact: true` on any nav link that can carry an unread-count badge
 (Messages, Notifications) — the badge text is folded into the accessible
 name.
+
+## The reader suite and its books
+
+`books-reader.authenticated.spec.ts` reads two EPUBs, because the defects it
+guards divide in two.
+
+Most of them are true of any EPUB — the hub's navigation sitting over the
+reader's controls, a selection toolbar wider than the phone, progress erased on
+reopen, `?at=` not opening at the passage that was tapped. Those run against a
+fixture `books.setup.ts` builds and imports for you, so they are covered on
+every run and need nothing set up by hand.
+
+The rest need the specific file that exposed them: Project Gutenberg's *Alice's
+Adventures in Wonderland*, which opens on an SVG-only cover page, links its own
+stylesheets, and writes every table-of-contents entry as
+`document.xhtml#anchor`. Books are not stored in git, so that file is not here,
+and those checks **skip with a reason** rather than pass emptily. To run them,
+obtain the EPUB from a legitimate source and import it:
+
+```
+npm run books:import -- ./alice.epub --slug alice-in-wonderland \
+  --title "Alice's Adventures in Wonderland" --author "Lewis Carroll" \
+  --ai-allowed --publish
+```
+
+The cover check additionally skips for a member who has already started the
+book — it resumes where they were, which is correct, and there is no cover on
+screen to measure. Clear `StudyReadingProgress` to run it again.

@@ -401,7 +401,16 @@ export function StudyReader({
       {selection ? (
         <div
           aria-label="Selection actions"
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl"
+          /*
+           * Above the hub's navigation, not level with it.
+           *
+           * The bar and this panel were both z-40 and both fixed to the bottom
+           * of the screen, so the one rendered later won: on a phone the nav
+           * pill sat across Highlight, Note and Task, and hid Ask AI entirely.
+           * While a passage is selected this panel owns the bottom of the
+           * screen; dismissing it gives the navigation straight back.
+           */
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl"
           role="dialog"
         >
           <div className="mx-auto max-w-[720px]">

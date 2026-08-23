@@ -18,11 +18,14 @@ export const dynamic = "force-dynamic";
  */
 export default async function BookReaderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ at?: string }>;
 }) {
   const user = await requireUser();
   const { slug } = await params;
+  const { at } = await searchParams;
 
   const essential = await prisma.studyEssential.findUnique({
     where: { slug },
@@ -40,6 +43,15 @@ export default async function BookReaderPage({
   return (
     <BookReader
       aiAllowed={essential.aiAllowed}
+      /*
+       * `?at=` is how every other surface links back into the book: a note,
+       * a bookmark, and the way back from Ask AI all carry the locator they
+       * belong to. Without it those links would open the reader at whatever
+       * position was last saved, which is almost never the passage the member
+       * just tapped. It is only ever a locator — the entitlement above is what
+       * decides whether the book opens at all.
+       */
+      initialLocator={at?.slice(0, 600) || null}
       slug={slug}
       title={essential.title}
     />

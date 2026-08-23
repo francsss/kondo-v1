@@ -19,10 +19,11 @@ const mocks = vi.hoisted(() => ({
   findNotes: vi.fn(),
   findBookmarks: vi.fn(),
   createNote: vi.fn(),
+  createTask: vi.fn(),
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const client = {
     studyEssential: { findUnique: mocks.findEssential },
     studyReadingProgress: {
       findUnique: mocks.findProgress,
@@ -39,8 +40,13 @@ vi.mock("@/lib/prisma", () => ({
       upsert: vi.fn(),
       deleteMany: mocks.deleteManyBookmark,
     },
-  },
-}));
+    academicTask: { create: mocks.createTask },
+    // Annotations write a note and, when one is asked for, a planner task in
+    // the same commit. The mock runs the callback against the same client.
+    $transaction: (run: (tx: unknown) => unknown) => run(client),
+  };
+  return { prisma: client };
+});
 
 vi.mock("@/lib/study-entitlements", () => ({
   checkEntitlement: mocks.checkEntitlement,
@@ -73,6 +79,7 @@ beforeEach(() => {
   mocks.findBookmarks.mockResolvedValue([]);
   mocks.upsertProgress.mockResolvedValue({});
   mocks.createNote.mockResolvedValue({});
+  mocks.createTask.mockResolvedValue({ id: "task-1" });
 });
 
 describe("reading requires an entitlement", () => {
@@ -193,5 +200,98 @@ describe("empty annotations", () => {
         body: "",
       }),
     ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+/**
+ * An unknown percentage is not zero.
+ *
+ * epub.js can report where the reader is long before it can say how far
+ * through that is: the location index is built after the book is on screen,
+ * and `percentageFromCfi` answers 0 until it exists. Every reopen therefore
+ * produces one position with no usable percentage, and writing a zero for it
+ * would tell a member halfway through a book that they had not started it.
+ */
+describe("progress with no percentage yet", () => {
+  it("saves the position without touching the stored percentage", async () => {
+    await saveReadingProgress({
+      userId: "u1",
+      slug: "alice",
+      locator: "epubcfi(/6/10!/4/2)",
+    });
+    const call = mocks.upsertProgress.mock.calls[0][0];
+    expect(call.update.locator).toBe("epubcfi(/6/10!/4/2)");
+    expect(call.update).not.toHaveProperty("percentage");
+  });
+
+  it("still starts a new record at zero", async () => {
+    await saveReadingProgress({
+      userId: "u1",
+      slug: "alice",
+      locator: "epubcfi(/6/10!/4/2)",
+    });
+    expect(mocks.upsertProgress.mock.calls[0][0].create.percentage).toBe(0);
+  });
+});
+
+/**
+ * A task raised from a book is a planner task.
+ *
+ * The point of these is that there is no second to-do system for books: the
+ * row created is an ordinary `AcademicTask` owned by the member, and the note
+ * is what remembers the link.
+ */
+describe("raising a task from a passage", () => {
+  it("creates an ordinary planner task and links the note to it", async () => {
+    await createAnnotation({
+      userId: "u1",
+      slug: "alice",
+      locator: "epubcfi(/6/10!/4/2)",
+      selectedText: "They were indeed a queer-looking party.",
+      chapterLabel: "CHAPTER III. A Caucus-Race and a Long Tale",
+      task: { title: "Revise the Caucus-Race" },
+    });
+
+    const task = mocks.createTask.mock.calls[0][0].data;
+    expect(task.ownerId).toBe("u1");
+    expect(task.title).toBe("Revise the Caucus-Race");
+    // The passage travels with it: "re-read this" means nothing in a planner
+    // that cannot show what "this" was.
+    expect(task.description).toContain("queer-looking party");
+    expect(task.description).toContain("A Caucus-Race");
+
+    const note = mocks.createNote.mock.calls[0][0].data;
+    expect(note.taskId).toBe("task-1");
+    expect(note.chapterLabel).toBe(
+      "CHAPTER III. A Caucus-Race and a Long Tale",
+    );
+  });
+
+  it("raises no task when none was asked for", async () => {
+    await createAnnotation({
+      userId: "u1",
+      slug: "alice",
+      locator: "epubcfi(/6/10!/4/2)",
+      selectedText: "A passage.",
+    });
+    expect(mocks.createTask).not.toHaveBeenCalled();
+    expect(mocks.createNote.mock.calls[0][0].data.taskId).toBeNull();
+  });
+
+  it("refuses to write an entitlement-less task", async () => {
+    mocks.checkEntitlement.mockResolvedValue({
+      allowed: false,
+      reason: "NO_ENTITLEMENT",
+    });
+    await expect(
+      createAnnotation({
+        userId: "u1",
+        slug: "alice",
+        locator: "epubcfi(/6/10!/4/2)",
+        selectedText: "A passage.",
+        task: { title: "Not mine to raise" },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(mocks.createTask).not.toHaveBeenCalled();
   });
 });

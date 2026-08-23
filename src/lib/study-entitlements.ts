@@ -126,7 +126,16 @@ export async function grantEntitlement(
   });
 }
 
-/** The titles a member may open, for My Books. */
+/**
+ * The titles a member may open, for My Books.
+ *
+ * Bought and granted titles come from entitlements. Free titles have no
+ * entitlement row — nothing was ever transacted — so a member who started
+ * reading one would find it stuck under "Available" with no sign of their
+ * progress, and no way back to where they left off. A free title a member has
+ * actually opened is theirs in every sense that matters here, so reading
+ * progress is treated as the second way onto this shelf.
+ */
 export async function listEntitledEssentials(userId: string) {
   const entitlements = await prisma.studyEntitlement.findMany({
     where: {
@@ -156,21 +165,69 @@ export async function listEntitledEssentials(userId: string) {
   });
 
   // Progress is read in one query rather than per title, so My Books stays a
-  // fixed two round trips however many books a member owns.
+  // fixed number of round trips however many books a member owns. It doubles
+  // as the shelf's second source: a started free title appears here too.
   const progress = await prisma.studyReadingProgress.findMany({
-    where: {
-      userId,
-      essentialId: { in: entitlements.map((row) => row.essential.id) },
+    where: { userId },
+    select: {
+      essentialId: true,
+      percentage: true,
+      lastReadAt: true,
+      essential: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          author: true,
+          coverEmoji: true,
+          imageUrl: true,
+          deliveryType: true,
+          category: true,
+          status: true,
+          priceMinor: true,
+          source: true,
+        },
+      },
     },
-    select: { essentialId: true, percentage: true, lastReadAt: true },
   });
   const byEssential = new Map(progress.map((row) => [row.essentialId, row]));
 
-  return entitlements.map((row) => ({
+  const owned = entitlements.map((row) => ({
     ...row.essential,
     grantedAt: row.grantedAt,
     source: row.source,
     percentage: byEssential.get(row.essential.id)?.percentage ?? 0,
     lastReadAt: byEssential.get(row.essential.id)?.lastReadAt ?? null,
   }));
+
+  const ownedIds = new Set(owned.map((book) => book.id));
+  const startedFree = progress
+    .filter(
+      (row) =>
+        !ownedIds.has(row.essentialId) &&
+        row.essential.status === "PUBLISHED" &&
+        isFreeTitle(row.essential),
+    )
+    .map((row) => ({
+      id: row.essential.id,
+      slug: row.essential.slug,
+      title: row.essential.title,
+      author: row.essential.author,
+      coverEmoji: row.essential.coverEmoji,
+      imageUrl: row.essential.imageUrl,
+      deliveryType: row.essential.deliveryType,
+      category: row.essential.category,
+      grantedAt: row.lastReadAt,
+      source: "PILOT" as StudyEntitlementSource,
+      percentage: row.percentage ?? 0,
+      lastReadAt: row.lastReadAt,
+    }));
+
+  // Most recently touched first, so the book someone is in the middle of is
+  // the one at the top of the shelf.
+  return [...owned, ...startedFree].sort(
+    (a, b) =>
+      (b.lastReadAt ?? b.grantedAt ?? new Date(0)).getTime() -
+      (a.lastReadAt ?? a.grantedAt ?? new Date(0)).getTime(),
+  );
 }

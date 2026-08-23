@@ -236,6 +236,7 @@ export const PRODUCT_EVENTS = {
   BOOK_PROGRESS_SAVED: "book_progress_saved",
   BOOK_HIGHLIGHT_CREATED: "book_highlight_created",
   BOOK_NOTE_CREATED: "book_note_created",
+  BOOK_TASK_CREATED: "book_task_created",
   BOOK_AI_OPENED: "book_ai_opened",
   BOOK_AI_QUESTION_SENT: "book_ai_question_sent",
 } as const;

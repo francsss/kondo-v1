@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Bookmark, Highlighter } from "lucide-react";
+import { ArrowLeft, Bookmark, Highlighter, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -70,6 +70,13 @@ export default async function BookNotesPage({
             {state.notes.map((note) => (
               <li key={note.id}>
                 <Card className="p-4">
+                  {/* Book, chapter and date: a highlight read back a month
+                      later needs to say where it came from. */}
+                  <p className="text-xs font-bold text-muted-foreground">
+                    {[essential.title, note.chapterLabel]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
                   {note.highlight ? (
                     <blockquote className="border-l-2 border-kondo-green pl-3 text-sm leading-6">
                       {note.highlight}
@@ -78,6 +85,15 @@ export default async function BookNotesPage({
                   {note.body ? (
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                       {note.body}
+                    </p>
+                  ) : null}
+                  {note.task ? (
+                    <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-kondo-green">
+                      <ListChecks className="h-3.5 w-3.5" />
+                      {note.task.title}
+                      <span className="font-normal text-muted-foreground">
+                        · in your planner
+                      </span>
                     </p>
                   ) : null}
                   {note.locator ? (

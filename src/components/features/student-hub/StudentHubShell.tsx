@@ -419,7 +419,12 @@ export function StudentHubShell({
       <div data-focus-hide="">
         <StudentHubMobileNav activeModule={activeModule} />
       </div>
-      <KondoPet enabled={kondoPetEnabled} />
+      {/* The pet stands down with the rest of the chrome. It is a floating
+          bubble over the bottom-right of the screen, which in a reader is
+          directly over the page someone is reading. */}
+      <div data-focus-hide="">
+        <KondoPet enabled={kondoPetEnabled} />
+      </div>
     </div>
   );
 }
