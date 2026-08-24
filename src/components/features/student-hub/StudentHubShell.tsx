@@ -95,35 +95,30 @@ const STUDY_TABS: readonly HorizontalTab[] = [
 ];
 
 /**
- * Study Essentials owns acquiring, reading and annotating. Digital Books and
- * Purchased Materials are the two shelves of the same library rather than
- * separate stores, so they share its data and differ only by what they show.
+ * Three things a student comes here to do: find something, open something they
+ * already have, or pick up what they were studying.
+ *
+ * It was five tabs. Three of them — My Library, Digital Books, Purchased
+ * Materials — were the same acquisitions filtered differently, and a fourth
+ * ("Study Resources") was the shop wearing a name that describes Kondo's
+ * catalogue rather than the student's intent. Nothing was removed: the shelves
+ * became sections of one library, and the shop kept every filter it had.
  */
 const ESSENTIALS_TABS: readonly HorizontalTab[] = [
+  {
+    key: "resources",
+    href: "/student-hub/essentials",
+    label: "Browse",
+  },
   {
     key: "library",
     href: "/student-hub/essentials/library",
     label: "My Library",
   },
   {
-    key: "books",
-    href: "/student-hub/essentials/books",
-    label: "Digital Books",
-  },
-  {
-    key: "materials",
-    href: "/student-hub/essentials/materials",
-    label: "Purchased Materials",
-  },
-  {
     key: "notes",
     href: "/student-hub/essentials/notes",
-    label: "Notes",
-  },
-  {
-    key: "resources",
-    href: "/student-hub/essentials",
-    label: "Study Resources",
+    label: "My Notes",
   },
 ];
 
@@ -185,6 +180,11 @@ export function studentHubModuleForPath(pathname: string): StudentHubModule {
   if (
     pathname === "/student-hub/essentials" ||
     pathname.startsWith("/student-hub/essentials/") ||
+    // Digital books are Essentials content. They live on their own route
+    // because the EPUB reader and its payment return are separate surfaces,
+    // not because they are a separate part of the hub.
+    pathname === "/student-hub/books" ||
+    pathname.startsWith("/student-hub/books/") ||
     pathname === "/student-hub/orders" ||
     pathname.startsWith("/student-hub/orders/")
   ) {
@@ -249,6 +249,7 @@ export function activeStudentHubTab(
   // so My Library stays lit while a student reads or checks an order.
   if (
     pathname.startsWith("/student-hub/essentials/read/") ||
+    pathname.startsWith("/student-hub/books") ||
     pathname.startsWith("/student-hub/orders")
   ) {
     return "library";
@@ -258,10 +259,13 @@ export function activeStudentHubTab(
     pathname === "/student-hub/essentials" ||
     /^\/student-hub\/essentials\/[^/]+(\/checkout)?$/.test(pathname)
   ) {
-    const owned = new Set(["library", "books", "materials", "notes"]);
-    const dedicated = tabs.find(
-      (tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`),
-    );
+    const owned = new Set(["library", "notes"]);
+    // Longest href wins. Browse sits at /student-hub/essentials, so a plain
+    // `find` matches it for every path underneath and would light the shop
+    // while a student is looking at their own shelf.
+    const dedicated = tabs
+      .filter((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`))
+      .sort((left, right) => right.href.length - left.href.length)[0];
     if (!dedicated || !owned.has(dedicated.key)) return "resources";
   }
   const match = tabs

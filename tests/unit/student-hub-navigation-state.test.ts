@@ -115,10 +115,14 @@ describe("Student Hub module navigation", () => {
     );
   });
 
-  it("gives Study Essentials the shelves of a workspace", () => {
+  it("asks Study Essentials only the three questions a student arrives with", () => {
+    // Find something, open something I own, pick up what I was studying.
+    // Digital Books and Purchased Materials used to be tabs of their own; they
+    // are the same acquisitions filtered differently and are sections of My
+    // Library now.
     expect(
       studentHubTabsForModule("essentials", true).map((tab) => tab.key),
-    ).toEqual(["library", "books", "materials", "notes", "resources"]);
+    ).toEqual(["resources", "library", "notes"]);
   });
 
   it("keeps all opportunity destinations in one contextual row", () => {
@@ -168,15 +172,15 @@ describe("Student Hub module navigation", () => {
     expect(activeStudentHubTab("/student-hub/essentials/library", tabs)).toBe(
       "library",
     );
-    expect(activeStudentHubTab("/student-hub/essentials/books", tabs)).toBe(
-      "books",
-    );
-    expect(activeStudentHubTab("/student-hub/essentials/materials", tabs)).toBe(
-      "materials",
-    );
-    // Reading and receipts stay under My Library.
+    // Reading and receipts stay under My Library — including the EPUB reader,
+    // which lives on its own route because it is a different reader, not a
+    // different part of the hub.
     expect(
       activeStudentHubTab("/student-hub/essentials/read/a-book", tabs),
+    ).toBe("library");
+    expect(activeStudentHubTab("/student-hub/books", tabs)).toBe("library");
+    expect(
+      activeStudentHubTab("/student-hub/books/alice-in-wonderland", tabs),
     ).toBe("library");
     expect(activeStudentHubTab("/student-hub/orders/KS-1234", tabs)).toBe(
       "library",

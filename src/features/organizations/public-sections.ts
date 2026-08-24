@@ -36,6 +36,14 @@ export type OrganizationPublicProjection = {
     context?: string | null;
     /** Cover image, when the owning domain publishes one. */
     imageUrl?: string | null;
+    /**
+     * What the cover shows, as the publisher described it.
+     *
+     * Catalog images cannot be uploaded without alt text, so an empty `alt`
+     * on the rendered image is a description that was collected and then
+     * discarded.
+     */
+    imageAlt?: string | null;
   }[];
   sectionRoute: string | null;
   visibility: "PUBLIC" | "HIDDEN";
