@@ -403,12 +403,23 @@ export async function getContextualStories(
   return records.map((story) => storyDto(story, actor, communityIds));
 }
 
+/**
+ * Who can put a reel in the feed: everyone who has not lost the right to.
+ *
+ * This used to be admins and hand-approved creators only, which meant every
+ * ordinary student's video went to `PENDING_REVIEW` and sat there. A student
+ * uploaded, was told it was submitted, and then never saw it — so in practice
+ * Student Story could only ever contain Kondo's own videos, which is the
+ * opposite of what it is for.
+ *
+ * Moderation did not go away, it moved after publication, which is how every
+ * short-video feed works and what the rest of this file is already built for:
+ * reports, `removedAt`, `moderationReason` and the admin queue all act on
+ * published stories. `SUSPENDED` is still refused before this is ever reached,
+ * so revoking someone's ability to post stays immediate and total.
+ */
 function canPublishDirectly(actor: StoryActor) {
-  return (
-    hasAdminPermission(actor.role, "STORY_CMS_MANAGE") ||
-    actor.storyCreatorStatus === "APPROVED_CREATOR" ||
-    actor.storyCreatorStatus === "TRUSTED_CREATOR"
-  );
+  return actor.storyCreatorStatus !== "SUSPENDED";
 }
 
 async function resolveEntityLinks(

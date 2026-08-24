@@ -15,6 +15,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Play,
+  Plus,
   RefreshCw,
   Share2,
   SignalLow,
@@ -433,20 +434,40 @@ export function StoryReader({
           <span className="h-2 w-2 rounded-full bg-kondo-lime" />
           Student Stories
         </div>
-        <Button
-          aria-label={muted ? "Turn sound on" : "Mute video"}
-          className="pointer-events-auto border-white/15 bg-black/30 text-white backdrop-blur-md hover:bg-black/50 hover:text-white"
-          onClick={() => setMuted((value) => !value)}
-          size="icon"
-          type="button"
-          variant="secondary"
-        >
-          {muted ? (
-            <VolumeX aria-hidden="true" className="h-5 w-5" />
-          ) : (
-            <Volume2 aria-hidden="true" className="h-5 w-5" />
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/*
+            Posting has to be reachable from the feed itself.
+
+            The only route to it used to be a button in the empty state, which
+            by definition disappears the moment Student Story has anything in
+            it — so on any real feed there was no way to add a reel at all.
+          */}
+          <Button
+            aria-label="Post a reel"
+            asChild
+            className="pointer-events-auto border-white/15 bg-black/30 text-white backdrop-blur-md hover:bg-black/50 hover:text-white"
+            size="icon"
+            variant="secondary"
+          >
+            <Link href="/stories/submit">
+              <Plus aria-hidden="true" className="h-5 w-5" />
+            </Link>
+          </Button>
+          <Button
+            aria-label={muted ? "Turn sound on" : "Mute video"}
+            className="pointer-events-auto border-white/15 bg-black/30 text-white backdrop-blur-md hover:bg-black/50 hover:text-white"
+            onClick={() => setMuted((value) => !value)}
+            size="icon"
+            type="button"
+            variant="secondary"
+          >
+            {muted ? (
+              <VolumeX aria-hidden="true" className="h-5 w-5" />
+            ) : (
+              <Volume2 aria-hidden="true" className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
       </header>
 
       <div

@@ -184,17 +184,23 @@ postgresDescribe("Student Stories and official profiles on PostgreSQL", () => {
       },
       { ipAddress: "127.0.0.1", userAgent: "Vitest" },
     );
-    expect(submitted.status).toBe("PENDING_REVIEW");
+    /*
+     * An ordinary student's reel goes straight into the feed.
+     *
+     * It used to land in `PENDING_REVIEW` and wait for an admin, which meant a
+     * student uploaded, was told it was submitted, and never saw it — so the
+     * feed could only ever hold Kondo's own videos. Moderation moved to after
+     * publication, where the reports, `removedAt` and the admin queue already
+     * operate.
+     */
+    expect(submitted.status).toBe("PUBLISHED");
 
-    await transitionStoryAsAdmin(fixture.admin, submitted.id, {
-      status: "APPROVED",
-      reason: "The information is clear and safe for publication.",
-      qualityScore: 0.9,
-      isFeatured: true,
-    });
+    // An admin can still act on it, which is what makes publishing first safe.
     await transitionStoryAsAdmin(fixture.admin, submitted.id, {
       status: "PUBLISHED",
-      reason: "Approved for the Student Stories feed.",
+      reason: "Reviewed after publication.",
+      qualityScore: 0.9,
+      isFeatured: true,
     });
 
     const feed = await getStoryFeed(fixture.viewer, {
