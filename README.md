@@ -32,6 +32,12 @@ Open [http://localhost:3000](http://localhost:3000) on the Mac or use the Mac's 
 
 The development config allows Next.js client/HMR resources from private `192.168.x.x` origins. Additional development host patterns can be supplied through the comma-separated `KONDO_DEV_ORIGINS` environment variable if the LAN uses another address range.
 
+A production deploy provisions the same book itself: the build creates it once
+if no title with that address exists, and leaves it alone afterwards, so
+archiving or replacing it survives the next deploy. Set
+`KONDO_SKIP_PILOT_BOOK=true` to opt out. Admins can also add or replace books
+from **Admin → Digital books** without a terminal.
+
 Seeding also fills the Study Essentials catalogue and creates one readable
 EPUB, granted to every demo account, so My Library and the Kondo reader work
 immediately. The book is generated rather than committed — books do not belong
