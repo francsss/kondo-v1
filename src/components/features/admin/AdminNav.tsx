@@ -1,8 +1,9 @@
 import Link from "next/link";
 import {
-  BellRing,
-  BarChart3,
   BadgeCheck,
+  BarChart3,
+  BellRing,
+  BookOpen,
   BookOpenText,
   BriefcaseBusiness,
   Building2,
@@ -13,15 +14,15 @@ import {
   GraduationCap,
   House,
   Images,
-  LayoutDashboard,
-  RadioTower,
-  MapPin,
   Landmark,
+  LayoutDashboard,
+  MapPin,
   MessageCircleWarning,
   MessageSquareHeart,
-  ShoppingBag,
+  RadioTower,
   ScrollText,
   Settings2,
+  ShoppingBag,
   Users,
 } from "lucide-react";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
@@ -68,6 +69,12 @@ const items = [
     label: "MVP feedback",
     icon: MessageSquareHeart,
     permission: "FEEDBACK_VIEW" as const,
+  },
+  {
+    href: "/admin/study-books",
+    label: "Digital books",
+    icon: BookOpen,
+    permission: "STUDENT_HUB_CONFIG_VIEW" as const,
   },
   {
     href: "/admin/audit",
