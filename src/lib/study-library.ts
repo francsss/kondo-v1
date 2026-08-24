@@ -1,6 +1,9 @@
 import type { StudyEssentialDelivery } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { listEntitledEssentials } from "@/lib/study-entitlements";
+import {
+  checkEntitlement,
+  listEntitledEssentials,
+} from "@/lib/study-entitlements";
 import { listLibrary } from "@/lib/study-workspace";
 
 /**
@@ -174,10 +177,17 @@ export async function listOwnedLibrary(userId: string): Promise<LibraryItem[]> {
 }
 
 /**
- * Whether this member owns this title, by either route.
+ * Whether this member may open this title.
  *
- * The catalogue used to ask only about orders, so a member holding an
- * entitlement was shown "Buy this" for a book already on their shelf.
+ * Three things can make that true and the catalogue knew about one of them.
+ * A paid order is the original route. An entitlement is the newer one. And a
+ * free title needs neither — nothing is transacted, so there is no row to find
+ * — which is why `checkEntitlement` is asked rather than reimplemented here:
+ * it is the one place that already decides what "may open" means, and it is
+ * the same function every reading surface calls.
+ *
+ * Asking only about orders showed "Buy this" over a book the member was
+ * already reading, and for a free title it offered a checkout for nothing.
  */
 export async function ownsEssential(userId: string, essentialId: string) {
   const [order, entitlement] = await Promise.all([
@@ -185,15 +195,7 @@ export async function ownsEssential(userId: string, essentialId: string) {
       where: { userId, essentialId, status: "PAID" },
       select: { id: true },
     }),
-    prisma.studyEntitlement.findFirst({
-      where: {
-        userId,
-        essentialId,
-        status: "ACTIVE",
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      select: { id: true },
-    }),
+    checkEntitlement({ userId, essentialId }),
   ]);
-  return Boolean(order || entitlement);
+  return Boolean(order) || entitlement.allowed;
 }

@@ -260,9 +260,12 @@ export function activeStudentHubTab(
     /^\/student-hub\/essentials\/[^/]+(\/checkout)?$/.test(pathname)
   ) {
     const owned = new Set(["library", "notes"]);
-    const dedicated = tabs.find(
-      (tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`),
-    );
+    // Longest href wins. Browse sits at /student-hub/essentials, so a plain
+    // `find` matches it for every path underneath and would light the shop
+    // while a student is looking at their own shelf.
+    const dedicated = tabs
+      .filter((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`))
+      .sort((left, right) => right.href.length - left.href.length)[0];
     if (!dedicated || !owned.has(dedicated.key)) return "resources";
   }
   const match = tabs
