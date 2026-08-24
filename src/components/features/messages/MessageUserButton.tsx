@@ -9,16 +9,12 @@ export function MessageUserButton({
   label = "Message",
   compact = false,
   className,
-  sourceType,
-  sourceId,
 }: {
   userId: string;
   currentUserId: string;
   label?: string;
   compact?: boolean;
   className?: string;
-  sourceType?: "MARKETPLACE_LISTING";
-  sourceId?: string;
 }) {
   if (userId === currentUserId) return null;
 
@@ -32,7 +28,6 @@ export function MessageUserButton({
       <Link
         href={`/messages/new?${new URLSearchParams({
           recipient: userId,
-          ...(sourceType && sourceId ? { sourceType, sourceId } : {}),
         }).toString()}`}
       >
         <MessageCircle aria-hidden="true" className="h-4 w-4" />

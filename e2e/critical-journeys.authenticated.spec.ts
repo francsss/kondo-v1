@@ -15,24 +15,33 @@ test.describe("authenticated critical journeys", () => {
     await page.goto("/home");
     await expect(page).toHaveURL(/\/home/);
     const main = page.getByRole("main");
-    const transition = main.getByTestId("home-activity-transition");
     const welcome = main.getByRole("heading", { name: /welcome back/i });
-    const beforeReveal = await transition.boundingBox();
+    const activity = main.getByRole("heading", { name: "Kondo is moving." });
+
+    /*
+     * The greeting and the activity stream are both ordinary content now. They
+     * used to be a timed swap: the greeting showed, a 2.4 second timer hid it
+     * and revealed the stream, and the container animated its height between
+     * the two — so everything below moved long after the page had settled.
+     * Both are asserted present at once, and the greeting is re-checked past
+     * the old timer to prove nothing takes it away again.
+     */
     await expect(welcome).toBeVisible();
-    await expect(
-      main.getByRole("heading", { name: "Kondo is moving." }),
-    ).toBeVisible({ timeout: 5_000 });
-    await expect(welcome).toBeHidden();
+    await expect(activity).toBeVisible();
     await expect(
       main.getByRole("list", { name: "Recent activity" }),
     ).toBeVisible();
     await expect(main.getByRole("button", { name: /activity/i })).toHaveCount(
       0,
     );
-    const afterReveal = await transition.boundingBox();
-    expect(beforeReveal).not.toBeNull();
-    expect(afterReveal).not.toBeNull();
-    expect(afterReveal?.height ?? 0).toBeGreaterThan(beforeReveal?.height ?? 0);
+
+    const settled = await welcome.boundingBox();
+    await page.waitForTimeout(3_500);
+    await expect(welcome).toBeVisible();
+    const later = await welcome.boundingBox();
+    expect(settled).not.toBeNull();
+    expect(later).not.toBeNull();
+    expect(Math.abs((later?.y ?? 0) - (settled?.y ?? 0))).toBeLessThan(2);
 
     const activityList = main.getByRole("list", { name: "Recent activity" });
     const autoplayStart = await activityList.evaluate(

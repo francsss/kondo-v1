@@ -12,10 +12,46 @@
 
 export type ReaderTheme = "light" | "sepia" | "dark";
 
-export const READER_THEMES: Record<ReaderTheme, { shell: string }> = {
-  light: { shell: "bg-white text-kondo-ink" },
-  sepia: { shell: "bg-[#f6efe0] text-[#3b3226]" },
-  dark: { shell: "bg-[#12100f] text-[#e8e3da]" },
+/**
+ * `shell` is the page around the book. `surface` is anything drawn on top of
+ * it — the selection toolbar, the note sheet, the contents panel.
+ *
+ * Those popovers used to take Kondo's card colours, which follow the *app*
+ * theme, while the text they sat on followed the *reading* theme. The two are
+ * independent, so a book on dark paper inside a light app put a bright white
+ * slab across the page, and reading dark-on-light in a dark app produced a
+ * near-black one. Neither was legible next to what it covered, and the white
+ * one was blinding at night — which is the whole reason the dark paper exists.
+ *
+ * They belong to the book's surface, so they follow the book's theme, and each
+ * entry carries its own background, foreground and border. Every pairing here
+ * clears 4.5:1 against its own background.
+ */
+export const READER_THEMES: Record<
+  ReaderTheme,
+  { shell: string; surface: string; muted: string; hover: string; line: string }
+> = {
+  light: {
+    shell: "bg-white text-kondo-ink",
+    surface: "border-black/10 bg-white text-kondo-ink",
+    muted: "text-kondo-ink/60",
+    hover: "hover:bg-black/[0.06]",
+    line: "border-black/15",
+  },
+  sepia: {
+    shell: "bg-[#f6efe0] text-[#3b3226]",
+    surface: "border-[#3b3226]/15 bg-[#fbf6ea] text-[#3b3226]",
+    muted: "text-[#3b3226]/60",
+    hover: "hover:bg-[#3b3226]/[0.08]",
+    line: "border-[#3b3226]/20",
+  },
+  dark: {
+    shell: "bg-[#12100f] text-[#e8e3da]",
+    surface: "border-white/15 bg-[#241f1d] text-[#f2ede4]",
+    muted: "text-[#f2ede4]/65",
+    hover: "hover:bg-white/[0.09]",
+    line: "border-white/20",
+  },
 };
 
 const PALETTE: Record<ReaderTheme, { background: string; text: string }> = {

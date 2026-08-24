@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  MessagesSquare,
   Plus,
   Sparkles,
   UtensilsCrossed,
@@ -24,6 +25,7 @@ import {
   marketplaceSectionIndex,
   resolveMarketplaceSection,
 } from "@/features/marketplace/sections";
+import { getUnreadMessageCount } from "@/lib/messaging";
 import { listPublicCatalog } from "@/lib/organization-catalog";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/server-auth";
@@ -200,49 +202,51 @@ export default async function MarketplacePage({
         : params.sort === "oldest"
           ? ({ publishedAt: "asc" } as const)
           : ({ publishedAt: "desc" } as const);
-  const [categories, cities, total, listings] = await Promise.all([
-    prisma.marketplaceCategory.findMany({
-      where: { isActive: true },
-      include: {
-        _count: {
-          select: {
-            listings: {
-              where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
+  const [categories, cities, total, listings, marketplaceUnread] =
+    await Promise.all([
+      prisma.marketplaceCategory.findMany({
+        where: { isActive: true },
+        include: {
+          _count: {
+            select: {
+              listings: {
+                where: { status: "ACTIVE", expiresAt: { gt: new Date() } },
+              },
             },
           },
         },
-      },
-      orderBy: [{ order: "asc" }, { name: "asc" }],
-    }),
-    prisma.city.findMany({
-      where: {
-        isActive: true,
-        listings: { some: { status: "ACTIVE" } },
-      },
-      select: { id: true, slug: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.marketplaceListing.count({ where }),
-    prisma.marketplaceListing.findMany({
-      where,
-      include: {
-        images: {
-          where: { mediaId: { not: null } },
-          orderBy: { order: "asc" },
-          take: 1,
-          select: { mediaId: true, altText: true },
+        orderBy: [{ order: "asc" }, { name: "asc" }],
+      }),
+      prisma.city.findMany({
+        where: {
+          isActive: true,
+          listings: { some: { status: "ACTIVE" } },
         },
-        category: { select: { name: true, icon: true } },
-        city: { select: { name: true } },
-        seller: { select: { firstName: true, lastName: true } },
-        favorites: { where: { userId: user.id }, select: { id: true } },
-        _count: { select: { favorites: true } },
-      },
-      orderBy,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-  ]);
+        select: { id: true, slug: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.marketplaceListing.count({ where }),
+      prisma.marketplaceListing.findMany({
+        where,
+        include: {
+          images: {
+            where: { mediaId: { not: null } },
+            orderBy: { order: "asc" },
+            take: 1,
+            select: { mediaId: true, altText: true },
+          },
+          category: { select: { name: true, icon: true } },
+          city: { select: { name: true } },
+          seller: { select: { firstName: true, lastName: true } },
+          favorites: { where: { userId: user.id }, select: { id: true } },
+          _count: { select: { favorites: true } },
+        },
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      getUnreadMessageCount(user.id, "MARKETPLACE"),
+    ]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const hrefInput = {
     q: params.q,
@@ -260,6 +264,20 @@ export default async function MarketplacePage({
         <PageHeader
           action={
             <div className="flex flex-wrap gap-2">
+              {/*
+               * Buyer and seller conversations live here rather than in
+               * Messages, so the way into them has to be here too.
+               */}
+              <Button asChild size="sm" variant="secondary">
+                <Link href="/marketplace/messages">
+                  <MessagesSquare className="h-4 w-4" /> Messages
+                  {marketplaceUnread > 0 ? (
+                    <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-black text-primary-foreground">
+                      {marketplaceUnread > 99 ? "99+" : marketplaceUnread}
+                    </span>
+                  ) : null}
+                </Link>
+              </Button>
               <Button asChild size="sm" variant="secondary">
                 <Link href="/marketplace/selling">
                   <LayoutDashboard className="h-4 w-4" /> Selling

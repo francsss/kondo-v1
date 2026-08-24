@@ -6,6 +6,11 @@ describe("usesImmersiveAppShell", () => {
     expect(usesImmersiveAppShell("/communities/housing-roommates")).toBe(true);
     expect(usesImmersiveAppShell("/messages/conversation-id")).toBe(true);
     expect(usesImmersiveAppShell("/stories")).toBe(true);
+    // A marketplace thread is the same conversation shell. Without this the
+    // mobile quick-nav floats over the composer and swallows the send button.
+    expect(usesImmersiveAppShell("/marketplace/messages/conversation-id")).toBe(
+      true,
+    );
   });
 
   it("keeps platform navigation on community lists and management pages", () => {
@@ -16,5 +21,8 @@ describe("usesImmersiveAppShell", () => {
     expect(usesImmersiveAppShell("/home")).toBe(false);
     expect(usesImmersiveAppShell("/stories/submit")).toBe(false);
     expect(usesImmersiveAppShell("/stories/report")).toBe(false);
+    // The Marketplace inbox is an ordinary page and keeps its navigation.
+    expect(usesImmersiveAppShell("/marketplace/messages")).toBe(false);
+    expect(usesImmersiveAppShell("/marketplace")).toBe(false);
   });
 });

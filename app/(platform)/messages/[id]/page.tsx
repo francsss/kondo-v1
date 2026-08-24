@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { ConversationCallButtons } from "@/components/features/calls/ConversationCallButtons";
 import { ConversationActions } from "@/components/features/messages/ConversationActions";
@@ -21,6 +21,18 @@ export default async function ConversationPage({
 }) {
   const user = await requireUser();
   const { id } = await params;
+  /*
+   * A marketplace thread is an ordinary conversation and would render here
+   * perfectly well — except stripped of the listing it is about, which is the
+   * one thing that makes it legible. Old links and old notifications still
+   * point at this route, so send them on rather than showing half a thread.
+   */
+  const marketplace = await prisma.marketplaceInquiry.findUnique({
+    where: { conversationId: id },
+    select: { conversationId: true },
+  });
+  if (marketplace) redirect(`/marketplace/messages/${id}`);
+
   const conversation = await getConversationForUser(id, user.id);
   if (!conversation?.otherParticipant) notFound();
   const other = conversation.otherParticipant;

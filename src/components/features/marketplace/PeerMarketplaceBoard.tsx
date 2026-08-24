@@ -619,9 +619,12 @@ export function PeerMarketplaceBoard({
                     ) : (
                       <Button asChild fullWidth size="sm">
                         <Link
-                          href={`/messages/new?recipient=${owner.id}&sourceType=${
-                            exchange ? "exchange_offer" : "skill_offer"
-                          }&sourceId=${raw.id}`}
+                          /* A skill or exchange offer is a person-to-person
+                             conversation, so it stays an ordinary direct
+                             message. The source parameters this used to carry
+                             were never a shape `/messages/new` accepted, and
+                             were dropped on arrival. */
+                          href={`/messages/new?recipient=${owner.id}`}
                         >
                           Start a conversation
                           <ArrowRight className="h-4 w-4" />

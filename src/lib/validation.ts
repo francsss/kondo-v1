@@ -1145,20 +1145,12 @@ export const createDirectMessageSchema = z
     body: messageBodySchema.optional(),
     mediaId: z.string().cuid().optional(),
     clientMessageId: z.string().uuid().optional(),
-    sourceType: z.literal("MARKETPLACE_LISTING").optional(),
-    sourceId: z.string().cuid().optional(),
   })
   .superRefine((data, context) => {
     if (!data.body && !data.mediaId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "A message or attachment is required.",
-      });
-    }
-    if (Boolean(data.sourceType) !== Boolean(data.sourceId)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Message source type and ID must be provided together.",
       });
     }
   });

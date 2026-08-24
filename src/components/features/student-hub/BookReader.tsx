@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -56,7 +62,22 @@ type Note = {
 
 type BookmarkRow = { id: string; locator: string; label: string | null };
 
-type Selection = { cfi: string; text: string };
+/**
+ * Where the selected passage is on screen, in the parent document's
+ * coordinates. epub.js renders into an iframe, so a rect measured inside it
+ * has to be offset by the frame's own position before the toolbar — which
+ * lives outside the frame — can be placed against it.
+ *
+ * Null when the rect could not be measured; the toolbar then falls back to the
+ * bottom of the visible viewport, which is where it always used to sit.
+ */
+type SelectionAnchor = { top: number; bottom: number };
+
+type Selection = {
+  cfi: string;
+  text: string;
+  anchor: SelectionAnchor | null;
+};
 
 /**
  * The slice of epub.js this reader actually uses.
@@ -116,7 +137,10 @@ export function BookReader({
   const saveTimerRef = useRef<number | null>(null);
   // The write the debounce is currently sitting on, so it can still be sent if
   // the reader closes before the timer fires.
-  const pendingSaveRef = useRef<{ locator: string; percentage: number | null } | null>(null);
+  const pendingSaveRef = useRef<{
+    locator: string;
+    percentage: number | null;
+  } | null>(null);
   // Built once from the table of contents and read on every page turn, so
   // naming the current chapter costs nothing per relocation.
   const chapterIndexRef = useRef<Map<string, string>>(new Map());
@@ -316,8 +340,7 @@ export function BookReader({
          * book someone owns is a far worse outcome than one that opens it at
          * the beginning.
          */
-        const saved =
-          initialLocator ?? state?.progress?.locator ?? undefined;
+        const saved = initialLocator ?? state?.progress?.locator ?? undefined;
         try {
           await rendition.display(saved);
         } catch {
@@ -368,8 +391,7 @@ export function BookReader({
           // though the rendered one carries `start`; narrowed here rather than
           // trusted so a missing shape cannot throw during indexing.
           const current = rendition.currentLocation() as
-            | { start?: { cfi?: string } }
-            | undefined;
+            { start?: { cfi?: string } } | undefined;
           const cfi = current?.start?.cfi;
           if (cfi) {
             const percent = Math.round(
@@ -413,15 +435,41 @@ export function BookReader({
           scheduleSave(cfi, percent);
         }) as (...args: never[]) => void);
 
+        /*
+         * Where the selection sits, in this document's coordinates. Measured
+         * once, when the selection is made: the toolbar only needs somewhere
+         * to point at, and re-measuring on every frame would fight epub.js.
+         */
+        const anchorFor = (
+          selected: ReturnType<Window["getSelection"]>,
+        ): SelectionAnchor | null => {
+          const frame = viewerRef.current?.querySelector("iframe");
+          if (!frame || !selected || selected.rangeCount === 0) return null;
+          try {
+            const box = selected.getRangeAt(0).getBoundingClientRect();
+            if (box.width === 0 && box.height === 0) return null;
+            const frameBox = frame.getBoundingClientRect();
+            return {
+              top: frameBox.top + box.top,
+              bottom: frameBox.top + box.bottom,
+            };
+          } catch {
+            // A detached or cross-document range. The fallback position is
+            // still a usable toolbar.
+            return null;
+          }
+        };
+
         // Selection inside the rendered iframe. The CFI range is what gets
         // stored — DOM coordinates would not survive a re-render.
         rendition.on("selected", ((
           cfiRange: string,
           contents: { window: Window },
         ) => {
-          const text = contents.window.getSelection()?.toString()?.trim() ?? "";
+          const selected = contents.window.getSelection();
+          const text = selected?.toString()?.trim() ?? "";
           if (text.length < 2) return;
-          setSelection({ cfi: cfiRange, text });
+          setSelection({ cfi: cfiRange, text, anchor: anchorFor(selected) });
           setChrome(true);
         }) as (...args: never[]) => void);
 
@@ -688,6 +736,8 @@ export function BookReader({
       {selection ? (
         <SelectionBar
           aiAllowed={aiAllowed}
+          anchor={selection.anchor}
+          theme={theme}
           onAsk={() => {
             const params = new URLSearchParams({
               text: selection.text.slice(0, 1200),
@@ -917,9 +967,7 @@ function TaskSheet({
         <Button
           disabled={!title.trim()}
           fullWidth
-          onClick={() =>
-            onSave({ title: title.trim(), dueAt: dueAt || null })
-          }
+          onClick={() => onSave({ title: title.trim(), dueAt: dueAt || null })}
         >
           Add to planner
         </Button>
@@ -958,7 +1006,7 @@ function Sheet({
       role="dialog"
     >
       <div
-        className="max-h-[85vh] w-full overflow-y-auto rounded-t-3xl border-t border-border bg-card p-4"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-t-3xl border-t border-border bg-card p-4 text-card-foreground"
         onClick={(event) => event.stopPropagation()}
         style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
       >
@@ -971,6 +1019,10 @@ function Sheet({
   );
 }
 
+/** Clearance from the edge of the visible viewport, and from the passage. */
+const MARGIN = 12;
+const GAP = 10;
+
 /**
  * The four things you can do with a selection, and nothing else.
  *
@@ -978,6 +1030,22 @@ function Sheet({
  * deliberately not here: the four question types live on the Ask surface,
  * behind the AI action, so selecting a sentence does not present eight choices
  * at once on a phone.
+ *
+ * Its colours come from the book, not the app.
+ *
+ * The reader shell sets a text colour belonging to the reading theme — cream
+ * on dark paper, near-black on light — and this drew itself on `bg-card`,
+ * which follows the app theme instead. The two are independent axes, so a book
+ * read on dark paper in a light app produced cream labels on a white surface:
+ * the actions were there, and invisible. Pairing the surface with its own
+ * foreground made them legible, and left a bright white slab lying across a
+ * book being read at night, which is the one thing the dark paper exists to
+ * avoid. A thing drawn over the page belongs to the page, so it takes
+ * `READER_THEMES[theme].surface` and the app theme does not reach it at all.
+ *
+ * It is placed against the passage rather than pinned to the bottom, and
+ * measured against `visualViewport` — the layout viewport runs underneath the
+ * browser's own chrome and, with a keyboard up, underneath that too.
  *
  * The whole row has to fit across a phone, and "fit" cannot depend on how wide
  * a particular font renders four words. The actions share the width equally
@@ -989,6 +1057,8 @@ function Sheet({
  */
 function SelectionBar({
   aiAllowed,
+  anchor,
+  theme,
   onHighlight,
   onNote,
   onTask,
@@ -996,29 +1066,129 @@ function SelectionBar({
   onDismiss,
 }: {
   aiAllowed: boolean;
+  anchor: SelectionAnchor | null;
+  theme: ReaderTheme;
   onHighlight: () => void;
   onNote: () => void;
   onTask: () => void;
   onAsk: () => void;
   onDismiss: () => void;
 }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const bar = barRef.current;
+      if (!bar) return;
+      const height = bar.offsetHeight;
+      /*
+       * The visual viewport, not the layout one. On a phone the layout
+       * viewport runs underneath the browser's own bottom bar and, when the
+       * keyboard is up, underneath that too — so a toolbar placed against the
+       * bottom of the layout viewport is placed somewhere the reader cannot
+       * see or tap. `visualViewport` is the part actually on screen.
+       */
+      const viewport = window.visualViewport;
+      const visibleTop = viewport?.offsetTop ?? 0;
+      const visibleBottom =
+        visibleTop + (viewport?.height ?? window.innerHeight);
+      const highest = visibleTop + MARGIN;
+      const lowest = Math.max(highest, visibleBottom - MARGIN - height);
+
+      const next = !anchor
+        ? lowest
+        : anchor.top - GAP - height >= highest
+          ? // Above the passage: the reading position is preserved, and the
+            // words being acted on stay visible.
+            anchor.top - GAP - height
+          : anchor.bottom + GAP <= lowest
+            ? // Below it, when there is no room above.
+              anchor.bottom + GAP
+            : // A selection tall enough to leave no room either side. Put the
+              // toolbar in whichever half has less of it.
+              anchor.top > (visibleTop + visibleBottom) / 2
+              ? highest
+              : lowest;
+
+      setTop(Math.min(Math.max(next, highest), lowest));
+    };
+
+    place();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", place);
+    viewport?.addEventListener("scroll", place);
+    window.addEventListener("resize", place);
+    return () => {
+      viewport?.removeEventListener("resize", place);
+      viewport?.removeEventListener("scroll", place);
+      window.removeEventListener("resize", place);
+    };
+  }, [anchor]);
+
   return (
     <div
-      className="pointer-events-auto absolute inset-x-3 bottom-24 z-50 flex items-center gap-0.5 rounded-2xl border border-border bg-card p-1.5 shadow-lift"
+      /*
+       * `inset-x-3` rather than a width: the row is as wide as the screen
+       * allows and no wider, so it cannot be clipped at an edge or push the
+       * page sideways however long the labels are.
+       */
+      className={cn(
+        "pointer-events-auto absolute inset-x-3 z-50 flex items-center gap-0.5 rounded-2xl border p-1.5 shadow-lift",
+        /*
+         * The book's colours, not the app's. This floats directly over the
+         * page: on `bg-card` it was a bright white slab across a book being
+         * read on dark paper — the one thing the dark paper exists to avoid —
+         * and a near-black one over a light book in a dark app.
+         */
+        READER_THEMES[theme].surface,
+      )}
+      ref={barRef}
       role="toolbar"
       aria-label="Selection actions"
+      style={{
+        // `useLayoutEffect` runs before paint, so the measured position is the
+        // first one drawn; the fallback is only for the frame before hydration.
+        top: top ?? undefined,
+        bottom:
+          top === null ? "calc(6rem + env(safe-area-inset-bottom))" : undefined,
+      }}
     >
-      <SelectionAction icon={Highlighter} label="Highlight" onClick={onHighlight} />
-      <SelectionAction icon={StickyNote} label="Note" onClick={onNote} />
-      <SelectionAction icon={ListChecks} label="Task" onClick={onTask} />
+      <SelectionAction
+        icon={Highlighter}
+        label="Highlight"
+        onClick={onHighlight}
+        theme={theme}
+      />
+      <SelectionAction
+        icon={StickyNote}
+        label="Note"
+        onClick={onNote}
+        theme={theme}
+      />
+      <SelectionAction
+        icon={ListChecks}
+        label="Task"
+        onClick={onTask}
+        theme={theme}
+      />
       {/* Absent, not disabled, when the licence forbids it — a greyed button
           invites a question the reader cannot resolve. */}
       {aiAllowed ? (
-        <SelectionAction icon={Sparkles} label="AI" onClick={onAsk} />
+        <SelectionAction
+          icon={Sparkles}
+          label="AI"
+          onClick={onAsk}
+          theme={theme}
+        />
       ) : null}
       <button
         aria-label="Dismiss"
-        className="grid h-9 w-8 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        className={cn(
+          "grid h-9 w-8 shrink-0 place-items-center rounded-full transition",
+          READER_THEMES[theme].muted,
+          READER_THEMES[theme].hover,
+        )}
         onClick={onDismiss}
         type="button"
       >
@@ -1032,17 +1202,23 @@ function SelectionAction({
   icon: Icon,
   label,
   onClick,
+  theme,
 }: {
   icon: typeof Highlighter;
   label: string;
   onClick: () => void;
+  theme: ReaderTheme;
 }) {
   return (
     <button
       // `min-w-0` is what actually lets this shrink: a flex item defaults to
       // its content's minimum width, which is how a row of four labelled
       // actions ends up wider than the phone it is on.
-      className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-1.5 text-xs font-bold transition hover:bg-muted active:scale-[0.98] motion-reduce:transform-none"
+      className={cn(
+        "inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-1.5 text-xs font-bold transition active:scale-[0.98] motion-reduce:transform-none",
+        // Inherits the toolbar's foreground; only the hover needs the theme.
+        READER_THEMES[theme].hover,
+      )}
       onClick={onClick}
       type="button"
     >
@@ -1077,14 +1253,24 @@ function ReaderPanel({
   notesHref: string;
 }) {
   return (
-    <div className="mx-3 max-h-[46vh] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-lift">
+    <div
+      className={cn(
+        "mx-3 max-h-[46vh] overflow-y-auto rounded-2xl border p-3 shadow-lift",
+        // Opens over the page, so it takes the page's colours for the same
+        // reason the selection toolbar does.
+        READER_THEMES[theme].surface,
+      )}
+    >
       {panel === "toc" ? (
         <ul className="space-y-1">
           {toc.length ? (
             toc.map((item) => (
               <li key={item.href}>
                 <button
-                  className="w-full rounded-xl px-3 py-2 text-left text-sm font-bold hover:bg-muted"
+                  className={cn(
+                    "w-full rounded-xl px-3 py-2 text-left text-sm font-bold",
+                    READER_THEMES[theme].hover,
+                  )}
                   onClick={() => onGo(item.href)}
                   type="button"
                 >
@@ -1093,7 +1279,12 @@ function ReaderPanel({
               </li>
             ))
           ) : (
-            <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+            <li
+              className={cn(
+                "px-3 py-6 text-center text-sm",
+                READER_THEMES[theme].muted,
+              )}
+            >
               This book has no table of contents.
             </li>
           )}
@@ -1102,11 +1293,14 @@ function ReaderPanel({
 
       {panel === "marks" ? (
         <div className="space-y-3">
-          <Section title="Bookmarks">
+          <Section theme={theme} title="Bookmarks">
             {bookmarks.length ? (
               bookmarks.map((mark) => (
                 <button
-                  className="block w-full truncate rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
+                  className={cn(
+                    "block w-full truncate rounded-xl px-3 py-2 text-left text-sm",
+                    READER_THEMES[theme].hover,
+                  )}
                   key={mark.id}
                   onClick={() => onGo(mark.locator)}
                   type="button"
@@ -1115,14 +1309,17 @@ function ReaderPanel({
                 </button>
               ))
             ) : (
-              <Empty>No bookmarks yet.</Empty>
+              <Empty theme={theme}>No bookmarks yet.</Empty>
             )}
           </Section>
-          <Section title="Highlights and notes">
+          <Section theme={theme} title="Highlights and notes">
             {notes.length ? (
               notes.map((note) => (
                 <button
-                  className="block w-full rounded-xl px-3 py-2 text-left hover:bg-muted"
+                  className={cn(
+                    "block w-full rounded-xl px-3 py-2 text-left",
+                    READER_THEMES[theme].hover,
+                  )}
                   key={note.id}
                   onClick={() => note.locator && onGo(note.locator)}
                   type="button"
@@ -1131,7 +1328,12 @@ function ReaderPanel({
                     {note.highlight ?? note.body}
                   </span>
                   {note.highlight && note.body ? (
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    <span
+                      className={cn(
+                        "mt-0.5 block truncate text-xs",
+                        READER_THEMES[theme].muted,
+                      )}
+                    >
                       {note.body}
                     </span>
                   ) : null}
@@ -1144,7 +1346,9 @@ function ReaderPanel({
                 </button>
               ))
             ) : (
-              <Empty>Select text in the book to highlight it.</Empty>
+              <Empty theme={theme}>
+                Select text in the book to highlight it.
+              </Empty>
             )}
           </Section>
         </div>
@@ -1153,33 +1357,54 @@ function ReaderPanel({
       {panel === "type" ? (
         <div className="space-y-4 p-1">
           <div>
-            <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
+            <p
+              className={cn(
+                "mb-2 text-xs font-black uppercase tracking-[0.12em]",
+                READER_THEMES[theme].muted,
+              )}
+            >
               Text size
             </p>
             <div className="flex items-center gap-2">
-              <Button
+              {/* Plain buttons rather than Kondo's: everything in this panel
+                  is drawn on the book's surface, and an app-themed control
+                  brings the app's foreground with it. */}
+              <button
                 aria-label="Smaller text"
+                className={cn(
+                  "rounded-xl border px-3 py-1.5 text-sm font-black",
+                  READER_THEMES[theme].line,
+                  READER_THEMES[theme].hover,
+                )}
                 onClick={() => onFontSize(Math.max(70, fontSize - 10))}
-                size="sm"
-                variant="secondary"
+                type="button"
               >
                 A−
-              </Button>
+              </button>
               <span className="text-sm font-black tabular-nums">
                 {fontSize}%
               </span>
-              <Button
+              <button
                 aria-label="Larger text"
+                className={cn(
+                  "rounded-xl border px-3 py-1.5 text-sm font-black",
+                  READER_THEMES[theme].line,
+                  READER_THEMES[theme].hover,
+                )}
                 onClick={() => onFontSize(Math.min(180, fontSize + 10))}
-                size="sm"
-                variant="secondary"
+                type="button"
               >
                 A+
-              </Button>
+              </button>
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
+            <p
+              className={cn(
+                "mb-2 text-xs font-black uppercase tracking-[0.12em]",
+                READER_THEMES[theme].muted,
+              )}
+            >
               Theme
             </p>
             <div className="flex gap-2">
@@ -1188,7 +1413,10 @@ function ReaderPanel({
                   aria-pressed={theme === key}
                   className={cn(
                     "rounded-xl border px-3 py-2 text-xs font-bold capitalize",
-                    theme === key ? "border-kondo-green" : "border-border",
+                    theme === key
+                      ? "border-kondo-green"
+                      : READER_THEMES[theme].line,
+                    READER_THEMES[theme].hover,
                   )}
                   key={key}
                   onClick={() => onTheme(key)}
@@ -1202,29 +1430,38 @@ function ReaderPanel({
         </div>
       ) : null}
 
-      <Button
-        className="mt-3"
-        fullWidth
+      <button
+        className={cn(
+          "mt-3 w-full rounded-xl py-2 text-sm font-bold",
+          READER_THEMES[theme].muted,
+          READER_THEMES[theme].hover,
+        )}
         onClick={onClose}
-        size="sm"
-        variant="ghost"
+        type="button"
       >
         Close
-      </Button>
+      </button>
     </div>
   );
 }
 
 function Section({
   title,
+  theme,
   children,
 }: {
   title: string;
+  theme: ReaderTheme;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <p className="mb-1 px-3 text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
+      <p
+        className={cn(
+          "mb-1 px-3 text-xs font-black uppercase tracking-[0.12em]",
+          READER_THEMES[theme].muted,
+        )}
+      >
         {title}
       </p>
       {children}
@@ -1232,9 +1469,20 @@ function Section({
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
+function Empty({
+  theme,
+  children,
+}: {
+  theme: ReaderTheme;
+  children: React.ReactNode;
+}) {
   return (
-    <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+    <p
+      className={cn(
+        "px-3 py-4 text-center text-sm",
+        READER_THEMES[theme].muted,
+      )}
+    >
       {children}
     </p>
   );

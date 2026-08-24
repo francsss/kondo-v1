@@ -1,4 +1,8 @@
-import { Prisma, type MediaPurpose } from "@prisma/client";
+import {
+  Prisma,
+  type ConversationType,
+  type MediaPurpose,
+} from "@prisma/client";
 import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
@@ -67,6 +71,26 @@ export class MessagingError extends Error {
     super(message);
     this.name = "MessagingError";
   }
+}
+
+/**
+ * Conversation types that behave like a private thread between two people.
+ *
+ * `DIRECT` and `MARKETPLACE` share every mechanic — messages, attachments,
+ * read state, blocking, notifications — and differ only in where they are
+ * listed. Everything that reads or writes a thread accepts both; only the
+ * inbox projections filter by type, which is what keeps a listing negotiation
+ * out of a member's ordinary Messages.
+ */
+export const TWO_PARTY_CONVERSATION_TYPES = [
+  "DIRECT",
+  "MARKETPLACE",
+] as const satisfies readonly ConversationType[];
+
+function isTwoPartyConversation(type: ConversationType) {
+  return (TWO_PARTY_CONVERSATION_TYPES as readonly ConversationType[]).includes(
+    type,
+  );
 }
 
 export function directConversationKey(
@@ -294,6 +318,12 @@ async function persistMessage(
     notificationType?: "MESSAGE" | "MARKETPLACE_UPDATE" | "HOUSING";
     templateKey?: "MESSAGE_NEW" | "MARKETPLACE_CONTACT" | "HOUSING_INQUIRY";
     notificationData?: Record<string, string>;
+    /**
+     * Where the notification should land. Defaults to the Messages thread; a
+     * marketplace conversation lives under Marketplace instead, and sending
+     * someone to `/messages/<id>` for one would bounce them.
+     */
+    href?: string;
   },
 ) {
   if (input.clientMessageId) {
@@ -375,7 +405,7 @@ async function persistMessage(
       actorName: input.senderName,
       preview: messagePreview(input.body, media?.attachmentName),
     },
-    href: `/messages/${input.conversationId}`,
+    href: input.href ?? `/messages/${input.conversationId}`,
     dedupeKey: `message:${message.id}`,
   });
 
@@ -392,8 +422,13 @@ export async function createDirectMessage(input: {
   body?: string;
   mediaId?: string;
   clientMessageId?: string;
+  /**
+   * Marketplace is deliberately absent. A listing conversation is its own
+   * scoped thread now (`openMarketplaceConversation`); routing one through a
+   * direct message is what used to drop the listing and mix the negotiation
+   * into the buyer's ordinary Messages.
+   */
   sourceType?:
-    | "MARKETPLACE_LISTING"
     | "HOUSING_LISTING"
     | "ROOMMATE_INTEREST"
     | "ORGANIZATION_PRODUCT"
@@ -403,7 +438,6 @@ export async function createDirectMessage(input: {
   await ensureCanMessage(input.senderId, input.recipientId);
   const [
     sender,
-    listing,
     housingListing,
     roommateInterest,
     organizationProduct,
@@ -413,18 +447,6 @@ export async function createDirectMessage(input: {
       where: { id: input.senderId },
       select: { firstName: true, lastName: true },
     }),
-    input.sourceType === "MARKETPLACE_LISTING" && input.sourceId
-      ? prisma.marketplaceListing.findFirst({
-          where: {
-            id: input.sourceId,
-            sellerId: input.recipientId,
-            status: "ACTIVE",
-            expiresAt: { gt: new Date() },
-            category: { isActive: true },
-          },
-          select: { id: true, title: true },
-        })
-      : null,
     input.sourceType === "HOUSING_LISTING" && input.sourceId
       ? prisma.housingListing.findFirst({
           where: {
@@ -506,9 +528,6 @@ export async function createDirectMessage(input: {
       : null,
   ]);
   if (!sender) throw new MessagingError("Sender not found.", 404);
-  if (input.sourceType === "MARKETPLACE_LISTING" && !listing) {
-    throw new MessagingError("Marketplace listing not found.", 404);
-  }
   if (input.sourceType === "HOUSING_LISTING" && !housingListing) {
     throw new MessagingError("Housing listing not found.", 404);
   }
@@ -553,27 +572,14 @@ export async function createDirectMessage(input: {
         mediaId: input.mediaId,
         clientMessageId: input.clientMessageId,
         senderName: `${sender.firstName} ${sender.lastName}`,
-        notificationType: listing
-          ? "MARKETPLACE_UPDATE"
-          : housingListing
-            ? "HOUSING"
-            : "MESSAGE",
-        templateKey: listing
-          ? "MARKETPLACE_CONTACT"
-          : housingListing
-            ? "HOUSING_INQUIRY"
-            : "MESSAGE_NEW",
-        notificationData: listing
+        notificationType: housingListing ? "HOUSING" : "MESSAGE",
+        templateKey: housingListing ? "HOUSING_INQUIRY" : "MESSAGE_NEW",
+        notificationData: housingListing
           ? {
               actorName: `${sender.firstName} ${sender.lastName}`,
-              listingTitle: listing.title,
+              listingTitle: housingListing.title,
             }
-          : housingListing
-            ? {
-                actorName: `${sender.firstName} ${sender.lastName}`,
-                listingTitle: housingListing.title,
-              }
-            : undefined,
+          : undefined,
       });
     });
     if (!result.deduplicated) {
@@ -594,13 +600,6 @@ export async function createDirectMessage(input: {
           ? captureServerProductEvent({
               distinctId: input.senderId,
               event: PRODUCT_EVENTS.MESSAGE_IMAGE_SENT,
-            })
-          : Promise.resolve(),
-        listing
-          ? trackEvent({
-              name: "LISTING_CONTACTED",
-              userId: input.senderId,
-              properties: { listingId: listing.id },
             })
           : Promise.resolve(),
       ]);
@@ -648,7 +647,7 @@ export async function replyToConversation(input: {
     throw new MessagingError("Conversation not found.", 404);
   }
   if (
-    membership.conversation.type !== "DIRECT" ||
+    !isTwoPartyConversation(membership.conversation.type) ||
     membership.conversation.participants.length !== 2
   ) {
     throw new MessagingError("Conversation is unavailable.", 409);
@@ -661,11 +660,21 @@ export async function replyToConversation(input: {
     throw new MessagingError("Conversation recipient not found.", 409);
   }
   await ensureCanMessage(input.senderId, recipientId);
-  const sender = await prisma.user.findUnique({
-    where: { id: input.senderId },
-    select: { firstName: true, lastName: true },
-  });
+  const isMarketplace = membership.conversation.type === "MARKETPLACE";
+  const [sender, inquiry] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: input.senderId },
+      select: { firstName: true, lastName: true },
+    }),
+    isMarketplace
+      ? prisma.marketplaceInquiry.findUnique({
+          where: { conversationId: input.conversationId },
+          select: { listing: { select: { title: true } } },
+        })
+      : null,
+  ]);
   if (!sender) throw new MessagingError("Sender not found.", 404);
+  const senderName = `${sender.firstName} ${sender.lastName}`;
 
   try {
     const result = await prisma.$transaction((tx) =>
@@ -676,7 +685,21 @@ export async function replyToConversation(input: {
         body: input.body,
         mediaId: input.mediaId,
         clientMessageId: input.clientMessageId,
-        senderName: `${sender.firstName} ${sender.lastName}`,
+        senderName,
+        // Same notification pipeline as any other message; only the wording
+        // and the destination change, so a buyer's question is recognisable
+        // as one and lands on the thread that carries the listing.
+        ...(inquiry
+          ? {
+              notificationType: "MARKETPLACE_UPDATE" as const,
+              templateKey: "MARKETPLACE_CONTACT" as const,
+              notificationData: {
+                actorName: senderName,
+                listingTitle: inquiry.listing.title,
+              },
+              href: `/marketplace/messages/${input.conversationId}`,
+            }
+          : {}),
       }),
     );
     if (!result.deduplicated) {
@@ -731,8 +754,12 @@ export async function getInbox(
     userId,
     deletedAt: null,
     archivedAt: input.archived ? { not: null } : null,
+    // Messages is the ordinary inbox. Marketplace threads are conversations in
+    // every other respect, but they belong to the listing they are about and
+    // are listed in the Marketplace inbox instead.
     conversation: query
       ? {
+          type: "DIRECT",
           OR: [
             {
               participants: {
@@ -755,7 +782,7 @@ export async function getInbox(
             },
           ],
         }
-      : undefined,
+      : { type: "DIRECT" },
   };
   const [total, memberships] = await Promise.all([
     prisma.conversationParticipant.count({ where }),
@@ -843,12 +870,25 @@ export async function getInbox(
   };
 }
 
-export async function getUnreadMessageCount(userId: string) {
+/**
+ * Unread messages, counted within one inbox.
+ *
+ * The badge has to agree with the list it sits next to. Counting every unread
+ * message regardless of scope would put marketplace messages behind the
+ * Messages badge, where opening Messages would then show nothing to read.
+ */
+export async function getUnreadMessageCount(
+  userId: string,
+  scope: ConversationType = "DIRECT",
+) {
   const rows = await prisma.$queryRaw<Array<{ count: bigint }>>`
     SELECT COUNT(m."id")::bigint AS "count"
     FROM "ConversationParticipant" cp
+    JOIN "Conversation" c ON c."id" = cp."conversationId"
     JOIN "Message" m ON m."conversationId" = cp."conversationId"
     WHERE cp."userId" = ${userId}
+      AND c."type"::text = ${scope}
+      AND cp."deletedAt" IS NULL
       AND m."senderId" <> ${userId}
       AND (cp."lastReadAt" IS NULL OR m."createdAt" > cp."lastReadAt")
       AND (cp."clearedAt" IS NULL OR m."createdAt" > cp."clearedAt")
@@ -892,7 +932,7 @@ export async function getConversationForUser(
   });
   if (
     !membership ||
-    membership.conversation.type !== "DIRECT" ||
+    !isTwoPartyConversation(membership.conversation.type) ||
     membership.conversation.participants.length !== 2
   ) {
     return null;
@@ -955,7 +995,7 @@ export async function getConversationMessagesForUser(input: {
   });
   if (
     !membership ||
-    membership.conversation.type !== "DIRECT" ||
+    !isTwoPartyConversation(membership.conversation.type) ||
     membership.conversation._count.participants !== 2
   ) {
     throw new MessagingError("Conversation not found.", 404);

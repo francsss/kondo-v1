@@ -35,15 +35,11 @@ export function MessageComposer({
   conversationId,
   recipientId,
   disabled = false,
-  sourceType,
-  sourceId,
   onMessageSent,
 }: {
   conversationId?: string;
   recipientId?: string;
   disabled?: boolean;
-  sourceType?: "MARKETPLACE_LISTING";
-  sourceId?: string;
   onMessageSent?: (message: SentMessagePayload) => void;
 }) {
   const router = useRouter();
@@ -188,7 +184,6 @@ export function MessageComposer({
                   recipientId,
                   ...(message ? { body: message } : {}),
                   ...(mediaId ? { mediaId } : {}),
-                  ...(sourceType && sourceId ? { sourceType, sourceId } : {}),
                 },
           ),
         },

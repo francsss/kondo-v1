@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, MapPin, Sparkles } from "lucide-react";
-import { HomeActivityIntro } from "@/components/features/activity/HomeActivityIntro";
+import { LiveActivityStream } from "@/components/features/activity/LiveActivityStream";
+import { HomeWelcome } from "@/components/features/home/HomeWelcome";
 import { JourneyNavigator } from "@/components/features/navigator/JourneyNavigator";
 import { PostComposer } from "@/components/features/community/PostComposer";
 import { FeedPost } from "@/components/features/community/FeedPost";
@@ -458,13 +459,25 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-[1480px] px-3 pb-28 pt-6 sm:px-5 lg:px-6 lg:pb-16 lg:pt-8 xl:px-7">
-      <HomeActivityIntro
-        activities={activities}
-        chinaDate={chinaDate}
-        communities={composerCommunities}
-        firstName={user.firstName}
-        generatedAt={new Date().toISOString()}
-      />
+      {/*
+       * The greeting and the activity stream both sit here, in the flow, above
+       * whichever section this member's Journey leads with. They used to be one
+       * timed component: the greeting showed, a 2.4s timer swapped it for the
+       * stream, and the container animated its height between the two — so the
+       * whole page shifted several seconds after it had apparently settled.
+       * Rendering both, once, removes the shift without losing either.
+       */}
+      <div className="space-y-4">
+        <HomeWelcome
+          chinaDate={chinaDate}
+          firstName={user.firstName}
+          journeyGroup={navigator.journey.group}
+        />
+        <LiveActivityStream
+          generatedAt={new Date().toISOString()}
+          initialActivities={activities}
+        />
+      </div>
       {sectionOrder.map((key) => sections[key])}
     </div>
   );

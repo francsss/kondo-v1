@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createDirectMessage, getUnreadMessageCount } from "@/lib/messaging";
+import { openMarketplaceConversation } from "@/lib/marketplace-messaging";
+import {
+  createDirectMessage,
+  getUnreadMessageCount,
+  replyToConversation,
+} from "@/lib/messaging";
 import {
   createNotificationAnnouncement,
   enqueueNotificationJob,
@@ -678,12 +683,18 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
       },
     });
     try {
-      const message = await createDirectMessage({
+      // A listing enquiry is its own scoped conversation now, not a direct
+      // message carrying a source hint: it has to notify the seller with the
+      // listing named, and point at the Marketplace thread rather than the
+      // Messages one, which would not render it.
+      const opened = await openMarketplaceConversation({
+        listingId: listing.id,
+        buyerId: fixture.actor.id,
+      });
+      await replyToConversation({
+        conversationId: opened.conversationId,
         senderId: fixture.actor.id,
-        recipientId: fixture.recipient.id,
         body: "Is this bicycle still available?",
-        sourceType: "MARKETPLACE_LISTING",
-        sourceId: listing.id,
       });
       await processNotificationJobs(20);
       const notifications = await prisma.notification.findMany({
@@ -699,10 +710,13 @@ postgresDescribe("Module 8 PostgreSQL notification foundation", () => {
         expect.objectContaining({
           type: "MARKETPLACE_UPDATE",
           body: "Ama Actor contacted you about Module 8 bicycle.",
-          href: `/messages/${message.conversationId}`,
+          href: `/marketplace/messages/${opened.conversationId}`,
         }),
       ]);
     } finally {
+      await prisma.marketplaceInquiry.deleteMany({
+        where: { listingId: listing.id },
+      });
       await prisma.marketplaceListing.delete({ where: { id: listing.id } });
       await prisma.marketplaceCategory.delete({ where: { id: category.id } });
       await prisma.city.delete({ where: { id: city.id } });

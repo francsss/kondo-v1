@@ -15,14 +15,10 @@ export const metadata: Metadata = { title: "New message" };
 export default async function NewMessagePage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    recipient?: string;
-    sourceType?: string;
-    sourceId?: string;
-  }>;
+  searchParams: Promise<{ recipient?: string }>;
 }) {
   const user = await requireUser();
-  const { recipient: recipientId, sourceType, sourceId } = await searchParams;
+  const { recipient: recipientId } = await searchParams;
   if (!recipientId || recipientId === user.id) redirect("/messages");
 
   const [recipient, existing] = await Promise.all([
@@ -88,17 +84,7 @@ export default async function NewMessagePage({
           </div>
         </div>
         <div className="p-4 sm:p-5">
-          <MessageComposer
-            recipientId={recipient.id}
-            sourceId={
-              sourceType === "MARKETPLACE_LISTING" ? sourceId : undefined
-            }
-            sourceType={
-              sourceType === "MARKETPLACE_LISTING"
-                ? "MARKETPLACE_LISTING"
-                : undefined
-            }
-          />
+          <MessageComposer recipientId={recipient.id} />
         </div>
       </Card>
     </div>

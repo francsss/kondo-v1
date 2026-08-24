@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Edit3, MapPin } from "lucide-react";
-import { MessageUserButton } from "@/components/features/messages/MessageUserButton";
+import { ContactSellerButton } from "@/components/features/marketplace/ContactSellerButton";
 import { ListingFavoriteButton } from "@/components/features/marketplace/ListingFavoriteButton";
 import { ListingReportButton } from "@/components/features/marketplace/ListingReportButton";
 import { Avatar } from "@/components/ui/Avatar";
@@ -143,13 +143,9 @@ export default async function ListingDetailPage({
               </Link>
             </Button>
           ) : (
-            <MessageUserButton
-              className="mt-5 w-full"
-              currentUserId={user.id}
-              label="Chat with seller"
-              sourceId={listing.id}
-              sourceType="MARKETPLACE_LISTING"
-              userId={listing.seller.id}
+            <ContactSellerButton
+              className="mt-5"
+              listingId={listing.id}
             />
           )}
           <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
