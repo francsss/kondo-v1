@@ -7,9 +7,9 @@ import { StudyEssentialError } from "@/lib/study-essentials";
  * Handing a reader the file, without handing it to everyone.
  *
  * The EPUB lives in Kondo's private object storage, never under `/public`, and
- * its key is never sent to a browser. What a reader receives is a signed URL
- * that stops working within minutes, issued only after the session and the
- * entitlement have both been checked on this side.
+ * its key is never sent to a browser. What a reader receives is a URL on
+ * Kondo's own origin, issued only after the session and the entitlement have
+ * both been checked, and re-checked on every request it makes.
  *
  * Vercel Blob was the suggested home for this. Kondo already stores every
  * other private object — media, documents, captures — in S3-compatible storage
@@ -87,7 +87,31 @@ export async function createStudyAssetAccess(input: {
   }
 
   const expiresAt = new Date(Date.now() + ACCESS_TTL_SECONDS * 1000);
-  const target = await getObjectStorage().createReadTarget({
+
+  /*
+   * The reader is always handed a URL on Kondo's own origin.
+   *
+   * It used to receive a presigned storage URL directly, and in production
+   * that is a cross-origin request the browser refuses before it reaches the
+   * bucket: a presigned URL carries no `Access-Control-Allow-Origin` unless
+   * the bucket has been given a CORS policy, and the reader sent
+   * `credentials: "include"`, which makes even a wildcard policy invalid. The
+   * failure surfaces as `TypeError: Failed to fetch` — no status, no server
+   * log, nothing to read — while the same code works perfectly in development,
+   * where the local driver issues no signed URL and the same-origin fallback
+   * below is taken instead.
+   *
+   * So the fallback is the path. Streaming costs one pass through the app for
+   * a file that is read once when a book opens, and buys a reader that does
+   * not depend on per-environment bucket configuration, does not send Kondo's
+   * session cookie to a storage vendor, and re-checks the entitlement on every
+   * request rather than trusting a URL for ten minutes.
+   *
+   * `createReadTarget` is still exercised so a misconfigured bucket is caught
+   * here, next to the code that can explain it, rather than as an opaque
+   * failure inside the reader.
+   */
+  await getObjectStorage().createReadTarget({
     objectKey: essential.assetKey,
     contentType:
       essential.assetContentType ??
@@ -100,36 +124,20 @@ export async function createStudyAssetAccess(input: {
     expiresAt,
   });
 
-  if (!target) {
-    /*
-     * The local storage driver issues no signed URLs, so the file is streamed
-     * through Kondo instead. That is not a weaker answer: the streaming route
-     * re-checks the session and the entitlement on every request, where a
-     * signed URL is checked once and then trusted until it expires. It is only
-     * avoided on S3 because proxying whole books through the app is wasteful,
-     * not because it is less safe.
-     */
-    return {
-      url: `/api/study/books/${input.slug}/file`,
-      expiresAt: expiresAt.toISOString(),
-      deliveryType: essential.deliveryType,
-      title: essential.title,
-    };
-  }
-
   return {
-    url: target.url,
-    expiresAt: target.expiresAt,
+    url: `/api/study/books/${input.slug}/file`,
+    expiresAt: expiresAt.toISOString(),
     deliveryType: essential.deliveryType,
     title: essential.title,
   };
 }
 
 /**
- * The bytes themselves, for environments without signed URLs.
+ * The bytes themselves.
  *
  * Separate from `createStudyAssetAccess` so the entitlement check runs again
- * here rather than being inherited from whoever produced the URL.
+ * here rather than being inherited from whoever produced the URL. This is what
+ * the reader actually fetches, so it is the check that matters.
  */
 export async function readStudyAssetBytes(input: {
   userId: string;

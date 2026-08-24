@@ -249,11 +249,41 @@ export function BookReader({
          * string, so both were being read as directories and the reader
          * requested `META-INF/container.xml` from the API.
          */
-        const fileResponse = await fetch(access.url, {
-          credentials: "include",
-        });
+        /*
+         * Credentials only ever go to Kondo.
+         *
+         * If this URL is ever a storage origin again, sending the session
+         * cookie there would both leak it and guarantee a CORS rejection: a
+         * credentialed request refuses a wildcard `Access-Control-Allow-Origin`,
+         * which is the only policy most buckets are given.
+         */
+        const sameOrigin = access.url.startsWith("/");
+        let fileResponse: Response;
+        try {
+          fileResponse = await fetch(
+            access.url,
+            sameOrigin ? { credentials: "include" } : { mode: "cors" },
+          );
+        } catch {
+          /*
+           * `fetch` rejects rather than returning a status when the browser
+           * refuses the request outright — CORS, CSP, or the network. The
+           * generic "failed to fetch" that surfaced from this is what made the
+           * original problem so hard to place, so it says which of those it
+           * was as far as the browser will admit.
+           */
+          throw new Error(
+            sameOrigin
+              ? "This book could not be downloaded. Check your connection and try again."
+              : "This book could not be downloaded: its storage refused the request.",
+          );
+        }
         if (!fileResponse.ok) {
-          throw new Error("This book could not be downloaded.");
+          throw new Error(
+            fileResponse.status === 403
+              ? "You do not have access to this book."
+              : `This book could not be downloaded (${fileResponse.status}).`,
+          );
         }
         const archive = await fileResponse.arrayBuffer();
 
