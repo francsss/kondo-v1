@@ -41,6 +41,9 @@ export async function listLibrary(userId: string) {
           shortDescription: true,
           category: true,
           format: true,
+          // Which reader a title needs. Without it every caller guessed, and
+          // the catalogue sent EPUBs to the chapter reader.
+          deliveryType: true,
           source: true,
           coverEmoji: true,
           imageUrl: true,

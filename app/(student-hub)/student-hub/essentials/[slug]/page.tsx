@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { StudyEssentialCover } from "@/components/features/student-hub/StudyEssentialCover";
 import { requireUser } from "@/lib/server-auth";
-import { ownsEssential } from "@/lib/study-workspace";
+import { prisma } from "@/lib/prisma";
+import { openHref, ownsEssential } from "@/lib/study-library";
 import {
   formatEssentialPrice,
   getStudyEssential,
@@ -45,8 +46,22 @@ export default async function StudyEssentialDetailPage({
   const price = formatEssentialPrice(essential.priceMinor, essential.currency);
   const orderable = isOrderable(essential);
   const digital = essential.format === "DIGITAL";
-  // Ownership comes from the one place that defines it: a PAID order.
+  // Ownership means either route: a paid order, or an entitlement. Asking
+  // only about orders showed "Buy this" to a member holding an entitlement for
+  // the book already on their shelf.
   const owned = await ownsEssential(user.id, essential.id);
+  const chapterCount = await prisma.studyEssentialChapter.count({
+    where: { essentialId: essential.id },
+  });
+  // Which reader this title needs is decided in one place. This page used to
+  // send every digital title to the chapter reader, EPUBs included — and an
+  // EPUB has no chapters, so it would have opened on nothing.
+  const openTo = openHref({
+    slug: essential.slug,
+    deliveryType: essential.deliveryType,
+    chapterCount,
+  });
+  const readable = openTo !== `/student-hub/essentials/${essential.slug}`;
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
@@ -142,13 +157,9 @@ export default async function StudyEssentialDetailPage({
                  to look like the store is not paying attention. */
               <Link
                 className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-black text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 motion-reduce:transform-none"
-                href={
-                  digital
-                    ? `/student-hub/essentials/read/${essential.slug}`
-                    : "/student-hub/essentials/library"
-                }
+                href={readable ? openTo : "/student-hub/essentials/library"}
               >
-                {digital ? "Open book" : "In your library"}
+                {readable ? "Open book" : "In your library"}
               </Link>
             ) : orderable ? (
               <Link
