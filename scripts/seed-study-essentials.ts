@@ -498,7 +498,7 @@ const CHAPTERS: Record<string, { title: string; body: string }[]> = {
   ],
 };
 
-async function main() {
+export async function seedStudyEssentials() {
   let created = 0;
   let updated = 0;
   for (const entry of CATALOGUE) {
@@ -536,11 +536,15 @@ async function main() {
   );
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Run directly as `npm run essentials:seed`; imported by the main seed so a
+// fresh checkout is not left with an empty store.
+if (process.argv[1]?.includes("seed-study-essentials")) {
+  seedStudyEssentials()
+    .catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -1,7 +1,7 @@
+import JSZip from "jszip";
+
 /**
- * Build a small, valid EPUB for development and tests.
- *
- *   node scripts/make-sample-epub.mjs [output.epub]
+ * A small, valid EPUB, built in memory.
  *
  * The content is Kondo's own writing, not a third party's. That is deliberate:
  * this repository should not carry someone else's book, and a fixture whose
@@ -10,19 +10,10 @@
  * so it exercises parsing, pagination, CFIs, highlights and progress the same
  * way a purchased title would.
  *
- * For the actual pilot, import a public-domain EPUB you have obtained from a
- * legitimate source (Project Gutenberg and Standard Ebooks both publish
- * Alice's Adventures in Wonderland) with:
- *
- *   npm run books:import -- ./alice.epub --slug alice-in-wonderland \
- *     --title "Alice's Adventures in Wonderland" --author "Lewis Carroll" \
- *     --ai-allowed --publish
+ * It lives here rather than in a script because two callers need the bytes
+ * without a file on disk: seeding, so a fresh checkout has something to read,
+ * and the end-to-end suite, so CI does too.
  */
-import { writeFileSync } from "node:fs";
-import JSZip from "jszip";
-
-const OUTPUT = process.argv[2] ?? "sample-book.epub";
-
 const CHAPTERS = [
   {
     id: "ch1",
@@ -53,13 +44,22 @@ const CHAPTERS = [
   },
 ];
 
-const zip = new JSZip();
+function buildZip() {
+  const zip = new JSZip();
+  // JSZip types `folder()` as nullable because it returns null for an invalid
+  // name. These names are literals, so a null here would be a bug in this
+  // file rather than a runtime condition worth threading through.
+  const folder = (name: string) => {
+    const created = zip.folder(name);
+    if (!created) throw new Error(`Could not create ${name} in the EPUB.`);
+    return created;
+  };
 
 // `mimetype` must be first and stored uncompressed. Readers that check the
 // magic bytes reject the file otherwise.
 zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 
-zip.folder("META-INF").file(
+folder("META-INF").file(
   "container.xml",
   `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -69,7 +69,7 @@ zip.folder("META-INF").file(
 </container>`,
 );
 
-const oebps = zip.folder("OEBPS");
+const oebps = folder("OEBPS");
 
 for (const chapter of CHAPTERS) {
   oebps.file(
@@ -124,11 +124,17 @@ ${CHAPTERS.map((c) => `        <li><a href="${c.id}.xhtml">${c.title}</a></li>`)
 </html>`,
 );
 
-const bytes = await zip.generateAsync({
-  type: "nodebuffer",
-  mimeType: "application/epub+zip",
-});
-writeFileSync(OUTPUT, bytes);
-console.log(
-  `Wrote ${OUTPUT} (${bytes.length} bytes, ${CHAPTERS.length} chapters)`,
-);
+
+  return zip;
+}
+
+export async function buildSampleEpub(): Promise<Uint8Array> {
+  const zip = buildZip();
+  const bytes = await zip.generateAsync({
+    type: "uint8array",
+    mimeType: "application/epub+zip",
+  });
+  return bytes;
+}
+
+export const SAMPLE_EPUB_CHAPTERS = CHAPTERS.length;

@@ -32,6 +32,19 @@ Open [http://localhost:3000](http://localhost:3000) on the Mac or use the Mac's 
 
 The development config allows Next.js client/HMR resources from private `192.168.x.x` origins. Additional development host patterns can be supplied through the comma-separated `KONDO_DEV_ORIGINS` environment variable if the LAN uses another address range.
 
+Seeding also fills the Study Essentials catalogue and creates one readable
+EPUB, granted to every demo account, so My Library and the Kondo reader work
+immediately. The book is generated rather than committed — books do not belong
+in git — and it is Kondo's own writing, so the checkout carries nobody else's
+work. To read a real public-domain title instead, obtain the EPUB from a
+legitimate source and import it:
+
+```bash
+npm run books:import -- ./alice.epub --slug alice-in-wonderland \
+  --title "Alice's Adventures in Wonderland" --author "Lewis Carroll" \
+  --ai-allowed --publish
+```
+
 The demo seed deletes existing data. It runs only when `KONDO_ALLOW_DESTRUCTIVE_SEED=true` is supplied explicitly and always refuses `NODE_ENV=production` or `VERCEL_ENV=production`, even if the opt-in is present. Never configure this opt-in in Vercel production.
 
 ## Demo accounts

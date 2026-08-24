@@ -11,6 +11,10 @@ import { COUNTRIES } from "../src/lib/countries";
 import { loadGuideContentPack } from "../src/lib/guide-content-pack-loader";
 import { assertDestructiveSeedAllowed } from "../src/lib/seed-safety";
 import { getObjectStorage } from "../src/lib/storage";
+import { buildSampleEpub } from "../src/lib/sample-epub";
+import { importBookEpub } from "../scripts/import-book-epub";
+import { grantEntitlement } from "../src/lib/study-entitlements";
+import { seedStudyEssentials } from "../scripts/seed-study-essentials";
 
 const prisma = new PrismaClient();
 const password = "ChangeMe123!";
@@ -1244,8 +1248,57 @@ async function main() {
       });
   }
 
+  /*
+   * Study Essentials, including something a student can actually open.
+   *
+   * The catalogue seeder existed but was never wired in, so a fresh checkout
+   * that followed the README got an empty store and an empty library. Worse,
+   * nothing anywhere created a readable book, which meant the EPUB reader —
+   * one of Kondo's larger features — was unreachable on a new machine no
+   * matter what you ran.
+   *
+   * The book is generated rather than committed. Books do not belong in git,
+   * and this one is Kondo's own writing, so a checkout gets a real EPUB with a
+   * real container, spine and CFIs without carrying anyone else's work. It is
+   * free and published, so any seeded member can open it immediately.
+   */
+  await seedStudyEssentials();
+  const sampleBook = await importBookEpub({
+    bytes: await buildSampleEpub(),
+    fileName: "kondo-sample-book.epub",
+    slug: "kondo-sample-book",
+    title: "A Sample Book for the Kondo Reader",
+    author: "Kondo",
+    priceMinor: 0,
+    aiAllowed: true,
+    publish: true,
+    client: prisma,
+  });
+
+  /*
+   * Put it on the demo members' shelves.
+   *
+   * A free title is readable by anyone, but My Library lists what a member has
+   * acquired or started — a book nobody has opened is not yet on anyone's
+   * shelf, which is right in production and unhelpful in a seed, where the
+   * point is to show the library working. Granting it is the real mechanism
+   * rather than a shortcut: the same `grantEntitlement` a payment calls, with
+   * the source recorded as a grant.
+   */
+  const sampleEssential = await prisma.studyEssential.findUniqueOrThrow({
+    where: { slug: sampleBook.slug },
+    select: { id: true },
+  });
+  for (const member of users) {
+    await grantEntitlement(prisma, {
+      userId: member.id,
+      essentialId: sampleEssential.id,
+      source: "GRANT",
+    });
+  }
+
   console.log(
-    `Seeded Kondo with ${users.length} users, ${communities.length} communities, ${listings.length} listings, ${guides.length} demo guides plus ${packResult.created} from the content pack (${packResult.archived} superseded archived), and 1 conversation.`,
+    `Seeded Kondo with ${users.length} users, ${communities.length} communities, ${listings.length} listings, ${guides.length} demo guides plus ${packResult.created} from the content pack (${packResult.archived} superseded archived), 1 conversation, the Study Essentials catalogue and one readable book (${sampleBook.slug}, ${sampleBook.bytes} bytes).`,
   );
 }
 

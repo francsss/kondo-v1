@@ -24,6 +24,15 @@ import { getObjectStorage } from "../src/lib/storage";
 
 const prisma = new PrismaClient();
 
+export type ImportedBook = {
+  slug: string;
+  status: string;
+  priceMinor: number | null;
+  objectKey: string;
+  bytes: number;
+  aiAllowed: boolean;
+};
+
 type Options = {
   file: string;
   slug: string;
@@ -60,86 +69,126 @@ function parseArgs(argv: string[]): Options {
   };
 }
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
-  if (!options.file.toLowerCase().endsWith(".epub")) {
-    throw new Error("That is not an .epub file.");
-  }
-  const info = await stat(options.file);
-  const bytes = await readFile(options.file);
+/**
+ * Put an EPUB into storage and the catalogue.
+ *
+ * Takes bytes rather than a path so that seeding and the end-to-end suite can
+ * import a generated book without writing a temporary file first, and so that
+ * there is one implementation of "a book exists now" rather than one per
+ * caller.
+ */
+export async function importBookEpub(input: {
+  bytes: Uint8Array;
+  fileName: string;
+  slug: string;
+  title: string;
+  author?: string | null;
+  priceMinor?: number;
+  aiAllowed?: boolean;
+  publish?: boolean;
+  language?: string;
+  client?: PrismaClient;
+}): Promise<ImportedBook> {
+  const db = input.client ?? prisma;
+  const language = input.language ?? "en";
+  const priceMinor = input.priceMinor ?? 0;
+  const aiAllowed = input.aiAllowed ?? false;
+  const publish = input.publish ?? false;
 
   // Namespaced and slugged, so two titles cannot collide and the key says what
   // it is when someone is looking at a bucket listing.
-  const objectKey = `books/${options.slug}/${basename(options.file)}`;
+  const objectKey = `books/${input.slug}/${basename(input.fileName)}`;
   const storage = getObjectStorage();
   // Replacing the file is the point of re-running an import — a corrected
-  // edition, or a re-imported fixture — so this asks for the overwrite.
-  await storage.write(objectKey, bytes, "application/epub+zip", {
+  // edition, or a re-seeded fixture — so this asks for the overwrite.
+  await storage.write(objectKey, input.bytes, "application/epub+zip", {
     overwrite: true,
   });
 
-  const essential = await prisma.studyEssential.upsert({
-    where: { slug: options.slug },
+  const essential = await db.studyEssential.upsert({
+    where: { slug: input.slug },
     update: {
-      title: options.title,
-      author: options.author ?? null,
-      language: options.language,
+      title: input.title,
+      author: input.author ?? null,
+      language,
       deliveryType: "EPUB",
       assetKey: objectKey,
       assetContentType: "application/epub+zip",
-      assetBytes: info.size,
-      aiAllowed: options.aiAllowed,
-      priceMinor: options.priceMinor,
-      status: options.publish ? "PUBLISHED" : "DRAFT",
-      publishedAt: options.publish ? new Date() : null,
+      assetBytes: input.bytes.byteLength,
+      aiAllowed,
+      priceMinor,
+      status: publish ? "PUBLISHED" : "DRAFT",
+      publishedAt: publish ? new Date() : null,
     },
     create: {
-      slug: options.slug,
-      title: options.title,
-      author: options.author ?? null,
-      language: options.language,
-      shortDescription: `${options.title}${options.author ? ` by ${options.author}` : ""}.`,
-      description: `${options.title}${options.author ? ` by ${options.author}` : ""}, read in Kondo.`,
+      slug: input.slug,
+      title: input.title,
+      author: input.author ?? null,
+      language,
+      shortDescription: `${input.title}${input.author ? ` by ${input.author}` : ""}.`,
+      description: `${input.title}${input.author ? ` by ${input.author}` : ""}, read in Kondo.`,
       category: "Reading",
       format: "DIGITAL",
       source: "KONDO",
-      status: options.publish ? "PUBLISHED" : "DRAFT",
-      publishedAt: options.publish ? new Date() : null,
-      priceMinor: options.priceMinor,
+      status: publish ? "PUBLISHED" : "DRAFT",
+      publishedAt: publish ? new Date() : null,
+      priceMinor,
       currency: "CNY",
       coverEmoji: "📖",
       deliveryType: "EPUB",
       assetKey: objectKey,
       assetContentType: "application/epub+zip",
-      assetBytes: info.size,
-      aiAllowed: options.aiAllowed,
+      assetBytes: input.bytes.byteLength,
+      aiAllowed,
       // The other three rights stay false. Reading is what was asked for.
       copyAllowed: false,
       downloadAllowed: false,
       printAllowed: false,
     },
-    select: { id: true, slug: true, status: true, priceMinor: true },
+    select: { slug: true, status: true, priceMinor: true },
   });
 
-  console.log(
-    JSON.stringify(
-      {
-        imported: essential.slug,
-        status: essential.status,
-        priceMinor: essential.priceMinor,
-        objectKey,
-        bytes: info.size,
-        aiAllowed: options.aiAllowed,
-      },
-      null,
-      2,
-    ),
-  );
+  return {
+    slug: essential.slug,
+    status: essential.status,
+    priceMinor: essential.priceMinor,
+    objectKey,
+    bytes: input.bytes.byteLength,
+    aiAllowed,
+  };
 }
 
-void main()
-  .catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
-    process.exitCode = 1;
-  })
-  .finally(() => prisma.$disconnect());
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  if (!options.file.toLowerCase().endsWith(".epub")) {
+    throw new Error("That is not an .epub file.");
+  }
+  await stat(options.file);
+  const bytes = await readFile(options.file);
+
+  const imported = await importBookEpub({
+    bytes,
+    fileName: options.file,
+    slug: options.slug,
+    title: options.title,
+    author: options.author,
+    priceMinor: options.priceMinor,
+    aiAllowed: options.aiAllowed,
+    publish: options.publish,
+    language: options.language,
+  });
+  console.log(JSON.stringify({ imported: imported.slug, ...imported }, null, 2));
+}
+
+// Only when invoked as a command. Seeding imports `importBookEpub` from this
+// module, and an unguarded `main()` ran the argument parser against the
+// seed's own argv — printing a usage error and leaving a successful seed with
+// a failing exit code.
+if (process.argv[1]?.includes("import-book-epub")) {
+  void main()
+    .catch((error) => {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    })
+    .finally(() => prisma.$disconnect());
+}

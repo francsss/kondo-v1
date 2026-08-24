@@ -34,7 +34,7 @@ setup("import an EPUB for the reader tests", async () => {
       env: { ...process.env, STORAGE_DRIVER: "local" },
     });
 
-  run("node", ["scripts/make-sample-epub.mjs", file]);
+  run("npx", ["tsx", "scripts/make-sample-epub.ts", file]);
   run("npx", [
     "tsx",
     "scripts/import-book-epub.ts",
