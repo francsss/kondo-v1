@@ -11,6 +11,10 @@ import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { hasOrganizationPermission } from "@/lib/organization-authorization";
 import { publicHousingListingWhere } from "@/lib/housing-visibility";
 import { publicOpportunityWhere } from "@/lib/opportunity-visibility";
+import {
+  publicOrganizationProductWhere,
+  publicOrganizationServiceWhere,
+} from "@/lib/organization-catalog-visibility";
 import { MediaPolicyError, validateMediaIntent } from "@/lib/media-policy";
 import {
   createMediaUploadToken,
@@ -935,6 +939,84 @@ export async function getMediaForDelivery(
       authorized = Boolean(membership);
     } else {
       authorized = publiclyAuthorized;
+    }
+  }
+  /*
+   * A catalog item's own pictures.
+   *
+   * These were reachable by nobody but the organization that uploaded them.
+   * The purpose is PRIVATE — correct, because an unpublished draft's photos
+   * are not public — but nothing here ever granted access once the item was
+   * published, and `visibility === "PUBLIC" || ownerId === viewer.id` is the
+   * only other route in. A restaurant would upload a photo of a dish, see it
+   * perfectly well on its own screen, publish it, and every student would get
+   * a 404 where the picture should be. Nothing logged an error: the image was
+   * stored, attached and returned in the API payload, and only the bytes were
+   * refused.
+   *
+   * Access follows the item rather than the asset, exactly as the gallery and
+   * opportunity branches do: published item on a live, published organization
+   * is public, and the organization's own staff can still see it while it is
+   * a draft.
+   */
+  if (
+    !authorized &&
+    (asset.attachmentType === "ORGANIZATION_PRODUCT" ||
+      asset.attachmentType === "ORGANIZATION_SERVICE") &&
+    asset.attachmentId
+  ) {
+    const isProduct = asset.attachmentType === "ORGANIZATION_PRODUCT";
+    const publicMatch = isProduct
+      ? await prisma.organizationProductMedia.findFirst({
+          where: {
+            mediaId: asset.id,
+            productId: asset.attachmentId,
+            product: publicOrganizationProductWhere,
+          },
+          select: { id: true },
+        })
+      : await prisma.organizationServiceMedia.findFirst({
+          where: {
+            mediaId: asset.id,
+            serviceId: asset.attachmentId,
+            service: publicOrganizationServiceWhere,
+          },
+          select: { id: true },
+        });
+    publiclyAuthorized = Boolean(publicMatch);
+    authorized = publiclyAuthorized;
+
+    // Staff keep access to their own drafts, so the picture is visible in the
+    // workspace before the item is published.
+    if (!authorized && viewer) {
+      const staffMatch = isProduct
+        ? await prisma.organizationProductMedia.findFirst({
+            where: {
+              mediaId: asset.id,
+              product: {
+                organization: {
+                  memberships: {
+                    some: { userId: viewer.id, status: "ACTIVE" },
+                  },
+                },
+              },
+            },
+            select: { id: true },
+          })
+        : await prisma.organizationServiceMedia.findFirst({
+            where: {
+              mediaId: asset.id,
+              service: {
+                organization: {
+                  memberships: {
+                    some: { userId: viewer.id, status: "ACTIVE" },
+                  },
+                },
+              },
+            },
+            select: { id: true },
+          });
+      authorized = Boolean(staffMatch);
     }
   }
   if (

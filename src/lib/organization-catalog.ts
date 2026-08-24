@@ -1185,6 +1185,8 @@ export async function getOrganizationCatalogProjection(
       : await prisma.organizationService.count({
           where: { organizationId, ...publicOrganizationServiceWhere },
         });
+  const coverOf = (item: (typeof items)[number]) =>
+    item.media.find((media) => media.cover) ?? item.media[0];
   return {
     available: total > 0,
     itemCount: total,
@@ -1195,8 +1197,11 @@ export async function getOrganizationCatalogProjection(
       context: `${item.priceLabel}${item.availabilityLabel ? ` · ${item.availabilityLabel}` : ""}`,
       // Already loaded with the record: the public profile shows the same
       // cover a visitor sees on the catalog page itself.
-      imageUrl:
-        (item.media.find((media) => media.cover) ?? item.media[0])?.url ?? null,
+      imageUrl: coverOf(item)?.url ?? null,
+      // Publishing a catalog image *requires* alt text, so throwing it away
+      // and rendering `alt=""` leaves a screen-reader user with nothing where
+      // the organization was obliged to describe the thing it is selling.
+      imageAlt: coverOf(item)?.altText ?? null,
     })),
     sectionRoute: total
       ? `/discover?type=${kind === "product" ? "products" : "services"}&organizationId=${organizationId}`
