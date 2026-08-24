@@ -86,7 +86,6 @@ export function StoryReader({
   const [copied, setCopied] = useState(false);
   const [loadErrors, setLoadErrors] = useState<Set<string>>(new Set());
   const [online, setOnline] = useState(true);
-  const [playbackProgress, setPlaybackProgress] = useState(0);
 
   const current = stories[activeIndex];
   const announcement = current
@@ -175,7 +174,6 @@ export function StoryReader({
         const index = Number((visible.target as HTMLElement).dataset.index);
         if (Number.isFinite(index) && observedActiveIndex.current !== index) {
           observedActiveIndex.current = index;
-          setPlaybackProgress(0);
           setActiveIndex(index);
         }
       },
@@ -272,16 +270,24 @@ export function StoryReader({
     setPaused(false);
   }
 
-  function onEnded(story: StoryFeedItem) {
-    if (!completed.current.has(story.id)) {
-      completed.current.add(story.id);
-      captureProductEvent(PRODUCT_EVENTS.STORY_COMPLETED, {
-        story_id: story.id,
-        duration_seconds: story.durationSeconds,
-        completion_percentage: 100,
-      });
-    }
-    moveTo(activeIndex + 1);
+  /**
+   * A reel that has been watched all the way through, counted once.
+   *
+   * A looping video never fires `ended`, so completion is noticed just before
+   * the loop point instead. This deliberately does not call `setState`: it ran
+   * on every `timeupdate`, several times a second, and re-rendered every panel
+   * in the feed to move a progress bar that no longer exists.
+   */
+  function onProgressTick(story: StoryFeedItem, video: HTMLVideoElement) {
+    if (completed.current.has(story.id)) return;
+    const duration = video.duration || story.durationSeconds;
+    if (duration <= 0 || video.currentTime < duration * 0.95) return;
+    completed.current.add(story.id);
+    captureProductEvent(PRODUCT_EVENTS.STORY_COMPLETED, {
+      story_id: story.id,
+      duration_seconds: story.durationSeconds,
+      completion_percentage: 100,
+    });
   }
 
   async function toggleInteraction(
@@ -412,29 +418,6 @@ export function StoryReader({
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-3 top-[max(0.35rem,env(safe-area-inset-top))] z-50 flex gap-1 sm:inset-x-5"
-      >
-        {stories.map((story, index) => (
-          <span
-            className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25"
-            key={story.id}
-          >
-            <span
-              className="block h-full rounded-full bg-white transition-[width] duration-150 motion-reduce:transition-none"
-              style={{
-                width:
-                  index < activeIndex
-                    ? "100%"
-                    : index === activeIndex
-                      ? `${playbackProgress}%`
-                      : "0%",
-              }}
-            />
-          </span>
-        ))}
-      </div>
       <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-5">
         <Button
           aria-label="Return to the previous page"
@@ -498,10 +481,12 @@ export function StoryReader({
                     aria-label={story.title}
                     className="relative h-full w-full object-contain"
                     controls={false}
-                    loop={false}
+                    loop
                     muted={muted}
                     onClick={() => setPaused((value) => !value)}
-                    onEnded={() => onEnded(story)}
+                    onTimeUpdate={(event) => {
+                      if (active) onProgressTick(story, event.currentTarget);
+                    }}
                     onError={() =>
                       setLoadErrors((values) => new Set(values).add(story.id))
                     }
@@ -509,16 +494,6 @@ export function StoryReader({
                       if (active) setPaused(true);
                     }}
                     onPlaying={() => onPlaying(story)}
-                    onTimeUpdate={(event) => {
-                      if (!active) return;
-                      const video = event.currentTarget;
-                      const duration = video.duration || story.durationSeconds;
-                      if (duration > 0) {
-                        setPlaybackProgress(
-                          Math.min(100, (video.currentTime / duration) * 100),
-                        );
-                      }
-                    }}
                     playsInline
                     poster={story.posterUrl ?? undefined}
                     preload={active ? "auto" : "metadata"}

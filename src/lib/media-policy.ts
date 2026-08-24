@@ -190,10 +190,26 @@ export const MEDIA_POLICIES: Record<MediaPurpose, MediaPolicy> = {
     kind: "VIDEO",
     visibility: "PUBLIC",
     maxBytes: 25 * 1024 * 1024,
+    /*
+     * What a phone actually produces, plus what a browser actually records.
+     *
+     * MP4 and MOV cover iOS and Android cameras. WebM is what
+     * `MediaRecorder` emits in Chrome and Firefox, so anything recorded in the
+     * browser rather than picked from a camera roll arrives as WebM — and it
+     * was refused, even though the validator has always been able to parse it
+     * and tell a video track from an audio-only one. That was a policy gap
+     * rather than a missing capability.
+     *
+     * The list stays closed on purpose. Every entry is a container a browser
+     * can play back without transcoding, which Kondo has no infrastructure
+     * for; admitting a format nobody can play would trade a clear rejection at
+     * upload for a silent black rectangle in the feed.
+     */
     mimeExtensions: {
       "video/mp4": ["mp4"],
       "video/quicktime": ["mov", "qt"],
       "video/x-m4v": ["m4v"],
+      "video/webm": ["webm"],
       "video/hevc": ["hevc", "h265", "mov", "mp4"],
       "video/h265": ["hevc", "h265", "mov", "mp4"],
     },

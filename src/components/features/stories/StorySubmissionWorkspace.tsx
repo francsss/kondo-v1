@@ -179,11 +179,15 @@ export function StorySubmissionWorkspace({
 
   function validateVideo(file: File) {
     const extension = file.name.split(".").pop()?.toLowerCase();
-    const supportedExtensions = ["mp4", "mov", "m4v", "hevc", "h265"];
+    // Mirrors STORY_VIDEO in media-policy. This is a courtesy check that
+    // fails fast in the picker; the server sniffs the actual bytes and is what
+    // actually decides, because a file name proves nothing.
+    const supportedExtensions = ["mp4", "mov", "m4v", "webm", "hevc", "h265"];
     const supportedMimeTypes = [
       "video/mp4",
       "video/quicktime",
       "video/x-m4v",
+      "video/webm",
       "video/hevc",
       "video/h265",
     ];
@@ -191,7 +195,7 @@ export function StorySubmissionWorkspace({
       !supportedMimeTypes.includes(file.type.toLowerCase()) &&
       !supportedExtensions.includes(extension ?? "")
     ) {
-      return "Choose a common mobile video (MP4, MOV, M4V, HEVC or H.265).";
+      return "Choose a common video (MP4, MOV, M4V, WebM, HEVC or H.265).";
     }
     if (file.size > 25 * 1024 * 1024) {
       return "Videos must be 25 MB or smaller.";
@@ -423,7 +427,7 @@ export function StorySubmissionWorkspace({
                   {video ? video.name : "Choose a mobile video"}
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  MP4, MOV, M4V, HEVC or H.265 · up to 3 minutes and 25 MB
+                  MP4, MOV, M4V, WebM, HEVC or H.265 · up to 3 minutes and 25 MB
                 </span>
               </button>
               <button
@@ -441,7 +445,7 @@ export function StorySubmissionWorkspace({
                 </span>
               </button>
               <input
-                accept="video/mp4,video/quicktime,video/x-m4v,video/hevc,video/h265,.mp4,.mov,.m4v,.hevc,.h265"
+                accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/hevc,video/h265,.mp4,.mov,.m4v,.webm,.hevc,.h265"
                 className="sr-only"
                 onChange={(event) => void selectVideo(event.target.files?.[0])}
                 ref={videoInputRef}

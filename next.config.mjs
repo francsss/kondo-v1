@@ -62,6 +62,24 @@ const contentSecurityPolicy = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["192.168.*.*", ...configuredDevOrigins],
+  /*
+   * Never hand a student a cached copy of their own data.
+   *
+   * The App Router keeps rendered payloads for routes already visited and
+   * reuses them on the next in-app navigation. For a marketing page that is
+   * free speed; for My Library, Notes or the Planner it means a screen that
+   * shows what was true when you last looked. Every one of those routes is
+   * already `force-dynamic`, which governs the server and says nothing about
+   * this cache, so the two settings have to agree.
+   *
+   * Stated rather than inherited on purpose: this is the behaviour Kondo
+   * depends on, and a framework default that changed underneath it would be a
+   * silent regression in exactly the screens where staleness is least
+   * acceptable.
+   */
+  experimental: {
+    staleTimes: { dynamic: 0, static: 180 },
+  },
   compress: true,
   poweredByHeader: false,
   serverExternalPackages: [

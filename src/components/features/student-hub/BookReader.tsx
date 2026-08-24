@@ -114,6 +114,9 @@ export function BookReader({
   const bookRef = useRef<unknown>(null);
   const renditionRef = useRef<EpubRendition | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  // The write the debounce is currently sitting on, so it can still be sent if
+  // the reader closes before the timer fires.
+  const pendingSaveRef = useRef<{ locator: string; percentage: number | null } | null>(null);
   // Built once from the table of contents and read on every page turn, so
   // naming the current chapter costs nothing per relocation.
   const chapterIndexRef = useRef<Map<string, string>>(new Map());
@@ -129,6 +132,8 @@ export function BookReader({
    * half-read book as "Not started".
    */
   const locationsReadyRef = useRef(false);
+  // Whether this session has written anything yet.
+  const hasSavedRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -156,32 +161,61 @@ export function BookReader({
    * is enough, and the same timer is flushed on unmount so closing the book
    * mid-chapter does not lose the last page.
    */
-  const scheduleSave = useCallback(
-    (cfi: string, percent: number | null) => {
-      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = window.setTimeout(() => {
-        void fetch(`/api/study/books/${slug}/reading`, {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          // `percentage` is omitted, not zeroed, when the location index is
-          // still building. Sending a zero here would tell the server someone
-          // who is halfway through a book has not started it.
-          body: JSON.stringify({
-            locator: cfi,
-            ...(percent === null ? {} : { percentage: percent }),
-          }),
-          keepalive: true,
-        }).catch(() => null);
-        // The slug and the percentage only — never the locator, which is a
-        // precise position inside a book someone is reading.
-        captureProductEvent(PRODUCT_EVENTS.BOOK_PROGRESS_SAVED, {
-          slug,
-          percentage: percent,
-        });
-      }, 2000);
+  const sendProgress = useCallback(
+    (locator: string, percentage: number | null) => {
+      pendingSaveRef.current = null;
+      void fetch(`/api/study/books/${slug}/reading`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        // `percentage` is omitted, not zeroed, when the location index is
+        // still building. Sending a zero here would tell the server someone
+        // who is halfway through a book has not started it.
+        body: JSON.stringify({
+          locator,
+          ...(percentage === null ? {} : { percentage }),
+        }),
+        // Survives the page being torn down, which is exactly when the last
+        // and most valuable write happens.
+        keepalive: true,
+      }).catch(() => null);
+      // The slug and the percentage only — never the locator, which is a
+      // precise position inside a book someone is reading.
+      captureProductEvent(PRODUCT_EVENTS.BOOK_PROGRESS_SAVED, {
+        slug,
+        percentage,
+      });
     },
     [slug],
+  );
+
+  const scheduleSave = useCallback(
+    (cfi: string, percent: number | null) => {
+      /*
+       * The first position of a session is written at once, not in two
+       * seconds.
+       *
+       * Debouncing every write means the fact that someone opened a book is
+       * unknown for as long as the debounce lasts — and "has this member
+       * started this book" is exactly what decides whether a free title
+       * appears on their shelf. Leaving quickly, or simply walking to My
+       * Library, could beat the write and show a library that did not have the
+       * book in it. Page turns after this one stay debounced: they update a
+       * position that already exists.
+       */
+      if (!hasSavedRef.current) {
+        hasSavedRef.current = true;
+        sendProgress(cfi, percent);
+        return;
+      }
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      pendingSaveRef.current = { locator: cfi, percentage: percent };
+      saveTimerRef.current = window.setTimeout(() => {
+        const pending = pendingSaveRef.current;
+        if (pending) sendProgress(pending.locator, pending.percentage);
+      }, 2000);
+    },
+    [sendProgress],
   );
 
   useEffect(() => {
@@ -399,7 +433,19 @@ export function BookReader({
     void open();
     return () => {
       cancelled = true;
+      /*
+       * Send the pending write rather than dropping it.
+       *
+       * Cancelling the timer here threw away the position of anyone who closed
+       * a book within two seconds of their last page turn — which is most
+       * people, because the last thing you do before leaving is turn a page.
+       * The write never happened, so the book never gained reading progress,
+       * and a free title never reached My Library at all. It looked exactly
+       * like a page that needed refreshing.
+       */
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      const pending = pendingSaveRef.current;
+      if (pending) sendProgress(pending.locator, pending.percentage);
       try {
         renditionRef.current?.destroy?.();
       } catch {
@@ -410,6 +456,38 @@ export function BookReader({
     // rendition imperatively below rather than by re-opening the book.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  /*
+   * Flush the pending position when the page goes away.
+   *
+   * React's cleanup does not run when the browser leaves the document, and on
+   * a phone the usual way to stop reading is not to navigate at all — it is to
+   * switch apps or lock the screen, which fires neither `unload` nor an
+   * unmount. `visibilitychange` is the only event iOS reliably delivers for
+   * that, and `pagehide` covers the tab actually closing. Both send through
+   * `keepalive`, which is what lets a request outlive the page.
+   */
+  useEffect(() => {
+    function flush() {
+      if (document.visibilityState !== "hidden") return;
+      const pending = pendingSaveRef.current;
+      if (!pending) return;
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      sendProgress(pending.locator, pending.percentage);
+    }
+    function flushOnPageHide() {
+      const pending = pendingSaveRef.current;
+      if (!pending) return;
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      sendProgress(pending.locator, pending.percentage);
+    }
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("pagehide", flushOnPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("pagehide", flushOnPageHide);
+    };
+  }, [sendProgress]);
 
   useEffect(() => {
     renditionRef.current?.themes?.fontSize?.(`${fontSize}%`);
