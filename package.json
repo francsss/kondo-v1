@@ -105,7 +105,8 @@
     "brace-expansion": "1.1.17",
     "postcss": "$postcss",
     "sharp": "$sharp",
-    "pdfjs-dist": "$pdfjs-dist"
+    "pdfjs-dist": "$pdfjs-dist",
+    "@xmldom/xmldom": "^0.8.15"
   },
   "allowScripts": {
     "@prisma/client@5.22.0": true,
