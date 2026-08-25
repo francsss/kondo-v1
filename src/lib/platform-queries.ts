@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { toSafePublicOfficialFields } from "@/lib/serializers";
 import {
   activeListingWhere,
+  listingImagesSelect,
   communityVisibilityWhere,
   publishedGuideWhere,
   publishedPostVisibilityWhere,
@@ -73,7 +74,7 @@ export async function getHomeData(userId: string) {
       prisma.marketplaceListing.findMany({
         where: activeListingWhere(),
         include: {
-          images: { orderBy: { order: "asc" }, take: 1 },
+          images: listingImagesSelect(1),
           category: { select: { name: true, icon: true } },
           city: { select: { name: true } },
           seller: { select: { firstName: true, lastName: true } },
@@ -235,7 +236,7 @@ export async function getMarketplaceData(userId: string) {
     prisma.marketplaceListing.findMany({
       where: activeListingWhere(),
       include: {
-        images: { orderBy: { order: "asc" }, take: 1 },
+        images: listingImagesSelect(1),
         category: true,
         city: { select: { name: true } },
         seller: {

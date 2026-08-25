@@ -191,12 +191,19 @@ function serializeCatalogRecord(
         : null,
     },
     city: row.city ?? row.organization.city,
-    media: row.media.map((item) => ({
-      id: item.id,
-      url: `/api/media/${item.mediaId}`,
-      altText: item.altText,
-      cover: item.kind === "COVER",
-    })),
+    /*
+     * Cover first, then the gallery in its own order. Cards show `media[0]`,
+     * and sort order alone put whichever picture happened to be attached first
+     * in front of the one the publisher chose to lead with.
+     */
+    media: row.media
+      .map((item) => ({
+        id: item.id,
+        url: `/api/media/${item.mediaId}`,
+        altText: item.altText,
+        cover: item.kind === "COVER",
+      }))
+      .sort((a, b) => Number(b.cover) - Number(a.cover)),
   };
 }
 

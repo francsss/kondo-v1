@@ -122,9 +122,20 @@ function compactRelativeTime(value: string, now: number) {
 export function LiveActivityStream({
   initialActivities,
   generatedAt,
+  lead,
 }: {
   initialActivities: HomeActivityItem[];
   generatedAt: string;
+  /**
+   * The first card in the rail.
+   *
+   * Home's greeting lives here rather than in a block above. It used to be its
+   * own section, which meant the top of the page was a heading, then a second
+   * heading, then the rail — and every time the greeting changed height the
+   * feed below it moved. Inside the rail it is simply the slide you start on,
+   * and nothing under it can be pushed anywhere.
+   */
+  lead?: React.ReactNode;
 }) {
   const reducedMotion = useReducedMotion();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -136,13 +147,34 @@ export function LiveActivityStream({
   const [focused, setFocused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [now, setNow] = useState(() => new Date(generatedAt).getTime());
+  // Read inside the refresh interval, which must not re-subscribe on every
+  // card change.
+  const activeIndexRef = useRef(0);
+  const leadCountRef = useRef(0);
   const paused = hovered || focused || interacting;
+
+  /*
+   * The lead slide is a card in the rail like any other, so every index here
+   * counts it. Leaving it out of the arithmetic would make autoplay skip the
+   * greeting on the way round and land one card short each cycle.
+   */
+  const leadCount = lead ? 1 : 0;
+  const cardCount = activities.length + leadCount;
 
   const scrollToActivity = useCallback(
     (index: number) => {
       const viewport = viewportRef.current;
-      if (!viewport || !activities.length) return;
-      const normalized = (index + activities.length) % activities.length;
+      if (!viewport || !cardCount) return;
+      /*
+       * Wrapping lands on the first activity, never back on the greeting. The
+       * greeting is somewhere you start, not somewhere the rail returns to on
+       * a timer.
+       */
+      const span = cardCount - leadCount;
+      const normalized =
+        index < leadCount
+          ? Math.max(0, Math.min(index, cardCount - 1))
+          : leadCount + ((((index - leadCount) % span) + span) % span);
       const card = viewport.querySelector<HTMLElement>(
         `[data-activity-index="${normalized}"]`,
       );
@@ -155,8 +187,15 @@ export function LiveActivityStream({
       });
       setActiveIndex(normalized);
     },
-    [activities.length, reducedMotion],
+    [cardCount, leadCount, reducedMotion],
   );
+
+  // Kept current for the 30s refresh below, which must not re-subscribe (and
+  // so reset its timer) every time a card scrolls past.
+  useEffect(() => {
+    activeIndexRef.current = activeIndex;
+    leadCountRef.current = leadCount;
+  }, [activeIndex, leadCount]);
 
   useEffect(() => {
     const relativeClock = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -164,13 +203,31 @@ export function LiveActivityStream({
   }, []);
 
   useEffect(() => {
-    if (paused || reducedMotion || activities.length < 2) return;
+    /*
+     * The greeting does not time out.
+     *
+     * Home's welcome used to be a block that a 2.4 second timer replaced, and
+     * putting it in an auto-advancing rail would have reproduced exactly that:
+     * a greeting that slides away on its own a few seconds after you arrive.
+     * So the rail rests on it, and starts cycling only once the member has
+     * moved off it themselves. Every later card still advances as before.
+     */
+    if (lead && activeIndex === 0) return;
+    if (paused || reducedMotion || cardCount - leadCount < 2) return;
     const autoplay = window.setInterval(
       () => scrollToActivity(activeIndex + 1),
       3_400,
     );
     return () => window.clearInterval(autoplay);
-  }, [activeIndex, activities.length, paused, reducedMotion, scrollToActivity]);
+  }, [
+    activeIndex,
+    cardCount,
+    lead,
+    leadCount,
+    paused,
+    reducedMotion,
+    scrollToActivity,
+  ]);
 
   useEffect(() => {
     const refresh = window.setInterval(async () => {
@@ -185,9 +242,13 @@ export function LiveActivityStream({
       const hasNewLead = next[0]?.id !== itemsRef.current[0]?.id;
       itemsRef.current = next;
       setActivities(next);
-      if (hasNewLead) {
-        setActiveIndex(0);
-        window.requestAnimationFrame(() => scrollToActivity(0));
+      // Only jump to a new arrival if the member is already reading the rail.
+      // Doing it while the greeting is showing would scroll it away for them.
+      if (hasNewLead && activeIndexRef.current > leadCountRef.current) {
+        setActiveIndex(leadCountRef.current);
+        window.requestAnimationFrame(() =>
+          scrollToActivity(leadCountRef.current),
+        );
       }
     }, 30_000);
     return () => window.clearInterval(refresh);
@@ -220,6 +281,8 @@ export function LiveActivityStream({
   if (!activities.length) {
     return (
       <section className="relative overflow-hidden rounded-[1.75rem] border border-emerald-200/70 bg-card p-5 shadow-soft dark:border-emerald-400/15 sm:p-6">
+        {/* The greeting is Home's first words; a quiet day must not remove them. */}
+        {lead ? <div className="mb-5">{lead}</div> : null}
         <div className="flex items-center gap-3">
           <span className="relative flex h-3 w-3">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-kondo-green opacity-35" />
@@ -312,10 +375,24 @@ export function LiveActivityStream({
           role="list"
           tabIndex={0}
         >
+          {lead ? (
+            <article
+              className={cn(
+                "relative w-[80vw] max-w-[330px] shrink-0 snap-center overflow-hidden rounded-[1.35rem] border bg-card/90 p-4 shadow-sm backdrop-blur-xl transition-[border-color,box-shadow,transform] duration-500 sm:w-[330px]",
+                activeIndex === 0
+                  ? "-translate-y-1 border-emerald-300/90 shadow-[0_22px_55px_rgba(20,71,58,0.14)] dark:border-emerald-400/30"
+                  : "border-border/80",
+              )}
+              data-activity-index={0}
+              role="listitem"
+            >
+              {lead}
+            </article>
+          ) : null}
           {activities.map((activity, index) => {
             const appearance = activityAppearance[activity.type];
             const Icon = appearance.icon;
-            const active = index === activeIndex;
+            const active = index + leadCount === activeIndex;
             return (
               <motion.article
                 animate={{ opacity: active ? 1 : 0.72, y: 0 }}
@@ -325,7 +402,7 @@ export function LiveActivityStream({
                     ? "-translate-y-1 border-emerald-300/90 shadow-[0_22px_55px_rgba(20,71,58,0.14)] dark:border-emerald-400/30"
                     : "border-border/80",
                 )}
-                data-activity-index={index}
+                data-activity-index={index + leadCount}
                 initial={reducedMotion ? false : { opacity: 0, y: 14 }}
                 key={activity.id}
                 role="listitem"

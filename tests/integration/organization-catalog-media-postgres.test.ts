@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getMediaForDelivery } from "@/lib/media";
+import { listPublicCatalog } from "@/lib/organization-catalog";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -211,7 +212,9 @@ postgresDescribe("organization catalog media delivery", () => {
       await expect(
         getMediaForDelivery(fixture.asset.id, asActor(fixture.student)),
       ).rejects.toMatchObject({ status: 404 });
-      await expect(getMediaForDelivery(fixture.asset.id, null)).rejects.toThrow();
+      await expect(
+        getMediaForDelivery(fixture.asset.id, null),
+      ).rejects.toThrow();
       // The people working on the draft can still see what they uploaded.
       const staffView = await getMediaForDelivery(
         fixture.asset.id,
@@ -239,6 +242,116 @@ postgresDescribe("organization catalog media delivery", () => {
       await prisma.organization.update({
         where: { id: fixture.organization.id },
         data: { publicProfileStatus: "PUBLISHED" },
+      });
+    }
+  });
+});
+
+/**
+ * Delivery being allowed is only half of it: something has to ask for the
+ * picture.
+ *
+ * Food & Services — the one place students browse for a restaurant — drew its
+ * own card, and that card had no image in it at all. The photo was uploaded,
+ * attached, published, authorised and returned in the payload, and the page
+ * simply never referenced it. Fixing delivery could not fix that, which is why
+ * the picture was still missing after the delivery rule was added.
+ */
+postgresDescribe("the catalogue projection carries the picture", () => {
+  beforeAll(async () => {
+    await cleanup();
+    fixture = await createFixture();
+  });
+
+  afterAll(async () => {
+    await cleanup();
+    await prisma.$disconnect();
+  });
+
+  it("returns the product's image on the public projection", async () => {
+    const items = await listPublicCatalog({
+      kind: "product",
+      organizationId: fixture.organization.id,
+    });
+    const item = items.find(({ id }) => id === fixture.product.id);
+    expect(item).toBeDefined();
+    expect(item?.media[0]?.url).toBe(`/api/media/${fixture.asset.id}`);
+    expect(item?.media[0]?.altText).toBe("A bowl of braised pork rice");
+  });
+
+  it("puts the cover first, whatever order the gallery was attached in", async () => {
+    // A second picture attached after the cover but sorted before it: the
+    // publisher chose which one leads, and sort order alone did not respect it.
+    const gallery = await prisma.mediaAsset.create({
+      data: {
+        ownerId: fixture.owner.id,
+        objectKey: `organizations/${fixture.organization.id}/products/gallery-${randomUUID()}.jpg`,
+        storageProvider: "LOCAL",
+        kind: "IMAGE",
+        purpose: "ORGANIZATION_PRODUCT_IMAGE",
+        visibility: "PRIVATE",
+        status: "ACTIVE",
+        scanStatus: "CLEAN",
+        originalFileName: "side.jpg",
+        extension: "jpg",
+        declaredMime: "image/jpeg",
+        detectedMime: "image/jpeg",
+        sizeBytes: 2048,
+        checksumSha256: "b".repeat(64),
+        width: 1024,
+        height: 768,
+        uploadExpiresAt: new Date(Date.now() + 3_600_000),
+        uploadedAt: new Date(),
+        validatedAt: new Date(),
+        attachedAt: new Date(),
+        attachmentType: "ORGANIZATION_PRODUCT",
+        attachmentId: fixture.product.id,
+      },
+    });
+    await prisma.organizationProductMedia.update({
+      where: { mediaId: fixture.asset.id },
+      data: { sortOrder: 1 },
+    });
+    await prisma.organizationProductMedia.create({
+      data: {
+        productId: fixture.product.id,
+        mediaId: gallery.id,
+        kind: "GALLERY",
+        altText: "A side dish",
+        sortOrder: 0,
+      },
+    });
+
+    const items = await listPublicCatalog({
+      kind: "product",
+      organizationId: fixture.organization.id,
+    });
+    const item = items.find(({ id }) => id === fixture.product.id);
+    expect(item?.media[0]?.url).toBe(`/api/media/${fixture.asset.id}`);
+    expect(item?.media[0]?.cover).toBe(true);
+    expect(item?.media).toHaveLength(2);
+  });
+
+  it("leaves out an image whose asset is not deliverable", async () => {
+    // Exactly what an abandoned upload leaves behind. Listing it would render
+    // an <img> whose request 404s — a blank square, not a placeholder.
+    await prisma.mediaAsset.update({
+      where: { id: fixture.asset.id },
+      data: { status: "PENDING" },
+    });
+    try {
+      const items = await listPublicCatalog({
+        kind: "product",
+        organizationId: fixture.organization.id,
+      });
+      const item = items.find(({ id }) => id === fixture.product.id);
+      expect(
+        item?.media.some(({ url }) => url.includes(fixture.asset.id)),
+      ).toBe(false);
+    } finally {
+      await prisma.mediaAsset.update({
+        where: { id: fixture.asset.id },
+        data: { status: "ACTIVE" },
       });
     }
   });

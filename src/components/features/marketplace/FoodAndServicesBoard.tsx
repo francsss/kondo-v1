@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { BadgeCheck, MapPin, Store, UtensilsCrossed } from "lucide-react";
-import { ClampedTitle, ExpandableText } from "@/components/ui/ClampedText";
+import { Store } from "lucide-react";
+import { CatalogCard } from "@/components/features/catalog/CatalogCard";
+import { ProductGrid } from "@/components/features/commerce/ProductCard";
 import { Card } from "@/components/ui/Card";
-import { MARKETPLACE_SOURCE_LABELS } from "@/features/marketplace/sections";
 import type { PublicCatalogItem } from "@/lib/organization-catalog";
 
 /**
@@ -13,6 +12,14 @@ import type { PublicCatalogItem } from "@/lib/organization-catalog";
  * public projection, so an unpublished resource, a blocked external URL or a
  * suspended organization vanishes here at exactly the moment it vanishes from
  * the organization's public page.
+ *
+ * The items are drawn on `CatalogCard`, the same card the organization's own
+ * storefront and Discover use. This section drew its own card instead, and
+ * that card had no image in it at all — a restaurant could upload a photo of
+ * the dish, publish it, and the one place students browse for food would show
+ * a paragraph of text where the photo should be. Nothing was wrong with the
+ * upload; the picture was simply never asked for. Sharing the card also means
+ * a photo taken for one surface cannot be missing from another later.
  */
 export function FoodAndServicesBoard({
   products,
@@ -52,90 +59,16 @@ export function FoodAndServicesBoard({
           </p>
         </Card>
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((item) => (
-            <li key={`${item.kind}-${item.id}`}>
-              <article className="flex h-full flex-col rounded-3xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Every card states what kind of thing it is, so a business
-                      can never be mistaken for a student offer. */}
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-kondo-green/10 px-2.5 py-1 text-xs font-bold text-kondo-green">
-                    <UtensilsCrossed
-                      aria-hidden="true"
-                      className="h-3.5 w-3.5"
-                    />
-                    {item.kind === "product"
-                      ? MARKETPLACE_SOURCE_LABELS["organization-product"]
-                      : MARKETPLACE_SOURCE_LABELS["organization-service"]}
-                  </span>
-                  {item.category ? (
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                      {item.category}
-                    </span>
-                  ) : null}
-                </div>
-
-                <h2 className="mt-3 text-base font-black leading-snug">
-                  <Link className="hover:underline" href={item.href}>
-                    <ClampedTitle>{item.title}</ClampedTitle>
-                  </Link>
-                </h2>
-
-                {item.shortDescription ? (
-                  <ExpandableText
-                    className="mt-1.5 text-sm leading-6 text-muted-foreground"
-                    lines={4}
-                    text={item.shortDescription}
-                  />
-                ) : null}
-
-                <dl className="mt-4 space-y-1.5 text-sm">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <dt className="sr-only">Publisher</dt>
-                    <dd className="font-semibold">{item.organization.name}</dd>
-                    {item.organization.verified ? (
-                      <BadgeCheck
-                        aria-label="Verified organization"
-                        className="h-4 w-4 text-kondo-green"
-                      />
-                    ) : null}
-                  </div>
-                  {/* City or publisher-declared area only — never an address. */}
-                  {item.city?.name || item.locationLabel ? (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <dt className="sr-only">Area</dt>
-                      <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
-                      <dd>{item.city?.name ?? item.locationLabel}</dd>
-                    </div>
-                  ) : null}
-                  {/* Price and availability are shown only when the publisher
-                      actually stated them. Nothing is invented. */}
-                  {item.priceLabel ? (
-                    <div className="text-muted-foreground">
-                      <dt className="sr-only">Price</dt>
-                      <dd>{item.priceLabel}</dd>
-                    </div>
-                  ) : null}
-                  {item.availabilityLabel ? (
-                    <div className="text-muted-foreground">
-                      <dt className="sr-only">Availability</dt>
-                      <dd>{item.availabilityLabel}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-
-                <div className="mt-auto pt-5">
-                  <Link
-                    className="inline-flex min-h-11 items-center rounded-full bg-secondary px-5 text-sm font-black text-secondary-foreground transition hover:bg-secondary/75"
-                    href={item.href}
-                  >
-                    View details
-                  </Link>
-                </div>
-              </article>
-            </li>
+        <ProductGrid className="mt-8">
+          {items.map((item, index) => (
+            <CatalogCard
+              item={item}
+              key={`${item.kind}-${item.id}`}
+              // The first row is above the fold on every viewport.
+              priority={index < 2}
+            />
           ))}
-        </ul>
+        </ProductGrid>
       )}
     </section>
   );

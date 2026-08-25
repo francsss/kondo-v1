@@ -1,5 +1,6 @@
 import {
   activeListingWhere,
+  listingImagesSelect,
   communityVisibilityWhere,
   publishedPostVisibilityWhere,
 } from "@/lib/content-visibility";
@@ -330,12 +331,7 @@ const marketplace: DiscoverProvider = {
         cityId: true,
         city: { select: { name: true } },
         category: { select: { name: true } },
-        images: {
-          where: { mediaId: { not: null } },
-          select: { mediaId: true },
-          orderBy: { order: "asc" },
-          take: 1,
-        },
+        images: listingImagesSelect(1),
       },
       orderBy: [{ publishedAt: "desc" }, { id: "asc" }],
       take: take(filters),

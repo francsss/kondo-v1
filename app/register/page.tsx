@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
+import { useKeyboardAwareFocus } from "@/lib/use-keyboard-aware-focus";
 import { ChoiceChips } from "@/components/onboarding/fields";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -30,6 +31,9 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Password and Confirm sit at the bottom of the form; without this they are
+  // behind the keys on every phone.
+  useKeyboardAwareFocus();
   const [countryCode, setCountryCode] = useState("");
   const [gender, setGender] = useState("");
   const [intent, setIntent] = useState<"PERSONAL" | "ORGANIZATION">("PERSONAL");
@@ -111,8 +115,17 @@ export default function RegisterPage() {
     <main className="min-h-screen bg-background px-5 py-6 sm:px-10">
       <div className="mx-auto max-w-6xl">
         <KondoLogo />
-        <div className="mt-10 grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
-          <section className="pt-6">
+        <div className="mt-6 grid gap-12 lg:mt-10 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+          {/*
+           * The pitch is desktop-only.
+           *
+           * On a phone it was a full screen of marketing — eyebrow, a 4xl
+           * headline, a paragraph and three bullets — in front of the form,
+           * and everyone who reaches this page has already decided to sign up.
+           * Beside the form on a wide screen it costs nothing and still says
+           * what Kondo is.
+           */}
+          <section className="hidden pt-6 lg:block">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-kondo-green">
               Join the community
             </p>

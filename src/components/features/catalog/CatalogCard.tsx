@@ -28,7 +28,17 @@ export function CatalogCard({
 
   return (
     <ProductCard
-      badges={[{ label: item.kind }]}
+      /*
+       * Two badges at most, and verification earns the accent one: everything
+       * in this catalogue is published by a business rather than a student, so
+       * whether that business has been checked is the fact a buyer weighs
+       * first.
+       */
+      badges={
+        item.organization.verified
+          ? [{ label: item.kind }, { label: "Verified", tone: "accent" as const }]
+          : [{ label: item.kind }]
+      }
       footer={item.organization.name}
       href={item.href}
       media={{

@@ -7,7 +7,7 @@ import {
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
-import { attachMediaAsset, MediaError } from "@/lib/media";
+import { attachMediaAsset, MediaError, removeOwnedMedia } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { toSafePublicOfficialFields } from "@/lib/serializers";
@@ -226,6 +226,13 @@ function storyDto(
     viewer: {
       liked: story.likes.length > 0,
       saved: story.saves.length > 0,
+      /*
+       * Whether this is the viewer's own reel. Sent from the server rather
+       * than compared in the browser: the delete control is drawn from it, and
+       * a client-side guess about ownership is not something the feed should
+       * be deciding.
+       */
+      owner: story.creator.id === actor.id,
     },
   };
 }
@@ -890,6 +897,95 @@ export async function deleteStoryComment(
     },
   });
   return { removed: true };
+}
+
+/**
+ * A creator taking their own reel down.
+ *
+ * Archived, not erased. `ARCHIVED` is the status Kondo already uses for a
+ * story that should stop being served while its record survives — the same
+ * one the admin console moves a story into — so the comments, likes,
+ * moderation history and any open report keep pointing at something real.
+ * Nothing here needs a new state, and inventing one would give moderation a
+ * category of story it has never seen.
+ *
+ * The video does go, because holding a student's face in storage after they
+ * asked for it to be taken down is not something an archive flag justifies.
+ * It goes through the same path an owner deleting media from anywhere else
+ * uses, which already refuses to erase bytes that moderation has retained as
+ * evidence: `finalizeMediaStorageDeletion` checks `retainedAt` and leaves the
+ * object alone if a report depends on it.
+ */
+export async function deleteOwnStory(
+  actor: StoryActor,
+  storyId: string,
+  meta: RequestMeta = {},
+) {
+  const story = await prisma.story.findUnique({
+    where: { id: storyId },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+      creatorId: true,
+      videoMediaId: true,
+      posterMediaId: true,
+    },
+  });
+  if (!story) throw new StoryError("Story was not found.", 404);
+  if (story.creatorId !== actor.id) {
+    // 404 rather than 403: whether a story exists is not something to confirm
+    // to someone who has no business with it.
+    throw new StoryError("Story was not found.", 404);
+  }
+  if (story.status === "ARCHIVED" || story.status === "REMOVED") {
+    return { deleted: true, storyId: story.id };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.story.update({
+      where: { id: story.id },
+      data: {
+        status: "ARCHIVED",
+        publishedAt: null,
+        removedAt: new Date(),
+        moderationEvents: {
+          create: {
+            actorId: actor.id,
+            fromStatus: story.status,
+            toStatus: "ARCHIVED",
+            reason: "Deleted by the creator.",
+          },
+        },
+      },
+    });
+    await writeAuditLogWithClient(tx, {
+      actorId: actor.id,
+      action: "STORY_DELETED_BY_CREATOR",
+      entityType: "Story",
+      entityId: story.id,
+      oldValue: { status: story.status },
+      newValue: { status: "ARCHIVED" },
+      ...meta,
+    });
+  });
+
+  /*
+   * Outside the transaction on purpose: this talks to object storage, and a
+   * storage call that hangs must not hold a database transaction open. The
+   * story is already archived by this point, so a failure here leaves bytes
+   * behind that the pending-deletion sweep collects, not a reel still on the
+   * feed.
+   */
+  for (const mediaId of [story.videoMediaId, story.posterMediaId]) {
+    if (!mediaId) continue;
+    await removeOwnedMedia(actor, mediaId, meta).catch(() => {
+      // Already removed, or retained for a report. Neither should fail the
+      // deletion the creator asked for.
+    });
+  }
+
+  return { deleted: true, storyId: story.id };
 }
 
 export async function reportStory(

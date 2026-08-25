@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { MediaImage } from "@/components/ui/MediaImage";
+import { listingImagesSelect } from "@/lib/content-visibility";
 import { formatPrice } from "@/lib/presentation";
 import { trackEvent } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
@@ -40,11 +41,7 @@ export default async function ListingDetailPage({
           university: { select: { shortName: true } },
         },
       },
-      images: {
-        where: { mediaId: { not: null } },
-        orderBy: { order: "asc" },
-        select: { id: true, mediaId: true, altText: true },
-      },
+      images: listingImagesSelect(),
       _count: { select: { favorites: true } },
       favorites: { where: { userId: user.id }, select: { id: true } },
     },

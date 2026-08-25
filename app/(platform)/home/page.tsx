@@ -460,24 +460,26 @@ export default async function HomePage() {
   return (
     <div className="mx-auto max-w-[1480px] px-3 pb-28 pt-6 sm:px-5 lg:px-6 lg:pb-16 lg:pt-8 xl:px-7">
       {/*
-       * The greeting and the activity stream both sit here, in the flow, above
-       * whichever section this member's Journey leads with. They used to be one
-       * timed component: the greeting showed, a 2.4s timer swapped it for the
-       * stream, and the container animated its height between the two — so the
-       * whole page shifted several seconds after it had apparently settled.
-       * Rendering both, once, removes the shift without losing either.
+       * The greeting is the rail's first slide, not a block above it.
+       *
+       * It was a timed overlay once — shown, then swapped for the rail 2.4s
+       * later with the container animating between the two heights, so the
+       * whole page shifted seconds after it had apparently settled. Removing
+       * the timer stopped the movement but left two headings stacked at the
+       * top of a phone. As a slide it costs no vertical space at all and
+       * nothing below it can be pushed anywhere.
        */}
-      <div className="space-y-4">
-        <HomeWelcome
-          chinaDate={chinaDate}
-          firstName={user.firstName}
-          journeyGroup={navigator.journey.group}
-        />
-        <LiveActivityStream
-          generatedAt={new Date().toISOString()}
-          initialActivities={activities}
-        />
-      </div>
+      <LiveActivityStream
+        generatedAt={new Date().toISOString()}
+        initialActivities={activities}
+        lead={
+          <HomeWelcome
+            chinaDate={chinaDate}
+            firstName={user.firstName}
+            journeyGroup={navigator.journey.group}
+          />
+        }
+      />
       {sectionOrder.map((key) => sections[key])}
     </div>
   );

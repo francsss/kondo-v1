@@ -6,14 +6,17 @@ import { resolve } from "node:path";
  * Home must not rearrange itself while it is being read.
  *
  * The greeting was a timed overlay: it rendered, a 2.4 second `setTimeout`
- * swapped it for the activity stream, and a `ResizeObserver` animated the
+ * swapped it for the activity rail, and a `ResizeObserver` animated the
  * container's height between the two. Everything below moved when that
  * happened — several seconds after the page had apparently finished loading,
  * which is exactly when someone has started reading or is reaching for a
- * button. The greeting itself then vanished, so a member who looked away
- * came back to a page that had never greeted them.
+ * button. The greeting itself then vanished, so a member who looked away came
+ * back to a page that had never greeted them.
  *
- * Both are ordinary content now, rendered once, in the flow.
+ * It is the first slide of Kondo Life now. The rail is already a row of cards,
+ * so the greeting takes no vertical space of its own: there is no block above
+ * the feed whose height anything below has to react to, and no second heading
+ * competing with the rail's own at the top of a phone screen.
  */
 
 const welcome = readFileSync(
@@ -49,7 +52,9 @@ describe("the welcome is stable content", () => {
   });
 
   it("is one heading and two lines, not a hero card", () => {
-    expect(welcome.split("<h1").length - 1).toBe(1);
+    expect(welcome.split("<h2").length - 1).toBe(1);
+    // The rail's own heading owns the region; this must not compete with it.
+    expect(welcome).not.toContain("<h1");
     expect(welcome).not.toContain("<Card");
     expect(welcome).not.toContain("rounded-3xl");
   });
@@ -65,9 +70,41 @@ describe("the timed transition is gone", () => {
     expect(home).not.toContain("HomeActivityIntro");
   });
 
-  it("renders the greeting and the activity stream together", () => {
-    // Both present at once is what leaves no gap where one used to be.
-    const top = home.slice(home.indexOf("<HomeWelcome"));
-    expect(top.slice(0, 500)).toContain("<LiveActivityStream");
+  it("hands the greeting to Kondo Life as its lead slide", () => {
+    // Inside the rail, not stacked above it: the rail owns the vertical space.
+    const rail = home.slice(home.indexOf("<LiveActivityStream"));
+    const block = rail.slice(
+      0,
+      rail.indexOf("/>", rail.indexOf("<HomeWelcome")),
+    );
+    expect(block).toContain("lead={");
+    expect(block).toContain("<HomeWelcome");
+    expect(home).not.toMatch(/<HomeWelcome[\s\S]{0,400}<LiveActivityStream/);
+  });
+
+  it("does not let the rail time out off the greeting", () => {
+    /*
+     * The original defect was a greeting a timer took away. Putting it in an
+     * auto-advancing rail would have been the same thing wearing a carousel:
+     * the rail rests on it and starts cycling only once the member moves off
+     * it themselves, and wrapping never returns to it.
+     */
+    const stream = readFileSync(
+      resolve("src/components/features/activity/LiveActivityStream.tsx"),
+      "utf8",
+    );
+    expect(stream).toContain("if (lead && activeIndex === 0) return;");
+    expect(stream).toContain("leadCount + ((((index - leadCount) % span)");
+  });
+
+  it("counts the lead slide in the rail's own indexing", () => {
+    // Left out of the arithmetic, autoplay skips the greeting each cycle.
+    const stream = readFileSync(
+      resolve("src/components/features/activity/LiveActivityStream.tsx"),
+      "utf8",
+    );
+    expect(stream).toContain("const leadCount = lead ? 1 : 0");
+    expect(stream).toContain("const cardCount = activities.length + leadCount");
+    expect(stream).toContain("data-activity-index={index + leadCount}");
   });
 });

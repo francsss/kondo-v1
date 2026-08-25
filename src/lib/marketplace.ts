@@ -3,6 +3,7 @@ import { trackEvent } from "@/lib/analytics";
 import { writeAuditLogWithClient } from "@/lib/audit";
 import { hasAdminPermission, type AppRole } from "@/lib/authorization";
 import { isLegacyHousingMarketplaceCategory } from "@/lib/housing-listings";
+import { listingImagesSelect } from "@/lib/content-visibility";
 import { attachMediaAsset, MediaError } from "@/lib/media";
 import { enqueueNotificationJobWithClient } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -775,11 +776,7 @@ export async function listSellerListings(
         updatedAt: true,
         fraudScore: true,
         fraudFlags: true,
-        images: {
-          orderBy: { order: "asc" },
-          take: 1,
-          select: { mediaId: true, altText: true },
-        },
+        images: listingImagesSelect(1),
         _count: { select: { favorites: true } },
       },
       orderBy: { updatedAt: "desc" },

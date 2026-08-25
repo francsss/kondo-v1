@@ -25,6 +25,7 @@ import {
   marketplaceSectionIndex,
   resolveMarketplaceSection,
 } from "@/features/marketplace/sections";
+import { listingImagesSelect } from "@/lib/content-visibility";
 import { getUnreadMessageCount } from "@/lib/messaging";
 import { listPublicCatalog } from "@/lib/organization-catalog";
 import { prisma } from "@/lib/prisma";
@@ -229,12 +230,7 @@ export default async function MarketplacePage({
       prisma.marketplaceListing.findMany({
         where,
         include: {
-          images: {
-            where: { mediaId: { not: null } },
-            orderBy: { order: "asc" },
-            take: 1,
-            select: { mediaId: true, altText: true },
-          },
+          images: listingImagesSelect(1),
           category: { select: { name: true, icon: true } },
           city: { select: { name: true } },
           seller: { select: { firstName: true, lastName: true } },

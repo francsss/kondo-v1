@@ -141,11 +141,23 @@ export function FeedPost({
     <>
       <Card
         className={cn(
-          "overflow-hidden p-0 transition duration-300 hover:-translate-y-0.5 hover:shadow-soft",
+          "overflow-hidden p-0 transition duration-300",
+          /*
+           * On a phone the post reaches the edges of the screen.
+           *
+           * Every post used to be a rounded rectangle with a border and a drop
+           * shadow, inset inside a page that was already inset — 32px of margin
+           * on a 360px screen, spent on nothing, with the photo squeezed into
+           * what was left. Edge to edge, separated by a hairline, the feed
+           * reads as one surface and the pictures get the width back. The card
+           * returns at `sm`, where there is room for it to be a card.
+           */
+          "-mx-3 rounded-none border-x-0 shadow-none sm:mx-0 sm:rounded-3xl sm:border-x",
           immersive &&
-            "rounded-[1.75rem] border-border/80 shadow-[0_8px_30px_rgba(16,24,40,0.045)] hover:border-primary/20",
-          focused &&
-            "hover:translate-y-0 hover:border-border/80 hover:shadow-[0_8px_30px_rgba(16,24,40,0.045)]",
+            "sm:rounded-[1.75rem] sm:border-border/80 sm:shadow-[0_8px_30px_rgba(16,24,40,0.045)]",
+          // No hover lift. A feed item that jumps under the pointer reads as
+          // unsteady, and on the phone this is designed for there is no hover.
+          !focused && "sm:hover:border-primary/20",
         )}
       >
         {post.pinnedAt ? (
@@ -161,8 +173,8 @@ export function FeedPost({
         ) : null}
         <article
           className={cn(
-            "p-5 sm:p-6",
-            immersive && "p-4 sm:p-6 lg:p-[1.625rem]",
+            "px-4 py-4 sm:p-6",
+            immersive && "sm:p-6 lg:p-[1.625rem]",
           )}
         >
           <div className="flex items-start gap-3">
@@ -225,9 +237,8 @@ export function FeedPost({
           {post.title ? (
             <h2
               className={cn(
-                "mt-5 line-clamp-2 text-xl font-black tracking-[-0.025em] text-kondo-ink dark:text-white",
-                immersive &&
-                  "mt-4 text-[1.35rem] leading-tight sm:mt-5 sm:text-2xl",
+                "mt-4 line-clamp-2 text-[17px] font-black leading-snug tracking-[-0.025em] text-kondo-ink dark:text-white sm:text-xl",
+                immersive && "sm:mt-5 sm:text-[1.35rem]",
               )}
             >
               {post.title}
@@ -251,8 +262,8 @@ export function FeedPost({
 
           <div
             className={cn(
-              "mt-5 flex items-center gap-1 border-t border-slate-100 pt-3 dark:border-white/10",
-              immersive && "gap-0.5 border-border",
+              "mt-4 flex items-center gap-0.5 border-t border-border/60 pt-2.5",
+              immersive && "gap-0.5",
             )}
           >
             <Button

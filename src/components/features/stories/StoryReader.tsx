@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Share2,
   SignalLow,
+  Trash2,
   Volume2,
   VolumeX,
   X,
@@ -36,11 +37,37 @@ import { cn } from "@/lib/utils";
 
 type PlaybackPreference = "autoplay" | "data-saver";
 
-function initialPlaybackPreference(): PlaybackPreference | null {
-  if (typeof window === "undefined") return null;
+/**
+ * How reels should play, without asking.
+ *
+ * A dialog used to sit over the feed on the first visit — "Choose how Stories
+ * play" — and nothing moved until it was answered. Anyone who dismissed it or
+ * scrolled past got a feed where every single video had to be tapped to start,
+ * which is not a reels feed at all; it is a list of thumbnails.
+ *
+ * The question it asked has an answer the browser already knows. `saveData` is
+ * the setting a student turns on precisely to stop video downloading itself,
+ * and a 2G connection cannot autoplay usefully whatever anyone prefers. Both
+ * are read here. Everything else autoplays, muted, which is what mobile
+ * browsers permit without a gesture.
+ *
+ * An explicit choice still wins, and is still changeable from the reel's own
+ * menu — it is just no longer a toll gate in front of the feed.
+ */
+function initialPlaybackPreference(): PlaybackPreference {
+  if (typeof window === "undefined") return "autoplay";
   const stored = window.localStorage.getItem("kondo-story-playback");
   if (stored === "autoplay" || stored === "data-saver") return stored;
-  return null;
+  const connection = (
+    navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }
+  ).connection;
+  if (connection?.saveData) return "data-saver";
+  if (connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g") {
+    return "data-saver";
+  }
+  return "autoplay";
 }
 
 function networkMode() {
@@ -75,8 +102,12 @@ export function StoryReader({
   const observedActiveIndex = useRef(0);
   const [stories, setStories] = useState(initialStories);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [preference, setPreference] = useState<PlaybackPreference | null>(null);
-  const [playbackReady, setPlaybackReady] = useState(false);
+  /*
+   * Autoplay from the first frame rendered. A constant rather than a read of
+   * `localStorage`, so the server and the client agree; the effect below
+   * refines it once the browser is available.
+   */
+  const [preference, setPreference] = useState<PlaybackPreference>("autoplay");
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(false);
   const [commentsStory, setCommentsStory] = useState<StoryFeedItem | null>(
@@ -85,6 +116,10 @@ export function StoryReader({
   const [menuStoryId, setMenuStoryId] = useState<string | null>(null);
   const [whyStory, setWhyStory] = useState<StoryFeedItem | null>(null);
   const [copied, setCopied] = useState(false);
+  /** Which reel is showing "Delete this reel?" inside its own menu. */
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedCaption, setExpandedCaption] = useState<string | null>(null);
   const [loadErrors, setLoadErrors] = useState<Set<string>>(new Set());
   const [online, setOnline] = useState(true);
 
@@ -142,9 +177,7 @@ export function StoryReader({
 
   useEffect(() => {
     const preferenceTimer = window.setTimeout(() => {
-      const stored = initialPlaybackPreference();
-      if (stored) setPreference(stored);
-      setPlaybackReady(true);
+      setPreference(initialPlaybackPreference());
     }, 0);
     return () => window.clearTimeout(preferenceTimer);
   }, []);
@@ -251,6 +284,38 @@ export function StoryReader({
     if (paused) nextVideo.pause();
     else if (autoplayEnabled) nextVideo.play().catch(() => setPaused(true));
   }, [activeIndex, autoplayEnabled, current, paused]);
+
+  /**
+   * Delete a reel the viewer made.
+   *
+   * The row leaves the feed as soon as the server confirms, so the video the
+   * student just deleted is not still playing underneath the menu they
+   * deleted it from. `router.refresh()` follows so the server's own copy of
+   * the feed agrees on the next navigation — without it the reel would come
+   * back the moment anything re-rendered from the cache.
+   */
+  async function deleteStory(story: StoryFeedItem) {
+    if (deletingId) return;
+    setDeletingId(story.id);
+    try {
+      const response = await fetch(`/api/stories/${story.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("delete failed");
+      setStories((current) => current.filter((item) => item.id !== story.id));
+      setMenuStoryId(null);
+      setConfirmDeleteId(null);
+      videoRefs.current.get(activeIndex)?.pause();
+      // The list just got shorter; do not leave the index past its end.
+      setActiveIndex((index) => Math.max(0, Math.min(index, stories.length - 2)));
+      router.refresh();
+    } catch {
+      setConfirmDeleteId(null);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   function choosePreference(value: PlaybackPreference) {
     window.localStorage.setItem("kondo-story-playback", value);
@@ -517,7 +582,21 @@ export function StoryReader({
                     onPlaying={() => onPlaying(story)}
                     playsInline
                     poster={story.posterUrl ?? undefined}
-                    preload={active ? "auto" : "metadata"}
+                    /*
+                     * Only the reel being watched downloads. Its successor
+                     * fetches metadata so the first frame and duration are
+                     * ready the instant it becomes active, and the reel
+                     * already watched holds nothing — scrolling back re-reads
+                     * it from the browser's own cache rather than from a
+                     * buffer kept alive the whole session.
+                     */
+                    preload={
+                      active
+                        ? "auto"
+                        : index === activeIndex + 1
+                          ? "metadata"
+                          : "none"
+                    }
                     ref={(node) => {
                       if (node) videoRefs.current.set(index, node);
                       else videoRefs.current.delete(index);
@@ -603,7 +682,12 @@ export function StoryReader({
                   </div>
                 ) : null}
 
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/65 to-transparent" />
+                {/*
+                  Enough to keep white text legible and no more. At half the
+                  reel's height and opaque at the base it was dimming the video
+                  itself, which is the one thing on the screen worth looking at.
+                */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 z-10 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">
                   <div className="max-w-[calc(100%-4.5rem)]">
                     <div className="flex flex-wrap items-center gap-2">
@@ -621,12 +705,49 @@ export function StoryReader({
                         </span>
                       ) : null}
                     </div>
-                    <h1 className="mt-3 text-balance text-2xl font-black leading-tight tracking-[-0.035em] sm:text-3xl">
+                    {/*
+                      The video is the content; this is a label on it. It used
+                      to be display-sized and sat above three full lines of
+                      description, which together covered the lower third of
+                      every reel — on a portrait clip that is somebody's face.
+                    */}
+                    <h1 className="mt-3 text-balance text-lg font-black leading-tight tracking-[-0.03em] sm:text-xl">
                       {story.title}
                     </h1>
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/72">
-                      {story.description}
-                    </p>
+                    {story.description ? (
+                      <div className="mt-1.5">
+                        <p
+                          className={cn(
+                            "text-[13px] leading-5 text-white/75",
+                            expandedCaption === story.id
+                              ? "max-h-32 overflow-y-auto"
+                              : "line-clamp-2",
+                          )}
+                        >
+                          {story.description}
+                        </p>
+                        {/*
+                          Only offered when there is more to see. A caption
+                          long enough to need it is the exception, and a "See
+                          more" under two lines of text is furniture.
+                        */}
+                        {story.description.length > 110 ? (
+                          <button
+                            className="mt-0.5 text-[11px] font-black text-white/55 transition hover:text-white"
+                            onClick={() =>
+                              setExpandedCaption((value) =>
+                                value === story.id ? null : story.id,
+                              )
+                            }
+                            type="button"
+                          >
+                            {expandedCaption === story.id
+                              ? "See less"
+                              : "See more"}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="mt-4 flex items-center gap-2.5">
                       <Link
                         aria-label={`Open ${story.creator.name}'s profile`}
@@ -761,27 +882,95 @@ export function StoryReader({
                             <CircleHelp className="h-4 w-4" />
                             Why this Story?
                           </button>
+                          {!story.viewer.owner ? (
+                            <button
+                              className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold hover:bg-white/10"
+                              onClick={() => hideStory(story)}
+                              type="button"
+                            >
+                              <X className="h-4 w-4" />
+                              Show me less like this
+                            </button>
+                          ) : null}
+                          {/*
+                            The switch the blocking dialog used to be. Same
+                            choice, reachable at any time, costing nobody a
+                            stopped feed to make it.
+                          */}
                           <button
                             className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold hover:bg-white/10"
-                            onClick={() => hideStory(story)}
+                            onClick={() =>
+                              choosePreference(
+                                preference === "data-saver"
+                                  ? "autoplay"
+                                  : "data-saver",
+                              )
+                            }
                             type="button"
                           >
-                            <X className="h-4 w-4" />
-                            Show me less like this
+                            <SignalLow className="h-4 w-4" />
+                            {preference === "data-saver"
+                              ? "Turn autoplay on"
+                              : "Data saver"}
                           </button>
-                          <button
-                            className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold text-rose-200 hover:bg-white/10"
-                            onClick={() => {
-                              setMenuStoryId(null);
-                              window.location.assign(
-                                `/stories/report?story=${story.id}`,
-                              );
-                            }}
-                            type="button"
-                          >
-                            <Flag className="h-4 w-4" />
-                            Report Story
-                          </button>
+                          {story.viewer.owner ? (
+                            confirmDeleteId === story.id ? (
+                              /*
+                                The confirmation, in the menu it was asked
+                                from. A full-screen dialog for taking down
+                                your own video reads as a warning about
+                                something dangerous; this is two words and
+                                two buttons.
+                              */
+                              <div className="rounded-xl bg-white/5 p-2">
+                                <p className="px-1 pb-2 text-[11px] font-bold text-white/80">
+                                  Delete this reel?
+                                </p>
+                                <div className="flex gap-1.5">
+                                  <button
+                                    className="min-h-9 flex-1 rounded-lg bg-rose-500 px-2 text-[11px] font-black text-white transition hover:bg-rose-400 disabled:opacity-60"
+                                    disabled={deletingId === story.id}
+                                    onClick={() => void deleteStory(story)}
+                                    type="button"
+                                  >
+                                    {deletingId === story.id
+                                      ? "Deleting…"
+                                      : "Delete"}
+                                  </button>
+                                  <button
+                                    className="min-h-9 flex-1 rounded-lg bg-white/10 px-2 text-[11px] font-black transition hover:bg-white/20"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    type="button"
+                                  >
+                                    Keep
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold text-rose-200 hover:bg-white/10"
+                                onClick={() => setConfirmDeleteId(story.id)}
+                                type="button"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete reel
+                              </button>
+                            )
+                          ) : (
+                            <button
+                              className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold text-rose-200 hover:bg-white/10"
+                              onClick={() => {
+                                setMenuStoryId(null);
+                                window.location.assign(
+                                  `/stories/report?story=${story.id}`,
+                                );
+                              }}
+                              type="button"
+                            >
+                              <Flag className="h-4 w-4" />
+                              Report Story
+                            </button>
+                          )}
                         </div>
                       ) : null}
                     </div>
@@ -854,56 +1043,6 @@ export function StoryReader({
           );
         })}
       </div>
-
-      <AnimatePresence>
-        {playbackReady && !preference ? (
-          <motion.div
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[80] grid place-items-end bg-black/65 p-3 backdrop-blur-sm sm:place-items-center"
-            exit={{ opacity: 0 }}
-            initial={{ opacity: 0 }}
-          >
-            <motion.section
-              aria-labelledby="story-playback-title"
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#10241e] p-6 text-white shadow-2xl"
-              initial={{ opacity: 0, y: 16 }}
-              role="dialog"
-            >
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-kondo-lime text-kondo-forest">
-                <Play className="h-5 w-5" fill="currentColor" />
-              </span>
-              <h2
-                className="mt-5 text-2xl font-black tracking-tight"
-                id="story-playback-title"
-              >
-                Choose how Stories play
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-white/60">
-                Autoplay keeps navigation fluid. Data saver waits for your tap
-                and reduces mobile data use. You can change this anytime.
-              </p>
-              <div className="mt-6 grid gap-3">
-                <Button
-                  className="bg-kondo-lime text-kondo-forest hover:bg-white"
-                  onClick={() => choosePreference("autoplay")}
-                  type="button"
-                >
-                  <Play className="h-4 w-4" /> Continue with autoplay
-                </Button>
-                <Button
-                  className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                  onClick={() => choosePreference("data-saver")}
-                  type="button"
-                  variant="secondary"
-                >
-                  <SignalLow className="h-4 w-4" /> Use data saver
-                </Button>
-              </div>
-            </motion.section>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
 
       <StoryCommentsSheet
         onClose={() => setCommentsStory(null)}

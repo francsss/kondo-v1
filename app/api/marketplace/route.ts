@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { listingImagesSelect } from "@/lib/content-visibility";
 import { createMarketplaceListing, MarketplaceError } from "@/lib/marketplace";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
@@ -79,12 +80,7 @@ export async function GET(request: NextRequest) {
           category: { select: { slug: true, name: true, icon: true } },
           city: { select: { slug: true, name: true } },
           seller: { select: { id: true, firstName: true, lastName: true } },
-          images: {
-            where: { mediaId: { not: null } },
-            orderBy: { order: "asc" },
-            take: 1,
-            select: { mediaId: true, altText: true },
-          },
+          images: listingImagesSelect(1),
           _count: { select: { favorites: true } },
         },
         orderBy,

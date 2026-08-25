@@ -576,6 +576,14 @@ export default async function CommunityPage({
           comments={safeComments}
           currentUserId={user.id}
           post={safeSelectedPost}
+          viewer={{
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            avatarMediaId: user.avatarMediaId,
+            country: null,
+            university: null,
+          }}
         />
       ) : null}
     </CommunityExperience>

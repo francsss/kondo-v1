@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { KondoLogo } from "@/components/KondoLogo";
 import { Button } from "@/components/ui/Button";
+import { useKeyboardAwareFocus } from "@/lib/use-keyboard-aware-focus";
 import { cn } from "@/lib/utils";
 
 export type OnboardingStepDefinition = {
@@ -43,10 +44,26 @@ export function OnboardingShell({
   const current = steps[step];
   const errorRef = useRef<HTMLParagraphElement>(null);
 
+  // The field being typed in stays above the keyboard, in every step, rather
+  // than each one solving it for itself.
+  useKeyboardAwareFocus();
+
   useEffect(() => {
-    if (error) {
-      errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
+    if (!error) return;
+    /*
+     * Only move if the message is not already on screen. Centring
+     * unconditionally scrolled the page every time a validation error
+     * re-rendered, including when the error was the thing the member was
+     * already looking at.
+     */
+    const node = errorRef.current;
+    if (!node) return;
+    const box = node.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const visibleTop = viewport?.offsetTop ?? 0;
+    const visibleBottom = visibleTop + (viewport?.height ?? window.innerHeight);
+    if (box.top >= visibleTop && box.bottom <= visibleBottom) return;
+    node.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [error]);
 
   return (
@@ -56,26 +73,37 @@ export function OnboardingShell({
         className="pointer-events-none absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(120%_100%_at_50%_0%,rgb(var(--brand)/0.16),transparent_70%)]"
       />
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col px-4 sm:px-6">
-        <header className="flex items-center justify-between gap-3 pt-5 sm:pt-7">
+        <header className="flex items-center justify-between gap-3 pt-4 sm:pt-7">
           <KondoLogo href="/" size="sm" />
           {headerAction}
         </header>
 
         <OnboardingProgress step={step} steps={steps} />
 
-        <div className="flex-1 pb-8">
-          <section className="rounded-4xl border border-border bg-card p-5 text-card-foreground shadow-soft sm:p-8">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-kondo-green">
+        {/*
+         * Bottom padding grows by the height the keyboard takes, so the last
+         * control in a step has somewhere to scroll to. Zero when no keyboard
+         * is open.
+         */}
+        <div className="flex-1 pb-6 pb-[calc(theme(spacing.6)+100dvh-var(--visual-viewport-height,100dvh))]">
+          <section className="rounded-4xl border border-border bg-card p-4 text-card-foreground shadow-soft sm:p-8">
+            {/*
+             * The eyebrow is desktop-only. On a phone it was a fourth line of
+             * chrome — logo, progress, eyebrow, title, description — above the
+             * first thing anyone can actually answer, and it repeats what the
+             * progress row already says.
+             */}
+            <p className="hidden text-[11px] font-black uppercase tracking-[0.18em] text-kondo-green sm:block">
               {eyebrow}
             </p>
-            <h1 className="mt-2.5 text-balance text-[26px] font-black leading-[1.15] tracking-[-0.035em] text-kondo-ink dark:text-white sm:text-3xl">
+            <h1 className="text-balance text-[22px] font-black leading-[1.15] tracking-[-0.035em] text-kondo-ink dark:text-white sm:mt-2.5 sm:text-3xl">
               {current.title}
             </h1>
-            <p className="mt-2 text-pretty text-sm leading-6 text-muted-foreground">
+            <p className="mt-1.5 text-pretty text-[13px] leading-5 text-muted-foreground sm:text-sm sm:leading-6">
               {current.description}
             </p>
 
-            <div className="mt-7">{children}</div>
+            <div className="mt-5 sm:mt-7">{children}</div>
 
             {error ? (
               <p
@@ -89,7 +117,15 @@ export function OnboardingShell({
           </section>
         </div>
 
-        <div className="sticky bottom-0 -mx-4 mt-auto border-t border-border/70 bg-background/85 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+        {/*
+         * Lifted onto the keyboard rather than left under it. `sticky bottom-0`
+         * pins to the layout viewport, which is exactly the part the keyboard
+         * covers, so Continue was unreachable on the steps with a text field.
+         * The visual viewport is what remains visible; translating by the
+         * difference puts the bar on top of the keys, and the difference is
+         * zero when no keyboard is open.
+         */}
+        <div className="sticky bottom-0 -mx-4 mt-auto translate-y-[calc(var(--visual-viewport-height,100dvh)+var(--visual-viewport-offset-top,0px)-100dvh)] border-t border-border/70 bg-background/85 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl transition-transform duration-150 motion-reduce:transition-none sm:-mx-6 sm:px-6">
           {hint ? (
             <p
               aria-live="polite"
@@ -125,8 +161,8 @@ function OnboardingProgress({
   step: number;
 }) {
   return (
-    <nav aria-label="Onboarding progress" className="py-5 sm:py-7">
-      <div className="mb-2.5 flex items-baseline justify-between gap-3">
+    <nav aria-label="Onboarding progress" className="py-3.5 sm:py-7">
+      <div className="mb-2 flex items-baseline justify-between gap-3 sm:mb-2.5">
         <p className="text-sm font-black tracking-tight text-kondo-ink dark:text-white">
           {steps[step].label}
         </p>

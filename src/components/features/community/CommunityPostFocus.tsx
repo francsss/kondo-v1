@@ -24,6 +24,7 @@ export function CommunityPostFocus({
   post,
   comments,
   currentUserId,
+  viewer,
   canComment,
   canModerate,
   closeHref,
@@ -31,6 +32,7 @@ export function CommunityPostFocus({
   post: FeedPostData;
   comments: CommentItem[];
   currentUserId: string;
+  viewer: CommentItem["author"];
   canComment: boolean;
   canModerate: boolean;
   closeHref: string;
@@ -221,6 +223,7 @@ export function CommunityPostFocus({
                     comments={comments}
                     currentUserId={currentUserId}
                     postId={post.id}
+                    viewer={viewer}
                   />
                 </Card>
               </div>

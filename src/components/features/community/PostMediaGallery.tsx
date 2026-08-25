@@ -122,9 +122,14 @@ export function PostMediaGallery({
     <>
       <div
         className={cn(
-          "mt-4 grid max-h-[640px] gap-1.5 overflow-hidden rounded-[1.25rem] bg-muted",
+          /*
+           * Full width of the post on a phone, corners squared off with it.
+           * The picture is the reason most people stop scrolling, and it was
+           * losing 8px a side to a radius nobody notices at that size.
+           */
+          "-mx-4 mt-4 grid max-h-[640px] gap-1.5 overflow-hidden bg-muted sm:mx-0 sm:rounded-[1.25rem]",
           gridClass,
-          immersive && "rounded-[1.5rem]",
+          immersive && "sm:rounded-[1.5rem]",
         )}
       >
         {media.slice(0, 4).map(({ media: item }, index) => (

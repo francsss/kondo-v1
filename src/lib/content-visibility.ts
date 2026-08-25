@@ -64,6 +64,42 @@ export function activeListingWhere(
   };
 }
 
+/**
+ * The condition a media asset must meet before a page may point an `<img>` at
+ * it — the same one `getMediaForDelivery` enforces on `/api/media/[id]`.
+ *
+ * A card asks for an image by id and the media route decides whether to serve
+ * it. When the two disagree, nothing errors: the page renders an `<img>` whose
+ * request 404s, and the reader sees an item with a blank square where its
+ * photo should be. That is what "the image sometimes does not appear" was —
+ * the association was never lost, the asset behind it simply was not
+ * deliverable, most often because an upload was abandoned before it validated
+ * and the row it left behind was still the first one the query took.
+ *
+ * Selecting through this makes the query agree with the route by construction.
+ */
+export const deliverableMediaWhere = {
+  status: "ACTIVE",
+  scanStatus: "CLEAN",
+} satisfies Prisma.MediaAssetWhereInput;
+
+/**
+ * Listing images that can actually be drawn, in gallery order.
+ *
+ * `take` cannot be applied before the filter, so a query that asked for the
+ * first image row and no more could hand back an abandoned upload while the
+ * real photo sat behind it. Every surface that shows a listing selects through
+ * this, so "the first image" always means "the first image that exists".
+ */
+export function listingImagesSelect(take?: number) {
+  return {
+    where: { mediaId: { not: null }, media: deliverableMediaWhere },
+    orderBy: { order: "asc" as const },
+    select: { id: true, mediaId: true, altText: true },
+    ...(take ? { take } : {}),
+  } satisfies Prisma.MarketplaceListing$imagesArgs;
+}
+
 export const publishedQuestionWhere = {
   status: "PUBLISHED",
 } satisfies Prisma.QuestionWhereInput;

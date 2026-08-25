@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { StorySubmissionWorkspace } from "@/components/features/stories/StorySubmissionWorkspace";
-import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getOwnStorySubmissionForEditing,
   getStoryPublishingOptions,
@@ -8,7 +7,7 @@ import {
 } from "@/lib/stories";
 import { requireUser } from "@/lib/server-auth";
 
-export const metadata: Metadata = { title: "Submit a Student Story" };
+export const metadata: Metadata = { title: "Create Reel" };
 
 export default async function StorySubmitPage({
   searchParams,
@@ -23,13 +22,14 @@ export default async function StorySubmitPage({
     listOwnStorySubmissions(user),
     getOwnStorySubmissionForEditing(user, storyId),
   ]);
+  /*
+   * No page header here: the workspace draws its own compact one inside the
+   * focused shell, which is also what stands the app chrome down. A second
+   * title above it would put the two most prominent things on the screen in
+   * competition and cost a phone most of its first fold.
+   */
   return (
-    <main className="mx-auto max-w-[1320px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
-      <PageHeader
-        description="Share one practical experience that helps another international student find their way in China."
-        eyebrow="Student Stories"
-        title={editing ? "Revise your Story" : "Submit a useful Story"}
-      />
+    <main>
       <StorySubmissionWorkspace
         editing={editing}
         options={options}

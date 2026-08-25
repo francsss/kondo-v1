@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
+import { useKeyboardAwareFocus } from "@/lib/use-keyboard-aware-focus";
 import { MessageUserButton } from "@/components/features/messages/MessageUserButton";
 import { OfficialMark } from "@/components/features/official-profile/OfficialMark";
 import { Avatar } from "@/components/ui/Avatar";
@@ -44,6 +46,16 @@ export type CommentItem = {
   _count: { reactions: number };
 };
 
+/**
+ * Returns the parsed body on success and `null` on failure, so a caller can
+ * both branch on the outcome and read the record the server created.
+ */
+type RequestFn = (
+  url: string,
+  method: string,
+  body?: unknown,
+) => Promise<{ comment?: { id?: string } } | null>;
+
 type ReplyTarget = {
   id: string;
   authorName: string;
@@ -58,6 +70,7 @@ export function CommentThread({
   canComment,
   canModerate,
   comments,
+  viewer,
   autoFocus = false,
 }: {
   postId: string;
@@ -65,11 +78,31 @@ export function CommentThread({
   canComment: boolean;
   canModerate: boolean;
   comments: CommentItem[];
+  /**
+   * Who is commenting, so a comment can be drawn the instant it is sent
+   * rather than after the server has been asked for the thread again.
+   */
+  viewer: CommentItem["author"];
   autoFocus?: boolean;
 }) {
   const router = useRouter();
   const reducedMotion = useReducedMotion();
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  // Whatever the field you are typing in, keep it above the keyboard. Same
+  // hook the focused forms use rather than a second implementation.
+  useKeyboardAwareFocus();
+  /*
+   * Comments posted in this session, shown before the server has been asked
+   * for the thread again.
+   *
+   * Posting used to mean a round trip to `router.refresh()` before anything
+   * appeared: on a phone connection the comment box emptied and then nothing
+   * happened for a second or more, which reads as a failure and gets the send
+   * button pressed twice. The local copy is dropped as soon as the refreshed
+   * thread contains it, so nothing is shown twice and nothing survives a
+   * comment the server rejected.
+   */
+  const [pendingComments, setPendingComments] = useState<CommentItem[]>([]);
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [pending, setPending] = useState(false);
@@ -78,12 +111,28 @@ export function CommentThread({
     INITIAL_CONVERSATIONS,
   );
 
+  /*
+   * Derived, not synchronised. An effect that pruned the optimistic rows once
+   * the server's copy arrived would be a `setState` inside an effect for
+   * something render can simply work out: a pending row is one the server has
+   * not sent back yet. The id is swapped for the real one as soon as the POST
+   * answers, so this filter retires it the moment the refreshed thread lands.
+   */
+  const merged = useMemo(() => {
+    if (!pendingComments.length) return comments;
+    const known = new Set(comments.map((comment) => comment.id));
+    return [
+      ...comments,
+      ...pendingComments.filter((comment) => !known.has(comment.id)),
+    ];
+  }, [comments, pendingComments]);
+
   const { childrenByParent, rootComments } = useMemo(() => {
-    const commentIds = new Set(comments.map((comment) => comment.id));
+    const commentIds = new Set(merged.map((comment) => comment.id));
     const roots: CommentItem[] = [];
     const children = new Map<string, CommentItem[]>();
 
-    for (const comment of comments) {
+    for (const comment of merged) {
       if (!comment.parentId || !commentIds.has(comment.parentId)) {
         roots.push(comment);
         continue;
@@ -94,7 +143,7 @@ export function CommentThread({
     }
 
     return { childrenByParent: children, rootComments: roots };
-  }, [comments]);
+  }, [merged]);
 
   useEffect(() => {
     if (!autoFocus || !canComment) return;
@@ -118,19 +167,57 @@ export function CommentThread({
     setPending(false);
     if (!response?.ok) {
       setError(payload?.error ?? "Could not complete that action.");
-      return false;
+      return null;
     }
     router.refresh();
-    return true;
+    return (payload ?? {}) as { comment?: { id?: string } };
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!content.trim()) return;
-    const ok = await request(`/api/posts/${postId}/comments`, "POST", {
-      content,
-      parentId: replyTo?.id,
+    const body = content.trim();
+    if (!body) return;
+    const optimisticId = `pending-${Date.now()}`;
+    setPendingComments((current) => [
+      ...current,
+      {
+        id: optimisticId,
+        parentId: replyTo?.id ?? null,
+        content: body,
+        createdAt: new Date(),
+        editedAt: null,
+        author: viewer,
+        reactions: [],
+        _count: { reactions: 0 },
+      },
+    ]);
+    // Cleared now, not after the round trip: the box you just sent from should
+    // be empty and ready for the next thought.
+    setContent("");
+    const previousReply = replyTo;
+    setReplyTo(null);
+    const result = await request(`/api/posts/${postId}/comments`, "POST", {
+      content: body,
+      parentId: previousReply?.id,
     });
+    const ok = Boolean(result);
+    const createdId = result?.comment?.id;
+    if (createdId) {
+      // Adopt the server's id, so the refreshed thread replaces this row
+      // rather than appearing beside it.
+      setPendingComments((current) =>
+        current.map((comment) =>
+          comment.id === optimisticId ? { ...comment, id: createdId } : comment,
+        ),
+      );
+    }
+    if (!ok) {
+      setPendingComments((current) =>
+        current.filter((comment) => comment.id !== optimisticId),
+      );
+      setContent(body);
+      setReplyTo(previousReply);
+    }
     if (ok) {
       captureProductEvent(
         replyTo
@@ -140,8 +227,6 @@ export function CommentThread({
           target_type: "post",
         },
       );
-      setContent("");
-      setReplyTo(null);
     }
   }
 
@@ -151,11 +236,28 @@ export function CommentThread({
       authorName: `${comment.author.firstName} ${comment.author.lastName}`,
     });
     window.setTimeout(() => {
-      composerRef.current?.scrollIntoView({
-        behavior: reducedMotion ? "auto" : "smooth",
-        block: "center",
-      });
-      composerRef.current?.focus({ preventScroll: true });
+      const composer = composerRef.current;
+      if (!composer) return;
+      /*
+       * Only scroll if the composer is genuinely off screen.
+       *
+       * `scrollIntoView({ block: "center" })` ran every time, so tapping Reply
+       * on a comment right above an already-visible box yanked the whole thread
+       * to re-centre it — the page moving for no reason anyone could see.
+       * Measured against the visual viewport, because with a keyboard up the
+       * layout viewport is not what the reader can see.
+       */
+      const viewport = window.visualViewport;
+      const visibleTop = viewport?.offsetTop ?? 0;
+      const visibleBottom = visibleTop + (viewport?.height ?? window.innerHeight);
+      const box = composer.getBoundingClientRect();
+      if (box.top < visibleTop || box.bottom > visibleBottom) {
+        composer.scrollIntoView({
+          behavior: reducedMotion ? "auto" : "smooth",
+          block: "nearest",
+        });
+      }
+      composer.focus({ preventScroll: true });
     }, 30);
   }
 
@@ -166,7 +268,13 @@ export function CommentThread({
     <div>
       {canComment ? (
         <form
-          className="mt-5 rounded-[1.4rem] border border-border bg-muted/40 p-3 shadow-inner sm:p-4"
+          /*
+           * A field, not a panel. It was a bordered slab with an inner shadow
+           * around a second bordered box — two frames around one textarea, and
+           * on a dark theme the pair read as a grey block dropped into the
+           * thread.
+           */
+          className="mt-5"
           onSubmit={submit}
         >
           <AnimatePresence initial={false}>
@@ -194,7 +302,13 @@ export function CommentThread({
           </AnimatePresence>
           <textarea
             aria-label="Write a comment"
-            className="min-h-24 w-full resize-y rounded-2xl border border-border bg-card p-4 text-sm leading-6 shadow-sm outline-none transition duration-200 focus:border-kondo-green focus:shadow-[0_0_0_3px_rgba(7,122,79,0.10)]"
+            /*
+             * Kondo's own control. The focus ring is painted inside the box,
+             * so nothing around the field moves when it gains focus — the
+             * previous 3px outer glow grew the element's visual footprint and
+             * nudged the action row under it on every tap.
+             */
+            className={`${KONDO_CONTROL_CLASS} min-h-24 resize-y py-3 text-sm leading-6`}
             maxLength={5000}
             onChange={(event) => setContent(event.target.value)}
             placeholder="Add to the conversation…"
@@ -295,7 +409,7 @@ function CommentBranch({
   currentUserId: string;
   canModerate: boolean;
   onReply: (comment: CommentItem) => void;
-  request: (url: string, method: string, body?: unknown) => Promise<boolean>;
+  request: RequestFn;
   childrenByParent: Map<string, CommentItem[]>;
   depth: number;
   index: number;
@@ -322,8 +436,14 @@ function CommentBranch({
         <div
           className={cn(
             "relative mt-2 space-y-2",
-            depth === 0 && "ml-5 pl-4 sm:ml-8 sm:pl-5",
-            depth > 0 && "ml-3 pl-3",
+            /*
+             * One step in, at any depth. Indenting per level turned a
+             * three-deep thread into a staircase that left about half a phone's
+             * width for the words; the rule down the left is what says "this is
+             * a reply", and it says it just as well once.
+             */
+            depth === 0 && "ml-3 pl-3 sm:ml-6 sm:pl-4",
+            depth > 0 && "ml-0 pl-3",
           )}
         >
           <span
@@ -361,7 +481,7 @@ function CommentRow({
   currentUserId: string;
   canModerate: boolean;
   onReply: () => void;
-  request: (url: string, method: string, body?: unknown) => Promise<boolean>;
+  request: RequestFn;
   depth: number;
 }) {
   const reducedMotion = useReducedMotion();

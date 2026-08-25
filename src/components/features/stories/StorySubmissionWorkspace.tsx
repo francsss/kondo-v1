@@ -4,17 +4,17 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
-  Clock3,
+  ChevronRight,
   FileVideo2,
   ImagePlus,
   LoaderCircle,
   Send,
-  ShieldCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { FocusedFormShell } from "@/components/ui/FocusedFormShell";
+import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { uploadMediaFile } from "@/lib/client-media";
 import { captureProductEvent } from "@/lib/product-analytics-client";
@@ -84,6 +84,12 @@ export function StorySubmissionWorkspace({
   editing: EditingStory;
 }) {
   const router = useRouter();
+  /*
+   * The form lives inside the shell's content and the Publish button inside
+   * its sticky footer, so the button reaches the form by id rather than by
+   * being nested in it. That is what lets the action stay above the keyboard.
+   */
+  const formId = useId();
   const videoInputRef = useRef<HTMLInputElement>(null);
   const posterInputRef = useRef<HTMLInputElement>(null);
   const [video, setVideo] = useState<File | null>(null);
@@ -120,6 +126,22 @@ export function StorySubmissionWorkspace({
   const [stage, setStage] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  /*
+   * A blob URL for the chosen clip, revoked when it is replaced or the page
+   * goes away. Held in a memo rather than state so the preview never lags a
+   * frame behind the file it belongs to.
+   */
+  const videoPreview = useMemo(
+    () => (video ? URL.createObjectURL(video) : ""),
+    [video],
+  );
+  useEffect(
+    () => () => {
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+    },
+    [videoPreview],
+  );
 
   useEffect(() => {
     if (editing) return;
@@ -374,7 +396,20 @@ export function StorySubmissionWorkspace({
       setVideo(null);
       setPoster(null);
       setConfirmed(false);
+      /*
+       * A reel that published goes straight to the feed, focused on itself.
+       *
+       * Staying on the form and refreshing it meant the student was told the
+       * reel was live and then shown the empty form again, with no way to see
+       * it except by navigating to Student Story and hoping. `refresh` first
+       * so the feed the browser lands on is built after the insert rather than
+       * from the copy cached before it.
+       */
       router.refresh();
+      const publishedSlug = payload?.story?.slug as string | undefined;
+      if (!editing && publishedSlug && options.canPublishDirectly) {
+        router.push(`/stories?story=${publishedSlug}&entry=publish`);
+      }
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -386,299 +421,329 @@ export function StorySubmissionWorkspace({
       setStage("");
     }
   }
-
   return (
-    <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <Card className="p-5 sm:p-7">
-        <div className="flex items-start gap-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-kondo-mint text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300">
-            <FileVideo2 className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-kondo-green">
-              {editing ? "Revision workspace" : "Useful video submission"}
-            </p>
-            <h2 className="mt-1 text-xl font-black tracking-tight text-kondo-ink dark:text-white">
-              {editing
-                ? "Address the requested changes"
-                : "Tell one clear, useful story"}
-            </h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              {editing
-                ? editing.moderationReason
-                : options.canPublishDirectly
-                  ? "Your creator permission allows direct publication after server checks."
-                  : "Kondo reviews every member submission before publication."}
-            </p>
-          </div>
-        </div>
+    <FocusedFormShell
+      actions={
+        <>
+          <p className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground">
+            {busy ? stage : "Draft saved on this device"}
+          </p>
+          <Button
+            className="shrink-0"
+            disabled={busy}
+            form={formId}
+            type="submit"
+          >
+            {busy ? (
+              <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            {editing ? "Resubmit" : "Publish reel"}
+          </Button>
+        </>
+      }
+      backHref="/stories"
+      title={editing ? "Revise your reel" : "Create Reel"}
+    >
+      <form className="space-y-5" id={formId} onSubmit={submit}>
+        {!editing ? (
+          <section>
+            {/*
+             * The video, shown as the reel it will become.
+             *
+             * Picking a file used to change a line of text to its filename and
+             * nothing else, so there was no way to tell whether the right clip
+             * had been chosen, or which way up it was, until after publishing.
+             * The frame is 9:16 and the video is contained inside it, so a
+             * landscape clip letterboxes rather than stretching the page
+             * sideways.
+             */}
+            <button
+              className="relative block w-full overflow-hidden rounded-3xl border border-dashed border-kondo-green/40 bg-kondo-mint/30 transition hover:bg-kondo-mint/50 dark:bg-emerald-400/[0.06]"
+              disabled={busy}
+              onClick={() => videoInputRef.current?.click()}
+              type="button"
+            >
+              {videoPreview ? (
+                <span className="relative block aspect-[9/16] max-h-[46vh] w-full bg-black">
+                  <video
+                    className="h-full w-full object-contain"
+                    muted
+                    playsInline
+                    // Metadata only: this is a thumbnail, not a viewing.
+                    preload="metadata"
+                    src={videoPreview}
+                  />
+                  <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/75 to-transparent p-3 text-left text-[11px] font-bold text-white">
+                    <FileVideo2
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0"
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {video?.name}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 backdrop-blur">
+                      Change
+                    </span>
+                  </span>
+                </span>
+              ) : (
+                <span className="grid aspect-[4/3] w-full place-items-center px-6 py-8 text-center sm:aspect-[16/9]">
+                  <span>
+                    <FileVideo2
+                      aria-hidden="true"
+                      className="mx-auto h-7 w-7 text-kondo-green"
+                    />
+                    <span className="mt-3 block text-sm font-black">
+                      Choose a video
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">
+                      MP4, MOV, M4V, WebM or HEVC · up to 3 minutes and 25 MB
+                    </span>
+                  </span>
+                </span>
+              )}
+            </button>
 
-        <form className="mt-7 space-y-5" onSubmit={submit}>
-          {!editing ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                className="min-h-36 rounded-3xl border border-dashed border-kondo-green/35 bg-kondo-mint/35 p-5 text-left transition hover:bg-kondo-mint/60 dark:bg-emerald-400/5"
-                disabled={busy}
-                onClick={() => videoInputRef.current?.click()}
-                type="button"
-              >
-                <FileVideo2 className="h-6 w-6 text-kondo-green" />
-                <span className="mt-4 block text-sm font-black">
-                  {video ? video.name : "Choose a mobile video"}
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  MP4, MOV, M4V, WebM, HEVC or H.265 · up to 3 minutes and 25 MB
-                </span>
-              </button>
-              <button
-                className="min-h-36 rounded-3xl border border-dashed border-border bg-muted/30 p-5 text-left transition hover:border-kondo-green/35"
-                disabled={busy}
-                onClick={() => posterInputRef.current?.click()}
-                type="button"
-              >
-                <ImagePlus className="h-6 w-6 text-kondo-green" />
-                <span className="mt-4 block text-sm font-black">
-                  {poster ? poster.name : "Add a portrait poster"}
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  Recommended for slow connections
-                </span>
-              </button>
-              <input
-                accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/hevc,video/h265,.mp4,.mov,.m4v,.webm,.hevc,.h265"
-                className="sr-only"
-                onChange={(event) => void selectVideo(event.target.files?.[0])}
-                ref={videoInputRef}
-                type="file"
+            <button
+              className="mt-2 flex w-full items-center gap-2 rounded-2xl border border-border px-3 py-2.5 text-left transition hover:border-kondo-green/40"
+              disabled={busy}
+              onClick={() => posterInputRef.current?.click()}
+              type="button"
+            >
+              <ImagePlus
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 text-kondo-green"
               />
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={(event) => selectPoster(event.target.files?.[0])}
-                ref={posterInputRef}
-                type="file"
-              />
-            </div>
-          ) : null}
+              <span className="min-w-0 flex-1 truncate text-xs font-bold">
+                {poster ? poster.name : "Add a cover image"}
+              </span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">
+                Optional
+              </span>
+            </button>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Short title">
-              <input
-                className="h-11 w-full rounded-2xl border border-border bg-transparent px-4 text-sm outline-none focus:border-kondo-green"
-                maxLength={120}
-                minLength={4}
-                onChange={(event) => setTitle(event.target.value)}
-                required
-                value={title}
-              />
-            </Field>
-            <SearchableSelect
-              label="Category"
-              onSelect={setCategoryId}
-              options={options.categories.map((category) => ({
-                id: category.id,
-                name: `${category.icon} ${category.name}`,
-              }))}
-              placeholder="Choose a category"
-              searchPlaceholder="Search categories"
-              selected={categoryId}
+            <input
+              accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/hevc,video/h265,.mp4,.mov,.m4v,.webm,.hevc,.h265"
+              className="sr-only"
+              onChange={(event) => void selectVideo(event.target.files?.[0])}
+              ref={videoInputRef}
+              type="file"
             />
-          </div>
-          <Field label="Useful context">
-            <textarea
-              className="min-h-28 w-full resize-y rounded-2xl border border-border bg-transparent p-4 text-sm leading-6 outline-none focus:border-kondo-green"
-              maxLength={700}
-              minLength={10}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="What should another student understand or do after watching?"
-              required
-              value={description}
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) => selectPoster(event.target.files?.[0])}
+              ref={posterInputRef}
+              type="file"
             />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Language">
-              <select
-                className="h-11 w-full rounded-2xl border border-border bg-card px-4 text-sm"
-                onChange={(event) => setLanguage(event.target.value)}
-                value={language}
-              >
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-                <option value="zh">中文</option>
-                <option value="ar">العربية</option>
-              </select>
-            </Field>
-            <Field label="Captions or WebVTT">
-              <input
-                className="h-11 w-full rounded-2xl border border-border bg-transparent px-4 text-sm"
-                onChange={(event) => setCaptions(event.target.value)}
-                placeholder="Optional transcript"
-                value={captions}
-              />
-            </Field>
-          </div>
+          </section>
+        ) : null}
 
-          <div>
-            <p className="text-xs font-black text-kondo-ink dark:text-white">
-              Connect this Story to Kondo
-            </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              These links make the video actionable and improve transparent
-              recommendations.
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <ContextSelect
-                label="City"
-                onChange={setCityId}
-                options={options.cities}
-                value={cityId}
-              />
-              <ContextSelect
-                label="University"
-                onChange={setUniversityId}
-                options={options.universities.map((item) => ({
-                  id: item.id,
-                  name: item.shortName ?? item.name,
-                }))}
-                value={universityId}
-              />
-              <ContextSelect
-                label="Community"
-                onChange={setCommunityId}
-                options={options.communities}
-                value={communityId}
-              />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)]">
-              <Field label="Related resource">
+        {editing?.moderationReason ? (
+          <p className="rounded-2xl bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">
+            {editing.moderationReason}
+          </p>
+        ) : null}
+
+        <Field label="Title">
+          <input
+            className={KONDO_CONTROL_CLASS}
+            maxLength={120}
+            minLength={4}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="One clear line"
+            required
+            value={title}
+          />
+        </Field>
+
+        <SearchableSelect
+          label="Category"
+          onSelect={setCategoryId}
+          options={options.categories.map((category) => ({
+            id: category.id,
+            name: `${category.icon} ${category.name}`,
+          }))}
+          placeholder="Choose a category"
+          searchPlaceholder="Search categories"
+          selected={categoryId}
+        />
+
+        <Field label="Caption">
+          <textarea
+            className={`${KONDO_CONTROL_CLASS} min-h-28 resize-y py-3 leading-6`}
+            maxLength={700}
+            minLength={10}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="What should another student understand or do after watching?"
+            required
+            value={description}
+          />
+        </Field>
+
+        {/*
+         * Everything below is optional, and on a phone a form is judged by how
+         * far it scrolls. Closed by default, so the page a student meets is
+         * video, title, category, caption — and nothing else.
+         */}
+        <details className="group rounded-2xl border border-border">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs font-black">
+            <ChevronRight
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 text-muted-foreground transition group-open:rotate-90 motion-reduce:transition-none"
+            />
+            Add context
+            <span className="ml-auto font-semibold text-muted-foreground">
+              Optional
+            </span>
+          </summary>
+          <div className="space-y-4 border-t border-border p-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Language">
                 <select
-                  className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm"
-                  onChange={(event) => setExternalType(event.target.value)}
-                  value={externalType}
+                  className={KONDO_CONTROL_CLASS}
+                  onChange={(event) => setLanguage(event.target.value)}
+                  value={language}
                 >
-                  <option value="">Optional</option>
-                  <option value="COMPANY">Company</option>
-                  <option value="INTERNSHIP">Internship</option>
-                  <option value="EVENT">Event</option>
+                  <option value="en">English</option>
+                  <option value="fr">Français</option>
+                  <option value="zh">中文</option>
+                  <option value="ar">العربية</option>
                 </select>
               </Field>
-              <Field label="Kondo resource name">
+              <Field label="Captions or WebVTT">
                 <input
-                  className="h-11 w-full rounded-2xl border border-border bg-transparent px-4 text-sm disabled:opacity-50"
-                  disabled={!externalType}
-                  maxLength={160}
-                  onChange={(event) => setExternalLabel(event.target.value)}
-                  placeholder="e.g. Welcome Week"
-                  value={externalLabel}
-                />
-              </Field>
-              <Field label="Kondo page">
-                <input
-                  className="h-11 w-full rounded-2xl border border-border bg-transparent px-4 text-sm disabled:opacity-50"
-                  disabled={!externalType}
-                  maxLength={500}
-                  onChange={(event) => setExternalHref(event.target.value)}
-                  placeholder="/explore/jiaxing/events#welcome-week"
-                  value={externalHref}
+                  className={KONDO_CONTROL_CLASS}
+                  onChange={(event) => setCaptions(event.target.value)}
+                  placeholder="Optional transcript"
+                  value={captions}
                 />
               </Field>
             </div>
-          </div>
-
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4">
-            <input
-              checked={confirmed}
-              className="mt-0.5 h-4 w-4 accent-emerald-700"
-              onChange={(event) => setConfirmed(event.target.checked)}
-              type="checkbox"
+            <ContextSelect
+              label="City"
+              onChange={setCityId}
+              options={options.cities}
+              value={cityId}
             />
-            <span className="text-xs leading-5 text-muted-foreground">
-              I have the right to share this video. It does not reveal private
-              documents, precise home addresses, personal numbers, confidential
-              university data, or people who did not consent.
-            </span>
-          </label>
-
-          {busy ? (
-            <div className="rounded-2xl border border-kondo-green/20 bg-kondo-mint/50 p-4 dark:bg-emerald-400/10">
-              <div className="flex items-center justify-between text-xs font-black text-kondo-forest dark:text-emerald-300">
-                <span>{stage}</span>
-                <span>{progress}%</span>
-              </div>
-              <div
-                aria-label="Story upload progress"
-                aria-valuemax={100}
-                aria-valuemin={0}
-                aria-valuenow={progress}
-                className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 dark:bg-black/20"
-                role="progressbar"
+            <ContextSelect
+              label="University"
+              onChange={setUniversityId}
+              options={options.universities.map((item) => ({
+                id: item.id,
+                name: item.shortName ?? item.name,
+              }))}
+              value={universityId}
+            />
+            <ContextSelect
+              label="Community"
+              onChange={setCommunityId}
+              options={options.communities}
+              value={communityId}
+            />
+            <Field label="Related resource">
+              <select
+                className={KONDO_CONTROL_CLASS}
+                onChange={(event) => setExternalType(event.target.value)}
+                value={externalType}
               >
-                <div
-                  className="h-full rounded-full bg-kondo-green transition-[width]"
-                  style={{ width: `${progress}%` }}
-                />
+                <option value="">None</option>
+                <option value="COMPANY">Company</option>
+                <option value="INTERNSHIP">Internship</option>
+                <option value="EVENT">Event</option>
+              </select>
+            </Field>
+            {externalType ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Resource name">
+                  <input
+                    className={KONDO_CONTROL_CLASS}
+                    maxLength={160}
+                    onChange={(event) => setExternalLabel(event.target.value)}
+                    placeholder="e.g. Welcome Week"
+                    value={externalLabel}
+                  />
+                </Field>
+                <Field label="Kondo page">
+                  <input
+                    className={KONDO_CONTROL_CLASS}
+                    maxLength={500}
+                    onChange={(event) => setExternalHref(event.target.value)}
+                    placeholder="/explore/jiaxing/events"
+                    value={externalHref}
+                  />
+                </Field>
               </div>
+            ) : null}
+          </div>
+        </details>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/30 p-3.5">
+          <input
+            checked={confirmed}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-700"
+            onChange={(event) => setConfirmed(event.target.checked)}
+            type="checkbox"
+          />
+          <span className="text-[11px] leading-5 text-muted-foreground">
+            I have the right to share this video. It does not reveal private
+            documents, home addresses, personal numbers, confidential university
+            data, or people who did not consent.
+          </span>
+        </label>
+
+        {busy ? (
+          <div className="rounded-2xl border border-kondo-green/20 bg-kondo-mint/50 p-3.5 dark:bg-emerald-400/10">
+            <div className="flex items-center justify-between text-[11px] font-black text-kondo-forest dark:text-emerald-300">
+              <span className="min-w-0 truncate">{stage}</span>
+              <span className="shrink-0 tabular-nums">{progress}%</span>
             </div>
-          ) : null}
-          {error ? (
-            <p
-              aria-live="polite"
-              className="flex items-start gap-2 rounded-2xl bg-red-50 p-3 text-xs font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
-              role="alert"
+            <div
+              aria-label="Story upload progress"
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={progress}
+              className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/80 dark:bg-black/20"
+              role="progressbar"
             >
-              <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
-            </p>
-          ) : null}
-          {success ? (
-            <p
-              aria-live="polite"
-              className="flex items-start gap-2 rounded-2xl bg-kondo-mint p-3 text-xs font-semibold text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
-            >
-              <CheckCircle2 className="h-4 w-4 shrink-0" /> {success}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[11px] text-muted-foreground">
-              Your text draft is saved on this device automatically.
-            </p>
-            <Button disabled={busy} type="submit">
-              {busy ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              {editing ? "Resubmit changes" : "Submit Story"}
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      <aside className="space-y-5">
-        <Card className="bg-gradient-to-br from-kondo-navy to-kondo-forest text-white">
-          <ShieldCheck className="h-6 w-6 text-kondo-lime" />
-          <h2 className="mt-4 text-lg font-black">Calm, useful, trustworthy</h2>
-          <p className="mt-2 text-xs leading-5 text-white/65">
-            Kondo prioritizes verifiable advice, practical context and clear
-            next steps—not virality or follower counts.
-          </p>
-          <ul className="mt-4 space-y-2 text-xs font-semibold text-white/80">
-            <li>• Explain one useful idea clearly.</li>
-            <li>• Add captions whenever possible.</li>
-            <li>• Link the relevant Kondo place or community.</li>
-            <li>• Avoid unverified promises and unsafe advice.</li>
-          </ul>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="font-black text-kondo-ink dark:text-white">
-              Your submissions
-            </h2>
-            <Clock3 className="h-4 w-4 text-kondo-green" />
-          </div>
-          <div className="mt-4 space-y-3">
-            {submissions.map((submission) => (
               <div
+                className="h-full rounded-full bg-kondo-green transition-[width]"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+        {error ? (
+          <p
+            aria-live="polite"
+            className="flex items-start gap-2 rounded-2xl bg-red-50 p-3 text-xs font-semibold text-red-700 dark:bg-red-400/10 dark:text-red-300"
+            role="alert"
+          >
+            <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {error}
+          </p>
+        ) : null}
+        {success ? (
+          <p
+            aria-live="polite"
+            className="flex items-start gap-2 rounded-2xl bg-kondo-mint p-3 text-xs font-semibold text-kondo-forest dark:bg-emerald-400/10 dark:text-emerald-300"
+          >
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {success}
+          </p>
+        ) : null}
+      </form>
+
+      {submissions.length ? (
+        <section className="mt-8">
+          <h2 className="text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
+            Your reels
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {submissions.map((submission) => (
+              <li
                 className="rounded-2xl border border-border p-3"
                 key={submission.id}
               >
@@ -687,9 +752,8 @@ export function StorySubmissionWorkspace({
                     <p className="truncate text-sm font-black">
                       {submission.title}
                     </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      {submission.category.icon} {submission.category.name} ·
-                      revision {submission.revision}
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {submission.category.icon} {submission.category.name}
                     </p>
                   </div>
                   <StatusBadge status={submission.status} />
@@ -712,21 +776,16 @@ export function StorySubmissionWorkspace({
                       className="text-[11px] font-black text-kondo-green hover:underline"
                       href={`/stories?story=${submission.slug}`}
                     >
-                      Watch Story →
+                      Watch reel →
                     </Link>
                   ) : null}
                 </div>
-              </div>
+              </li>
             ))}
-            {!submissions.length ? (
-              <p className="py-5 text-center text-xs text-muted-foreground">
-                Your first submission will appear here.
-              </p>
-            ) : null}
-          </div>
-        </Card>
-      </aside>
-    </div>
+          </ul>
+        </section>
+      ) : null}
+    </FocusedFormShell>
   );
 }
 
