@@ -249,7 +249,8 @@ export function CommentThread({
        */
       const viewport = window.visualViewport;
       const visibleTop = viewport?.offsetTop ?? 0;
-      const visibleBottom = visibleTop + (viewport?.height ?? window.innerHeight);
+      const visibleBottom =
+        visibleTop + (viewport?.height ?? window.innerHeight);
       const box = composer.getBoundingClientRect();
       if (box.top < visibleTop || box.bottom > visibleBottom) {
         composer.scrollIntoView({

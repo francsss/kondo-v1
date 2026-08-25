@@ -89,9 +89,12 @@ async function openReader(page: Page, title: Title, at?: string) {
   // The book is on screen once something in it has been laid out, whether that
   // is a paragraph of text or a cover image.
   await expect
-    .poll(() => inBook(page, () => Math.round(document.body?.scrollWidth ?? 0), 0), {
-      timeout: 30_000,
-    })
+    .poll(
+      () => inBook(page, () => Math.round(document.body?.scrollWidth ?? 0), 0),
+      {
+        timeout: 30_000,
+      },
+    )
     .toBeGreaterThan(0);
 }
 
@@ -143,7 +146,10 @@ async function selectAPassage(page: Page) {
     },
     null as string | null,
   );
-  expect(text, "the chapter should contain a selectable paragraph").toBeTruthy();
+  expect(
+    text,
+    "the chapter should contain a selectable paragraph",
+  ).toBeTruthy();
   await expect(
     page.getByRole("toolbar", { name: /selection actions/i }),
   ).toBeVisible();
@@ -258,7 +264,9 @@ test.describe("a book with a cover page and its own typography", () => {
     // renderer reports the document. Compared as written they never match, so
     // the chapter silently had no name — and neither did anything saved in it.
     await goToChapter(page, ALICE);
-    await expect(page.getByRole("button", { name: /bookmark this page/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /bookmark this page/i }),
+    ).toBeVisible();
     await page.getByRole("button", { name: /bookmark this page/i }).click();
 
     await expect
@@ -320,9 +328,12 @@ for (const title of [FIXTURE, ALICE]) {
 
       // The reader debounces its writes; wait for the position to land.
       await expect
-        .poll(async () => (await readingState(page, title))?.progress?.locator, {
-          timeout: 20_000,
-        })
+        .poll(
+          async () => (await readingState(page, title))?.progress?.locator,
+          {
+            timeout: 20_000,
+          },
+        )
         .toBeTruthy();
 
       await page.reload();
@@ -448,7 +459,9 @@ for (const title of [FIXTURE, ALICE]) {
       await expect(sheet).toBeVisible();
       // Prefilled from the chapter, which only works if the chapter resolved.
       await expect(sheet.getByLabel("Task")).toHaveValue(
-        new RegExp(title.chapter.slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+        new RegExp(
+          title.chapter.slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        ),
       );
       await sheet.getByLabel("Task").fill(taskTitle);
       await Promise.all([

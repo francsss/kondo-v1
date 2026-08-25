@@ -66,7 +66,10 @@ export function ListingContextStrip({
             width={112}
           />
         ) : (
-          <ImageOff aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+          <ImageOff
+            aria-hidden="true"
+            className="h-4 w-4 text-muted-foreground"
+          />
         )}
       </span>
       <span className="min-w-0 flex-1">

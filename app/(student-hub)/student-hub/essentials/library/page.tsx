@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, Library } from "lucide-react";
-import { LibraryShelf, ShelfHeader } from "@/components/features/student-hub/LibraryShelf";
+import {
+  LibraryShelf,
+  ShelfHeader,
+} from "@/components/features/student-hub/LibraryShelf";
 import { requireUser } from "@/lib/server-auth";
 import { listOwnedLibrary } from "@/lib/study-library";
 
@@ -32,7 +35,8 @@ export default async function StudyLibraryPage() {
     .filter((item) => item.readable && item.percentage > 0)
     .sort(
       (first, second) =>
-        (second.lastReadAt?.getTime() ?? 0) - (first.lastReadAt?.getTime() ?? 0),
+        (second.lastReadAt?.getTime() ?? 0) -
+        (first.lastReadAt?.getTime() ?? 0),
     );
   const readingIds = new Set(reading.map((item) => item.id));
   const books = items.filter(

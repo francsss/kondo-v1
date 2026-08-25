@@ -77,9 +77,7 @@ export async function POST(request: NextRequest, { params }: Context) {
       body: parsed.data.body,
       color: parsed.data.color,
       chapterLabel: parsed.data.chapterLabel,
-      task: parsed.data.task
-        ? { title: parsed.data.task.title, dueAt }
-        : null,
+      task: parsed.data.task ? { title: parsed.data.task.title, dueAt } : null,
     });
     return Response.json({ note }, { status: 201 });
   } catch (error) {

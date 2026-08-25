@@ -132,10 +132,7 @@ export async function openMarketplaceConversation(input: {
           // must stay null here, or a marketplace thread would collide with the
           // same two people's ordinary conversation.
           participants: {
-            create: [
-              { userId: input.buyerId },
-              { userId: listing.sellerId },
-            ],
+            create: [{ userId: input.buyerId }, { userId: listing.sellerId }],
           },
         },
         select: { id: true },
@@ -287,7 +284,9 @@ export async function getMarketplaceInbox(
   const unreadRows =
     conversationIds.length === 0
       ? []
-      : await prisma.$queryRaw<Array<{ conversationId: string; count: bigint }>>(
+      : await prisma.$queryRaw<
+          Array<{ conversationId: string; count: bigint }>
+        >(
           Prisma.sql`
             SELECT
               cp."conversationId" AS "conversationId",

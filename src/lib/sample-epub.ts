@@ -55,26 +55,26 @@ function buildZip() {
     return created;
   };
 
-// `mimetype` must be first and stored uncompressed. Readers that check the
-// magic bytes reject the file otherwise.
-zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+  // `mimetype` must be first and stored uncompressed. Readers that check the
+  // magic bytes reject the file otherwise.
+  zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 
-folder("META-INF").file(
-  "container.xml",
-  `<?xml version="1.0" encoding="UTF-8"?>
+  folder("META-INF").file(
+    "container.xml",
+    `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
   <rootfiles>
     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
 </container>`,
-);
+  );
 
-const oebps = folder("OEBPS");
+  const oebps = folder("OEBPS");
 
-for (const chapter of CHAPTERS) {
-  oebps.file(
-    `${chapter.id}.xhtml`,
-    `<?xml version="1.0" encoding="UTF-8"?>
+  for (const chapter of CHAPTERS) {
+    oebps.file(
+      `${chapter.id}.xhtml`,
+      `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head><title>${chapter.title}</title></head>
@@ -83,12 +83,12 @@ for (const chapter of CHAPTERS) {
     ${chapter.paragraphs.map((text) => `<p>${text}</p>`).join("\n    ")}
   </body>
 </html>`,
-  );
-}
+    );
+  }
 
-oebps.file(
-  "content.opf",
-  `<?xml version="1.0" encoding="UTF-8"?>
+  oebps.file(
+    "content.opf",
+    `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="bookid">urn:uuid:kondo-sample-book</dc:identifier>
@@ -105,11 +105,11 @@ ${CHAPTERS.map((c) => `    <item id="${c.id}" href="${c.id}.xhtml" media-type="a
 ${CHAPTERS.map((c) => `    <itemref idref="${c.id}"/>`).join("\n")}
   </spine>
 </package>`,
-);
+  );
 
-oebps.file(
-  "nav.xhtml",
-  `<?xml version="1.0" encoding="UTF-8"?>
+  oebps.file(
+    "nav.xhtml",
+    `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="en" lang="en">
   <head><title>Contents</title></head>
@@ -122,8 +122,7 @@ ${CHAPTERS.map((c) => `        <li><a href="${c.id}.xhtml">${c.title}</a></li>`)
     </nav>
   </body>
 </html>`,
-);
-
+  );
 
   return zip;
 }

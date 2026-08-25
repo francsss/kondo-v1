@@ -36,7 +36,10 @@ export function CatalogCard({
        */
       badges={
         item.organization.verified
-          ? [{ label: item.kind }, { label: "Verified", tone: "accent" as const }]
+          ? [
+              { label: item.kind },
+              { label: "Verified", tone: "accent" as const },
+            ]
           : [{ label: item.kind }]
       }
       footer={item.organization.name}

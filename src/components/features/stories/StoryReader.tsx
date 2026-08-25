@@ -64,7 +64,10 @@ function initialPlaybackPreference(): PlaybackPreference {
     }
   ).connection;
   if (connection?.saveData) return "data-saver";
-  if (connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g") {
+  if (
+    connection?.effectiveType === "2g" ||
+    connection?.effectiveType === "slow-2g"
+  ) {
     return "data-saver";
   }
   return "autoplay";
@@ -308,7 +311,9 @@ export function StoryReader({
       setConfirmDeleteId(null);
       videoRefs.current.get(activeIndex)?.pause();
       // The list just got shorter; do not leave the index past its end.
-      setActiveIndex((index) => Math.max(0, Math.min(index, stories.length - 2)));
+      setActiveIndex((index) =>
+        Math.max(0, Math.min(index, stories.length - 2)),
+      );
       router.refresh();
     } catch {
       setConfirmDeleteId(null);

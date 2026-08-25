@@ -59,8 +59,8 @@ reopen, `?at=` not opening at the passage that was tapped. Those run against a
 fixture `books.setup.ts` builds and imports for you, so they are covered on
 every run and need nothing set up by hand.
 
-The rest need the specific file that exposed them: Project Gutenberg's *Alice's
-Adventures in Wonderland*, which opens on an SVG-only cover page, links its own
+The rest need the specific file that exposed them: Project Gutenberg's _Alice's
+Adventures in Wonderland_, which opens on an SVG-only cover page, links its own
 stylesheets, and writes every table-of-contents entry as
 `document.xhtml#anchor`. Books are not stored in git, so that file is not here,
 and those checks **skip with a reason** rather than pass emptily. To run them,

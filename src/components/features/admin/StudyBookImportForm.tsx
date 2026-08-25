@@ -119,7 +119,11 @@ export function StudyBookImportForm() {
             <span className="text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">
               Title
             </span>
-            <input className={`${KONDO_CONTROL_CLASS} mt-1`} name="title" required />
+            <input
+              className={`${KONDO_CONTROL_CLASS} mt-1`}
+              name="title"
+              required
+            />
           </label>
           <label>
             <span className="text-xs font-black uppercase tracking-[0.12em] text-muted-foreground">

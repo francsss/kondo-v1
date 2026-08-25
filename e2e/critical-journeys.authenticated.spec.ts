@@ -19,49 +19,69 @@ test.describe("authenticated critical journeys", () => {
     const activity = main.getByRole("heading", { name: "Kondo is moving." });
 
     /*
-     * The greeting and the activity stream are both ordinary content now. They
-     * used to be a timed swap: the greeting showed, a 2.4 second timer hid it
-     * and revealed the stream, and the container animated its height between
-     * the two — so everything below moved long after the page had settled.
-     * Both are asserted present at once, and the greeting is re-checked past
-     * the old timer to prove nothing takes it away again.
+     * The greeting is the first slide of Kondo Life.
+     *
+     * It has been three things. A timed overlay first: it showed, a 2.4 second
+     * timer hid it and revealed the rail, and the container animated its
+     * height between the two, so everything below moved long after the page
+     * had settled. Then a block above the rail, which stopped the movement but
+     * put two headings at the top of a phone. Now it is a card in the rail, so
+     * it owns no vertical space at all.
+     *
+     * The important part is that the rail *rests* on it. An auto-advancing
+     * carousel would have reproduced the original defect wearing a carousel —
+     * a greeting that slides away on its own a few seconds after you arrive.
      */
     await expect(welcome).toBeVisible();
     await expect(activity).toBeVisible();
-    await expect(
-      main.getByRole("list", { name: "Recent activity" }),
-    ).toBeVisible();
+    const rail = main.getByRole("list", { name: "Recent activity" });
+    await expect(rail).toBeVisible();
     await expect(main.getByRole("button", { name: /activity/i })).toHaveCount(
       0,
     );
+    expect(
+      await welcome.evaluate((element) =>
+        Boolean(element.closest('[aria-label="Recent activity"]')),
+      ),
+    ).toBe(true);
+    expect(
+      await welcome.evaluate((element) => {
+        const card = element.closest("[data-activity-index]");
+        const list = element.closest('[aria-label="Recent activity"]');
+        return Boolean(card && list && list.firstElementChild === card);
+      }),
+    ).toBe(true);
 
-    const settled = await welcome.boundingBox();
-    await page.waitForTimeout(3_500);
+    // Past both the old 2.4s welcome timer and the rail's own 3.4s tick.
+    const resting = await rail.evaluate((element) => element.scrollLeft);
+    await page.waitForTimeout(5_000);
     await expect(welcome).toBeVisible();
-    const later = await welcome.boundingBox();
-    expect(settled).not.toBeNull();
-    expect(later).not.toBeNull();
-    expect(Math.abs((later?.y ?? 0) - (settled?.y ?? 0))).toBeLessThan(2);
+    expect(
+      Math.abs(
+        (await rail.evaluate((element) => element.scrollLeft)) - resting,
+      ),
+    ).toBeLessThan(2);
 
-    const activityList = main.getByRole("list", { name: "Recent activity" });
-    const autoplayStart = await activityList.evaluate(
-      (element) => element.scrollLeft,
+    /*
+     * Once the member moves off the greeting themselves, it behaves like the
+     * live rail it is — and still stops while they are pointing at it.
+     */
+    await rail.evaluate((element) =>
+      element.scrollBy({ left: element.clientWidth, behavior: "instant" }),
     );
+    await page.waitForTimeout(600);
+    const engaged = await rail.evaluate((element) => element.scrollLeft);
     await expect
-      .poll(() => activityList.evaluate((element) => element.scrollLeft), {
-        timeout: 4_500,
+      .poll(() => rail.evaluate((element) => element.scrollLeft), {
+        timeout: 6_000,
       })
-      .not.toBe(autoplayStart);
+      .not.toBe(engaged);
 
-    await activityList.hover();
+    await rail.hover();
     await page.waitForTimeout(700);
-    const hoverStart = await activityList.evaluate(
-      (element) => element.scrollLeft,
-    );
+    const hoverStart = await rail.evaluate((element) => element.scrollLeft);
     await page.waitForTimeout(3_700);
-    const hoverEnd = await activityList.evaluate(
-      (element) => element.scrollLeft,
-    );
+    const hoverEnd = await rail.evaluate((element) => element.scrollLeft);
     expect(Math.abs(hoverEnd - hoverStart)).toBeLessThan(2);
     for (const [href, label] of [
       ["/home", "Home"],

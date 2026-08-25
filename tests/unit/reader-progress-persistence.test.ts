@@ -41,7 +41,9 @@ describe("reading position survives leaving the book", () => {
   it("sends the pending write when the component goes away", () => {
     const cleanup = source.slice(source.indexOf("      cancelled = true;"));
     expect(cleanup).toContain("pendingSaveRef.current");
-    expect(cleanup).toMatch(/sendProgress\(pending\.locator, pending\.percentage\)/);
+    expect(cleanup).toMatch(
+      /sendProgress\(pending\.locator, pending\.percentage\)/,
+    );
   });
 
   it("sends it when the page is hidden or closed as well", () => {
@@ -110,18 +112,16 @@ describe("story video formats", () => {
     const { MEDIA_POLICIES } = await import("@/lib/media-policy");
     const policy = MEDIA_POLICIES.STORY_VIDEO;
     expect(Object.keys(policy.mimeExtensions)).toEqual(
-      expect.arrayContaining([
-        "video/mp4",
-        "video/quicktime",
-        "video/webm",
-      ]),
+      expect.arrayContaining(["video/mp4", "video/quicktime", "video/webm"]),
     );
   });
 
   it("does not accept an arbitrary file dressed as a video", async () => {
     const { MEDIA_POLICIES } = await import("@/lib/media-policy");
     const policy = MEDIA_POLICIES.STORY_VIDEO;
-    expect(policy.mimeExtensions).not.toHaveProperty("application/octet-stream");
+    expect(policy.mimeExtensions).not.toHaveProperty(
+      "application/octet-stream",
+    );
     expect(policy.mimeExtensions).not.toHaveProperty("video/x-msvideo");
     expect(policy.kind).toBe("VIDEO");
   });

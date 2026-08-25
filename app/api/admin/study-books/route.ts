@@ -40,11 +40,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const form = await request.formData().catch(() => null);
-    if (!form) return adminJson({ error: "Send the book as a file." }, { status: 400 });
+    if (!form)
+      return adminJson({ error: "Send the book as a file." }, { status: 400 });
 
     // The sample book needs no upload: it is generated here.
     if (form.get("sample") === "true") {
-      return adminJson({ book: await importSampleBook(auth.user.id) }, { status: 201 });
+      return adminJson(
+        { book: await importSampleBook(auth.user.id) },
+        { status: 201 },
+      );
     }
 
     const file = form.get("file");
@@ -54,7 +58,10 @@ export async function POST(request: NextRequest) {
     const text = (key: string) => String(form.get(key) ?? "").trim();
     const price = Number(text("priceMinor") || "0");
     if (!Number.isFinite(price) || price < 0) {
-      return adminJson({ error: "That price is not a number." }, { status: 400 });
+      return adminJson(
+        { error: "That price is not a number." },
+        { status: 400 },
+      );
     }
 
     const book = await importAdminBook({

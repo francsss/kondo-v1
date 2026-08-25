@@ -14,8 +14,14 @@ import { chapterIndex, documentPath } from "@/lib/reader-chapters";
  */
 
 const GUTENBERG_TOC = [
-  { label: "CHAPTER I. Down the Rabbit-Hole", href: "11-h-1.htm.xhtml#pgepubid00003" },
-  { label: "CHAPTER II. The Pool of Tears", href: "11-h-2.htm.xhtml#pgepubid00004" },
+  {
+    label: "CHAPTER I. Down the Rabbit-Hole",
+    href: "11-h-1.htm.xhtml#pgepubid00003",
+  },
+  {
+    label: "CHAPTER II. The Pool of Tears",
+    href: "11-h-2.htm.xhtml#pgepubid00004",
+  },
   {
     label: "CHAPTER III. A Caucus-Race and a Long Tale",
     href: "11-h-3.htm.xhtml#pgepubid00005",

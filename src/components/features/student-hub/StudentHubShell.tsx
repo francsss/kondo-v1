@@ -264,7 +264,9 @@ export function activeStudentHubTab(
     // `find` matches it for every path underneath and would light the shop
     // while a student is looking at their own shelf.
     const dedicated = tabs
-      .filter((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`))
+      .filter(
+        (tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`),
+      )
       .sort((left, right) => right.href.length - left.href.length)[0];
     if (!dedicated || !owned.has(dedicated.key)) return "resources";
   }

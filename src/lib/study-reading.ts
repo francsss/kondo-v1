@@ -155,7 +155,9 @@ export async function createAnnotation(input: {
     let taskId: string | null = null;
     const taskTitle = input.task?.title?.trim();
     if (input.task && taskTitle) {
-      const source = [essential.title, chapterLabel].filter(Boolean).join(" · ");
+      const source = [essential.title, chapterLabel]
+        .filter(Boolean)
+        .join(" · ");
       const highlight = input.selectedText?.trim();
       const task = await tx.academicTask.create({
         data: {

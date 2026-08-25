@@ -70,7 +70,9 @@ export default async function AdminStudyBooksPage() {
                         ? `${(book.priceMinor / 100).toFixed(2)} ${book.currency}`
                         : "Free"}
                     </td>
-                    <td className="py-2 pr-4">{book.aiAllowed ? "Yes" : "No"}</td>
+                    <td className="py-2 pr-4">
+                      {book.aiAllowed ? "Yes" : "No"}
+                    </td>
                     <td className="py-2 tabular-nums">
                       {book.assetBytes
                         ? `${Math.round(book.assetBytes / 1024)} KB`

@@ -23,9 +23,7 @@ const stories = readFileSync(resolve("src/lib/stories.ts"), "utf8");
 
 describe("publishing eligibility", () => {
   it("does not require an approved-creator status", () => {
-    const gate = stories.slice(
-      stories.indexOf("function canPublishDirectly"),
-    );
+    const gate = stories.slice(stories.indexOf("function canPublishDirectly"));
     const body = gate.slice(0, gate.indexOf("\n}"));
     expect(body).not.toContain("APPROVED_CREATOR");
     expect(body).not.toContain("TRUSTED_CREATOR");
@@ -33,9 +31,7 @@ describe("publishing eligibility", () => {
   });
 
   it("turns only on suspension", () => {
-    const gate = stories.slice(
-      stories.indexOf("function canPublishDirectly"),
-    );
+    const gate = stories.slice(stories.indexOf("function canPublishDirectly"));
     const body = gate.slice(0, gate.indexOf("\n}"));
     expect(body).toContain('storyCreatorStatus !== "SUSPENDED"');
   });

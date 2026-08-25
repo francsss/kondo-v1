@@ -83,7 +83,7 @@ test.describe("Student Stories access and responsive navigation", () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     for (const [path, heading] of [
-      ["/stories/submit", "Submit a useful Story"],
+      ["/stories/submit", "Create Reel"],
       ["/settings/official-profile", "Official profile"],
     ] as const) {
       await page.goto(path);
@@ -91,6 +91,26 @@ test.describe("Student Stories access and responsive navigation", () => {
         page.getByRole("heading", { name: heading }).first(),
       ).toBeVisible();
       if (path === "/stories/submit") {
+        /*
+         * A focused creation environment, not a desktop form squeezed onto a
+         * phone. What a student meets is the video, a title, a category and a
+         * caption; the eight optional fields that used to sit between them and
+         * the submit button are behind one disclosure, and Publish rides in a
+         * sticky bar rather than living below the fold.
+         */
+        await expect(
+          page.getByRole("button", { name: /publish reel/i }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("combobox", { name: "Related resource" }),
+        ).toHaveCount(0);
+        // The native disclosure: its own text is "Add context" plus the
+        // "Optional" tag, so it is matched as the summary rather than by an
+        // exact string.
+        await page
+          .locator("summary")
+          .filter({ hasText: "Add context" })
+          .click();
         await expect(
           page.getByRole("combobox", { name: "Related resource" }),
         ).toBeVisible();

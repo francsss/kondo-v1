@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookmarkPlus, Check, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  BookmarkPlus,
+  Check,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { KONDO_CONTROL_CLASS } from "@/components/ui/Form";

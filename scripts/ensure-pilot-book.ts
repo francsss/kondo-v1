@@ -27,7 +27,9 @@ const SLUG = "kondo-sample-book";
 
 async function main() {
   if (process.env.KONDO_SKIP_PILOT_BOOK === "true") {
-    console.log("[books] KONDO_SKIP_PILOT_BOOK is set; leaving the catalogue alone.");
+    console.log(
+      "[books] KONDO_SKIP_PILOT_BOOK is set; leaving the catalogue alone.",
+    );
     return;
   }
   if (!process.env.DATABASE_URL) {

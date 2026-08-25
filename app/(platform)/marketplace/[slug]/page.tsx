@@ -140,10 +140,7 @@ export default async function ListingDetailPage({
               </Link>
             </Button>
           ) : (
-            <ContactSellerButton
-              className="mt-5"
-              listingId={listing.id}
-            />
+            <ContactSellerButton className="mt-5" listingId={listing.id} />
           )}
           <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
             Meet in a public place. Kondo never handles payment or asks for a

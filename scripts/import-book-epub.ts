@@ -177,7 +177,9 @@ async function main() {
     publish: options.publish,
     language: options.language,
   });
-  console.log(JSON.stringify({ imported: imported.slug, ...imported }, null, 2));
+  console.log(
+    JSON.stringify({ imported: imported.slug, ...imported }, null, 2),
+  );
 }
 
 // Only when invoked as a command. Seeding imports `importBookEpub` from this
