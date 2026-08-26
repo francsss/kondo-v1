@@ -1,10 +1,17 @@
 import { randomBytes } from "node:crypto";
-import type {
+import {
   Prisma,
-  StudyEssentialFormat,
-  StudyEssentialPaymentProvider,
+  type StudyEssentialFormat,
+  type StudyEssentialPaymentProvider,
 } from "@prisma/client";
 import { writeAuditLogWithClient } from "@/lib/audit";
+import {
+  createAlipayPagePayRequest,
+  decideAlipayOrderTransition,
+  formatAlipayTimestamp,
+  type AlipayConfig,
+  type VerifiedAlipayNotification,
+} from "@/lib/payments/alipay-sandbox";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -13,9 +20,9 @@ import { prisma } from "@/lib/prisma";
  * Two sources share one catalogue. `KONDO` items are sold through Kondo and
  * can be ordered; `PARTNER` items are published by publishers, universities
  * and education companies and always send the student to the partner's own
- * platform. Nothing here charges a card: the MVP records a simulated payment
- * and keeps the provider on the order so a real adapter can replace it later
- * without touching the catalogue or the order shape.
+ * platform. Kondo still never collects card details: the preview supports an
+ * immediate demo settlement and an Alipay sandbox adapter whose signed server
+ * notification settles the same order model without moving real money.
  */
 
 export class StudyEssentialError extends Error {
@@ -43,7 +50,7 @@ export function isStudyEssentialFilter(
   return STUDY_ESSENTIAL_FILTERS.some(({ key }) => key === value);
 }
 
-/** Simulated payment methods offered at checkout. */
+/** Payment methods offered by the Study Essentials preview checkout. */
 export const STUDY_ESSENTIAL_PAYMENT_METHODS = [
   {
     key: "SIMULATED" as const,
@@ -236,6 +243,269 @@ export async function placeSimulatedOrder(input: {
     });
 
     return order;
+  });
+}
+
+type AlipayPaymentOrder = {
+  reference: string;
+  titleSnapshot: string;
+  totalMinor: number;
+  placedAt: Date;
+  status: string;
+};
+
+function paymentForAlipayOrder(
+  order: AlipayPaymentOrder,
+  config: AlipayConfig,
+) {
+  if (order.status !== "PENDING") return null;
+  return createAlipayPagePayRequest(
+    {
+      outTradeNo: order.reference,
+      subject: order.titleSnapshot,
+      totalAmountMinor: order.totalMinor,
+      timestamp: formatAlipayTimestamp(order.placedAt),
+    },
+    config,
+  );
+}
+
+function assertMatchingAlipayRetry(
+  order: { essential: { slug: string }; quantity: number },
+  slug: string,
+  quantity: number,
+) {
+  if (order.essential.slug !== slug || order.quantity !== quantity) {
+    throw new StudyEssentialError(
+      "This Idempotency-Key was already used for a different order.",
+      409,
+    );
+  }
+}
+
+export async function placeAlipayOrder(input: {
+  userId: string;
+  slug: string;
+  quantity: number;
+  idempotencyKey: string;
+  config: AlipayConfig;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}) {
+  if (!Number.isInteger(input.quantity)) {
+    throw new StudyEssentialError("Choose a whole-number quantity.");
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(input.idempotencyKey)) {
+    throw new StudyEssentialError(
+      "A valid Alipay idempotency key is required.",
+    );
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existing = await tx.studyEssentialOrder.findUnique({
+        where: {
+          userId_paymentProvider_idempotencyKey: {
+            userId: input.userId,
+            paymentProvider: "ALIPAY",
+            idempotencyKey: input.idempotencyKey,
+          },
+        },
+        include: { essential: { select: { slug: true } } },
+      });
+      if (existing) {
+        assertMatchingAlipayRetry(existing, input.slug, input.quantity);
+        return {
+          order: existing,
+          payment: paymentForAlipayOrder(existing, input.config),
+        };
+      }
+      if (input.quantity < 1) {
+        throw new StudyEssentialError("Choose a quantity of at least one.");
+      }
+      if (input.quantity > 10) {
+        throw new StudyEssentialError(
+          "A single sandbox order is limited to ten items.",
+        );
+      }
+
+      const essential = await tx.studyEssential.findFirst({
+        where: { slug: input.slug, status: "PUBLISHED" },
+      });
+      if (!essential) {
+        throw new StudyEssentialError("This item is no longer available.", 404);
+      }
+      if (!isOrderable(essential)) {
+        throw new StudyEssentialError(
+          "This item is provided by a partner and is bought on their platform.",
+        );
+      }
+      if (essential.currency !== "CNY") {
+        throw new StudyEssentialError(
+          "Alipay sandbox checkout currently supports CNY items only.",
+        );
+      }
+
+      const unitPriceMinor = essential.priceMinor ?? 0;
+      const totalMinor = unitPriceMinor * input.quantity;
+      if (!Number.isSafeInteger(totalMinor) || totalMinor <= 0) {
+        throw new StudyEssentialError(
+          "Alipay sandbox checkout requires a positive item price.",
+        );
+      }
+
+      const now = new Date();
+      const order = await tx.studyEssentialOrder.create({
+        data: {
+          reference: orderReference(),
+          userId: input.userId,
+          essentialId: essential.id,
+          titleSnapshot: essential.title,
+          formatSnapshot: essential.format,
+          quantity: input.quantity,
+          unitPriceMinor,
+          totalMinor,
+          currency: essential.currency,
+          status: "PENDING",
+          paymentProvider: "ALIPAY",
+          idempotencyKey: input.idempotencyKey,
+          placedAt: now,
+        },
+      });
+
+      await writeAuditLogWithClient(tx, {
+        actorId: input.userId,
+        action: "STUDY_ESSENTIAL_ORDER_PLACED",
+        entityType: "StudyEssentialOrder",
+        entityId: order.id,
+        newValue: {
+          reference: order.reference,
+          essentialId: essential.id,
+          quantity: order.quantity,
+          totalMinor: order.totalMinor,
+          currency: order.currency,
+          paymentProvider: order.paymentProvider,
+          sandbox: true,
+        },
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
+      });
+
+      return { order, payment: paymentForAlipayOrder(order, input.config) };
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.studyEssentialOrder.findUnique({
+        where: {
+          userId_paymentProvider_idempotencyKey: {
+            userId: input.userId,
+            paymentProvider: "ALIPAY",
+            idempotencyKey: input.idempotencyKey,
+          },
+        },
+        include: { essential: { select: { slug: true } } },
+      });
+      if (existing) {
+        assertMatchingAlipayRetry(existing, input.slug, input.quantity);
+        return {
+          order: existing,
+          payment: paymentForAlipayOrder(existing, input.config),
+        };
+      }
+    }
+    throw error;
+  }
+}
+
+export async function settleAlipayOrder(
+  notification: VerifiedAlipayNotification,
+) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.studyEssentialOrder.findUnique({
+      where: { reference: notification.outTradeNo },
+      select: {
+        id: true,
+        reference: true,
+        status: true,
+        paymentProvider: true,
+        paymentReference: true,
+        totalMinor: true,
+        currency: true,
+      },
+    });
+    if (!order) {
+      return { accepted: false as const, outcome: "ORDER_NOT_FOUND" as const };
+    }
+
+    const transition = decideAlipayOrderTransition(order, notification);
+    if (transition.kind === "REJECT") {
+      return { accepted: false as const, outcome: transition.reason };
+    }
+    if (
+      transition.kind === "ALREADY_PAID" ||
+      transition.kind === "ALREADY_CANCELLED" ||
+      transition.kind === "KEEP_PENDING"
+    ) {
+      return { accepted: true as const, outcome: transition.kind };
+    }
+
+    const nextStatus =
+      transition.kind === "MARK_PAID"
+        ? ("PAID" as const)
+        : ("CANCELLED" as const);
+    const changed = await tx.studyEssentialOrder.updateMany({
+      where: { id: order.id, status: "PENDING" },
+      data: {
+        status: nextStatus,
+        paymentReference: notification.tradeNo,
+        ...(nextStatus === "PAID" ? { paidAt: new Date() } : {}),
+      },
+    });
+    if (changed.count !== 1) {
+      const current = await tx.studyEssentialOrder.findUnique({
+        where: { id: order.id },
+        select: {
+          reference: true,
+          status: true,
+          paymentProvider: true,
+          paymentReference: true,
+          totalMinor: true,
+          currency: true,
+        },
+      });
+      if (!current) {
+        return {
+          accepted: false as const,
+          outcome: "ORDER_NOT_FOUND" as const,
+        };
+      }
+      const concurrent = decideAlipayOrderTransition(current, notification);
+      return concurrent.kind === "ALREADY_PAID" ||
+        concurrent.kind === "ALREADY_CANCELLED"
+        ? { accepted: true as const, outcome: concurrent.kind }
+        : { accepted: false as const, outcome: "ORDER_STATUS_RACE" as const };
+    }
+
+    await writeAuditLogWithClient(tx, {
+      action:
+        nextStatus === "PAID"
+          ? "STUDY_ESSENTIAL_ORDER_PAID"
+          : "STUDY_ESSENTIAL_ORDER_CANCELLED",
+      entityType: "StudyEssentialOrder",
+      entityId: order.id,
+      oldValue: { status: order.status },
+      newValue: {
+        status: nextStatus,
+        paymentProvider: "ALIPAY",
+        paymentReference: notification.tradeNo,
+        sandbox: true,
+      },
+    });
+
+    return { accepted: true as const, outcome: transition.kind };
   });
 }
 

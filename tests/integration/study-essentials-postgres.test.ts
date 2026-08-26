@@ -1,9 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   isOrderable,
+  placeAlipayOrder,
   placeSimulatedOrder,
+  settleAlipayOrder,
   StudyEssentialError,
 } from "@/lib/study-essentials";
 import {
@@ -28,6 +30,26 @@ const physicalSlug = `test-kondo-planner-${suffix}`;
 let userId = "";
 let chapterId = "";
 
+const applicationKeys = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: "spki", format: "pem" },
+  privateKeyEncoding: { type: "pkcs8", format: "pem" },
+});
+const alipayKeys = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: "spki", format: "pem" },
+  privateKeyEncoding: { type: "pkcs8", format: "pem" },
+});
+const alipayConfig = {
+  appId: "sandbox-app-id",
+  sellerId: "sandbox-seller-id",
+  applicationPrivateKey: applicationKeys.privateKey,
+  alipayPublicKey: alipayKeys.publicKey,
+  gatewayUrl: "https://openapi-sandbox.dl.alipaydev.com/gateway.do",
+  notifyUrl: "https://example.test/api/payments/alipay/notify",
+  returnUrl: "https://example.test/books/payment/success",
+};
+
 async function cleanup() {
   const users = await prisma.user.findMany({
     where: { email: { endsWith: `@${testDomain}` } },
@@ -35,6 +57,11 @@ async function cleanup() {
   });
   const userIds = users.map(({ id }) => id);
   if (userIds.length) {
+    const orders = await prisma.studyEssentialOrder.findMany({
+      where: { userId: { in: userIds } },
+      select: { id: true },
+    });
+    const orderIds = orders.map(({ id }) => id);
     await prisma.studyNote.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.studyReadingProgress.deleteMany({
       where: { userId: { in: userIds } },
@@ -45,7 +72,21 @@ async function cleanup() {
     await prisma.academicTask.deleteMany({
       where: { ownerId: { in: userIds } },
     });
-    await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+    await prisma.auditLog.deleteMany({
+      where: {
+        OR: [
+          { actorId: { in: userIds } },
+          ...(orderIds.length
+            ? [
+                {
+                  entityType: "StudyEssentialOrder",
+                  entityId: { in: orderIds },
+                },
+              ]
+            : []),
+        ],
+      },
+    });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   }
   await prisma.studyEssential.deleteMany({
@@ -157,6 +198,209 @@ postgresDescribe("Study Essentials purchase and study workspace", () => {
         paymentProvider: "ALIPAY",
       }),
     ).rejects.toThrow(/only the kondo demo payment/i);
+  });
+
+  it("reuses an Alipay order for an identical idempotent retry", async () => {
+    const input = {
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `retry-${suffix}`,
+      config: alipayConfig,
+    };
+    const first = await placeAlipayOrder(input);
+    const retry = await placeAlipayOrder(input);
+
+    expect(retry.order.id).toBe(first.order.id);
+    expect(retry.order.reference).toBe(first.order.reference);
+    expect(retry.payment).toEqual(first.payment);
+    await expect(
+      prisma.studyEssentialOrder.count({
+        where: {
+          userId,
+          paymentProvider: "ALIPAY",
+          idempotencyKey: input.idempotencyKey,
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("collapses concurrent Alipay retries into one order", async () => {
+    const input = {
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `concurrent-${suffix}`,
+      config: alipayConfig,
+    };
+    const [first, second] = await Promise.all([
+      placeAlipayOrder(input),
+      placeAlipayOrder(input),
+    ]);
+
+    expect(second.order.id).toBe(first.order.id);
+    expect(second.payment).toEqual(first.payment);
+    await expect(
+      prisma.studyEssentialOrder.count({
+        where: {
+          userId,
+          paymentProvider: "ALIPAY",
+          idempotencyKey: input.idempotencyKey,
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("reuses an Alipay order after its catalogue item is archived", async () => {
+    const input = {
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `archived-${suffix}`,
+      config: alipayConfig,
+    };
+    const first = await placeAlipayOrder(input);
+    await prisma.studyEssential.update({
+      where: { slug: kondoSlug },
+      data: { status: "ARCHIVED" },
+    });
+
+    const retry = await placeAlipayOrder(input);
+    expect(retry.order.id).toBe(first.order.id);
+    expect(retry.payment).toEqual(first.payment);
+
+    await prisma.studyEssential.update({
+      where: { slug: kondoSlug },
+      data: { status: "PUBLISHED" },
+    });
+  });
+
+  it("rejects reuse of an Alipay idempotency key for a different order", async () => {
+    const idempotencyKey = `conflict-${suffix}`;
+    await placeAlipayOrder({
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey,
+      config: alipayConfig,
+    });
+
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: kondoSlug,
+        quantity: 2,
+        idempotencyKey,
+        config: alipayConfig,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: kondoSlug,
+        quantity: 11,
+        idempotencyKey,
+        config: alipayConfig,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: `missing-${suffix}`,
+        quantity: 1,
+        idempotencyKey,
+        config: alipayConfig,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("keeps an Alipay order locked until a matching notification settles it", async () => {
+    const { order, payment } = await placeAlipayOrder({
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `settle-${suffix}`,
+      config: alipayConfig,
+    });
+    expect(order.status).toBe("PENDING");
+    expect(payment).not.toBeNull();
+    expect(payment?.params.method).toBe("alipay.trade.page.pay");
+    expect(
+      (await listLibrary(userId)).some(
+        (entry) => entry.essential.slug === kondoSlug,
+      ),
+    ).toBe(false);
+
+    const notification = {
+      verified: true as const,
+      paid: true,
+      outTradeNo: order.reference,
+      totalAmount: "50.00",
+      tradeNo: `sandbox-${suffix}`,
+      tradeStatus: "TRADE_SUCCESS",
+    };
+    await expect(settleAlipayOrder(notification)).resolves.toEqual({
+      accepted: true,
+      outcome: "MARK_PAID",
+    });
+    expect(
+      (await listLibrary(userId)).some(
+        (entry) => entry.essential.slug === kondoSlug,
+      ),
+    ).toBe(true);
+    await expect(settleAlipayOrder(notification)).resolves.toEqual({
+      accepted: true,
+      outcome: "ALREADY_PAID",
+    });
+    await expect(
+      placeAlipayOrder({
+        userId,
+        slug: kondoSlug,
+        quantity: 1,
+        idempotencyKey: `settle-${suffix}`,
+        config: alipayConfig,
+      }),
+    ).resolves.toMatchObject({
+      order: { id: order.id, status: "PAID" },
+      payment: null,
+    });
+  });
+
+  it("cancels an Alipay order idempotently after TRADE_CLOSED", async () => {
+    const { order } = await placeAlipayOrder({
+      userId,
+      slug: kondoSlug,
+      quantity: 1,
+      idempotencyKey: `closed-${suffix}`,
+      config: alipayConfig,
+    });
+    const notification = {
+      verified: true as const,
+      paid: false,
+      outTradeNo: order.reference,
+      totalAmount: "50.00",
+      tradeNo: `sandbox-closed-${suffix}`,
+      tradeStatus: "TRADE_CLOSED",
+    };
+
+    await expect(settleAlipayOrder(notification)).resolves.toEqual({
+      accepted: true,
+      outcome: "MARK_CANCELLED",
+    });
+    await expect(settleAlipayOrder(notification)).resolves.toEqual({
+      accepted: true,
+      outcome: "ALREADY_CANCELLED",
+    });
+    await expect(
+      prisma.studyEssentialOrder.findUniqueOrThrow({
+        where: { id: order.id },
+        select: { status: true, paymentReference: true, paidAt: true },
+      }),
+    ).resolves.toEqual({
+      status: "CANCELLED",
+      paymentReference: notification.tradeNo,
+      paidAt: null,
+    });
   });
 
   it("settles a simulated order and prices it from the quantity", async () => {

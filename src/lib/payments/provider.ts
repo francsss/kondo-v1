@@ -23,6 +23,8 @@ export type PaymentIntent = {
   returnUrl: string;
   /** Where the provider posts its verified result. */
   notifyUrl: string;
+  /** Stable creation time used to reproduce an idempotent signed handoff. */
+  createdAt?: Date;
 };
 
 /**

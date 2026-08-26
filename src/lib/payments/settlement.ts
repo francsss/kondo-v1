@@ -31,9 +31,7 @@ export type SettlementOutcome =
 export async function settleVerifiedPayment(
   verdict: Extract<NotificationVerdict, { verified: true }>,
 ): Promise<SettlementOutcome> {
-  if (verdict.status !== "PAID") {
-    // Pending and failed notifications are legitimate traffic; they simply do
-    // not grant anything. Acknowledged so the provider stops retrying.
+  if (verdict.status === "PENDING" || verdict.status === "REFUNDED") {
     return {
       settled: false,
       reason: `Trade status is ${verdict.status}.`,
@@ -50,6 +48,7 @@ export async function settleVerifiedPayment(
           userId: true,
           essentialId: true,
           status: true,
+          paymentProvider: true,
           totalMinor: true,
           currency: true,
           paymentReference: true,
@@ -63,24 +62,16 @@ export async function settleVerifiedPayment(
         } as const;
       }
 
-      if (order.status === "PAID") {
-        // The common case on a retry. The entitlement is re-asserted rather
-        // than assumed, so an order that was paid before entitlements existed
-        // still ends up with one.
-        await grantEntitlement(tx, {
-          userId: order.userId,
-          essentialId: order.essentialId,
-          source: "PURCHASE",
-          orderId: order.id,
-        });
+      if (order.paymentProvider !== "ALIPAY") {
         return {
-          settled: true,
-          alreadySettled: true,
-          orderId: order.id,
+          settled: false,
+          reason: `Order belongs to ${order.paymentProvider}, not Alipay.`,
+          status: 409,
         } as const;
       }
 
-      // The amount is the order's, and the notification has to agree with it.
+      // The amount is the order's, and every notification — including a
+      // duplicate for an already-paid order — has to agree with it.
       // Trusting the callback here is how an order for one book gets settled
       // by a payment for a cheaper one.
       if (verdict.amountMinor !== order.totalMinor) {
@@ -97,31 +88,100 @@ export async function settleVerifiedPayment(
           status: 409,
         } as const;
       }
+      if (
+        order.paymentReference &&
+        verdict.providerReference !== order.paymentReference
+      ) {
+        return {
+          settled: false,
+          reason: "Provider trade reference does not match this order.",
+          status: 409,
+        } as const;
+      }
 
-      await tx.studyEssentialOrder.update({
-        where: { id: order.id },
+      const targetStatus = verdict.status === "FAILED" ? "CANCELLED" : "PAID";
+      if (order.status === targetStatus) {
+        if (targetStatus === "PAID") {
+          await grantEntitlement(tx, {
+            userId: order.userId,
+            essentialId: order.essentialId,
+            source: "PURCHASE",
+            orderId: order.id,
+          });
+        }
+        return {
+          settled: true,
+          alreadySettled: true,
+          orderId: order.id,
+        } as const;
+      }
+      if (order.status !== "PENDING") {
+        return {
+          settled: false,
+          reason: `Cannot mark an order in ${order.status} as ${targetStatus}.`,
+          status: 409,
+        } as const;
+      }
+
+      const changed = await tx.studyEssentialOrder.updateMany({
+        where: { id: order.id, status: "PENDING" },
         data: {
-          status: "PAID",
-          paidAt: new Date(),
+          status: targetStatus,
           paymentReference: verdict.providerReference || order.paymentReference,
-          // Enough of the notification to reconcile a dispute. No credentials:
-          // the signature and the raw key material are dropped here.
+          ...(targetStatus === "PAID" ? { paidAt: new Date() } : {}),
           providerPayload: {
             trade_no: verdict.raw.trade_no ?? null,
             trade_status: verdict.raw.trade_status ?? null,
             total_amount: verdict.raw.total_amount ?? null,
-            gmt_payment: verdict.raw.gmt_payment ?? null,
-            buyer_logon_id: verdict.raw.buyer_logon_id ?? null,
+            ...(targetStatus === "PAID"
+              ? {
+                  gmt_payment: verdict.raw.gmt_payment ?? null,
+                  buyer_logon_id: verdict.raw.buyer_logon_id ?? null,
+                }
+              : {}),
           },
         },
       });
 
-      await grantEntitlement(tx, {
-        userId: order.userId,
-        essentialId: order.essentialId,
-        source: "PURCHASE",
-        orderId: order.id,
-      });
+      if (changed.count !== 1) {
+        const current = await tx.studyEssentialOrder.findUnique({
+          where: { id: order.id },
+          select: { status: true, paymentReference: true },
+        });
+        if (
+          current?.status !== targetStatus ||
+          (current.paymentReference &&
+            current.paymentReference !== verdict.providerReference)
+        ) {
+          return {
+            settled: false,
+            reason: "A conflicting payment status won the settlement race.",
+            status: 409,
+          } as const;
+        }
+        if (targetStatus === "PAID") {
+          await grantEntitlement(tx, {
+            userId: order.userId,
+            essentialId: order.essentialId,
+            source: "PURCHASE",
+            orderId: order.id,
+          });
+        }
+        return {
+          settled: true,
+          alreadySettled: true,
+          orderId: order.id,
+        } as const;
+      }
+
+      if (targetStatus === "PAID") {
+        await grantEntitlement(tx, {
+          userId: order.userId,
+          essentialId: order.essentialId,
+          source: "PURCHASE",
+          orderId: order.id,
+        });
+      }
 
       return {
         settled: true,
