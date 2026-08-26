@@ -1,13 +1,26 @@
 # Kondo — Product Audit
 
-**Audit date:** 25 August 2026
-**Commit audited:** `60542d5`
+**Audit date:** 26 August 2026
+**Commit audited:** `324a7ec`
 **Method:** direct inspection of the repository (routes, Prisma schema, business-logic
 modules, test suites) plus a running production build of the application, driven in a
-real browser at a Pixel 7 viewport.
+real browser at phone and desktop viewports.
 
-This document is the factual foundation for the competition dossier. Nothing in the
-dossier should claim more than this audit supports.
+This is the evidence layer. It is deliberately dry: the argument lives in
+[`KONDO-DOSSIER.md`](./KONDO-DOSSIER.md) and
+[`COMPETITION-NARRATIVE.md`](./COMPETITION-NARRATIVE.md), and **nothing in either
+should claim more than this document supports.**
+
+### Label vocabulary
+
+The dossier uses four labels. They map onto this audit as follows:
+
+| Dossier label        | Means                                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Live now**         | Working — implemented, exercised by tests, and demonstrated in a browser with a screenshot in `./screenshots/`. |
+| **In testing**       | Implemented but incomplete, unproven, blocked on a credential, or with zero content.                            |
+| **Next phase**       | Not built. No code.                                                                                             |
+| **Long-term vision** | A direction. Nothing exists.                                                                                    |
 
 ---
 
@@ -200,6 +213,48 @@ Excluded because they are incomplete, unproven or undemonstrable:
 6. **Housing with real content** — module exists, zero listings.
 7. **Chinese-language interface** — does not exist.
 8. **Any user, revenue, partnership or adoption metric** — there are none.
+
+---
+
+## 6b. The payment origin, audited
+
+The dossier opens on the founding problem — paying tuition from home — so this is what
+the repository actually contains.
+
+**Exists:**
+
+- A payment-readiness page at `/payments` that states, in the product's own words,
+  _"Payments are not active yet."_, _"Kondo will not hold funds, exchange currency or
+  claim to be a bank."_, and _"A configured provider must handle KYC, compliance, FX,
+  settlement and refunds."_ (`03-payments-not-active.png`)
+- A `PaymentProvider` enum containing `SIMULATED`, `ALIPAY`, `WECHAT_PAY`, `CARD`
+- A checkout and order pipeline for study materials, running on `SIMULATED` only
+
+**Does not exist:** any cross-border payment capability, any authorised provider, any
+custody of funds, any currency conversion, and any regulatory approval. **No real
+payment has ever been processed.**
+
+The dossier therefore labels cross-border tuition payment **long-term vision** and makes
+no regulatory claim. That framing is required, not stylistic.
+
+---
+
+## 6c. Screenshot inventory
+
+34 screenshots in `./screenshots/`, all captured from a running production build. The
+mobile set was taken at a 430 × 932 viewport at 2× density; the wide set at 1440 × 900.
+
+Two things worth recording about how they were produced:
+
+1. **The timetable behind every Workspace screenshot was created through Kondo's own
+   `POST /api/student-hub/schedules` and `/courses` endpoints** — the real API, with the
+   real validation. It is demo content in a real feature, not a mock-up.
+2. **Screenshots of features that do not work are included on purpose.**
+   `12-reader-ai-not-configured.png` is the Ask AI screen failing without an API key, and
+   `30-opportunities-empty.png` is the opportunities list with zero records. A jury
+   should be able to see the difference between what runs and what is wired.
+
+There is **no screenshot of any feature that does not exist.**
 
 ---
 

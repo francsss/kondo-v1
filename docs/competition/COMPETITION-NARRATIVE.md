@@ -1,182 +1,217 @@
-# Kondo — Competition Narrative
+# Kondo — the two-page version
 
-_The one-to-two page argument. Everything here is supported by
-[`PRODUCT-AUDIT.md`](./PRODUCT-AUDIT.md)._
+## Your student life in China, in one place.
+
+**Study. Live. Connect. Discover.**
+
+_Everything here is supported by [`PRODUCT-AUDIT.md`](./PRODUCT-AUDIT.md) and
+expanded in [`KONDO-DOSSIER.md`](./KONDO-DOSSIER.md)._
+
+---
+
+## Where it started
+
+Kondo did not begin as an idea for a student app. It began with money.
+
+An international student's support is usually in one country and their expenses
+are in another. Tuition has to be paid in China, from home. That transfer — the
+rails, the currency, the fees, the timing — is the first serious obstacle many
+students meet, and it arrives before they do.
+
+Studying that problem is what made the project bigger. Money turned out not to be
+a category but a **moment** — the first in a long sequence that lands on the same
+person. The student who cannot easily pay tuition is the same student who, three
+weeks later, cannot find the right building, does not know which bank branch
+handles foreign passports, and has not met anyone from home yet.
+
+> **On payments, stated exactly:** Kondo does not process payments, hold funds or
+> convert currency, and makes no regulatory claim. Any future version would need
+> licensed, authorised partners. The product says so itself: its payment page
+> reads _"Payments are not active yet."_
 
 ---
 
 ## The problem
 
-China has one of the most advanced digital and service ecosystems in the world. Payments,
-delivery, transport, commerce and campus administration are all solved — **for people who
-already know how the system works.**
+An international student does not only need a university. They need to know how
+the place works.
 
-An international student arriving in Jiaxing does not yet have that local knowledge. Not
-because anything is missing, but because the knowledge that unlocks it is distributed
-across WeChat groups, seniors, notice boards, half-remembered advice and a dozen apps that
-assume a Chinese phone number, a Chinese bank card and reading fluency.
+**This is not a criticism of China.** China has one of the most advanced digital
+and service ecosystems in the world — payments, delivery, transport, commerce and
+campus administration are solved here, better than in most places a student
+arrives from.
 
-The result is a gap that is **temporary but expensive**. It costs a student their first
-months. It costs a city the engagement of the international students already living in it.
-And it costs local businesses an audience that is physically nearby and commercially
-invisible to them.
+The difficulty is narrower: **those services assume local knowledge a newly
+arrived student has not acquired yet.** The knowledge exists — it is simply spread
+across WeChat groups, seniors, notice boards and a dozen apps built for people who
+already know how the system works.
 
-**Kondo is not a replacement for China's digital ecosystem. It is an orientation layer on
-top of it.**
+The gap is in orientation, not infrastructure. It is temporary but expensive: it
+costs a student their first months, and it costs the city around them an
+international community it cannot currently reach.
 
----
-
-## Kondo, in one sentence
-
-> Kondo connects international students in China to their studies, their community, and the
-> city around them — and gives that city's businesses a direct channel to them.
+**Kondo is not a replacement for China's ecosystem. It is a way in.**
 
 ---
 
-## Side A — for international students
+## What a student actually gets
 
-One account covering the parts of student life that are currently scattered:
+One account, covering the parts of student life that are currently scattered.
 
-- **Study** — Student Hub, Workspace built from a real class schedule, a digital library
-  with a working EPUB reader (highlights, notes, tasks raised from a passage, reading
-  position kept across devices)
-- **Adapt** — Guide: bank account, SIM card, residence permit, first 72 hours, emergencies
-- **Live** — Marketplace, Food & Services, communities, student discovery
-- **Connect** — Student Story reels, messaging, community posts
-- **Grow** — Opportunities from organizations
+**Study.** Workspace opens on today's real timetable — _"3 classes today,
+Engineering Physics II, 08:30–10:05, B204."_ The class opens its materials. The
+textbook opens where you stopped, at the exact sentence, not a page number. Hold a
+passage and four actions appear: **Highlight · Note · Task · AI**. Choose Task and
+the passage becomes a planner item, quoted, linked back to where it came from.
 
-This is not a plan. **198 page routes, 283 API routes, 142 database models, 1023 automated
-tests, and 128 browser journeys, all green in CI.**
+> **Your books, notes, courses and tasks in one workspace — and the passage you
+> were reading is the thing that becomes the task.**
 
----
+**Adapt.** Fifteen practical guides that begin before the flight: the first 72
+hours, university registration, a Chinese bank account, a SIM card, WeChat and
+Alipay, the residence permit, healthcare, emergencies. Each one a checklist that
+remembers your progress.
 
-## Side B — for Jiaxing
+**Connect.** Communities organised the way students actually cluster — by origin,
+university, situation. Meet, Nearby and Looking For. Messaging. Student Story: a
+vertical video feed where students show the city to each other.
 
-The same platform, seen from the other side.
+**Live.** A marketplace where a graduating student sells their bicycle to an
+arriving one, with the conversation attached to the listing and kept out of their
+personal inbox.
 
-A Jiaxing restaurant, shop or service provider creates an **organization account**, gets a
-**public storefront**, and publishes **products and services** that appear to international
-students in Food & Services. A company enables the opportunities capability and publishes
-internships or events. Every organization has a workspace, a team with roles, and a
-verification process.
-
-This is **already built**, not proposed: organization accounts, capability grants, product
-and service catalogues, a public storefront, an inquiry pipeline, and listing-scoped
-messaging between a student and a business.
-
-And Jiaxing is not a hypothetical first city. **`/explore/jiaxing` already exists** — the
-only city hub in the product. It is titled _"Jiaxing, open by design."_ and its own summary
-names the model: **"Kondo bridge: Students ↔ city opportunity."** It covers local companies,
-local products, universities, internships, events and city services.
-
-> **Stated honestly:** those company entries are curated from public sources and marked
-> _"Future company profile ready."_ No Jiaxing company has been contacted, onboarded or
-> partnered with. The hub is built to receive real accounts — it does not yet hold any.
+This is not a plan. **198 page routes, 283 API routes, 142 database models, 1,023
+automated tests and 128 browser journeys, green in CI.**
 
 ---
 
-## Why the two sides need each other
+## The turn
 
-Neither side is interesting alone. A student directory is a directory. A business listing
-site is a listing site.
+A student opens Food & Services to find lunch:
 
-**The value is the exchange:**
+> _Student lunch set · CN¥18 · Jiaxing · Nanhu Kitchen · VERIFIED_
+> _Jiaxing zongzi set · CN¥36 · Jiaxing · Nanhu Kitchen · VERIFIED_
 
-| Students give                           | Students get                                                  |
-| --------------------------------------- | ------------------------------------------------------------- |
-| Attention, spending, feedback, presence | Orientation, tools, community, local discovery, opportunities |
+Every item on that screen was published by a business in Jiaxing, from a business
+account, into a surface international students browse for lunch.
 
-| Jiaxing gives                                      | Jiaxing gets                                                   |
-| -------------------------------------------------- | -------------------------------------------------------------- |
-| Products, services, opportunities, local knowledge | A reachable international audience it currently cannot address |
+**The student side and the city side are the same screen.**
 
-A restaurant near campus does not need a marketing strategy for international students. It
-needs **one channel where those students already are**. Kondo is trying to be that channel
-— and the students are there because of Side A, not because of the advertising.
+That is the whole argument. Kondo spends nine tenths of its effort earning a
+student's daily attention — timetable, textbook, notes, friends, bicycle, lunch.
+That attention creates something that did not exist before: a place where
+international students in Jiaxing can be reached.
 
-That is the defensible part: **the student side earns the audience; the city side monetises
-it.**
+|                                |                                                                      |
+| ------------------------------ | -------------------------------------------------------------------- |
+| **Students need**              | trusted local discovery                                              |
+| **Jiaxing organizations need** | visibility with an audience that is nearby and currently unreachable |
+
+A restaurant near campus does not need a marketing strategy for international
+students. It needs **one channel where those students already are.**
+
+> **The student side earns the audience. The city side reaches it.**
+> Neither half works alone. A student directory is a directory. A business listing
+> site is a listing site. The exchange is the product.
 
 ---
 
-## Why Jiaxing is the right pilot
+## What the business side already is
 
-- **Six universities** in the city, already in Kondo's reference data
-- **Concentrated** — a student population small enough to reach and large enough to matter
-- **Reachable businesses** — local restaurants and services can be onboarded in person
-- **A real economic identity** to present to students: textiles, photovoltaic glass,
+An organization in Kondo is a separate kind of account: its own workspace, team
+roles, and **capabilities granted one at a time** — `PRODUCTS`,
+`STUDENT_SERVICES`, `INTERNSHIPS_JOBS`, `EVENTS`, `HOUSING`, `SCHOLARSHIPS`.
+
+That last part is what makes it governable: **a restaurant can publish food
+without being able to publish job offers.** There is an identity-verification
+pipeline behind it, and a verified storefront carries an honest label — Kondo
+verifies who an organization is, never how good it is.
+
+**Built and working. Never used by a real business.**
+
+**Next phase, not built:** a Jiaxing company publishing an _International Students
+Open Day_ — students discover it, request a place, visit the site, and see what
+the city actually makes. Kondo already has organizations, events and an
+apply-and-review pipeline. What is missing is the surface and one willing company.
+
+---
+
+## Why Jiaxing
+
+- **Six universities**, already in Kondo's reference data
+- **Concentrated** — small enough to reach, large enough to matter
+- **Reachable businesses** — restaurants near campus can be onboarded by walking in
+- **A real economic identity** to show students: textiles, photovoltaic glass,
   advanced materials, cross-border digital trade
-- **Between Shanghai and Hangzhou** — a credible position in the Yangtze River Delta
-- **Measurable** — one city means adoption can actually be observed rather than estimated
+- **Between Shanghai and Hangzhou**, in the Yangtze River Delta
+- **Measurable** — one city means adoption can be observed, not estimated
 
-Kondo already treats Jiaxing as its reference city. The pilot is not a pivot; it is the
-product's existing centre of gravity.
+And Jiaxing is not hypothetical inside the product. **`/explore/jiaxing` already
+exists and is the only city hub in Kondo.** It is titled _"Jiaxing, open by
+design."_ and its own summary names the model: **"Kondo bridge: Students ↔ city
+opportunity."**
 
-**Pilot sequence:** university students → international students across Jiaxing → local
-restaurants and services → selected Jiaxing companies → replicate in another Chinese
-university city.
+> **Said plainly:** the company entries in that hub are editorial, researched from
+> public sources and marked _"Future company profile ready."_ **No Jiaxing company
+> has been contacted, onboarded or partnered with.** The hub is built to receive
+> real accounts. It does not hold any.
+
+The pilot is not a pivot. Jiaxing is already the product's centre of gravity.
 
 ---
 
-## Business model — honestly staged
+## Business model, staged by trust
 
-**Today: no revenue. No paying customers. No users. Payments are simulated.**
+**Today: no revenue, no paying customers, no users. Payments are simulated.**
 
-The realistic path, in order of trust cost:
+1. **Free for students, always** — the student side is the audience; charging it
+   destroys what makes the city side valuable
+2. **Organization subscriptions** — verified storefront, catalogue, analytics
+3. **Promoted placement** — clearly labelled, never disguised as organic
+4. **Opportunity posting**
+5. **Institutional partnerships**
 
-1. **Free for students, always.** The student side is the audience; charging it destroys
-   the thing that makes the city side valuable.
-2. **Organization subscriptions** — a Jiaxing business pays for a verified storefront,
-   catalogue and analytics.
-3. **Promoted placement** — clearly labelled, never disguised as organic.
-4. **Opportunity posting** — companies pay to reach international students.
-5. **Institutional partnerships** — universities and city bodies funding orientation
-   content.
-
-Commission on transactions is deliberately **not** the first move: it requires payment
-infrastructure that does not exist and a trust position Kondo has not earned.
+Transaction commission is deliberately not first: it needs infrastructure Kondo
+does not have and trust Kondo has not earned.
 
 ---
 
 ## Competitive position
 
-WeChat, Xiaohongshu, Taobao and university groups are excellent and Kondo does not compete
-with them.
+WeChat, Xiaohongshu, Taobao, Meituan and university groups are excellent, and
+Kondo does not compete with them.
 
-What none of them provides is a **single context for being an international student in one
-Chinese city** — where your class schedule, your library, your residence-permit checklist,
-your community, the restaurant near campus and an internship at a local company are the
-same product, in a language you read, from before you arrive.
+What none of them provides is a **single context for being an international
+student in one Chinese city** — where your timetable, your textbook, your
+residence-permit checklist, your community, the restaurant near campus and an
+internship at a local company are the same product, in a language you read, from
+before you arrive.
 
-Kondo's differentiation is **context, not features**: international-student framing,
-pre-arrival onboarding, and a local business layer that no general platform has a reason to
-build for this audience.
+**The differentiation is context, not features.**
 
 ---
 
 ## What we are asking to prove
 
-A Jiaxing pilot would test one question:
+> **Will international students in Jiaxing use one place for their student life —
+> and will that make them findable by the city around them?**
 
-> **Will international students use a single platform for study and city life — and will
-> that make them discoverable and reachable to Jiaxing businesses?**
+One semester, one city. Measurable: registered students, weekly active use,
+timetables in Workspace, guides completed, businesses onboarded, products
+published, storefront views, student→business conversations, opportunities
+published.
 
-Measurable within one semester: registered students, weekly active use, Student Hub
-sessions, businesses onboarded, products published, storefront views, student–business
-conversations, opportunities viewed.
-
-**All targets. Kondo has no users today, and the dossier says so.**
+**All targets. Kondo has no users today, and this document says so.**
 
 ---
 
-## The longer horizon
+## The three facts that never move
 
-International students leave, and they stay connected to where they studied. A student who
-spent four years using a Jiaxing platform — who knows Tongkun and Flat Glass are Jiaxing
-companies, who ate at the same restaurant every week — becomes a link between Jiaxing and
-their home country.
+> **No users. No revenue. No partnerships. No institutional endorsement.**
+> **No AI answer has ever been produced** — the integration is real, the API key is
+> not configured, and the product fails honestly: _"Ask AI is not configured on
+> this environment. Highlights and notes still work."_
+> **No real payment has ever been processed.**
 
-That is a real long-term possibility for cultural exchange, company visibility, alumni
-networks and market understanding.
-
-**It is a hypothesis, not a result.** Kondo has not measured it and does not claim it.
+The product is built. The question that remains is not a technical one — and one
+semester in one city can answer it.
